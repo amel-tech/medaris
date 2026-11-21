@@ -10,7 +10,8 @@ needs:
       nazar's menu has "Sınavlarım" for a person who prepares exams for at least one course, and it opens the exams they prepare.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: menuExams
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to nazar's navigation graph once the page exists."
 
   - id: only-the-courses-they-prepare-for
@@ -21,7 +22,11 @@ needs:
     evidence:
       - state: opening
       - state: forbidden
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: forbiddenAlert
+      - node: rowPlace
+      - node: rowScores
+      - node: rowScoresLink
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked who prepares: \"Hoca + yetkili ders nazırı\"; asked whether written and oral exams are listed: \"Hepsi, tedris gibi\". The grant is new, granular and may be time-limited."
 
   - id: the-status-of-each-exam
@@ -30,7 +35,9 @@ needs:
       "Bitti" once it has closed.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowStatus
+      - node: rowWhen
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
 
   - id: what-each-row-says
@@ -39,19 +46,25 @@ needs:
       how many talebe started it and how many finished.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowQuestions
+      - node: rowTaken
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: filter-by-status-and-course
     need: The list filters by status and by course, and the filter stays in the address.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: statusFilter
+      - node: courseFilter
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: a-new-exam-starts-as-a-draft
     need: '"Yeni sınav" asks for the course and starts a draft in the editor; nothing of it reaches a talebe.'
     evidence:
       - state: draft_created
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: newExam
+      - node: courseDialog
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: each-exam-opens-where-it-is-worked-on
     need: >-
@@ -59,18 +72,21 @@ needs:
       the topics and the questions.
     evidence:
       - state: exam_opened
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowEdit
+      - node: rowResults
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: none-yet-says-so
     need: With no exam, the page says "Henüz sınav yok." and offers "Yeni sınav".
     evidence:
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: emptyText
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: reached-from-the-course-too
     need: A course's own pages lead to its exams, and to "Yeni sınav" for that course.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: An online exam is an exam celse (owner, 21 Nov 2026), so Celseler and Değerlendirme lead to it as they lead to exam celses.

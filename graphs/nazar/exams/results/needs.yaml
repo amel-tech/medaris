@@ -12,7 +12,8 @@ needs:
     evidence:
       - state: opening
       - state: forbidden
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: forbiddenAlert
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: every-talebe-and-where-they-are
     need: >-
@@ -21,14 +22,19 @@ needs:
     evidence:
       - state: overview
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: talebeTable
+      - node: rowState
+      - node: sortField
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, for nazar: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: live-while-it-is-open
     need: "While the exam is open, the overview follows it: who started, who handed in, how many are in progress."
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: liveNote
+      - node: countsLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: the-topics-across-the-talebe
     need: >-
@@ -37,7 +43,9 @@ needs:
     evidence:
       - state: overview
       - state: topicDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: topicsTable
+      - node: topicTalebeTable
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\": what the talebe sees of themselves, the team sees of all."
 
   - id: a-question-that-misled-is-found
@@ -47,7 +55,10 @@ needs:
     evidence:
       - state: overview
       - state: questionDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionRight
+      - node: optionChosen
+      - node: questionBlank
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: a-talebe-s-attempt
     need: >-
@@ -55,7 +66,9 @@ needs:
       when they started and handed in.
     evidence:
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: attemptQuestions
+      - node: attemptTimes
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: the-switches-are-shown
     need: >-
@@ -64,7 +77,9 @@ needs:
     evidence:
       - state: overview
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowSwitches
+      - node: switchItem
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked whether the team sees the switches: \"Evet, sayı ve zaman\"."
 
   - id: the-zeroth-answers-per-talebe
@@ -74,7 +89,10 @@ needs:
     evidence:
       - state: overview
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowZeroth
+      - node: zerothCounts
+      - node: zerothNoScore
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\" (management's view is nizam.exams.zerothAnswers)."
 
   - id: saved-answers-count-for-an-unfinished-attempt
@@ -83,7 +101,8 @@ needs:
       saved, and says that the time ended it.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowState
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "From the owner's \"verilen cevap kabul edilecek\"."
 
   - id: release-the-results
@@ -92,7 +111,10 @@ needs:
       once and for all, and the page says when and by whom.
     evidence:
       - state: released
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: releaseButton
+      - node: releaseDialog
+      - node: releasedLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "As Değerlendirme releases an exam celse's results today (nazar.evaluation.examScores); owner, asked whether the team releases them: \"evet\"."
 
   - id: in-degerlendirme-with-the-other-exams
@@ -101,7 +123,7 @@ needs:
       started is "Girmedi" there, and the release is the one Değerlendirme has.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: An online exam is an exam celse (owner, 21 Nov 2026).
 
   - id: words-and-numbers-not-colour-alone
@@ -110,4 +132,6 @@ needs:
       a chart has the same figures as text.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: countsLine
+      - node: topicBar
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"

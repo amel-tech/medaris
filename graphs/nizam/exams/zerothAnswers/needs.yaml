@@ -12,7 +12,9 @@ needs:
       exams of their own köşk, and nothing of another's.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionsList
+      - node: optionCount
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\"; asked who else: \"Köşk nazımı kendi köşkünü\"."
 
   - id: never-one-talebe-s-answer
@@ -21,7 +23,9 @@ needs:
       shown as "5'ten az".
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: optionCount
+      - node: examAnswered
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: the-same-question-counted-together
     need: >-
@@ -30,13 +34,18 @@ needs:
     evidence:
       - state: listed
       - state: questionDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionExams
+      - node: examsTable
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: filtered-by-time-and-place
     need: The counts filter by a span of dates, by köşk, by medrese and by course, and the filter stays in the address.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: filters
+      - node: fromField
+      - node: koskField
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's \"bu dönem ... diğer dönem\" reads."
 
   - id: only-management
@@ -46,17 +55,20 @@ needs:
     evidence:
       - state: opening
       - state: forbidden
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: A köşk nazımı reads it for their own köşk only.
 
   - id: none-yet-says-so
     need: With no answer in the span chosen, the page says so.
     evidence:
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: emptyNote
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: figures-as-text
     need: Every count is said in numbers and words; a bar only repeats it, and a table has headers a screen reader reads.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: optionBar
+      - node: examsTable
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"

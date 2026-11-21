@@ -1,30 +1,46 @@
 # The course team's screens of an open or past online exam in nazar-web: who took it, the scores, the topics, the questions, and
-# releasing the results to the talebe. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online
-# exams; no code, no route and no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on.
+# releasing the results to the talebe. PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's
+# rules for online exams; the screens are drawn now (ui.yaml) and the API is sketched in domain/planned-exams.yaml. There is no code, no
+# route and no table: `status: proposed`, no state names code, and nothing here can be walked. An online exam is a LessonExam of the
+# third format, MULTIPLE_CHOICE, shown as "Çoktan seçmeli" beside "Yazılı" and "Şifahi" (the domain's header says why it is not called
+# ONLINE).
 #
 # The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler" (for
 # nazar, the team's own screens of its exams); "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (here, the team
 # sees the same by talebe and by topic).
 #
 # Decided by the owner on 21 Nov 2026:
-#   - An online exam is an exam celse, so its scores land in Değerlendirme as its results, and its release is Değerlendirme's.
+#   - An online exam is an exam celse, so its scores land in Değerlendirme as its results, and its release is Değerlendirme's: the
+#     same action, releaseExamResults, and the same words ("Sonuçları talebelere aç").
 #   - The team sees each talebe's switches to another tab or window, how many and when ("Evet, sayı ve zaman").
 #   - The team reads each talebe's answer to the zeroth question; Medaris management reads them in aggregate
 #     (nizam.exams.zerothAnswers).
+#
+# Drawn here, and not decided by the owner: the release asks once before it goes (Değerlendirme today releases with one press and no
+# question, finding F-D1-28 of nazar.evaluation.examScores); the button is on while the exam is still open, as Değerlendirme's is, and
+# the question says how many talebe are still in it (ui.yaml rule release-while-open).
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.results
 status: proposed
+domain: medaris.api
+ui: nazar.exams.results
 title: Read an exam's results and release them
 summary: >-
   The team opens an open or past exam from Sınavlarım. The overview lists every talebe of the course with where they are (not
   started, in progress, handed in, ended by the time), the score out of 100, the right, wrong and blank answers, the switches
   counted, and the answer to the zeroth question; it shows the average of each topic and the share of talebe right on each question.
   A talebe opens their attempt question by question; a question opens which options were chosen how often. The scores stand in
-  Değerlendirme too, and "Sonuçları talebelere aç" releases them, after which the talebe read their own screen (tedris.exams.result).
+  Değerlendirme too, and "Sonuçları talebelere aç" releases them, after one question, after which the talebe read their own screen
+  (tedris.exams.result).
 scope:
   shows: the team's screens of one exam in nazar-web
   world: open
+  outOfView:
+    - "Sınavlarım, where the exam is opened from: nazar.exams.mine"
+    - "closing an open exam early, and taking it back: nazar.exams.publish"
+    - "Değerlendirme, where the same scores stand beside the course's other exams and can be released too: nazar.evaluation.examScores"
+    - "a read that fails outright and an ended session (the page then says it could not be read, or sends the person to sign in: realm.auth.signIn)"
 context:
   attempts:
     values: [none, some]
@@ -32,49 +48,105 @@ context:
     say:
       none: no talebe has started the exam
       some: at least one talebe has started it
-  may:
-    values: [yes, no]
+  exam:
+    values: [open, closed]
     initial: any
     say:
-      yes: the person is of the course team that may read the exam's results
-      no: the person may not
+      open: talebe can still start it or are still in it
+      closed: the exam has closed for everyone
+  results:
+    values: [closed, opened]
+    initial: any
+    say:
+      closed: the results are not released yet
+      opened: the results are released to the talebe
+  toast:
+    values: [none, released, refused, failed]
+    initial: none
+    say:
+      none: no toast
+      released: the toast says the results were released
+      refused: the release was refused
+      failed: the release could not be done
+guards:
+  stillOpen: "exam == 'open'"
+  notReleased: "results == 'closed'"
+effects:
+  clearToast: { set: { toast: none } }
+  releasedNow: { set: { results: opened, toast: released } }
+  toastRefused: { set: { toast: refused } }
+  toastFailed: { set: { toast: failed } }
+  attemptsMove: { havoc: [attempts, exam] }
+failures:
+  opening:
+    from: getOnlineExamResults
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [EXAM_NOT_FOUND]
+  releasing:
+    from: releaseExamResults
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, network, timeout, 5xx]
 main:
-  given: { attempts: some, may: yes }
-  events: [RELEASE]
+  given: { attempts: some, exam: closed, results: closed }
+  events: [DONE, RELEASE, CONFIRM, DONE]
 initial: opening
 states:
   opening:
-    title: The exam's results are opened
-    description: The page reads every attempt of the exam.
+    title: The exam's results are read
+    description: >-
+      The action getOnlineExamResults, GET /lessons/{id}/online-exam/results: every talebe with a seat in the course and where they
+      are, the scores, the switches with their times, the zeroth answers, and over them all the counts, the topics and the questions.
+      To a person outside the course team the exam's results are not there: the API refuses them.
+    invoke: { action: getOnlineExamResults }
+    on:
+      DONE: loaded
+      FAIL.forbidden: forbidden
+      FAIL.gone: notFound
+  loaded:
+    title: The page is drawn as the read says
+    description: A step with no screen of its own.
     always:
-      - { guard: "may == 'no'", target: forbidden, say: "the person may not read them" }
       - { guard: "attempts == 'none'", target: empty, say: "no talebe has started it" }
       - { target: overview, say: "attempts are read" }
   forbidden:
     title: Not allowed
-    description: To a person outside the course team, the exam's results are not there; the API refuses them.
+    description: >-
+      The page's own refusal, "Bu sayfaya izniniz yok": exam.prepare is not held on the course. Reached by an address typed or kept by
+      someone outside the team, or by a person whose grant ended since Sınavlarım was read.
+    by: human
+    on:
+      NAVIGATE: left
+  notFound:
+    title: No such exam
+    description: The celse is not an online exam, or no longer one; the page says the exam was not found.
     by: human
     on:
       NAVIGATE: left
   empty:
     title: No attempt yet
-    description: The page says no talebe has started the exam, and lists the course's talebe as not started.
+    description: >-
+      The page says no talebe has started the exam, and lists the course's talebe as not started. While the exam is open it is read
+      again, so the first start shows.
     by: human
     on:
+      REFRESH: { guard: stillOpen, target: opening, effect: [attemptsMove], say: "the exam is open: the page reads it again a little later" }
       NAVIGATE: left
   overview:
     title: The exam's results
     description: >-
       Every talebe of the course with where they are, the score, the right, wrong and blank answers, the switches counted and the
       answer to the zeroth question; the average of each topic; the share of talebe right on each question, and how the zeroth question
-      was answered. While the exam is open, it is read again as attempts move.
+      was answered. While the exam is open, it is read again as attempts move. "Sonuçları talebelere aç" until the results are
+      released, and after it when and by whom they were.
     by: human
     goal: true
     on:
-      OPEN_TALEBE: { target: talebeDetail, say: "they open a talebe's attempt" }
-      OPEN_TOPIC: { target: topicDetail, say: "they open a topic" }
-      OPEN_QUESTION: { target: questionDetail, say: "they open a question" }
-      RELEASE: { target: released, say: "they press Sonuçları talebelere aç" }
+      SORT: { target: overview, say: "they sort the talebe by another column: nothing is read again" }
+      OPEN_TALEBE: { target: talebeDetail, effect: [clearToast], say: "they open a talebe's attempt" }
+      OPEN_TOPIC: { target: topicDetail, effect: [clearToast], say: "they open a topic" }
+      OPEN_QUESTION: { target: questionDetail, effect: [clearToast], say: "they open a question" }
+      RELEASE: { guard: notReleased, target: confirmRelease, effect: [clearToast], say: "they press Sonuçları talebelere aç" }
+      REFRESH: { guard: stillOpen, target: opening, effect: [attemptsMove, clearToast], say: "the exam is open: the page reads it again a little later" }
       NAVIGATE: left
   talebeDetail:
     title: A talebe's attempt
@@ -101,6 +173,25 @@ states:
     on:
       BACK: overview
       NAVIGATE: left
+  confirmRelease:
+    title: Sonuçlar talebelere açılsın mı?
+    description: >-
+      One question before the release: every talebe will read their score and their standing in the topics, and is told; the release
+      cannot be undone. While the exam is open it also says how many talebe are still in it.
+    by: human
+    on:
+      CONFIRM: { target: releasing, say: "they press Sonuçları aç" }
+      CANCEL: { target: overview, say: "they press Vazgeç" }
+  releasing:
+    title: Release the results
+    description: >-
+      The existing action releaseExamResults, POST /lessons/{id}/exam-results/release, the one Değerlendirme calls: the first call sets
+      resultsReleasedAt and tells the course's enrolled talebe; a repeat changes nothing. The button is busy while it runs.
+    invoke: { action: releaseExamResults }
+    on:
+      DONE: { target: released, effect: [releasedNow], say: "the results are released" }
+      FAIL.forbidden: { target: overview, effect: [toastRefused], say: "the release is refused: nothing is released" }
+      FAIL.other: { target: overview, effect: [toastFailed], say: "the release could not be done: nothing is released" }
   released:
     title: The results are released
     description: >-

@@ -1,0 +1,105 @@
+# The screen of tedris.exams.mine: the talebe's page "Sınavlarım" and its new entry in tedris's menu.
+# PLANNED, NOT BUILT (MDRS-299): the page, its menu entry, its groups and its rows do not exist, so no node carries a `source`. The
+# shell around the page (the header, the menu's other entries) is drawn by the tedris shell flows and is left out here; the menu entry
+# is drawn alone, as the new node it is.
+#
+# The page has an h1, the time zone line, and three groups, each a region named by its h2: "Şimdi açık" (the multiple-choice exams a
+# talebe may start now, or has in progress), "Yaklaşan" (every exam still to come, of every format) and "Geçmiş" (the exams that are
+# over). A group with no exam is not drawn. Each row is the exam's course, its title, its format as a badge ("Çoktan seçmeli", or the
+# app's own "Yazılı" and "Şifahi"), what the row needs to say and its one action. Its state is a word ("Başlayabilirsin", "Devam
+# ediyor", "Başlamadı", "Girdin", "Girmedin", "Sonuç açıklandı"), never a colour alone.
+#
+# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
+# and the app's own where they exist: SessionPage.examWritten and .examOral ("Yazılı", "Şifahi"), SchedulePage.zone (the time zone
+# line), CoursePage.tabGrades ("Notlarım") and planned.Exams.retry ("Yeniden dene"). Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.exams.mine
+flow: tedris.exams.mine
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  zone: İstanbul
+  course: Fıkıh Usulü
+  title: Ara sınav
+  minutes: "60"
+  count: "50"
+  until: 24 Kas Sal 22:00
+  when: 28 Kas Cmt 20:00
+  place: Çevrimiçi
+  score: "86,50"
+
+nodes:
+  # --- the new menu entry ---------------------------------------------------------------------------------------------------------
+  menuExams: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [listed, empty, loadFailed] } # NEW: in tedris's menu on every page and in the phone's menu; aria-current=page on this page
+
+  # --- the page --------------------------------------------------------------------------------------------------------------------
+  examsPage: { type: page, component: Page, role: main, in: [listed, empty, loadFailed] } # the shell's one <main>; where the focus goes on load is not decided (rule focus-not-decided)
+  examsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.mine }, in: [listed, empty, loadFailed] } # h1
+  examsIntro: { type: text, component: Text, text: { key: planned.Exams.mineIntro }, in: [listed, empty] }
+  zoneLine: { type: text, component: Text, text: { key: SchedulePage.zone, params: { zone: zone } }, in: [listed] } # the app's own words; every time on the page is in the talebe's own zone
+
+  # --- Şimdi açık ------------------------------------------------------------------------------------------------------------------
+  openRegion: { type: page, component: Page, role: region, name: { labelledBy: openTitle }, in: [listed] } # drawn only when an exam is open
+  openTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupOpen }, in: [listed] } # h2
+  openList: { type: list, component: List, role: list, name: { labelledBy: openTitle }, in: [listed] } # soonest latest start first
+  openCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.open }
+  openName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.open }
+  openFormat: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [listed], repeat: exams.open } # only a multiple-choice exam is started here
+  openFacts: { type: text, component: Text, text: { key: planned.Exams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], repeat: exams.open }
+  openUntil: { type: text, component: Text, text: { key: planned.Exams.openUntil, params: { until: row.until } }, in: [listed], repeat: exams.open } # the latest start, in the talebe's zone
+  openState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateCanStart, planned.Exams.stateInProgress] }, in: [listed], repeat: exams.open }
+  enterButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.enterLabel, params: { title: row.title } }, text: { key: planned.Exams.enter }, in: [listed], repeat: exams.open.notStarted, emits: ENTER } # to the briefing (tedris.exams.take)
+  continueButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.continueLabel, params: { title: row.title } }, text: { key: planned.Exams.continue }, in: [listed], repeat: exams.open.inProgress, emits: ENTER } # to the attempt, where it stopped
+
+  # --- Yaklaşan --------------------------------------------------------------------------------------------------------------------
+  comingRegion: { type: page, component: Page, role: region, name: { labelledBy: comingTitle }, in: [listed] }
+  comingTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupComing }, in: [listed] } # h2
+  comingList: { type: list, component: List, role: list, name: { labelledBy: comingTitle }, in: [listed] } # soonest first
+  comingCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.coming }
+  comingName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.coming }
+  comingFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPage.examWritten, SessionPage.examOral] }, in: [listed], repeat: exams.coming }
+  comingWhen: { type: text, component: Text, text: { key: composed.Exams.when, params: { when: row.when } }, in: [listed], repeat: exams.coming } # the earliest start of a multiple-choice exam, the celse's time of a written or oral one
+  comingFacts: { type: text, component: Text, text: { key: planned.Exams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], repeat: exams.coming.choice } # a multiple-choice exam only
+  comingPlace: { type: text, component: Text, text: { key: composed.Exams.place, params: { place: row.place } }, in: [listed], repeat: exams.coming.writtenOrOral } # "Çevrimiçi" or the place's name, as the session plan sets it
+  comingState: { type: status, component: Status, text: { key: planned.Exams.stateNotStarted }, in: [listed], repeat: exams.coming }
+
+  # --- Geçmiş ----------------------------------------------------------------------------------------------------------------------
+  pastRegion: { type: page, component: Page, role: region, name: { labelledBy: pastTitle }, in: [listed] }
+  pastTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupPast }, in: [listed] } # h2
+  pastList: { type: list, component: List, role: list, name: { labelledBy: pastTitle }, in: [listed] } # latest first
+  pastCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.past }
+  pastName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.past }
+  pastFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPage.examWritten, SessionPage.examOral] }, in: [listed], repeat: exams.past }
+  pastState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateTook, planned.Exams.stateMissed, planned.Exams.stateReleased] }, in: [listed], repeat: exams.past } # "Girdin" until the release, "Girmedin" for one not taken, "Sonuç açıklandı" after
+  pastScore: { type: text, component: Text, text: { oneOf: [planned.Exams.score, planned.Exams.notReleased] }, in: [listed], repeat: exams.past } # "{score} / 100" once released, else "Sonuç henüz açıklanmadı"
+  resultLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.resultLabel, params: { title: row.title } }, text: { key: planned.Exams.result }, in: [listed], repeat: exams.past.choice, emits: READ_RESULT } # a multiple-choice exam the talebe took: their own screen of it
+  gradesLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.gradesLabel, params: { course: row.course } }, text: { key: CoursePage.tabGrades }, in: [listed], repeat: exams.past.writtenOrOral, emits: READ_GRADES } # a written or oral exam: the course's Notlarım
+
+  # --- no exam, and a read that failed ---------------------------------------------------------------------------------------------
+  emptyText: { type: text, component: Text, text: { key: planned.Exams.emptyTalebe }, in: [empty] }
+  emptyHint: { type: text, component: Text, text: { key: planned.Exams.emptyTalebeHint }, in: [empty] }
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.listLoadFailedTitle }, text: { key: planned.Exams.loadFailed }, in: [loadFailed] }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.retry }, in: [loadFailed], emits: RETRY }
+
+edges:
+  - { labelledBy: [openRegion, openTitle] }
+  - { labelledBy: [openList, openTitle] }
+  - { labelledBy: [comingRegion, comingTitle] }
+  - { labelledBy: [comingList, comingTitle] }
+  - { labelledBy: [pastRegion, pastTitle] }
+  - { labelledBy: [pastList, pastTitle] }
+  - { triggers: [enterButton, exam_entered] }
+  - { triggers: [continueButton, exam_entered] }
+  - { triggers: [resultLink, result_opened] }
+  - { triggers: [gradesLink, grades_opened] }
+  - { triggers: [retryButton, opening] }
+
+rules:
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1, and a failed read moves the focus to its alert. The graph says nothing of the focus here because nothing is built." }
+  - { id: state-in-words, rule: "Every row says its state in a word (Başlayabilirsin, Devam ediyor, Başlamadı, Girdin, Girmedin, Sonuç açıklandı) and its format in a word; a colour only repeats it (needs readable-by-keyboard-and-screen-reader)." }
+  - { id: one-action-per-row, rule: "A row has one action, named by the exam's title (or, for Notlarım, by the course), so a list of buttons read alone still says which exam each one opens." }
+  - { id: never-a-draft, rule: "A draft multiple-choice exam is never a row, and nothing of it reaches the talebe (listMyExams does not send it)." }
+  - { id: planned-words, rule: "Every key planned.Exams.* is a proposal for the owner to review, with the same text in every catalog of the online exams; SessionPage.*, SchedulePage.zone, CoursePage.tabGrades and planned.Exams.retry are the app's own." }

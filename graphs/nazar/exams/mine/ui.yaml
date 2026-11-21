@@ -1,0 +1,93 @@
+# The screen of nazar.exams.mine: the course team's page "Sınavlarım", its new entry in nazar's menu, and the dialog of "Yeni sınav".
+# PLANNED, NOT BUILT (MDRS-299): the page, its menu entry, its filters, its table and its dialog do not exist, so no node carries a
+# `source`. The shell around the page is drawn by the nazar shell flows and is left out here; the menu entry is drawn alone, as the
+# new node it is, and only for a person who prepares exams for a course.
+#
+# The page has an h1, "Yeni sınav", two filters (Durum, Ders) that go into the address, and one table of exams, upcoming first and then
+# past. A row is the exam's title and course, its format as a badge ("Çoktan seçmeli", or the app's own "Yazılı" and "Şifahi"), its
+# status as a word ("Taslak", "Zamanlandı" with when it opens, "Yayında", "Bitti", "Sonuçlar açıklandı"), what the row needs to say
+# and its one action: a multiple-choice exam opens its editor or its results, a written or oral one its column in Değerlendirme.
+#
+# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
+# and the app's own where they exist: SessionPlan.examWritten and .examOral ("Yazılı", "Şifahi"), Courses.filters.status.label
+# ("Durum"), Students.filters.course.label ("Ders"), Problems.* (the refused page), Shell.retry ("Yeniden dene"),
+# OpenCourse.cancel ("Vazgeç") and Nav.ders.evaluation ("Değerlendirme"). Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nazar.exams.mine
+flow: nazar.exams.mine
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Fıkıh Usulü
+  title: Ara sınav
+  when: 28 Kas Cmt 20:00
+  count: "38"
+  minutes: "60"
+  started: "21"
+  finished: "19"
+  scores: "17"
+  seats: "24"
+  place: Çevrimiçi
+
+nodes:
+  # --- the new menu entry ---------------------------------------------------------------------------------------------------------
+  menuExams: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [listed, empty, loadFailed, choosingCourse] } # NEW: in nazar's menu, only for a person who prepares exams for at least one course; aria-current=page here
+
+  # --- the page --------------------------------------------------------------------------------------------------------------------
+  examsPage: { type: page, component: Page, role: main, in: [forbidden, listed, empty, loadFailed, choosingCourse] } # the shell's one <main>; where the focus goes on load is not decided (rule focus-not-decided)
+  examsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.mine }, in: [forbidden, listed, empty, loadFailed, choosingCourse] } # h1
+  examsIntro: { type: text, component: Text, text: { key: planned.Exams.mineIntroTeam }, in: [listed, empty, choosingCourse] }
+  newExam: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.newExam }, in: [listed, empty, choosingCourse], disabledIn: [choosingCourse], emits: CREATE }
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: planned.Exams.noCourseToPrepare }, in: [forbidden] } # a neutral alert, as the page's own problem is drawn
+
+  # --- the filters -----------------------------------------------------------------------------------------------------------------
+  statusFilter: { type: field, component: TextField, role: combobox, text: { key: Courses.filters.status.label }, in: [listed, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü, Taslak, Zamanlandı, Yayında, Bitti, Sonuçlar açıklandı
+  courseFilter: { type: field, component: TextField, role: combobox, text: { key: Students.filters.course.label }, in: [listed, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü and the courses the person prepares exams for
+
+  # --- the table of exams ----------------------------------------------------------------------------------------------------------
+  examsTable: { type: list, component: List, role: table, name: { key: planned.Exams.tableLabel }, in: [listed, choosingCourse] } # upcoming first, soonest first; then past, latest first
+  rowTitle: { type: text, component: Text, role: cell, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed, choosingCourse], repeat: exams }
+  rowCourse: { type: text, component: Text, role: cell, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed, choosingCourse], repeat: exams }
+  rowFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPlan.examWritten, SessionPlan.examOral] }, in: [listed, choosingCourse], repeat: exams }
+  rowStatus: { type: status, component: Status, text: { oneOf: [planned.Exams.statusDraft, planned.Exams.statusScheduledTitle, planned.Exams.statusOpen, planned.Exams.statusClosed, planned.Exams.statusReleased] }, in: [listed, choosingCourse], repeat: exams } # a multiple-choice exam; a written or oral one says Sonuçlar açıklandı once released, nothing before
+  rowWhen: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.scheduledAt, composed.Exams.when, planned.Exams.noTimeYet] }, in: [listed, choosingCourse], repeat: exams } # "Yayın: <when>" for a scheduled exam; the date of the others; a draft with no time yet says so
+  rowQuestions: { type: text, component: Text, role: cell, text: { key: planned.Exams.questionsAndMinutes, params: { count: row.count, minutes: row.minutes } }, in: [listed, choosingCourse], repeat: exams.choice } # "38/50 soru · 60 dakika": the count against the suggested 50, never a limit
+  rowTaken: { type: text, component: Text, role: cell, text: { key: planned.Exams.takenCount, params: { started: row.started, finished: row.finished } }, in: [listed, choosingCourse], repeat: exams.choice.openOrPast }
+  rowPlace: { type: text, component: Text, role: cell, text: { key: composed.Exams.place, params: { place: row.place } }, in: [listed, choosingCourse], repeat: exams.writtenOrOral }
+  rowScores: { type: text, component: Text, role: cell, text: { key: planned.Exams.scoresEntered, params: { scores: row.scores, seats: row.seats } }, in: [listed, choosingCourse], repeat: exams.writtenOrOral }
+  rowEdit: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.editLabel, params: { title: row.title } }, text: { key: planned.Exams.edit }, in: [listed], repeat: exams.choice.draftOrScheduled, emits: OPEN } # to the editor (nazar.exams.edit)
+  rowResults: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.resultsLabel, params: { title: row.title } }, text: { key: planned.Exams.results }, in: [listed], repeat: exams.choice.openOrPast, emits: OPEN } # to the team's screens of it (nazar.exams.results)
+  rowScoresLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.scoresLabel, params: { title: row.title } }, text: { key: Nav.ders.evaluation }, in: [listed], repeat: exams.writtenOrOral, emits: OPEN_SCORES } # its column in Değerlendirme
+
+  # --- no exam, and a read that failed ---------------------------------------------------------------------------------------------
+  emptyText: { type: text, component: Text, text: { key: planned.Exams.emptyTeam }, in: [empty] }
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.listLoadFailedTitle }, text: { key: Problems.actionGeneric }, in: [loadFailed] }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY }
+
+  # --- the dialog of "Yeni sınav" --------------------------------------------------------------------------------------------------
+  courseDialog: { type: page, component: Page, role: dialog, name: { labelledBy: courseDialogTitle }, in: [choosingCourse], initialFocus: courseDialogSelect }
+  courseDialogTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.newExam }, in: [choosingCourse] } # h2
+  courseDialogText: { type: text, component: Text, text: { key: planned.Exams.newExamText }, in: [choosingCourse] }
+  courseDialogSelect: { type: field, component: TextField, role: combobox, text: { key: Students.filters.course.label }, in: [choosingCourse] } # only the courses the person prepares exams for
+  courseDialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.newExamConfirm }, in: [choosingCourse], emits: CONFIRM } # to the course's Celse planla, with Sınav and Çoktan seçmeli chosen
+  courseDialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: OpenCourse.cancel }, in: [choosingCourse], emits: CANCEL }
+
+edges:
+  - { labelledBy: [courseDialog, courseDialogTitle] }
+  - { triggers: [newExam, choosingCourse] }
+  - { triggers: [courseDialogConfirm, draft_created] }
+  - { triggers: [rowEdit, exam_opened] }
+  - { triggers: [rowResults, exam_opened] }
+  - { triggers: [rowScoresLink, scores_opened] }
+  - { triggers: [retryButton, opening] }
+  - { returnsFocus: [courseDialog, newExam] } # Vazgeç or Esc: back to "Yeni sınav"
+
+rules:
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1, a changed filter keeps the focus on the filter, and a failed read moves it to its alert. The dialog's focus is drawn (initialFocus, returnsFocus) because a dialog that does not take it is not usable by keyboard." }
+  - { id: status-in-words, rule: "Every row says its status and its format in words; a colour only repeats them. Zamanlandı says when it opens beside it, in the person's own time zone." }
+  - { id: suggested-not-a-limit, rule: "The question count is shown against the suggested 50 (\"38/50 soru\"), and nothing on this page or in the editor stops at fewer or more (owner: \"soru sayısı da 50 önerilecek\")." }
+  - { id: one-action-per-row, rule: "A row has one action, named by the exam's title, so a list of links read alone still says which exam each one opens." }
+  - { id: planned-words, rule: "Every key planned.Exams.* is a proposal for the owner to review, with the same text in every catalog of the online exams; SessionPlan.*, Courses.filters.status.label, Students.filters.course.label, Problems.*, Shell.retry, OpenCourse.cancel and Nav.ders.evaluation are the app's own." }
