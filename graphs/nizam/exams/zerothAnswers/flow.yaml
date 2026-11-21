@@ -1,0 +1,86 @@
+# Medaris management reads, in nizam-web, how the zeroth question of the online exams was answered, in aggregate: never one
+# talebe's answer. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules and answers for online exams; no
+# code, no route and no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+#
+# The owner's rule (21 Nov 2026): "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu
+# sıfırıncı soruda. mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye
+# sorulacak. doğru yanlış cevabı olan bi soru değil." Asked who reads the answers: "Yönetim toplu, ekip talebe bazında". Each exam's
+# preparer writes its zeroth question (nazar.exams.edit), so the questions differ from exam to exam; the course team reads its own
+# talebe's answers in nazar.exams.results.
+#
+# Decided by the owner on 21 Nov 2026: a köşk nazımı reads the same page for the exams of their own köşk, and a count under five is
+# shown as "5'ten az" ("Köşk nazımı kendi köşkünü").
+schema: delurio-graph/0
+kind: flow
+id: nizam.exams.zerothAnswers
+status: proposed
+title: Read how the zeroth question was answered, across exams
+summary: >-
+  The Medaris başnazımı, a Medaris nazımı who holds the grant, or a köşk nazımı for their own köşk, opens the zeroth question's
+  page in nizam. It lists the zeroth
+  questions of the online exams, with exams that asked the same words counted together, and for each how many talebe answered and
+  how many chose each option. It filters by a span of dates, by köşk, by medrese and by course. No talebe's name and no single answer
+  is shown, and a count under five is shown as "5'ten az".
+scope:
+  shows: one page of nizam-web
+  world: open
+context:
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person is the Medaris başnazımı, a Medaris nazımı who holds the grant to read it, or a köşk nazımı (their köşk only)
+      no: the person may not read it
+  answers:
+    values: [none, some]
+    initial: any
+    say:
+      none: no zeroth question has been answered in the span chosen
+      some: answers are counted
+main:
+  given: { may: yes, answers: some }
+  events: [FILTER]
+initial: opening
+states:
+  opening:
+    title: The page is opened
+    description: The page reads the counts of the zeroth questions' answers.
+    always:
+      - { guard: "may == 'no'", target: forbidden, say: "the person may not read it" }
+      - { guard: "answers == 'none'", target: empty, say: "no answer in the span" }
+      - { target: listed, say: "answers are counted" }
+  forbidden:
+    title: Not allowed
+    description: The page is not in the menu for this person, and opened by its address it says so; the API refuses the counts.
+    by: human
+    on:
+      NAVIGATE: left
+  listed:
+    title: The zeroth questions and their answers
+    description: >-
+      Each zeroth question, the same words of several exams counted together, with how many exams asked it, how many talebe answered,
+      and how many chose each option, as a number and a percentage.
+    by: human
+    goal: true
+    on:
+      FILTER: { target: listed, say: "they filter by dates, köşk, medrese or course" }
+      OPEN: { target: questionDetail, say: "they open a question" }
+      NAVIGATE: left
+  questionDetail:
+    title: A zeroth question
+    description: The exams that asked it, with each one's counts, and the counts over them all.
+    by: human
+    on:
+      BACK: listed
+      NAVIGATE: left
+  empty:
+    title: No answer yet
+    description: The page says no zeroth question has been answered in the span chosen.
+    by: human
+    on:
+      FILTER: { target: opening, say: "they choose another span" }
+      NAVIGATE: left
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true

@@ -1,0 +1,89 @@
+# The course team's "Sınavlarım" in nazar-web: the exams of the courses a person prepares exams for, by status, and the way into
+# each. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and
+# no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+#
+# The owner's rules this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
+# kendilerine özel ekranları da görebilecekler"; "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak".
+# Read for nazar as: the exams the person prepares, and their own screens of the past ones (nazar.exams.results). The menu entry is
+# nazar's navigation graph's (graphs/nazar/nav) once the page exists.
+#
+# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse; a hoca prepares it, and so does a ders
+# nazırı the hoca gives a new grant to prepare exams ("Hoca + yetkili ders nazırı"). The list holds every exam of those courses,
+# written and oral too, as tedris's does ("Hepsi, tedris gibi").
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.mine
+status: proposed
+title: Read the exams I prepare (Sınavlarım)
+summary: >-
+  A hoca, or a ders nazırı who may prepare exams, opens "Sınavlarım" from nazar's menu. The page lists the exams of the courses
+  where they may, written, oral and online alike. An online one shows its status (Taslak; "<gün> <saat>'te yayında"; Yayında;
+  Bitti), its question count against the suggested 50 and its length, and for an open or past one how many talebe started and
+  finished; a written or oral one its date, its place and how many scores are entered. It filters by status and by
+  course. "Yeni sınav" starts a draft (nazar.exams.edit); a draft or a scheduled exam opens its editor, an open or past one its
+  results (nazar.exams.results).
+scope:
+  shows: the page "Sınavlarım" of nazar-web
+  world: open
+context:
+  exams:
+    values: [none, some]
+    initial: any
+    say:
+      none: no course the person prepares exams for has an exam
+      some: at least one exam is listed
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person is a hoca of a course, or holds the grant to prepare its exams
+      no: the person prepares exams for no course
+main:
+  given: { exams: some, may: yes }
+  events: [OPEN]
+initial: opening
+states:
+  opening:
+    title: Sınavlarım is opened
+    description: The page reads the exams of the courses the person prepares exams for.
+    always:
+      - { guard: "may == 'no'", target: forbidden, say: "the person prepares exams for no course" }
+      - { guard: "exams == 'none'", target: empty, say: "no exam yet" }
+      - { target: listed, say: "exams are listed" }
+  forbidden:
+    title: No course to prepare exams for
+    description: The menu has no "Sınavlarım" for this person; opened by its address, the page says they prepare exams for no course.
+    by: human
+    on:
+      NAVIGATE: left
+  listed:
+    title: The exams the person prepares
+    description: >-
+      One row per exam: its title and course, its status, its question count against the suggested 50, its length, and for an open
+      or past one the talebe who started and finished. Filters by status and by course, and "Yeni sınav".
+    by: human
+    goal: true
+    on:
+      FILTER: { target: listed, say: "they filter by status or by course" }
+      CREATE: { target: draft_created, say: "they press Yeni sınav" }
+      OPEN: { target: exam_opened, say: "they open an exam" }
+      NAVIGATE: left
+  empty:
+    title: No exams yet
+    description: The page says "Henüz sınav yok." and offers "Yeni sınav".
+    by: human
+    on:
+      CREATE: { target: draft_created, say: "they press Yeni sınav" }
+      NAVIGATE: left
+  draft_created:
+    title: A new draft is opened in the editor
+    description: nazar.exams.edit.
+    type: final
+  exam_opened:
+    title: An exam is opened
+    description: A draft or a scheduled exam opens its editor (nazar.exams.edit), an open or past one its results (nazar.exams.results).
+    type: final
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true

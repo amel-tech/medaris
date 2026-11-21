@@ -1,0 +1,62 @@
+# What must exist for Medaris management to read the zeroth question's answers in aggregate: written needs-first on 21 November 2026
+# from the owner's rule and his answers (quoted at the top of flow.yaml). Every need is missing: there is no code.
+schema: delurio-graph/0
+kind: needs
+id: nizam.exams.zerothAnswers
+status: proposed
+needs:
+  - id: management-reads-in-aggregate
+    need: >-
+      The Medaris başnazımı, and a Medaris nazımı who holds the grant, read how the zeroth questions of the online exams were answered:
+      how many talebe answered each and how many chose each option, as a number and a percentage. A köşk nazımı reads the same for the
+      exams of their own köşk, and nothing of another's.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\"; asked who else: \"Köşk nazımı kendi köşkünü\"."
+
+  - id: never-one-talebe-s-answer
+    need: >-
+      The page never shows a talebe's name or a single answer, and its counts cannot be traced to one talebe: a count under five is
+      shown as "5'ten az".
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: the-same-question-counted-together
+    need: >-
+      Each exam's preparer writes its zeroth question, so exams that asked it in the same words, with the same options, are counted
+      together, and the page says how many exams asked it; a question opens the exams that asked it, each with its counts.
+    evidence:
+      - state: listed
+      - state: questionDetail
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: filtered-by-time-and-place
+    need: The counts filter by a span of dates, by köşk, by medrese and by course, and the filter stays in the address.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's \"bu dönem ... diğer dönem\" reads."
+
+  - id: only-management
+    need: >-
+      To anyone else the page is not in the menu, opened by its address it says they may not read it, and the API refuses the counts.
+      Every read is audited, as other platform reads are.
+    evidence:
+      - state: opening
+      - state: forbidden
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: A köşk nazımı reads it for their own köşk only.
+
+  - id: none-yet-says-so
+    need: With no answer in the span chosen, the page says so.
+    evidence:
+      - state: empty
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: figures-as-text
+    need: Every count is said in numbers and words; a bar only repeats it, and a table has headers a screen reader reads.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet

@@ -1,0 +1,114 @@
+# The course team's screens of an open or past online exam in nazar-web: who took it, the scores, the topics, the questions, and
+# releasing the results to the talebe. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online
+# exams; no code, no route and no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on.
+#
+# The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler" (for
+# nazar, the team's own screens of its exams); "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (here, the team
+# sees the same by talebe and by topic).
+#
+# Decided by the owner on 21 Nov 2026:
+#   - An online exam is an exam celse, so its scores land in Değerlendirme as its results, and its release is Değerlendirme's.
+#   - The team sees each talebe's switches to another tab or window, how many and when ("Evet, sayı ve zaman").
+#   - The team reads each talebe's answer to the zeroth question; Medaris management reads them in aggregate
+#     (nizam.exams.zerothAnswers).
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.results
+status: proposed
+title: Read an exam's results and release them
+summary: >-
+  The team opens an open or past exam from Sınavlarım. The overview lists every talebe of the course with where they are (not
+  started, in progress, handed in, ended by the time), the score out of 100, the right, wrong and blank answers, the switches
+  counted, and the answer to the zeroth question; it shows the average of each topic and the share of talebe right on each question.
+  A talebe opens their attempt question by question; a question opens which options were chosen how often. The scores stand in
+  Değerlendirme too, and "Sonuçları talebelere aç" releases them, after which the talebe read their own screen (tedris.exams.result).
+scope:
+  shows: the team's screens of one exam in nazar-web
+  world: open
+context:
+  attempts:
+    values: [none, some]
+    initial: any
+    say:
+      none: no talebe has started the exam
+      some: at least one talebe has started it
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person is of the course team that may read the exam's results
+      no: the person may not
+main:
+  given: { attempts: some, may: yes }
+  events: [RELEASE]
+initial: opening
+states:
+  opening:
+    title: The exam's results are opened
+    description: The page reads every attempt of the exam.
+    always:
+      - { guard: "may == 'no'", target: forbidden, say: "the person may not read them" }
+      - { guard: "attempts == 'none'", target: empty, say: "no talebe has started it" }
+      - { target: overview, say: "attempts are read" }
+  forbidden:
+    title: Not allowed
+    description: To a person outside the course team, the exam's results are not there; the API refuses them.
+    by: human
+    on:
+      NAVIGATE: left
+  empty:
+    title: No attempt yet
+    description: The page says no talebe has started the exam, and lists the course's talebe as not started.
+    by: human
+    on:
+      NAVIGATE: left
+  overview:
+    title: The exam's results
+    description: >-
+      Every talebe of the course with where they are, the score, the right, wrong and blank answers, the switches counted and the
+      answer to the zeroth question; the average of each topic; the share of talebe right on each question, and how the zeroth question
+      was answered. While the exam is open, it is read again as attempts move.
+    by: human
+    goal: true
+    on:
+      OPEN_TALEBE: { target: talebeDetail, say: "they open a talebe's attempt" }
+      OPEN_TOPIC: { target: topicDetail, say: "they open a topic" }
+      OPEN_QUESTION: { target: questionDetail, say: "they open a question" }
+      RELEASE: { target: released, say: "they press Sonuçları talebelere aç" }
+      NAVIGATE: left
+  talebeDetail:
+    title: A talebe's attempt
+    description: >-
+      Each question in the talebe's own order, with their answer, the correct one and the points got; their answer to the zeroth
+      question; when they started and handed in; each switch to another tab or window, with when, and each restart.
+    by: human
+    on:
+      BACK: overview
+      NAVIGATE: left
+  topicDetail:
+    title: A topic
+    description: The topic's questions, the average share of points got, and the talebe from the weakest in it to the strongest.
+    by: human
+    on:
+      BACK: overview
+      NAVIGATE: left
+  questionDetail:
+    title: A question
+    description: >-
+      The question with its options, how often each option was chosen and how many left it blank, so that a question that misled is
+      found.
+    by: human
+    on:
+      BACK: overview
+      NAVIGATE: left
+  released:
+    title: The results are released
+    description: >-
+      After a question that says the talebe will read their scores, the results are released, once and for all; the page says when
+      and by whom.
+    always:
+      - { target: overview, say: "the overview says the results are released" }
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true

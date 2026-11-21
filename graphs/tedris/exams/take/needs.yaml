@@ -1,0 +1,287 @@
+# What must exist for a talebe to take an online exam: written needs-first on 21 November 2026 from the owner's rules (quoted at the
+# top of flow.yaml and, rule by rule, in each need's note) and his answers of the same day (also at the top of flow.yaml). Every need
+# is missing: there is no code. Where a need carries a choice still open, the note names the flow's decision (D1 in flow.yaml)
+# and the need is written as its recommendation.
+schema: delurio-graph/0
+kind: needs
+id: tedris.exams.take
+status: proposed
+needs:
+  - id: briefing-before-the-start
+    need: >-
+      Before the exam starts, the talebe reads "Bilmeniz gerekenler": how long the exam lasts, how many questions it has and how the
+      points are given, that the full length is given whenever the exam is started, that each answer is saved when it is chosen and
+      there is nothing to send at the end, that a lost connection resumes where it stopped and the clock stops meanwhile, what a
+      switch to another tab or window does, how skipping and the question list work, and that "Sınavı bitir" ends it. The clock starts
+      only when they press "Sınava başla".
+    evidence:
+      - state: briefing
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
+
+  - id: the-zeroth-question-first
+    need: >-
+      Under the briefing, before the clock starts, stands the zeroth question: the hadith "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" with its
+      meaning "Bizi aldatan bizden değildir", the same in every exam, then the question the preparer wrote about it and its options.
+      The talebe chooses one; "Sınava başla" is off until they have, and says why. The answer is saved at once, has no correct one
+      and no points, and is not part of the score.
+    evidence:
+      - state: briefing
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda.
+      mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış
+      cevabı olan bi soru değil." His answers: each exam's preparer writes it; it has options; it is answered before the start and is
+      required; the hadith is shown in Arabic and in its meaning, fixed. Who reads the answers: nazar.exams.results and
+      nizam.exams.zerothAnswers.
+
+  - id: only-the-course-s-talebe
+    need: >-
+      Only a talebe who holds a seat in the exam's course, and is not barred from it, opens and takes the exam; to anyone else it is
+      no exam at all, and the server refuses every call of theirs to it.
+    evidence:
+      - state: opening
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: As the course's other content is read (an ENROLLED seat; a ban or a passive scope shuts it).
+
+  - id: started-between-the-earliest-and-the-latest
+    need: >-
+      A talebe may start the exam at any time between its earliest and its latest start, and always gets its full length. Before the
+      earliest start, the page says from when and until when it can be started, in the talebe's own time zone, and offers no start;
+      it can be started at that time without a reload. After the latest start, the page says the time to start has passed and that
+      the talebe did not take it. An attempt started in time goes on to its end.
+    evidence:
+      - state: notOpen
+      - state: closed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım"
+      (nazar.exams.publish D1).
+
+  - id: taken-once
+    need: An exam is taken once. A talebe who finished it cannot start it again, and opening it leads to its result.
+    evidence:
+      - state: already_finished
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Not one of the owner's rules; it follows from "verilen cevap kabul edilecek". A second chance is a make-up exam, as exam
+      celses have one today (LessonExam.isRetake).
+
+  - id: own-order-of-questions-and-options
+    need: >-
+      Every talebe gets the questions in an order of their own, and each question's options in an order of their own, so that two
+      talebe side by side do not see the same question or the same option in the same place.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için\". The order is drawn by the server when the attempt starts."
+
+  - id: the-order-stays-for-the-attempt
+    need: >-
+      The order a talebe got stays the same for the whole attempt: after a reload, a lost connection or coming back later, the same
+      questions are in the same places with their options in the same order.
+    evidence:
+      - state: resuming
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: answered-as-the-question-asks
+    need: >-
+      Each question shows its text and its options, as radio buttons (the talebe chooses one) or as check boxes (the talebe marks as
+      many as they think right), as the preparer chose. Nothing tells the talebe whether several options are correct, or how many.
+      They can change their answer as long as the exam has not ended.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir"; "5 şıklı, 2'si doğru bi
+      soruda sadece radio button olabilir. istenirse checkbox da olur"; asked whether the talebe is told: "Hiçbir şey söylenmez".
+      How each is scored is nazar.exams.edit's.
+
+  - id: saved-when-chosen
+    need: >-
+      Choosing an option saves it at once, and so does going on or back. There is no "send all answers": what the server holds when
+      the exam ends is the talebe's answer. The question says that its answer is saved.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek direk 'sınav bitti tüm cevapları tek seferde gönder' demeye gerek yok\"."
+
+  - id: an-answer-not-saved-is-said
+    need: >-
+      When an answer cannot be saved because the connection is gone, the page says so at that question, keeps the choice, and sends
+      it as soon as it can. It never shows an answer as saved that the server does not hold.
+    evidence:
+      - state: offline
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: the-countdown-is-always-there
+    need: >-
+      A countdown of the time left, in minutes and seconds, is always on the screen, on a phone too. The time left is the server's
+      count, so setting the device's clock gives no time; it does not run while the connection is lost.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"sınav ekranında geri sayım olacak\"."
+
+  - id: the-last-five-minutes-stand-out
+    need: >-
+      When five minutes are left, the countdown turns red and says so in words as well ("Son 5 dakika"), so colour is not the only
+      sign, and a screen reader is told once that five minutes are left, not every second.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"son 5 dk kala geri sayım mesela kırmızı olacak ki anlaşılsın\"."
+
+  - id: the-time-running-out-ends-it
+    need: >-
+      When the time runs out, the exam ends by itself with the answers saved so far, and the talebe is told it ended because the
+      time ran out.
+    evidence:
+      - state: timeUp
+      - state: finished
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Not one of the owner's first rules: without it an exam would never end for a talebe who stays on the page. Asked whether it
+      should end by itself, the owner answered "önerdiğin gibi" (21 Nov 2026).
+
+  - id: the-question-list
+    need: >-
+      A list of the questions, beside the question on a wide screen and behind a button on a phone, shows every question by its
+      number and whether it is answered, skipped or not seen yet, marks the one shown, and takes the talebe to any question.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
+
+  - id: previous-and-next
+    need: '"Önceki" and "Sonraki" move one question back or on, in the talebe''s own order.'
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: skip-a-question
+    need: >-
+      "Soruyu atla" leaves a question unanswered, marks it as skipped in the question list, and shows the next one. A skipped question
+      can still be answered at any time.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"soruyu atla seçeneği olacak\"."
+
+  - id: the-skipped-come-back-after-the-last
+    need: >-
+      After the last question, the talebe is taken to the first skipped question, and the page says that the skipped ones follow and
+      how many there are. When none is skipped, the last question offers "Sınavı bitir".
+    evidence:
+      - state: skippedTurn
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"son soruya gelindiğinde atlanan sorulara dönülecek\"."
+
+  - id: finish-asks-once
+    need: >-
+      "Sınavı bitir" can be pressed at any time. It asks once, saying how many questions are unanswered or skipped and how much time
+      is left; "Bitir" ends the exam and nothing can be changed after, "Sınava dön" goes back to the question.
+    evidence:
+      - state: confirmFinish
+      - state: finished
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
+
+  - id: resume-after-a-lost-connection
+    need: >-
+      If the connection is lost, the page is closed by accident or the device stops, the talebe opens the exam again and goes on
+      where they stopped: the same question, every saved answer, and the time that was left when the connection was lost, since the
+      clock does not run meanwhile. The page says the exam was resumed.
+    evidence:
+      - state: offline
+      - state: resuming
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "sınav sırasında talebe koparsa kaldığı yerden devam edecek"; asked whether the clock runs meanwhile: "talebeye
+      güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
+
+  - id: a-switch-starts-it-again
+    need: >-
+      A deliberate switch to another tab or window during the exam starts it again from the beginning: the answers given are erased,
+      the talebe is told why and what was lost before the briefing shows again, and the new start gives the full length and a new
+      order of questions and options.
+    evidence:
+      - state: restarted
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "bilerek sekme veya pencere değiştirirse sınav baştan başlayacak (bu mantıklı gelmiyor bana ama öyle istendi, tekrar
+      sorarız)", then "kural kalsın şimdilik, soracağız bunu akış videosunu çekip verdiğimizde" (D1); asked what a restart resets:
+      "Tam süre, yeni sıra". Every switch is also shown to the team, with its time (nazar.exams.results).
+
+  - id: the-switch-rule-is-told-first
+    need: >-
+      The briefing says, before the start, what a switch to another tab or window does. A talebe who comes back after a switch reads
+      what happened, at once and in words.
+    evidence:
+      - state: briefing
+      - state: restarted
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: one-place-at-a-time
+    need: >-
+      The exam is open in one tab on one device at a time. Opening it in a second place moves it there, and the first place says it
+      is open elsewhere and takes no more answers.
+    evidence:
+      - state: opening
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked what a second tab or device does: \"Yeni yere taşınsın\". It is not counted as a switch."
+
+  - id: the-key-never-reaches-the-browser
+    need: >-
+      The browser never receives which option is correct, nor the points of the answers, while the attempt is open: the server
+      scores the exam. No talebe can read another's order or answers.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: answers-only-while-it-is-open
+    need: >-
+      The server takes an answer only from the talebe's own attempt, while it is in progress and its time is not over; an answer that
+      comes later is refused, and the page says the exam has ended.
+    evidence:
+      - state: question
+      - state: timeUp
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: arabic-in-questions
+    need: >-
+      A question or an option may be in Arabic, or mix Arabic and Turkish. Arabic is set right to left in the interface's Arabic face,
+      and a quoted ayet in the Qur'an's face. A long question or option wraps and stays readable on a phone.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: The faces are the design system's (Scheherazade New for the Qur'an, Noto Naskh Arabic for other Arabic).
+
+  - id: in-the-talebe-s-language
+    need: >-
+      The exam's own words, the briefing, the buttons, the countdown and the messages, are in the talebe's interface language
+      (Turkish, English or Arabic), right to left in Arabic. The questions are in the language the course team wrote them in.
+    evidence:
+      - state: briefing
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: keyboard-and-screen-reader
+    need: >-
+      The exam can be taken with the keyboard alone and with a screen reader. The options are a group of radio buttons named by the
+      question, the question's number and the count are said ("12/50"), going to a question puts the focus on its text, and the
+      question list says each question's state in words, not by colour alone.
+    evidence:
+      - state: question
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: the-end-says-what-comes-next
+    need: >-
+      After the end, the page says the exam is handed in and when, whether it ended by "Bitir" or by the time, and when and where the
+      result can be read (Sınavlarım).
+    evidence:
+      - state: finished
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
