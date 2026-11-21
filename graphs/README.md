@@ -11,15 +11,15 @@ lost, an error nobody announces, a refusal that reaches no one), the graph says 
 
 ## What is here
 
-Counted by script on 16 November 2026 (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
+Counted by script on 16 November 2026, and the flows and the needs again on 21 November 2026 after the online exams were added (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
 
 | What | How many |
 | -- | -- |
-| Flows (`flow.yaml`) | 175: 170 `captured`, 5 `proposed` (the planned ones) |
-| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | 175 flows with a `ui.yaml` |
+| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (the planned ones: 5 drawn with their screens, and the 8 of online exams, written needs first) |
+| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | 175 flows with a `ui.yaml` (the 8 flows of online exams have none yet) |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
 | The domain `medaris.api` | one domain over 26 files: 352 actions (329 in the code, 23 sketched for the planned flows), 64 entities, 319 invariants |
-| `needs.yaml` (the product list of a flow) | 175 files, 2640 needs: 1373 met, 1267 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
+| `needs.yaml` (the product list of a flow) | 183 files, 2750 needs: 1373 met, 1377 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
 | Findings (distinct ids in `ui.yaml` `rules`) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 
@@ -97,9 +97,14 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 
 ## Status
 
-- Every flow is `captured` except the 5 planned ones, which are `proposed`: `landing.site.roadmap`, `nazar.sessions.inPersonSeats`, `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`. A planned flow draws a
+- Every flow is `captured` except the 13 planned ones, which are `proposed`: `landing.site.roadmap`, `nazar.sessions.inPersonSeats`, `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`, and the eight of online exams. A planned flow draws a
   feature that has no code yet (its `needs.yaml` says which Linear issue builds it, and its API is sketched in
   `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
+- **Online exams** (planned on 21 November 2026, no Linear issue yet) are written needs first: `tedris.exams.mine`,
+  `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.mine`, `nazar.exams.edit`, `nazar.exams.publish` and
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, 110 needs, all missing. Each `flow.yaml` is only the skeleton its needs are drawn on,
+  with the owner's rules and his answers of the same day quoted at its top, and the choices still open as `decisions`. Their
+  screens, their API (`domain/planned-exams.yaml`) and their bindings come next.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,
   `tedris.account.rolesOverview`, `nazar.pano.decideApplications`, `nizam.kosks.open`, `landing.site.contact`) and a number of the

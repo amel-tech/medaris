@@ -1,0 +1,155 @@
+# The course team publishes an online exam in nazar-web, now or at a day and time, and takes it back while no talebe has started.
+# PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and no
+# Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+#
+# The owner's rule this flow carries (21 Nov 2026): "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar
+# olacak".
+#
+# Decided by the owner on 21 Nov 2026:
+#   - For now a talebe starts between an earliest and a latest start, and always gets the full length: "şimdilik 'en erken şu saatte
+#     en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım" (D1 asks it of those who asked for exams).
+#   - The earliest start is the exam celse's date and time ("Celse saati = en erken"); "Şimdi yayınla" moves it to now.
+#   - An open exam that a talebe has started cannot be taken back; it can be closed early ("Geri alınamaz, erken bitirilir").
+#   - The talebe are told when it is scheduled or opened, and reminded 24 hours before ("Zamanlanınca + 24 saat önce").
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.publish
+status: proposed
+title: Publish or schedule an online exam
+summary: >-
+  From the editor, the team presses "Yayınla". The exam is first checked: a question with no correct answer, with no topic or with
+  fewer than two options, points that do not total 100, or no question at all, are each listed with a way to them, and nothing is
+  published. A complete exam is opened at once ("Şimdi yayınla") or at a day and time ("<gün> <saat>'te yayınla"), with a latest
+  start. A scheduled exam says when it opens, opens by itself at that time, and can be moved or taken back to a draft until then.
+  Talebe start it until the latest start, each with the full length; it ends when the last attempt has ended. It can be taken back
+  only while no talebe has started it, and closed early after. The talebe of the course are told when it is scheduled or opened, and
+  reminded 24 hours before.
+scope:
+  shows: publishing, scheduling and taking back one exam in nazar-web
+  world: open
+decisions:
+  D1:
+    question: >-
+      Is "start between the earliest and the latest start, always with the full length" what those who asked for exams want? Or does
+      everyone sit it together, or does a late start get less time?
+    recommend: >-
+      The owner's choice for now (21 Nov 2026), asked again of them with the flow's video: start between the two, full length always.
+      Whether the latest start has a default is to be asked with it.
+    affects: [scheduleForm, open, closed]
+context:
+  complete:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: every question is complete and the points total 100
+      no: something keeps the exam from being published
+  when:
+    values: [future, past]
+    initial: any
+    say:
+      future: the day and time chosen are ahead
+      past: the day and time chosen have passed
+  started:
+    values: [nobody, someone]
+    initial: nobody
+    say:
+      nobody: no talebe has started the exam
+      someone: at least one talebe has started it
+effects:
+  someoneStarted: { set: { started: someone } }
+main:
+  given: { complete: yes }
+  events: [PUBLISH_NOW]
+initial: checking
+states:
+  checking:
+    title: The exam is checked
+    description: Before anything is published, the exam is checked as a whole.
+    always:
+      - { guard: "complete == 'no'", target: notReady, say: "something keeps it from being published" }
+      - { target: choose, say: "the exam is complete" }
+  notReady:
+    title: The exam cannot be published yet
+    description: >-
+      Each problem is listed with a link to it: a question with no correct answer, with no topic, or with fewer than two options;
+      points that do not total 100; no question at all. Nothing is published.
+    by: human
+    on:
+      FIX: { target: editor_opened, say: "they follow a problem to the editor" }
+      NAVIGATE: left
+  choose:
+    title: Publish now or at a day and time
+    description: >-
+      What the talebe will see is said: the course, the length, the question count. "Şimdi yayınla" opens it now; "İleri bir tarihte
+      yayınla" asks for a day and time.
+    by: human
+    on:
+      PUBLISH_NOW: { target: open, say: "they press Şimdi yayınla, with a latest start: the earliest start is now" }
+      SCHEDULE: { target: scheduleForm, say: "they choose a day and time" }
+      CANCEL: { target: editor_opened, say: "they go back to the editor" }
+  scheduleForm:
+    title: The day and time it opens
+    description: >-
+      The earliest start, a day and a time, which becomes the exam celse's, and the latest start; in the team's time zone, with the
+      talebe's own shown beside it where they differ.
+    by: human
+    on:
+      CONFIRM:
+        - { guard: "when == 'past'", target: scheduleRefused, say: "they choose a time that has passed" }
+        - { target: scheduled, say: "they confirm the day and time" }
+      CANCEL: { target: choose, say: "they go back" }
+  scheduleRefused:
+    title: That time has passed
+    description: The field says so, and nothing is scheduled.
+    by: human
+    on:
+      FIX: { target: scheduleForm, say: "they choose another time" }
+  scheduled:
+    title: "<gün> <saat>'te yayında"
+    description: >-
+      The exam says when it opens, wherever it is listed. It can be moved, or taken back to a draft, until then; talebe see when it
+      opens and nothing of its questions.
+    by: human
+    on:
+      OPENS: { target: open, say: "the day and time come: it opens by itself" }
+      MOVE: { target: scheduleForm, say: "they move it" }
+      TO_DRAFT: { target: draft_again, say: "they take it back to a draft" }
+      NAVIGATE: left
+  open:
+    title: Yayında
+    description: >-
+      Talebe of the course start the exam until its latest start, each with the full length; after the latest start no one starts it,
+      and the attempts in progress go on. The team sees who started and finished (nazar.exams.results).
+    by: human
+    goal: true
+    on:
+      TAKE_BACK:
+        - { guard: "started == 'someone'", target: unpublishRefused, say: "they try to take it back after a talebe started" }
+        - { target: draft_again, say: "they take it back before anyone started" }
+      SOMEONE_STARTS: { target: open, effect: [someoneStarted], say: "a talebe starts the exam" }
+      CLOSES: { target: closed, say: "the latest start has passed and the last attempt has ended" }
+      NAVIGATE: left
+  unpublishRefused:
+    title: It cannot be taken back
+    description: >-
+      The page says a talebe has started it, and how many are in progress; it offers to close it early instead.
+    by: human
+    on:
+      CLOSE_EARLY: { target: closed, say: "they close it early: every attempt ends with its saved answers" }
+      CANCEL: { target: open, say: "they leave it open" }
+  draft_again:
+    title: The exam is a draft again
+    description: No talebe sees it any more; it can be changed and published again.
+    type: final
+  closed:
+    title: Bitti
+    description: The exam has closed; every attempt in progress ends with the answers saved so far.
+    type: final
+  editor_opened:
+    title: The editor is opened
+    description: nazar.exams.edit.
+    type: final
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true

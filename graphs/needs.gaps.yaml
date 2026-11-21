@@ -3,9 +3,9 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1267 missing needs in 175 flows, of 2640 needs in 175 flows (counted by script from the needs.yaml files). 196 name a Linear
-# issue first, the most MDRS-284 (35), MDRS-238 (17), MDRS-140 (12), MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8),
-# MDRS-113 (7); 1071 have no Linear issue.
+# 1377 missing needs in 183 flows, of 2750 needs in 183 flows (counted by script from the needs.yaml files, 21 Nov 2026). 196 name a
+# Linear issue first, the most MDRS-284 (35), MDRS-238 (17), MDRS-140 (12), MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239
+# (8), MDRS-113 (7); 1181 have no Linear issue, 110 of them the online exams planned on 21 Nov 2026.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
 # `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 583; README.md says so under Gaps.
@@ -306,6 +306,66 @@ gaps:
     - a-cell-has-a-row-header
     - the-board-can-be-downloaded
     - a-refused-download-is-worded
+  nazar.exams.edit:
+    - only-the-course-team-prepares  # online exams, planned 21 Nov 2026
+    - an-exam-celse-of-the-online-format  # online exams, planned 21 Nov 2026
+    - a-draft-is-the-team-s-alone  # online exams, planned 21 Nov 2026
+    - one-hour-and-fifty-questions-by-default  # online exams, planned 21 Nov 2026
+    - any-length  # online exams, planned 21 Nov 2026
+    - the-instructions-of-the-briefing  # online exams, planned 21 Nov 2026
+    - the-zeroth-question  # online exams, planned 21 Nov 2026
+    - topics-first-from-the-course-s-list  # online exams, planned 21 Nov 2026
+    - topics-renamed-and-unpicked  # online exams, planned 21 Nov 2026
+    - a-multiple-choice-question  # online exams, planned 21 Nov 2026
+    - how-a-question-with-several-correct-is-answered  # online exams, planned 21 Nov 2026
+    - every-question-has-its-topics  # online exams, planned 21 Nov 2026
+    - what-a-question-lacks-is-said  # online exams, planned 21 Nov 2026
+    - points-shared-equally  # online exams, planned 21 Nov 2026
+    - a-question-s-own-points  # online exams, planned 21 Nov 2026
+    - back-into-the-share  # online exams, planned 21 Nov 2026
+    - points-never-pass-100  # online exams, planned 21 Nov 2026
+    - exact-points-shown-with-two-decimals  # online exams, planned 21 Nov 2026
+    - the-questions-at-a-glance  # online exams, planned 21 Nov 2026
+    - removing-a-question-asks  # online exams, planned 21 Nov 2026
+    - saved-as-the-team-works  # online exams, planned 21 Nov 2026
+    - seen-as-a-talebe-sees-it  # online exams, planned 21 Nov 2026
+    - copy-an-earlier-exam  # online exams, planned 21 Nov 2026
+    - changed-until-it-opens-and-never-after  # online exams, planned 21 Nov 2026
+    - by-keyboard-and-screen-reader  # online exams, planned 21 Nov 2026
+  nazar.exams.mine:
+    - in-the-menu  # online exams, planned 21 Nov 2026
+    - only-the-courses-they-prepare-for  # online exams, planned 21 Nov 2026
+    - the-status-of-each-exam  # online exams, planned 21 Nov 2026
+    - what-each-row-says  # online exams, planned 21 Nov 2026
+    - filter-by-status-and-course  # online exams, planned 21 Nov 2026
+    - a-new-exam-starts-as-a-draft  # online exams, planned 21 Nov 2026
+    - each-exam-opens-where-it-is-worked-on  # online exams, planned 21 Nov 2026
+    - none-yet-says-so  # online exams, planned 21 Nov 2026
+    - reached-from-the-course-too  # online exams, planned 21 Nov 2026
+  nazar.exams.publish:
+    - the-four-statuses  # online exams, planned 21 Nov 2026
+    - checked-before-it-is-published  # online exams, planned 21 Nov 2026
+    - publish-now  # online exams, planned 21 Nov 2026
+    - publish-at-a-day-and-time  # online exams, planned 21 Nov 2026
+    - opens-by-itself  # online exams, planned 21 Nov 2026
+    - moved-or-taken-back-until-it-opens  # online exams, planned 21 Nov 2026
+    - started-until-the-latest-start-with-the-full-length  # online exams, planned 21 Nov 2026
+    - taken-back-only-before-anyone-starts  # online exams, planned 21 Nov 2026
+    - the-talebe-are-told  # online exams, planned 21 Nov 2026
+    - only-the-course-team-and-audited  # online exams, planned 21 Nov 2026
+  nazar.exams.results:
+    - only-the-course-team-reads  # online exams, planned 21 Nov 2026
+    - every-talebe-and-where-they-are  # online exams, planned 21 Nov 2026
+    - live-while-it-is-open  # online exams, planned 21 Nov 2026
+    - the-topics-across-the-talebe  # online exams, planned 21 Nov 2026
+    - a-question-that-misled-is-found  # online exams, planned 21 Nov 2026
+    - a-talebe-s-attempt  # online exams, planned 21 Nov 2026
+    - the-switches-are-shown  # online exams, planned 21 Nov 2026
+    - the-zeroth-answers-per-talebe  # online exams, planned 21 Nov 2026
+    - saved-answers-count-for-an-unfinished-attempt  # online exams, planned 21 Nov 2026
+    - release-the-results  # online exams, planned 21 Nov 2026
+    - in-degerlendirme-with-the-other-exams  # online exams, planned 21 Nov 2026
+    - words-and-numbers-not-colour-alone  # online exams, planned 21 Nov 2026
   nazar.files.download:
     - download-the-evaluation-sheet
     - refusal-says-why-on-every-page
@@ -664,6 +724,14 @@ gaps:
     - the-table-keeps-an-order
     - a-page-has-a-title-and-a-loading-state
     - one-place-to-edit-a-deck
+  nizam.exams.zerothAnswers:
+    - management-reads-in-aggregate  # online exams, planned 21 Nov 2026
+    - never-one-talebe-s-answer  # online exams, planned 21 Nov 2026
+    - the-same-question-counted-together  # online exams, planned 21 Nov 2026
+    - filtered-by-time-and-place  # online exams, planned 21 Nov 2026
+    - only-management  # online exams, planned 21 Nov 2026
+    - none-yet-says-so  # online exams, planned 21 Nov 2026
+    - figures-as-text  # online exams, planned 21 Nov 2026
   nizam.grants.appoint:
     - warn-before-naming-oneself
     - a-refused-write-reads-the-list-again
@@ -1360,6 +1428,56 @@ gaps:
     - programme-names-a-week-once
     - sample-row-does-not-say-completed
     - loading-is-heard
+  tedris.exams.mine:
+    - in-the-menu  # online exams, planned 21 Nov 2026
+    - open-coming-and-past  # online exams, planned 21 Nov 2026
+    - only-their-courses-and-never-a-draft  # online exams, planned 21 Nov 2026
+    - what-each-exam-says  # online exams, planned 21 Nov 2026
+    - enter-from-the-list  # online exams, planned 21 Nov 2026
+    - a-past-exam-opens-the-talebe-s-own-screen  # online exams, planned 21 Nov 2026
+    - none-yet-says-so  # online exams, planned 21 Nov 2026
+    - told-when-an-exam-is-set  # online exams, planned 21 Nov 2026
+    - reached-from-the-course-too  # online exams, planned 21 Nov 2026
+    - readable-by-keyboard-and-screen-reader  # online exams, planned 21 Nov 2026
+  tedris.exams.result:
+    - the-talebe-s-own-screen  # online exams, planned 21 Nov 2026
+    - waits-for-the-release  # online exams, planned 21 Nov 2026
+    - the-score-out-of-100  # online exams, planned 21 Nov 2026
+    - standing-by-topic  # online exams, planned 21 Nov 2026
+    - standing-across-the-course  # online exams, planned 21 Nov 2026
+    - own-answers-beside-the-correct-ones  # online exams, planned 21 Nov 2026
+    - in-notlarim-with-the-other-exams  # online exams, planned 21 Nov 2026
+    - a-restart-is-said  # online exams, planned 21 Nov 2026
+    - words-and-numbers-not-colour-alone  # online exams, planned 21 Nov 2026
+  tedris.exams.take:
+    - briefing-before-the-start  # online exams, planned 21 Nov 2026
+    - the-zeroth-question-first  # online exams, planned 21 Nov 2026
+    - only-the-course-s-talebe  # online exams, planned 21 Nov 2026
+    - started-between-the-earliest-and-the-latest  # online exams, planned 21 Nov 2026
+    - taken-once  # online exams, planned 21 Nov 2026
+    - own-order-of-questions-and-options  # online exams, planned 21 Nov 2026
+    - the-order-stays-for-the-attempt  # online exams, planned 21 Nov 2026
+    - answered-as-the-question-asks  # online exams, planned 21 Nov 2026
+    - saved-when-chosen  # online exams, planned 21 Nov 2026
+    - an-answer-not-saved-is-said  # online exams, planned 21 Nov 2026
+    - the-countdown-is-always-there  # online exams, planned 21 Nov 2026
+    - the-last-five-minutes-stand-out  # online exams, planned 21 Nov 2026
+    - the-time-running-out-ends-it  # online exams, planned 21 Nov 2026
+    - the-question-list  # online exams, planned 21 Nov 2026
+    - previous-and-next  # online exams, planned 21 Nov 2026
+    - skip-a-question  # online exams, planned 21 Nov 2026
+    - the-skipped-come-back-after-the-last  # online exams, planned 21 Nov 2026
+    - finish-asks-once  # online exams, planned 21 Nov 2026
+    - resume-after-a-lost-connection  # online exams, planned 21 Nov 2026
+    - a-switch-starts-it-again  # online exams, planned 21 Nov 2026
+    - the-switch-rule-is-told-first  # online exams, planned 21 Nov 2026
+    - one-place-at-a-time  # online exams, planned 21 Nov 2026
+    - the-key-never-reaches-the-browser  # online exams, planned 21 Nov 2026
+    - answers-only-while-it-is-open  # online exams, planned 21 Nov 2026
+    - arabic-in-questions  # online exams, planned 21 Nov 2026
+    - in-the-talebe-s-language  # online exams, planned 21 Nov 2026
+    - keyboard-and-screen-reader  # online exams, planned 21 Nov 2026
+    - the-end-says-what-comes-next  # online exams, planned 21 Nov 2026
   tedris.files.download:
     - refusal-keeps-what-i-was-doing
     - refusal-reason-reaches-everyone

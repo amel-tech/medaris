@@ -1,0 +1,83 @@
+# What must exist for a talebe's own screen of a past online exam: written needs-first on 21 November 2026 from the owner's rules.
+# Every need is missing: there is no code. The owner's answers of the same day are at the top of flow.yaml.
+schema: delurio-graph/0
+kind: needs
+id: tedris.exams.result
+status: proposed
+needs:
+  - id: the-talebe-s-own-screen
+    need: >-
+      The screen is the talebe's own: it shows their attempt only, and no one else's score, answers or rank. To anyone but the
+      talebe and the course team it is no screen at all.
+    evidence:
+      - state: opening
+      - state: resultShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+
+  - id: waits-for-the-release
+    need: >-
+      Until the results are released, the screen says the exam was handed in and when, and "Sonuç henüz açıklanmadı", and shows no
+      score and no answer.
+    evidence:
+      - state: awaitingRelease
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked whether the team releases the results as today: \"evet\"."
+
+  - id: the-score-out-of-100
+    need: >-
+      Once released, the screen shows the score out of 100 (with at most two decimals), how many answers were right, wrong and left
+      blank, when the exam was handed in, and whether the time ended it.
+    evidence:
+      - state: resultShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: The points of each question are nazar.exams.edit's; a blank or a skipped question gets no points.
+
+  - id: standing-by-topic
+    need: >-
+      For each topic of the exam, the talebe sees the percentage of the points its questions carry that they got, and how many of
+      those questions they answered right and wrong, the weakest topic first. A question that carries two topics counts in both.
+    evidence:
+      - state: topicsShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\"; asked how it is shown: \"Yalnız yüzde\"."
+
+  - id: standing-across-the-course
+    need: The talebe sees their percentage in each topic of the course over all the course's exams that carried it.
+    evidence:
+      - state: courseTopics
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "The topics are the course's (owner, asked whose they are: \"dersin\"), so they add up across exams."
+
+  - id: own-answers-beside-the-correct-ones
+    need: >-
+      Once the results are released and the exam has closed for everyone, the talebe reads each question again, in their own order,
+      with their answer, the correct one, and the points got.
+    evidence:
+      - state: answersShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked whether the talebe reads their answers with the correct ones: \"evet\"."
+
+  - id: in-notlarim-with-the-other-exams
+    need: >-
+      The score also stands in the course's "Notlarım" tab beside the course's other exams, and reaches this screen from there.
+    evidence:
+      - state: resultShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: tedris.course.grades lists exam celses today, and an online exam is one (owner, 21 Nov 2026).
+
+  - id: a-restart-is-said
+    need: If the exam was started again after a switch to another tab or window, the screen says so and how many times.
+    evidence:
+      - state: resultShown
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: While the restart stands (tedris.exams.take D1).
+
+  - id: words-and-numbers-not-colour-alone
+    need: >-
+      Every standing is said in words and numbers; a bar or a colour only repeats it, and a chart has the same figures as text for a
+      screen reader.
+    evidence:
+      - state: topicsShown
+      - state: courseTopics
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet

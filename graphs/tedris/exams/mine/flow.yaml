@@ -1,0 +1,74 @@
+# A talebe's "Sınavlarım" in tedris-web: the exams of their courses, open now, coming and past, and the way into each.
+# PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and no
+# Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+#
+# The owner's rule this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
+# kendilerine özel ekranları da görebilecekler". In tedris that is the talebe's own exams and their own screen of each past one
+# (tedris.exams.result); nazar's "Sınavlarım" is the course team's (nazar.exams.mine). The menu entry is tedris's navigation graph's
+# (graphs/tedris/nav) once the page exists.
+#
+# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse (written, oral, online), and the list
+# holds every exam of the talebe's courses, whatever its format. A completed course's past exams stay; a course left or lost takes
+# its exams with it.
+schema: delurio-graph/0
+kind: flow
+id: tedris.exams.mine
+status: proposed
+title: Read my exams (Sınavlarım)
+summary: >-
+  The talebe opens "Sınavlarım" from tedris's menu. The page lists every exam of the courses they hold a seat in, written, oral and
+  online alike, in three groups: open now, with "Sınava gir" (or "Devam et" for one in progress) and until when it can be started;
+  coming, with the day and time it opens (and, for a written or oral exam, its place) in the talebe's own time zone; and past, with
+  the score once the course team has released it. An online exam is entered through its briefing (tedris.exams.take); a past one
+  opens the talebe's own screen of it (tedris.exams.result), and a written or oral one its course's Notlarım.
+scope:
+  shows: the page "Sınavlarım" of tedris-web
+  world: open
+context:
+  exams:
+    values: [none, some]
+    initial: any
+    say:
+      none: no course of the talebe has an exam that is scheduled, open or past
+      some: at least one exam is listed
+main:
+  given: { exams: some }
+  events: [ENTER]
+initial: opening
+states:
+  opening:
+    title: Sınavlarım is opened
+    description: The page reads the talebe's exams; a draft online exam is never among them.
+    always:
+      - { guard: "exams == 'none'", target: empty, say: "no exam" }
+      - { target: listed, say: "exams are listed" }
+  listed:
+    title: The talebe's exams
+    description: >-
+      Three groups, each with a heading: "Şimdi açık", "Yaklaşan", "Geçmiş". Each exam names its course, its title and its format;
+      an online one its length and its question count. An open one offers "Sınava gir", or "Devam et" when it is in progress; a
+      coming one says when it opens; a past one says its score or "Sonuç henüz açıklanmadı".
+    by: human
+    goal: true
+    on:
+      ENTER: { target: exam_entered, say: "they press Sınava gir, or Devam et" }
+      READ_RESULT: { target: result_opened, say: "they open a past exam" }
+      NAVIGATE: left
+  empty:
+    title: No exams yet
+    description: The page says "Henüz sınavınız yok." and that exams of their courses will be listed here.
+    by: human
+    on:
+      NAVIGATE: left
+  exam_entered:
+    title: The exam's page is opened
+    description: The briefing, or the attempt in progress, of tedris.exams.take.
+    type: final
+  result_opened:
+    title: The talebe's screen of a past exam is opened
+    description: tedris.exams.result.
+    type: final
+  left:
+    title: The talebe left the page
+    type: final
+    leavesPage: true

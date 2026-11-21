@@ -1,0 +1,89 @@
+# What must exist for a talebe's "Sınavlarım": written needs-first on 21 November 2026 from the owner's rules for online exams.
+# Every need is missing: there is no code.
+schema: delurio-graph/0
+kind: needs
+id: tedris.exams.mine
+status: proposed
+needs:
+  - id: in-the-menu
+    need: tedris's menu has "Sınavlarım", on every page and on a phone, and it opens the talebe's exams.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to tedris's navigation graph once the page exists."
+
+  - id: open-coming-and-past
+    need: >-
+      The page lists every exam of the talebe's courses, written, oral and online alike, in three groups, each with a heading: open
+      now, coming, and past. Within a group, the soonest comes first, and for the past ones the latest comes first.
+    note: "Owner, asked which exams are listed: \"Hepsi\"; an online exam is the third format of the exam celse (\"üçüncü\")."
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: only-their-courses-and-never-a-draft
+    need: >-
+      Only the exams of courses in which the talebe holds a seat are listed, and the past ones of a course they completed. A course
+      they left or lost takes its exams with it, as its other content goes. A draft online exam is never listed, and nothing of it
+      reaches the talebe.
+    evidence:
+      - state: opening
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked about completed and left courses: \"Tamamlanan kalır, ayrılan gider\"."
+
+  - id: what-each-exam-says
+    need: >-
+      Each exam names its course, its title and its format; an online one how long it lasts and how many questions it has, a written
+      or oral one its place. A coming one says the day and time it opens, and an open online one until when it can be started, both in
+      the talebe's own time zone.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: enter-from-the-list
+    need: An open exam is entered from its row through its briefing ("Sınava gir"); one in progress says so and offers "Devam et".
+    evidence:
+      - state: exam_entered
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: a-past-exam-opens-the-talebe-s-own-screen
+    need: >-
+      A past exam says its score once the course team has released it, or "Sonuç henüz açıklanmadı". A past online exam opens the
+      talebe's own screen of it; a written or oral one opens its course's Notlarım.
+    evidence:
+      - state: result_opened
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+
+  - id: none-yet-says-so
+    need: With no exam, the page says "Henüz sınavınız yok." and that the exams of their courses will be listed here.
+    evidence:
+      - state: empty
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: told-when-an-exam-is-set
+    need: >-
+      The talebe is told, in their notifications and by e-mail as the account's settings allow, when an exam of their course is
+      scheduled or opened, and is reminded before it opens.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"Zamanlanınca + 24 saat önce\". Exam celses are reminded 24 hours before today (LessonExam.remindedAt)."
+
+  - id: reached-from-the-course-too
+    need: >-
+      An online exam is also reached where exam celses are today: its course's curriculum and celse page, Programım and the calendar,
+      and the home page on the day it opens.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are.
+
+  - id: readable-by-keyboard-and-screen-reader
+    need: >-
+      Each group is a heading and each exam a link or a button named by its course and its title, and its state (open, coming, in
+      progress, past, released) is said in words, not by colour alone.
+    evidence:
+      - state: listed
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet

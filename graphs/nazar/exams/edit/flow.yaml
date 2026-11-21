@@ -1,0 +1,228 @@
+# The course team prepares an online multiple-choice exam in nazar-web: its settings, the zeroth question, its topics, its questions
+# and their points. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no
+# route, no table and no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+# Publishing and scheduling are nazar.exams.publish.
+#
+# The owner's rules this flow carries (21 Nov 2026, his words):
+#   - "çoktan seçmeli"
+#   - "her soru için hangi konu hakkında olduğu işaretlenecek, bunun için önce sınav konuları girilecek 1-3 kelimelik 6-7 tane mesela,
+#     her soru için bu konular işaretlenecek"
+#   - "100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya puan dağıtılacak ama her soruya belirli bir puan verilebilir olacak,
+#     örneğin 50 soru var her soru otomatik 2 puan, bi soruya geleceğiz 2'yi 5 yapacağız, kalan 95 puan da 49 soruya eşit dağılacak.
+#     sonra başka soruya geleceğiz 1.94 puanı 10 yapacağız kalan 85 puan da kalan 48 soruya eşit dağılacak"
+#   - "sınav süresi defaultta 1 saat olacak, soru sayısı da 50 önerilecek"
+#   - "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak"
+#   - "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda. mesela bu
+#     dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış cevabı
+#     olan bi soru değil."
+#
+# Decided by the owner on 21 Nov 2026, when he read the first draft:
+#   - An online exam is the third format of the exam celse, beside written and oral ("üçüncü"). It sits in the curriculum, Programım,
+#     the calendar and the reminder as exam celses do, and its scores fill Değerlendirme and Notlarım. The celse's date and time are
+#     the earliest start (nazar.exams.publish).
+#   - The topics are the course's ("dersin"): each exam picks from the course's list, and a new topic added here joins the list.
+#   - A hoca prepares it, and so does a ders nazırı the hoca gives a new grant to.
+#   - A question has at least two options and no upper limit; one is correct unless the preparer marks more. A question with several
+#     correct options is shown with radio buttons (one choice; any correct option gets the points) or, if the preparer wants, with
+#     check boxes, scored all or nothing, or in shares where each wrong mark takes a share off (never below 0).
+#   - Shared points are kept exact and shown with two decimals.
+#   - An earlier exam of the same course can be copied into a new draft; a question bank and a file import come later.
+#   - A scheduled exam can be changed until it opens; nothing after.
+#   - The length has no bounds other than being more than zero.
+#   - The zeroth question is written by each exam's preparer, with options and no correct one. The hadith above it is fixed, in
+#     Arabic and in its meaning. Its answers are read per talebe by the course team and in aggregate by Medaris management.
+#   - A draft online exam celse is hidden from the talebe until it is scheduled ("Zamanlanana kadar gizli"); from then they see its
+#     date, and nothing of its questions.
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.edit
+status: proposed
+title: Prepare an online exam
+summary: >-
+  A hoca, or a ders nazırı who may prepare exams, opens a draft online exam celse of a course. Its settings are the title, the
+  length (60 minutes unless changed) and the instructions; 50 questions are suggested, and the editor counts against it without
+  stopping at fewer or more. The zeroth question comes first: under the fixed hadith "Bizi aldatan bizden değildir", the preparer
+  writes a question about it and its options, none correct. Then the exam picks its topics from the course's list, six or seven
+  short names, adding new ones to the list. Each question gets its text, at least two options with the correct one (or more)
+  marked, how it is answered, and one or more topics. The 100 points are shared equally over the questions; a question can be given
+  points of its own, and the rest are shared equally over the others. The draft is saved as the team works, can be copied from an
+  earlier exam of the course, can be seen as a talebe will see it, and is published or scheduled from here (nazar.exams.publish).
+  Once the exam has opened, nothing of it can be changed.
+scope:
+  shows: the editor of one online exam in nazar-web
+  world: open
+  outOfView: [publishing and scheduling (nazar.exams.publish), planning the celse itself (nazar.sessions.plan)]
+decisions:
+  D2:
+    question: How many option fields does a new question start with?
+    recommend: Four, and the preparer adds or removes them (at least two).
+    affects: [questionForm]
+context:
+  status:
+    values: [draft, scheduled, open, closed]
+    initial: any
+    say:
+      draft: the exam is a draft
+      scheduled: the exam is set to open at a day and time
+      open: the exam can be started, or attempts are in progress
+      closed: every attempt has ended
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person is a hoca of the exam's course, or holds the grant to prepare its exams
+      no: the person may not prepare this course's exams
+  question:
+    values: [complete, incomplete]
+    initial: any
+    say:
+      complete: the question being saved has its text, two options or more, one marked correct and at least one topic
+      incomplete: the question being saved lacks one of these
+  ownPoints:
+    values: [fit, over]
+    initial: any
+    say:
+      fit: the points being set leave the total at 100 with something for every question that has no points of its own
+      over: the points being set would take the total over 100, or leave nothing for the questions that share
+guards:
+  mayNot: "may == 'no'"
+  locked: "status == 'open' or status == 'closed'"
+  isIncomplete: "question == 'incomplete'"
+  overHundred: "ownPoints == 'over'"
+main:
+  given: { may: yes, status: draft, question: complete, ownPoints: fit }
+  events: [ZEROTH, SAVE_ZEROTH, TOPICS, PICK_TOPIC, BACK, QUESTIONS, ADD_QUESTION, SAVE_QUESTION, PUBLISH]
+initial: opening
+states:
+  opening:
+    title: The editor is opened
+    description: The page reads the exam, the zeroth question, the course's topics and the exam's questions.
+    always:
+      - { guard: mayNot, target: forbidden, say: "the person may not prepare this course's exams" }
+      - { guard: locked, target: readOnly, say: "the exam has opened: nothing can change" }
+      - { target: settings, say: "a draft or a scheduled exam" }
+  forbidden:
+    title: Not allowed
+    description: To a person who may not prepare the course's exams, the exam is not there; the API refuses every write.
+    by: human
+    on:
+      NAVIGATE: left
+  readOnly:
+    title: The exam has opened
+    description: Everything is shown and nothing can be changed; the page says why, and leads to the results (nazar.exams.results).
+    by: human
+    on:
+      NAVIGATE: left
+  settings:
+    title: The exam's settings
+    description: >-
+      The title, the length in minutes (60 unless changed), the instructions the briefing shows, the count of questions against the
+      suggested 50, and the celse's date and time, which are the earliest start. A new draft can be filled from an earlier exam of the
+      course.
+    by: human
+    on:
+      CHANGE: { target: settings, say: "they change a setting: it is saved" }
+      COPY: { target: copyPick, say: "they choose to copy an earlier exam" }
+      ZEROTH: { target: zerothForm, say: "they open the zeroth question" }
+      TOPICS: { target: topics, say: "they open the topics" }
+      QUESTIONS: { target: questions, say: "they open the questions" }
+      NAVIGATE: left
+  copyPick:
+    title: Copy an earlier exam of the course
+    description: >-
+      The course's earlier online exams; the one picked fills this draft with its topics, questions, points and zeroth question, which
+      the page asks to read again, since it changes from term to term.
+    by: human
+    on:
+      PICK: { target: settings, say: "they pick an exam: its contents are copied into the draft" }
+      CANCEL: { target: settings, say: "they copy nothing" }
+  zerothForm:
+    title: The zeroth question
+    description: >-
+      Above it the hadith, fixed: "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" and "Bizi aldatan bizden değildir." Under it the preparer writes the
+      question ("Bu hadisi ne zaman öğrendiniz?") and its options, at least two, none correct; it carries no points.
+    by: human
+    on:
+      SAVE_ZEROTH: { target: settings, say: "they save the zeroth question" }
+      CANCEL: { target: settings, say: "they leave it unchanged" }
+  topics:
+    title: The exam's topics
+    description: >-
+      The course's topics, each short (one to three words), with a box to pick it for this exam and how many of the exam's questions
+      carry it; six or seven are picked. A new topic typed here joins the course's list. A topic is renamed for the whole course;
+      unpicking one that questions carry says how many and asks first.
+    by: human
+    on:
+      PICK_TOPIC: { target: topics, say: "they pick a topic of the course for this exam" }
+      ADD_TOPIC: { target: topics, say: "they add a new topic: it joins the course's list" }
+      RENAME_TOPIC: { target: topics, say: "they rename a topic: every exam of the course keeps it" }
+      UNPICK_TOPIC: { target: topics, say: "they unpick a topic, after the question" }
+      BACK: { target: settings, say: "they go back to the settings" }
+      QUESTIONS: { target: questions, say: "they go on to the questions" }
+  questions:
+    title: The exam's questions
+    description: >-
+      Each question with the start of its text, its topics, its points (shared or its own), how it is answered and whether it is
+      complete; the count against 50, the count per topic, and the total of the points, always 100.
+    by: human
+    goal: true
+    on:
+      ADD_QUESTION: { target: questionForm, say: "they press Soru ekle" }
+      EDIT_QUESTION: { target: questionForm, say: "they open a question" }
+      REMOVE_QUESTION: { target: questions, say: "they remove a question, after the question: its points are shared again" }
+      SET_POINTS: { target: points, say: "they open a question's points" }
+      PREVIEW: { target: preview, say: "they see the exam as a talebe will" }
+      SETTINGS: { target: settings, say: "they go back to the settings" }
+      PUBLISH: { target: publish_opened, say: "they press Yayınla" }
+      NAVIGATE: left
+  questionForm:
+    title: A question
+    description: >-
+      The text; the options, at least two and as many as wanted (D2), with one marked correct or more; with more than one correct,
+      how it is answered: radio buttons (one choice, any correct option gets the points) or check boxes, scored all or nothing or in
+      shares where a wrong mark takes one off; and the topics it is about, at least one. Arabic text is set right to left.
+    by: human
+    on:
+      SAVE_QUESTION:
+        - { guard: isIncomplete, target: questionInvalid, say: "they save a question that lacks something" }
+        - { target: questions, say: "they save the question" }
+      CANCEL: { target: questions, say: "they leave the question unchanged" }
+  questionInvalid:
+    title: The question lacks something
+    description: What is missing is said at its field (the text, a second option, the correct one, a topic), and the focus goes to the first.
+    by: human
+    on:
+      FIX: { target: questionForm, say: "they fill it in" }
+  points:
+    title: A question's points
+    description: >-
+      The question's points: shared (the 100 points left over, equally over the questions with no points of their own) or its own.
+      Setting its own says what each other question will get; clearing it puts the question back into the share.
+    by: human
+    on:
+      SET_OWN:
+        - { guard: overHundred, target: pointsRefused, say: "they give points that do not fit in 100" }
+        - { target: questions, say: "they give the question points of its own: the rest are shared again" }
+      CLEAR_OWN: { target: questions, say: "they put the question back into the share" }
+      CANCEL: { target: questions, say: "they leave the points unchanged" }
+  pointsRefused:
+    title: The points do not fit
+    description: The field says how many points are left to give and why these do not fit; nothing is changed.
+    by: human
+    on:
+      FIX: { target: points, say: "they change the points" }
+  preview:
+    title: The exam as a talebe sees it
+    description: The briefing with the zeroth question, and the questions as a talebe will see them, with nothing saved and no clock.
+    by: human
+    on:
+      BACK: { target: questions, say: "they leave the preview" }
+  publish_opened:
+    title: Publishing is opened
+    description: nazar.exams.publish.
+    type: final
+  left:
+    title: The person left the editor
+    description: Nothing is lost; the draft was saved as they worked.
+    type: final
+    leavesPage: true

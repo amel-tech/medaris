@@ -1,0 +1,233 @@
+# What must exist for the course team to prepare an online exam: written needs-first on 21 November 2026 from the owner's rules and
+# his answers of the same day (both quoted at the top of flow.yaml, and rule by rule in each need's note). Every need is missing:
+# there is no code. A choice still open is the flow's decision (D2) and its need is written as the recommendation.
+schema: delurio-graph/0
+kind: needs
+id: nazar.exams.edit
+status: proposed
+needs:
+  - id: only-the-course-team-prepares
+    need: >-
+      Only a hoca of the exam's course, or a ders nazırı the hoca has given the grant to prepare exams, opens its editor and changes
+      it; to anyone else the exam is not there, and the API refuses every write of theirs. Every change is audited, as the course's
+      other writes are.
+    evidence:
+      - state: opening
+      - state: forbidden
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked who prepares: \"Hoca + yetkili ders nazırı\". The grant is new, granular and may be time-limited, as the others are."
+
+  - id: an-exam-celse-of-the-online-format
+    need: >-
+      An online exam is an exam celse of its course in a third format, beside written and oral. It is planned where exam celses are,
+      sits in the curriculum, Programım and the calendar as they do, and its celse's date and time are the exam's earliest start.
+    evidence:
+      - state: settings
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked whether it is the exam celse's third format: \"üçüncü\". Today LessonExam.format is WRITTEN or ORAL."
+
+  - id: a-draft-is-the-team-s-alone
+    need: >-
+      A new online exam is a draft. No talebe sees it or anything of it, its celse included, until it is scheduled; from then they
+      see its date, and nothing of its questions until it opens. It can be changed freely until it opens.
+    evidence:
+      - state: settings
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"; asked whether a draft's celse shows: \"Zamanlanana kadar gizli\"."
+
+  - id: one-hour-and-fifty-questions-by-default
+    need: >-
+      An exam lasts 60 minutes unless the team changes it, and 50 questions are suggested: the editor counts "n/50 soru" and does not
+      stop the team at fewer or more.
+    evidence:
+      - state: settings
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"sınav süresi defaultta 1 saat olacak, soru sayısı da 50 önerilecek\"."
+
+  - id: any-length
+    need: The team sets the length in whole minutes; any length above zero is taken.
+    evidence:
+      - state: settings
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked for bounds: \"Sınır yok\"."
+
+  - id: the-instructions-of-the-briefing
+    need: >-
+      The team may write instructions of its own, which the talebe reads in the briefing under what every exam says ("Bilmeniz
+      gerekenler").
+    evidence:
+      - state: settings
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: the-zeroth-question
+    need: >-
+      Every online exam has a zeroth question, which the preparer writes: a question about the hadith "Bizi aldatan bizden değildir"
+      and its options, at least two, none of them correct, and no points. Above it the editor shows the hadith as the talebe will see
+      it, in Arabic and in its meaning, which no one changes. An exam without a zeroth question cannot be published.
+    evidence:
+      - state: zerothForm
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "'sıfırıncı soru' olacak ... mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman
+      ezberlersiniz' diye sorulacak. doğru yanlış cevabı olan bi soru değil." Asked who sets it: "Her sınavı hazırlayan"; its form:
+      "Şıklı"; the hadith: "Arapçası + meali, sabit".
+
+  - id: topics-first-from-the-course-s-list
+    need: >-
+      Before the questions, the exam picks its topics, about six or seven, from the course's list of topics: short names of one to
+      three words. A topic not yet on the list is typed here and joins the course's list. A name is required, is not given twice in
+      the course, and a name longer than three words is refused with why.
+    evidence:
+      - state: topics
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"bunun için önce sınav konuları girilecek 1-3 kelimelik 6-7 tane mesela\"; asked whose list it is: \"dersin\"."
+
+  - id: topics-renamed-and-unpicked
+    need: >-
+      A topic can be renamed, for the whole course, and every exam and question keeps it. Unpicking a topic that questions of the exam
+      carry says how many and asks first; those questions keep their other topics, or are marked incomplete when it was their only one.
+    evidence:
+      - state: topics
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: a-multiple-choice-question
+    need: >-
+      A question has its text and its options, at least two and as many as the preparer wants, with one marked correct unless the
+      preparer marks more. A question or an option may be in Arabic, or mix Arabic and Turkish, and is set right to left where it is
+      Arabic.
+    evidence:
+      - state: questionForm
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"çoktan seçmeli\"; asked how many options and correct ones: \"en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir\". The number a new question starts with is D2."
+
+  - id: how-a-question-with-several-correct-is-answered
+    need: >-
+      A question with more than one correct option is answered with radio buttons unless the preparer chooses check boxes. With radio
+      buttons the talebe chooses one, and any correct option gets the question's points. With check boxes the preparer chooses how it
+      is scored: all or nothing (every correct option and no other), or in shares, where each correct mark gets an equal share of the
+      question's points, each wrong mark takes a share off, and the question never goes below 0.
+    evidence:
+      - state: questionForm
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"birden fazla doğru olduğunda multiple choices açık olmak zorunda değil. 5 şıklı, 2'si doğru bi soruda sadece radio button olabilir. istenirse checkbox da olur bu durumda 'hepsi ya da hiç' ve 'kesirli, yanlış düşer' seçenekleri de sunulur.\""
+
+  - id: every-question-has-its-topics
+    need: Each question is marked with one or more of the exam's topics.
+    evidence:
+      - state: questionForm
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"her soru için hangi konu hakkında olduğu işaretlenecek ... her soru için bu konular işaretlenecek\"."
+
+  - id: what-a-question-lacks-is-said
+    need: >-
+      A question that lacks its text, a second option, a correct one or a topic is saved as incomplete, says what it lacks at the
+      field, and keeps the exam from being published; the focus goes to the first thing missing.
+    evidence:
+      - state: questionInvalid
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: points-shared-equally
+    need: >-
+      The exam is out of 100, and by default the points are shared equally over the questions: 50 questions get 2 each. Adding or
+      removing a question shares the points again over the questions that have no points of their own. The zeroth question has none.
+    evidence:
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner: \"100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya puan dağıtılacak\"."
+
+  - id: a-question-s-own-points
+    need: >-
+      A question can be given points of its own, and the points left are shared equally over the questions that have none. With 50
+      questions at 2 each, giving one 5 leaves 95 for the other 49 (1,94 each); then giving one of them 10 leaves 85 for the other 48
+      (1,77 each). Before it is saved, the field says what each other question will get.
+    evidence:
+      - state: points
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: >-
+      Owner: "örneğin 50 soru var her soru otomatik 2 puan, bi soruya geleceğiz 2'yi 5 yapacağız, kalan 95 puan da 49 soruya eşit
+      dağılacak. sonra başka soruya geleceğiz 1.94 puanı 10 yapacağız kalan 85 puan da kalan 48 soruya eşit dağılacak".
+
+  - id: back-into-the-share
+    need: A question's own points can be cleared, and the question goes back into the equal share.
+    evidence:
+      - state: points
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: points-never-pass-100
+    need: >-
+      Points of its own that would take the total over 100, or leave nothing for the questions that share, are refused, with how many
+      points are left to give. When every question has points of its own, they must add up to 100 before the exam can be published.
+    evidence:
+      - state: pointsRefused
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: exact-points-shown-with-two-decimals
+    need: >-
+      A shared point is kept exact and shown with two decimals ("1,94"), as is whether it is the question's own or shared; the editor
+      shows the total, which is always 100. A talebe's score is reckoned from the exact points and rounded to two decimals once, so two
+      talebe with the same answers always get the same score.
+    evidence:
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked how to round: \"Kesin tut, 2 ondalık göster\"."
+
+  - id: the-questions-at-a-glance
+    need: >-
+      The list of questions shows the start of each one's text, its topics, its points, how it is answered and whether it is complete,
+      how many questions each topic has, and filters by topic, so the team sees which topics the exam covers and how much.
+    evidence:
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: removing-a-question-asks
+    need: Removing a question asks first, and its points are shared again over the others.
+    evidence:
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: saved-as-the-team-works
+    need: >-
+      The draft is saved as the team works, and the editor says when it was last saved; a closed page loses nothing. Two people
+      editing the same exam are told when the other has changed it, and neither overwrites the other unseen.
+    evidence:
+      - state: settings
+      - state: questions
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: The course editor already refuses a stale save (course-optimistic-version); the same is wanted here.
+
+  - id: seen-as-a-talebe-sees-it
+    need: >-
+      The team sees the exam as a talebe will, the briefing with the zeroth question and the questions with options in a drawn order,
+      with nothing saved and no clock running.
+    evidence:
+      - state: preview
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+
+  - id: copy-an-earlier-exam
+    need: >-
+      An earlier online exam of the same course can be copied into a new draft, with its topics, questions, points and zeroth
+      question, and the editor asks the team to read the zeroth question again, since it changes from term to term.
+    evidence:
+      - state: copyPick
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked about reusing questions: \"Aynı dersin önceki sınavını kopyala\". A question bank and a file import come later."
+
+  - id: changed-until-it-opens-and-never-after
+    need: >-
+      A scheduled exam can still be changed until it opens. Once it has opened, its questions, options, points, topics, zeroth question
+      and length cannot be changed: the editor shows them read only, says why, and leads to the results.
+    evidence:
+      - state: readOnly
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    note: "Owner, asked whether a scheduled exam can be changed: \"Açılana kadar evet\"."
+
+  - id: by-keyboard-and-screen-reader
+    need: >-
+      The editor can be used with the keyboard alone and with a screen reader: each field is named, the correct options are check boxes
+      named by the option, the topics are check boxes, and what is missing or refused is said where it is and announced.
+    evidence:
+      - state: questionForm
+      - state: points
+    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet

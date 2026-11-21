@@ -1,0 +1,91 @@
+# A talebe's own screen of a past online exam in tedris-web: the score, the standing by topic, and (D2) their answers.
+# PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and no
+# Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+#
+# The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler";
+# "her soru için hangi konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek".
+#
+# Decided by the owner on 21 Nov 2026:
+#   - The talebe reads the score when the course team releases the results, as exam celses work today ("evet").
+#   - Once the results are released and the exam has closed for everyone, the talebe reads the questions again with their own
+#     answer and the correct one ("evet").
+#   - The topics are the course's, so the standing is also added up across the course's exams.
+#   - The standing is a percentage, with the right and wrong counts; no word for it ("Yalnız yüzde").
+schema: delurio-graph/0
+kind: flow
+id: tedris.exams.result
+status: proposed
+title: Read my result of an exam, by topic
+summary: >-
+  A talebe opens a past exam from Sınavlarım. Until the course team releases the results, the screen says "Sonuç henüz açıklanmadı".
+  After, it shows the score out of 100, how many answers were right, wrong and left blank, when the exam was handed in and whether
+  the time ended it, and the standing in each of the exam's topics: the percentage of the points its questions carry that were got,
+  with the right and wrong counts, the weakest topic first. Once the exam has closed for everyone, the talebe also reads their own
+  answers beside the correct ones, and their standing in each topic across the course's exams.
+scope:
+  shows: the talebe's screen of one past exam in tedris-web
+  world: open
+context:
+  released:
+    values: [no, yes]
+    initial: any
+    say:
+      no: the course team has not released the exam's results
+      yes: the results are released
+main:
+  given: { released: yes }
+  events: [TOPICS]
+initial: opening
+states:
+  opening:
+    title: The talebe's screen of the exam is opened
+    description: Only the talebe whose attempt it is reads it; to anyone else there is no such screen.
+    always:
+      - { guard: "released == 'no'", target: awaitingRelease, say: "the results are not released" }
+      - { target: resultShown, say: "the results are released" }
+  awaitingRelease:
+    title: Sonuç henüz açıklanmadı
+    description: The screen says the exam was handed in and when, and that the result is not released yet; no score.
+    by: human
+    on:
+      RELEASED: { target: resultShown, say: "the course team releases the results, and the page is read again" }
+      NAVIGATE: left
+  resultShown:
+    title: The talebe's result
+    description: >-
+      The score out of 100, the counts of right, wrong and blank answers, when it was handed in and whether the time ended it, and the
+      standing in each topic of the exam.
+    by: human
+    goal: true
+    on:
+      TOPICS: { target: topicsShown, say: "they open the standing by topic" }
+      ANSWERS: { target: answersShown, say: "they open their answers" }
+      COURSE_TOPICS: { target: courseTopics, say: "they open their standing across the course's exams" }
+      NAVIGATE: left
+  topicsShown:
+    title: The standing by topic
+    description: >-
+      For each topic of the exam: the percentage of the points its questions carry that were got, and how many of them were right and
+      wrong; the weakest topic first.
+    by: human
+    on:
+      BACK: resultShown
+      NAVIGATE: left
+  answersShown:
+    title: The talebe's answers
+    description: Each question in the talebe's order, their answer, the correct one, and the points got.
+    by: human
+    on:
+      BACK: resultShown
+      NAVIGATE: left
+  courseTopics:
+    title: The standing across the course's exams
+    description: Each topic of the course with the talebe's percentage over every exam that carried it.
+    by: human
+    on:
+      BACK: resultShown
+      NAVIGATE: left
+  left:
+    title: The talebe left the page
+    type: final
+    leavesPage: true
