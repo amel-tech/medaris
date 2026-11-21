@@ -14,7 +14,6 @@ import {
   hasEnded,
   isRunning,
   nextSession,
-  parseProgress,
   relativeDay,
   sentAt,
   weekState,
@@ -227,20 +226,6 @@ describe("days and words", () => {
     expect(
       sentAt(Date.parse("2026-10-01T07:02:00Z"), NOW, "tr", ZONE, "bugün")
     ).toBe("1 Ekim 10:02’de");
-  });
-});
-
-describe("parseProgress (tedris/12: 0 to 100, whole numbers)", () => {
-  it("accepts the bounds and everything between", () => {
-    expect(parseProgress("0")).toBe(0);
-    expect(parseProgress(" 55 ")).toBe(55);
-    expect(parseProgress("100")).toBe(100);
-  });
-
-  it("refuses everything else", () => {
-    for (const bad of ["", "101", "-1", "5.5", "abc", "1e2", "1000"]) {
-      expect(parseProgress(bad)).toBeNull();
-    }
   });
 });
 

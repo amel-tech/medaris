@@ -80,14 +80,7 @@
     "meetingNotAdded": "لم تُضَف رابط الاجتماع بعد.",
     "inPersonBadge": "حضوري",
     "progressLabel": "تقدّمك في الدرس",
-    "progressNote": "أنت تدخل تقدّمك بنفسك؛ ويؤكد طاقم الدرس إتمامك له.",
-    "updateProgress": "حدّث تقدّمك",
-    "progressField": "التقدّم (بالنسبة المئوية)",
-    "progressHelp": "عدد صحيح من 0 إلى 100.",
-    "progressInvalid": "اكتب عددًا صحيحًا من 0 إلى 100.",
-    "progressSave": "حفظ",
-    "progressSaved": "تم تحديث تقدّمك.",
-    "progressCancel": "إلغاء",
+    "progressNote": "يُحسب تلقائيًا من الجلسات التي شاهدتها؛ ويؤكد فريق الدرس إتمامك له.",
     "statusInProgress": "جارٍ",
     "statusCompleted": "مكتمل",
     "revokedTitle": "أُلغي وصولك إلى هذا الدرس.",
@@ -207,7 +200,10 @@
     "gradesFull": "تام",
     "gradesIncomplete": "ناقص",
     "gradesNotRecited": "لم يُسمِّع",
-    "gradesWeek": "الأسبوع {week}"
+    "gradesWeek": "الأسبوع {week}",
+    "watchedBadge": "شوهدت",
+    "watchedPercent": "شوهد {percent}٪",
+    "watchedUntil": "توقفت عند {time}"
   },
   "DataTable": {
     "noResults": "لا توجد نتائج."

@@ -29,7 +29,6 @@ vi.mock("~/features/courses/actions", () => ({
   enrollInCourse: vi.fn(),
   leaveCourse: vi.fn(),
   withdrawEnrollment: vi.fn(),
-  updateCourseProgress: vi.fn(),
 }));
 vi.mock("~/features/courses/actions/questions", () => ({
   listMyCourseQuestions: vi.fn(),

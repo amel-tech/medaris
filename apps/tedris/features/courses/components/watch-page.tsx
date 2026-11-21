@@ -4,6 +4,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { canWriteNotes } from "../lesson-note-model";
+import { getMyLessonViews } from "../public-reads";
 import {
   embedUrlOf,
   liveEmbedUrlOf,
@@ -24,7 +25,8 @@ import { type WatchVideo, WatchView } from "./watch-view";
  * page learns the stream ended. A YouTube recording's frame gets it for an
  * enrolled talebe, whose notes read and move its position (MDRS-150). A Bunny
  * recording plays in the player link tedrisat signed for this viewer in this
- * response (MDRS-114), and reports no position.
+ * response (MDRS-114); it reports no position to the notes, but the counter
+ * hears it through Player.js (MDRS-248).
  */
 export const WatchPage = async ({
   course,
@@ -56,6 +58,21 @@ export const WatchPage = async ({
     const embed = embedUrlOf(recording.provider, recording.url);
     const reportsPosition =
       talebe && recording.provider === "YOUTUBE" && embed !== null;
+    // The counter (MDRS-248): a framed YouTube or Bunny recording, for an
+    // enrolled talebe, who also gets back where they stopped.
+    const tracked =
+      talebe && embed !== null
+        ? recording.provider === "YOUTUBE"
+          ? ("youtube" as const)
+          : recording.provider === "BUNNY"
+            ? ("bunny" as const)
+            : null
+        : null;
+    const view = tracked
+      ? ((await getMyLessonViews(course.id))?.find(
+          (v) => v.lessonId === session.id
+        ) ?? null)
+      : null;
     const recordedOn = recording.recordedAt
       ? new Intl.DateTimeFormat(locale, {
           day: "numeric",
@@ -80,6 +97,8 @@ export const WatchPage = async ({
         .filter(Boolean)
         .join(" · "),
       reportsPosition,
+      tracked,
+      view,
     };
   }
 

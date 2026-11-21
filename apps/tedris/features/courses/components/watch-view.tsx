@@ -1,5 +1,6 @@
 "use client";
 
+import type { LessonViewResponse } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
@@ -16,6 +17,7 @@ import { LessonQuestions } from "./lesson-questions";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
 import { RecordingReleaseNote } from "./recording-release";
+import { type TrackedPlayer, WatchProgress } from "./watch-progress";
 
 /** The one frame of the watch page, which the notes panel and the page both read. */
 export const WATCH_FRAME_ID = "watch-frame";
@@ -44,6 +46,13 @@ export type WatchVideo =
       facts: string;
       /** A YouTube frame with its player API on: the notes read its position. */
       reportsPosition: boolean;
+      /**
+       * The player the counter listens to (MDRS-248), for an enrolled talebe
+       * whose recording plays framed; null for anyone else.
+       */
+      tracked: TrackedPlayer | null;
+      /** The talebe's record of this celse when the page was rendered. */
+      view: LessonViewResponse | null;
     };
 
 /** The page's clock, from the server's instant, every half minute. */
@@ -181,7 +190,16 @@ export function WatchView({
         placeholder={t("recordingPlaceholder")}
         openHref={video.embedUrl ? null : video.openUrl}
         openLabel={t("recordingOpen")}
-      />
+      >
+        {video.tracked ? (
+          <WatchProgress
+            lessonId={lessonId}
+            frameId={WATCH_FRAME_ID}
+            player={video.tracked}
+            initial={video.view}
+          />
+        ) : null}
+      </MediaPlayer>
     );
 
   // Only a YouTube frame reports a position; with any other the time is typed.

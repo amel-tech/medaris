@@ -31,7 +31,6 @@ import { AddToCalendarMenu } from "./add-to-calendar";
 import { CourseActionsMenu } from "./course-actions-menu";
 import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
 import { LeaveCourse, WITHDRAW_BUTTON_ID } from "./leave-course";
-import { ProgressDialog } from "./progress-dialog";
 
 const Fact = ({
   icon,
@@ -311,9 +310,6 @@ export const CourseAside = ({
           <div className="flex flex-col gap-2">
             <Progress value={progress} label={t("progressLabel")} showValue />
             <p className="mds-caption">{t("progressNote")}</p>
-            <div>
-              <ProgressDialog courseId={course.id} current={progress} />
-            </div>
           </div>
         </Card>
       </aside>
