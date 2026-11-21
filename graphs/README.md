@@ -1,7 +1,7 @@
 # Medaris graphs
 
 Medaris's [delurio](https://delur.io) graphs: what every screen and every flow of the four web apps, the Keycloak realm and the
-API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.9.0 checks it). They are meant to be
+API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.13.0 checks it). They are meant to be
 checked in CI, walked on a local stack with delurio's replay, and later to take over the web e2e tests they can carry, and to be
 the source of tutorials.
 
@@ -107,7 +107,7 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) were walked in full. A `scenario` in a
   `needs.yaml` names a scenario that exists in a binding of the flow (`check` resolves it); it does not say that the scenario has
   passed. The output of a replay is not kept in this tree.
-- `check --strict` is the only gate in CI (below). The whole tree (179 graphs: the 175 flows and the 4 navigation graphs) checks with 7 errors and 7 warnings, all in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and goes into the baseline. No flow has an error. That a binding loads was checked with `--emit-spec`, which
+- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.13.0 the whole tree (179 graphs: the 175 flows and the 4 navigation graphs) checks with 7 errors and 7 warnings in a checkout where `pnpm install` has run (run on 21 November 2026), all of them in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
   walks nothing; nothing else in the tree has been verified against the running apps.
 
 ## Commands
@@ -115,16 +115,25 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 The format checker is `@delurio/cli`, pinned to an exact version (the Graphs workflow, `.github/workflows/graphs.yaml`, installs the same one):
 
 ```bash
-# every graph, as CI does (about a minute and a half for the whole tree); run it at the repository root, which the
-# evidence of needs.yaml is relative to
-npx @delurio/cli@0.9.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
+# every graph, as CI does (about 50 seconds and 380 MB for the whole tree); run it at the repository root, which the
+# anchors and the evidence of needs.yaml are relative to
+npx @delurio/cli@0.13.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
 
 # the page of one flow (written to <flow>/viz by default, git-ignored)
-npx @delurio/cli@0.9.0 page graphs/tedris/course/apply --out viz
+npx @delurio/cli@0.13.0 page graphs/tedris/course/apply --out viz
 
 # what a change does to a flow, as markdown
-npx @delurio/cli@0.9.0 diff graphs/tedris/course/apply --base origin/main
+npx @delurio/cli@0.13.0 diff graphs/tedris/course/apply --base origin/main
+
+# which graphs a change touches, each with why (its own files, a `source:` anchor, a binding it extends or enters through, a
+# shared catalog); a changed file of graphs/ that belongs to no graph, such as this README, touches every graph. CI does not use it
+npx @delurio/cli@0.13.0 affected --base origin/main
 ```
+
+Since 0.11.0 the CLI is a native program. Its npm package asks for Node 26 or later (`engines`), where the repository's `.nvmrc`
+says 24, so CI runs it on 26. On Node 24 npm warns, and one flow checked there on 21 November 2026 gave the same output as on 26;
+that is all that was tried. The same command is also a single binary, `delurio-v0.13.0-<platform>` on the GitHub release `v0.13.0`
+of `delurio-labs/delurio`, with `SHA256SUMS`, which needs no Node.
 
 To check one flow quickly, copy `graphs/domain`, the flow's folder and the folders of every flow it `starts` into a scratch folder
 named `graphs`, and run `check <scratch>/graphs --strict` on it (the checker finds a `starts` target by id under the nearest
@@ -134,10 +143,10 @@ The baseline holds the findings `check` already knew when it was written. They s
 new since then fails the run. It is renewed on purpose, never to make a run green:
 
 ```bash
-npx @delurio/cli@0.9.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
+npx @delurio/cli@0.13.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
 ```
 
-Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.9.0: they belong to delurio's engine, a separate checkout of
+Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.13.0: they belong to delurio's engine, a separate checkout of
 delurio's own repository (`apps/engine`), run from there as `node src/cli.ts <command>`. The replay walks a flow with its binding
 on the local stack, and it writes data (it applies to courses, makes köşks, sends e-mail), so run one at a time:
 
@@ -208,5 +217,11 @@ playback and every file upload (the storage keys are not set, the upload routes 
 - Two kinds of context variables in a `flow.yaml`: case variables (`initial: any`) pick the branch a walk takes, shown-state
   variables (a fixed `initial`) hold what the screen remembers. A `starts` hands a flow over with a quoted `given`, one `starts` to a
   transition, and the started flow declares the variable with `initial: any`.
-- A `source: <file>:<line>` is a claim about the code. `check` reads graph files only, never the application's, so a line that moved
-  is found by reading, not by the checker: when you change a file an app flow quotes, look for its `source:` lines.
+- A `source: <file>:<line>` is a claim about the code. `check` holds every anchor to the code, read from the repository root: the
+  file must be there and the line inside it (`source-unresolved`, an error), and a `path:line` cited in a graph's words likewise
+  (`citation-unresolved`, a warning). It does not read what the line says, so a line that moved inside its file is found by
+  reading, not by the checker: when you change a file an app flow quotes, look for its `source:` lines.
+- A binding is held to `binding.schema.json` of the CLI (rule `schema`), so a misspelt key or a value of the wrong kind fails the
+  check before any walk. Since 0.13.0 that is every binding: `binding.yaml`, a shared `<name>.binding.yaml` and the 271 variants
+  `binding.<variant>.yaml`. A locator's `nth` counts from 0, or from the end when it is negative: `nth: -1` is the last of what the
+  rest of the locator finds, such as the week or the celse a step has just added.

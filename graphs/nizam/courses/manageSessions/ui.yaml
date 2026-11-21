@@ -97,8 +97,8 @@ nodes:
 
   # --- the date and time form -----------------------------------------------------------------------------------------------------------------------
   timeFormTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.timeFormTitle, params: { when: session.fullWhen } }, in: [timeForm, savingTime], source: apps/nizam/features/courses/components/sessions-view.tsx:542 } # h3
-  dateField: { type: field, component: TextField, text: { key: Sessions.dateLabel }, in: [timeForm, savingTime], source: apps/nizam/features/courses/components/sessions-view.tsx:617 } # <input type=date name=date>: no role in the accessibility tree, so it is found by its label; the star is decorative and the input carries no `required` (F-C-course-a-07 of nazar's, the same Field)
-  timeField: { type: field, component: TextField, text: { key: Sessions.timeLabel }, in: [timeForm, savingTime], source: apps/nizam/features/courses/components/sessions-view.tsx:631 } # <input type=time name=time>
+  dateField: { type: field, native: date, component: TextField, text: { key: Sessions.dateLabel }, in: [timeForm, savingTime], source: apps/nizam/features/courses/components/sessions-view.tsx:617 } # <input type=date name=date>: no role in the accessibility tree, so it is found by its label; the star is decorative and the input carries no `required` (F-C-course-a-07 of nazar's, the same Field)
+  timeField: { type: field, native: time, component: TextField, text: { key: Sessions.timeLabel }, in: [timeForm, savingTime], source: apps/nizam/features/courses/components/sessions-view.tsx:631 } # <input type=time name=time>
   timeError: { type: text, component: Text, text: { key: Sessions.errors.time }, in: [timeForm, savingTime], when: "said == 'time'", source: apps/nizam/features/courses/components/sessions-view.tsx:232 } # under Tarih only, though the hour may be what is missing
 
   # --- the in-person form -----------------------------------------------------------------------------------------------------------------------------

@@ -34,23 +34,28 @@
   "i18n-ally.keystyle": "nested",
   "i18n-ally.sourceLanguage": "en",
   "yaml.schemas": {
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/flow.schema.json": "graphs/**/flow.yaml",
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/ui.schema.json": "graphs/**/ui.yaml",
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/nav.schema.json": [
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/flow.schema.json": "graphs/**/flow.yaml",
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/ui.schema.json": "graphs/**/ui.yaml",
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/nav.schema.json": [
       "graphs/**/nav.yaml",
       "graphs/**/nav.extracted.yaml"
     ],
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/domain.schema.json": [
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/domain.schema.json": [
       "graphs/**/domain.yaml",
       "graphs/domain/*.yaml"
     ],
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/needs.schema.json": "graphs/**/needs.yaml",
-    "https://unpkg.com/@delurio/cli@0.9.0/schemas/gaps.schema.json": "graphs/needs.gaps.yaml"
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/needs.schema.json": "graphs/**/needs.yaml",
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/gaps.schema.json": "graphs/needs.gaps.yaml",
+    "https://unpkg.com/@delurio/cli@0.13.0/schemas/binding.schema.json": [
+      "graphs/**/binding.yaml",
+      "graphs/**/binding.*.yaml",
+      "graphs/**/*.binding.yaml"
+    ]
   },
   "json.schemas": [
     {
       "fileMatch": ["graphs/**/catalog/*.json"],
-      "url": "https://unpkg.com/@delurio/cli@0.9.0/schemas/catalog.schema.json"
+      "url": "https://unpkg.com/@delurio/cli@0.13.0/schemas/catalog.schema.json"
     }
   ]
 }
