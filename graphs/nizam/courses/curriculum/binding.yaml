@@ -119,10 +119,10 @@ events:
     - fill: { role: textbox, name: '/^Toplantı bağlantısı/', within: { testId: lesson-0-1 }, value: '{httpLink}' }
   FIX_LINK:
     - fill: { role: textbox, name: '/^Toplantı bağlantısı/', within: { testId: lesson-0-1 }, value: '{httpsLink}' }
-  # "Hafta ekle" opens the new week and appends it last, so the last "Hafta başlığı" on the screen is its (the second week is folded, and a folded
-  # week's fields are hidden until found); a new celse is the third of the first week, `lesson-0-2`
+  # "Hafta ekle" opens the new week and appends it last: the course has two, so it is week 3 (`data-week` is the week's number, as
+  # `[data-week="2"]` below); a new celse is the third of the first week, `lesson-0-2`
   NAME_WEEK:
-    - fill: { role: textbox, name: Hafta başlığı, nth: -1, value: '{weekTitle}' }
+    - fill: { role: textbox, name: Hafta başlığı, within: { css: '[data-week="3"]' }, value: '{weekTitle}' }
   NAME_SESSION:
     - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-2 }, value: '{sessionTitle}' }
   # "Haftayı gizle" is in the week's panel: the second week is folded at first, so its heading's button is pressed to open it, then its own button

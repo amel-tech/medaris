@@ -170,8 +170,8 @@ nodes:
   rosterTable: { role: table, name: '/ nazırları$/' }
   awaitingBadge: { text: '/^İzin yok$/' }
   appointedLine: { text: '/^Atayan: .+ · .+$/' }
-  # the last row is the newest: the one just appointed
-  giveButton: { role: button, name: '/^İzin ver: /', nth: -1 }
+  # the person just appointed (APPLICANT_E, above): their row's button names them
+  giveButton: { role: button, name: 'İzin ver: Betül Başvuran' }
   dismissButton: { role: button, name: '/^Görevden al: /' }
   # the medrese's name above the dialog's title
   appointEyebrow: { css: '.mds-eyebrow', hasText: '{seed.titles.madrasah}' }

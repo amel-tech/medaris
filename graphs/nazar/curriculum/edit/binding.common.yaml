@@ -23,13 +23,14 @@ events:
   # the course's name: its own stored title and a suffix, so that the form differs from what is stored
   RENAME:
     - fill: { role: textbox, name: Ders adı, value: '{made.title} (yeni ad)' }
-  # "Hafta ekle" opens the new week and appends it last, so the last "Hafta başlığı" on the screen is its; only open weeks have their fields on the
-  # screen (a first week still running opens by itself, the course is made with one)
+  # "Hafta ekle" opens the new week and appends it last: the course is made with one (`--weeks 1`), so it is week 2 (`data-week` is the
+  # week's number)
   NAME_WEEK:
-    - fill: { role: textbox, name: Hafta başlığı, nth: -1, value: Yeni hafta }
-  # a stored celse folds its details, a new one opens them, so the only "Celse başlığı" on the screen is the new celse's (the last, if two were added)
+    - fill: { role: textbox, name: Hafta başlığı, within: { css: '[data-week="2"]' }, value: Yeni hafta }
+  # "Celse ekle" appends to the first week, which is made with two (`--lessons 2`), so the new celse is `lesson-0-2`. A second celse added in
+  # the same walk (`lesson-0-3`) is not typed in: a locator counts from the first (`nth` is from 0), and nothing names the last
   NAME_SESSION:
-    - fill: { role: textbox, name: Celse başlığı, nth: -1, value: Yeni celse }
+    - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-2 }, value: Yeni celse }
   # Someone else saves the course: PATCH /courses/:id with the hoca's own token bumps the version (the API's invariant course-optimistic-version) and
   # changes one field no form field holds. A PUT is not used on purpose: a PUT that leaves out weeks or resources drops them all (PUT /courses/{id}).
   COURSE_CHANGED:

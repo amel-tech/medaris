@@ -4,7 +4,8 @@ name: Graphs
 # version: every guarantee a flow states holds, every catalog key and sample exists, and every flow that writes says
 # what it changes. Findings show inline through the problem matcher. On a pull request it also keeps one comment up to
 # date with what the graphs change, in words, and uploads the pages of the changed graphs as the `delurio` artifact.
-# The CLI reads graph files only: no network after the install, no account, no model. Nothing here edits a graph.
+# The CLI reads graph files and the code files they cite: no network after the install, no account, no model. Nothing here edits
+# a graph.
 
 on:
   pull_request:
@@ -30,7 +31,7 @@ permissions:
 
 env:
   # Bump on purpose: a new version may judge the same graphs differently.
-  DELURIO: "@delurio/cli@0.9.0"
+  DELURIO: "@delurio/cli@0.12.0"
 
 jobs:
   graphs:
@@ -46,10 +47,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # @delurio/cli wants Node 26 or later (since 0.10.0); the rest of the repository stays on .nvmrc. Nothing of the repository is
+      # installed or built here, so the two never meet.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: "26"
 
       - name: Install @delurio/cli
         run: npm install --global --no-audit --no-fund "$DELURIO"
