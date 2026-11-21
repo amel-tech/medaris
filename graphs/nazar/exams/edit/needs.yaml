@@ -1,6 +1,6 @@
 # What must exist for the course team to prepare an online exam: written needs-first on 21 November 2026 from the owner's rules and
 # his answers of the same day (both quoted at the top of flow.yaml, and rule by rule in each need's note). Every need is missing:
-# there is no code. A choice still open is the flow's decision (D2) and its need is written as the recommendation.
+# there is no code.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.edit
@@ -94,12 +94,12 @@ needs:
   - id: a-multiple-choice-question
     need: >-
       A question has its text and its options, at least two and as many as the preparer wants, with one marked correct unless the
-      preparer marks more. A question or an option may be in Arabic, or mix Arabic and Turkish, and is set right to left where it is
-      Arabic.
+      preparer marks more; a new question starts with five option fields. A question or an option may be in Arabic, or mix Arabic
+      and Turkish, and is set right to left where it is Arabic.
     evidence:
       - state: questionForm
     missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
-    note: "Owner: \"çoktan seçmeli\"; asked how many options and correct ones: \"en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir\". The number a new question starts with is D2."
+    note: "Owner: \"çoktan seçmeli\"; asked how many options and correct ones: \"en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir\". Asked how many option fields a new question starts with: \"5 şık\"."
 
   - id: how-a-question-with-several-correct-is-answered
     need: >-

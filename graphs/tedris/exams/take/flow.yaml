@@ -31,6 +31,8 @@
 #     tells the talebe whether a question has several correct options, or how many.
 #   - A talebe may start any time between the earliest and the latest start the team sets, and always gets the full length
 #     (nazar.exams.publish).
+#   - When the time runs out, the exam ends by itself with the answers saved so far, and the talebe is told it ended because the time
+#     ran out (asked whether it should, he answered "önerdiğin gibi").
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.take
@@ -60,10 +62,6 @@ decisions:
       connection and resumes, so the rule only catches an open switch, and that a phone call or a notification also hides the page;
       counting the switches and showing them to the team (nazar.exams.results) is the other way.
     affects: [question, restarted, briefing]
-  D3:
-    question: When the time runs out, does the exam end by itself with the answers saved so far?
-    recommend: Yes, and the talebe is told it ended because the time ran out.
-    affects: [timeUp, finished]
 context:
   window:
     values: [before, open, closed]
@@ -230,7 +228,7 @@ states:
       TIME_UP: { target: timeUp, say: "the time runs out while they decide" }
   timeUp:
     title: The time has run out
-    description: The exam ends by itself with the answers saved so far (D3), and the talebe is told it ended because the time ran out.
+    description: The exam ends by itself with the answers saved so far, and the talebe is told it ended because the time ran out.
     always:
       - { target: finished, say: "the exam is handed in" }
   finished:

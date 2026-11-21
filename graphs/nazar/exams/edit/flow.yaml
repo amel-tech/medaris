@@ -33,6 +33,7 @@
 #     Arabic and in its meaning. Its answers are read per talebe by the course team and in aggregate by Medaris management.
 #   - A draft online exam celse is hidden from the talebe until it is scheduled ("Zamanlanana kadar gizli"); from then they see its
 #     date, and nothing of its questions.
+#   - A new question starts with five option fields ("5 şık"); the preparer adds more or removes them, down to two.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.edit
@@ -52,11 +53,6 @@ scope:
   shows: the editor of one online exam in nazar-web
   world: open
   outOfView: [publishing and scheduling (nazar.exams.publish), planning the celse itself (nazar.sessions.plan)]
-decisions:
-  D2:
-    question: How many option fields does a new question start with?
-    recommend: Four, and the preparer adds or removes them (at least two).
-    affects: [questionForm]
 context:
   status:
     values: [draft, scheduled, open, closed]
@@ -178,9 +174,10 @@ states:
   questionForm:
     title: A question
     description: >-
-      The text; the options, at least two and as many as wanted (D2), with one marked correct or more; with more than one correct,
-      how it is answered: radio buttons (one choice, any correct option gets the points) or check boxes, scored all or nothing or in
-      shares where a wrong mark takes one off; and the topics it is about, at least one. Arabic text is set right to left.
+      The text; the options, five fields at first, at least two and as many as wanted, with one marked correct or more; with more
+      than one correct, how it is answered: radio buttons (one choice, any correct option gets the points) or check boxes, scored all
+      or nothing or in shares where a wrong mark takes one off; and the topics it is about, at least one. Arabic text is set right to
+      left.
     by: human
     on:
       SAVE_QUESTION:

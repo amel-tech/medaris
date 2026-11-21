@@ -102,8 +102,10 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
 - **Online exams** (planned on 21 November 2026, no Linear issue yet) are written needs first: `tedris.exams.mine`,
   `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.mine`, `nazar.exams.edit`, `nazar.exams.publish` and
-  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, 110 needs, all missing. Each `flow.yaml` is only the skeleton its needs are drawn on,
-  with the owner's rules and his answers of the same day quoted at its top, and the choices still open as `decisions`. Their
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, 110 needs, all missing. Each
+  `flow.yaml` is only the skeleton its needs are drawn on, with the owner's rules and his answers of the same day quoted at its top.
+  Two choices are still open, both to be asked again of those who asked for exams, with the flows' videos: whether a switch to
+  another tab starts the exam again (`tedris.exams.take` D1), and when a talebe may start it (`nazar.exams.publish` D1). Their
   screens, their API (`domain/planned-exams.yaml`) and their bindings come next.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,

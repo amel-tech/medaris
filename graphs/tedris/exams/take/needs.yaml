@@ -1,6 +1,6 @@
 # What must exist for a talebe to take an online exam: written needs-first on 21 November 2026 from the owner's rules (quoted at the
 # top of flow.yaml and, rule by rule, in each need's note) and his answers of the same day (also at the top of flow.yaml). Every need
-# is missing: there is no code. Where a need carries a choice still open, the note names the flow's decision (D1 or D3 in flow.yaml)
+# is missing: there is no code. Where a need carries a choice still open, the note names the flow's decision (D1 in flow.yaml)
 # and the need is written as its recommendation.
 schema: delurio-graph/0
 kind: needs
@@ -142,7 +142,9 @@ needs:
       - state: timeUp
       - state: finished
     missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
-    note: D3. Not one of the owner's rules; without it an exam would never end for a talebe who stays on the page.
+    note: >-
+      Not one of the owner's first rules: without it an exam would never end for a talebe who stays on the page. Asked whether it
+      should end by itself, the owner answered "önerdiğin gibi" (21 Nov 2026).
 
   - id: the-question-list
     need: >-
