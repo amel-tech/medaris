@@ -85,8 +85,8 @@ nodes:
 
   # --- the date and time form ---------------------------------------------------------------------------------------------------
   timeFormTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.timeFormTitle, params: { when: session.fullWhen } }, in: [timeForm, savingTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:601 } # h3
-  dateField: { type: field, component: TextField, text: { key: Sessions.dateLabel }, in: [timeForm, savingTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:675 } # <input type=date name=date>: no role in the accessibility tree, so it is found by its label; the star is decorative (F-C-course-a-07)
-  timeField: { type: field, component: TextField, text: { key: Sessions.timeLabel }, in: [timeForm, savingTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:688 } # <input type=time name=time>, the same
+  dateField: { type: field, native: date, component: TextField, text: { key: Sessions.dateLabel }, in: [timeForm, savingTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:675 } # <input type=date name=date>: no role in the accessibility tree, so it is found by its label; the star is decorative (F-C-course-a-07)
+  timeField: { type: field, native: time, component: TextField, text: { key: Sessions.timeLabel }, in: [timeForm, savingTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:688 } # <input type=time name=time>, the same
   timeError: { type: text, component: Text, text: { key: Sessions.errors.time }, in: [timeForm, savingTime], when: "said == 'time'", source: apps/nazar/features/sessions/components/sessions-table.tsx:242 } # under Tarih only, though the hour may be what is missing
 
   # --- the in-person form -------------------------------------------------------------------------------------------------------
