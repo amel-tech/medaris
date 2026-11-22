@@ -2378,6 +2378,9 @@
     "stale": "Someone else changed the exam meanwhile; the page was read again.",
     "topicExists": "A topic of that name exists.",
     "topicNumberTaken": "A topic with that number exists.",
-    "topicTooLong": "A topic is at most three words."
+    "topicTooLong": "A topic is at most three words.",
+    "saving": "Saving…",
+    "notSaved": "Not saved",
+    "retry": "Try again"
   }
 }

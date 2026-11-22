@@ -2378,6 +2378,9 @@
     "stale": "Sınavı bu arada başka biri değiştirdi; sayfa yeniden okundu.",
     "topicExists": "Bu adda bir konu zaten var.",
     "topicNumberTaken": "Bu numarada bir konu zaten var.",
-    "topicTooLong": "Konu en fazla üç kelime olabilir."
+    "topicTooLong": "Konu en fazla üç kelime olabilir.",
+    "saving": "Kaydediliyor…",
+    "notSaved": "Kaydedilemedi",
+    "retry": "Yeniden dene"
   }
 }
