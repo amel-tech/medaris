@@ -651,7 +651,8 @@
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
     "rowRecording": "Recording available",
-    "download": " (downloads)"
+    "download": " (downloads)",
+    "examMultipleChoice": "Multiple choice"
   },
   "AccountPage": {
     "pageTitle": "Account",

@@ -44,6 +44,12 @@ export interface OnlineExamSummaryResponse {
      */
     status: OnlineExamSummaryResponseStatusEnum;
     /**
+     * When it opens; null for a draft.
+     * @type {Date}
+     * @memberof OnlineExamSummaryResponse
+     */
+    startsAt: Date | null;
+    /**
      * 
      * @type {Date}
      * @memberof OnlineExamSummaryResponse
@@ -72,6 +78,7 @@ export function instanceOfOnlineExamSummaryResponse(value: object): value is Onl
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('questionCount' in value) || value['questionCount'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     return true;
 }
@@ -90,6 +97,7 @@ export function OnlineExamSummaryResponseFromJSONTyped(json: any, ignoreDiscrimi
         'title': json['title'],
         'questionCount': json['questionCount'],
         'status': json['status'],
+        'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
     };
 }
@@ -109,6 +117,7 @@ export function OnlineExamSummaryResponseToJSONTyped(value?: OnlineExamSummaryRe
         'title': value['title'],
         'questionCount': value['questionCount'],
         'status': value['status'],
+        'startsAt': ((value['startsAt'] as any).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
     };
 }

@@ -200,6 +200,7 @@ src/models/ExamQuestionResponse.ts
 src/models/ExamQuestionWriteResponse.ts
 src/models/ExamReleaseResponse.ts
 src/models/ExamResultResponse.ts
+src/models/ExamVersionRefResponse.ts
 src/models/ExamVersionResponse.ts
 src/models/ExamWindow.ts
 src/models/ExtendBanDto.ts
@@ -416,6 +417,8 @@ src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
+src/models/PublishOnlineExamDto.ts
+src/models/PublishProblemResponse.ts
 src/models/QuestionAnswerResponse.ts
 src/models/QuestionAnswererResponse.ts
 src/models/QuestionOptionDto.ts
@@ -496,6 +499,7 @@ src/models/SummaryMuderrisResponse.ts
 src/models/TalebeExamState.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
+src/models/TopicRemovedResponse.ts
 src/models/UpdateCourseDeckDto.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateCourseNazirDto.ts
