@@ -46,3 +46,27 @@ export function onlineExamErrorKey(code: string): string {
       return "Problems.actionGeneric";
   }
 }
+
+export type Lack = "text" | "option" | "correct" | "topic";
+
+/** What a question still lacks, as the API says it (text, a second option, a correct one, a topic). */
+export function lacksOf(q: {
+  text: string;
+  options: ReadonlyArray<{ text: string; correct: boolean }>;
+  topicIds: readonly string[];
+}): Lack[] {
+  const lacks: Lack[] = [];
+  if (q.text.trim() === "") lacks.push("text");
+  if (q.options.length < 2) lacks.push("option");
+  if (!q.options.some((o) => o.correct)) lacks.push("correct");
+  if (q.topicIds.length === 0) lacks.push("topic");
+  return lacks;
+}
+
+/** The smallest number from 1 up that no topic holds, as the API gives a new topic. */
+export const nextFreeNumber = (taken: Iterable<number>): number => {
+  const held = new Set(taken);
+  let n = 1;
+  while (held.has(n)) n += 1;
+  return n;
+};
