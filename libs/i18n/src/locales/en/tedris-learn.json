@@ -256,7 +256,7 @@
     "factSaved": "Every answer you choose is saved at once. There is nothing to send at the end.",
     "factConnection": "If your connection drops or the page closes, the exam goes on where you left it; the time does not run meanwhile.",
     "factSwitch": "If you switch to another tab or window, it is counted, and the course team sees each switch with its time.",
-    "factSkip": "You can skip a question; after the last one the skipped questions come back. The list of questions takes you to any of them.",
+    "factSkip": "You can skip questions; after the last one the skipped questions come back. The list of questions takes you to any of them.",
     "factTextSize": "You can make the questions’ text bigger or smaller: the A− and A+ buttons at the top of the question card do this.",
     "factFinish": "“Finish exam” ends the exam whenever you like. When the time is up, the exam ends by itself with the answers saved.",
     "instructionsTitle": "A note from the preparer",
