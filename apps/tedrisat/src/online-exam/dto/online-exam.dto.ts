@@ -183,6 +183,19 @@ export class PublishOnlineExamDto extends VersionedDto {
   @Type(() => Date)
   @IsDate()
   latestStartAt?: Date;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 10080,
+    example: 10,
+    description:
+      "How many minutes after the earliest start a talebe may still start, counted from the start the server sets (now, when `startsAt` is left out). Used when `latestStartAt` is left out; both left out, 10.",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10080)
+  latestStartMinutes?: number;
 }
 
 class QuestionOptionDto {

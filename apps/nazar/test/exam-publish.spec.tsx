@@ -105,6 +105,13 @@ const button = (root: ParentNode, label: string) =>
   ) as HTMLButtonElement;
 const dialog = () =>
   document.querySelector("[role=alertdialog]") as HTMLElement;
+const minutesField = () => {
+  const label = [...document.querySelectorAll("label")].find((l) =>
+    l.textContent?.startsWith("Geç kalanlar kaç dakika")
+  ) as HTMLLabelElement;
+  return (document.getElementById(label.htmlFor) ??
+    label.querySelector("input")) as HTMLInputElement;
+};
 const fieldsUnder = (legend: string) => {
   const set = [...document.querySelectorAll("fieldset")].find(
     (f) => f.querySelector("legend")?.textContent === legend
@@ -127,7 +134,12 @@ describe("publishing an online exam (MDRS-299)", () => {
   it("schedules it at the day and time chosen, the latest start ten minutes later", async () => {
     actions.publishOnlineExam.mockImplementation(async (_id, input) => ({
       success: true,
-      data: scheduled(input.startsAt, input.latestStartAt),
+      data: scheduled(
+        input.startsAt,
+        new Date(
+          new Date(input.startsAt).getTime() + input.latestStartMinutes * 60_000
+        ).toISOString()
+      ),
     }));
     const root = await page(ready);
     const earliest = fieldsUnder("En erken başlama");
@@ -138,11 +150,9 @@ describe("publishing an online exam (MDRS-299)", () => {
     ]);
     await typeInto(earliest.date, "2026-12-02");
     await typeInto(earliest.time, "20:00");
-    const latest = fieldsUnder("En geç başlama");
-    expect([latest.date.value, latest.time.value]).toEqual([
-      "2026-12-02",
-      "20:10",
-    ]);
+    // Ten minutes for late starters, and the time they come to.
+    expect(minutesField().value).toBe("10");
+    expect(root.textContent).toContain("20:10 saatine kadar başlayabilir");
 
     await click(button(root, "Zamanla"));
     await settle(80);
@@ -154,7 +164,7 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(actions.publishOnlineExam).toHaveBeenCalledWith("e1", {
       version: 3,
       startsAt: "2026-12-02T17:00:00.000Z",
-      latestStartAt: "2026-12-02T17:10:00.000Z",
+      latestStartMinutes: 10,
     });
     // The published exam, with no read of the page.
     expect(root.textContent).toContain("Zamanlandı");
@@ -162,6 +172,36 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(button(root, "Taslağa al")).toBeTruthy();
     expect(button(root, "Soru ekle")).toBeUndefined();
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("publishes now with the late window counted from the press, twenty minutes when the hoca says so", async () => {
+    actions.publishOnlineExam.mockImplementation(async () => ({
+      success: true,
+      data: scheduled("2026-11-30T09:32:00.000Z", "2026-11-30T09:52:00.000Z"),
+    }));
+    const root = await page(ready);
+    const now = [...root.querySelectorAll("[role=radio]")].find(
+      (r) =>
+        document.getElementById(r.getAttribute("aria-labelledby") ?? "")
+          ?.textContent === "Şimdi yayınla" ||
+        r.closest("label")?.textContent?.includes("Şimdi yayınla")
+    ) as HTMLElement;
+    await click(now);
+    await settle(20);
+    await typeInto(minutesField(), "20");
+    // 12:20 in Istanbul, and twenty minutes after it if published now.
+    expect(root.textContent).toContain("12:40 saatine kadar");
+    // The hoca reads it over for twelve minutes before pressing.
+    vi.setSystemTime(new Date("2026-11-30T09:32:00Z"));
+    await click(button(root, "Yayınla"));
+    await settle(80);
+    await click(button(dialog(), "Yayınla"));
+    await settle(80);
+    // No start: the server opens it at its own now and counts twenty from there.
+    expect(actions.publishOnlineExam).toHaveBeenCalledWith("e1", {
+      version: 3,
+      latestStartMinutes: 20,
+    });
   });
 
   it("lists what keeps it from being published, and offers no button", async () => {
@@ -192,15 +232,12 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(button(root, "Zamanla")).toBeUndefined();
   });
 
-  it("refuses a latest start before the earliest, and sends nothing", async () => {
+  it("refuses a late window of no minutes, and sends nothing", async () => {
     const root = await page(ready);
-    const latest = fieldsUnder("En geç başlama");
-    await typeInto(latest.time, "12:00");
+    await typeInto(minutesField(), "0");
     await click(button(root, "Zamanla"));
     await settle(80);
-    expect(root.textContent).toContain(
-      "En geç başlama, en erken başlamadan sonra olmalı."
-    );
+    expect(root.textContent).toContain("1 ile 10080 arasında bir dakika yaz.");
     expect(dialog()).toBeNull();
     expect(actions.publishOnlineExam).not.toHaveBeenCalled();
   });

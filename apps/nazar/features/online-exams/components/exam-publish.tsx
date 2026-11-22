@@ -14,7 +14,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
@@ -100,47 +100,43 @@ export function PublishSection({
   /** A question's form is open: publishing would leave it out. */
   holding: boolean;
   sending: boolean;
-  onPublish: (times: { startsAt?: string; latestStartAt?: string }) => void;
+  onPublish: (times: { startsAt?: string; latestStartMinutes: number }) => void;
 }) {
   const t = useTranslations("nazar");
   const [mode, setMode] = useState<"now" | "later">("later");
   const [earliest, setEarliest] = useState(() =>
     fieldsOf(nextHour(new Date(), timeZone), timeZone)
   );
-  const [latest, setLatest] = useState(() =>
-    fieldsOf(
-      later(nextHour(new Date(), timeZone), LATEST_START_DEFAULT_MINUTES),
-      timeZone
-    )
+  // The late window in minutes, counted from the exam's real opening: the
+  // press for "Şimdi yayınla", the chosen time otherwise. A clock time would
+  // drift between the choice and the press.
+  const [lateMinutes, setLateMinutes] = useState(
+    String(LATEST_START_DEFAULT_MINUTES)
   );
-  const [latestTouched, setLatestTouched] = useState(false);
   const [asking, setAsking] = useState(false);
   const [tried, setTried] = useState(false);
+  // "Şimdi" moves with the clock; the time shown under the minutes follows it.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (mode !== "now") return;
+    const timer = window.setInterval(() => setTick((n) => n + 1), 15_000);
+    return () => window.clearInterval(timer);
+  }, [mode]);
 
-  const followLatest = (from: Date | null) => {
-    if (!latestTouched && from) {
-      setLatest(fieldsOf(later(from, LATEST_START_DEFAULT_MINUTES), timeZone));
-    }
-  };
-  const changeEarliest = (next: { date: string; time: string }) => {
+  const changeEarliest = (next: { date: string; time: string }) =>
     setEarliest(next);
-    followLatest(instantOf(next.date, next.time, timeZone));
-  };
-  const changeMode = (next: string) => {
-    const now = next === "now";
-    setMode(now ? "now" : "later");
-    followLatest(
-      now
-        ? minuteOf(new Date())
-        : instantOf(earliest.date, earliest.time, timeZone)
-    );
-  };
+  const changeMode = (next: string) =>
+    setMode(next === "now" ? "now" : "later");
 
   const startAt =
     mode === "now"
       ? minuteOf(new Date())
       : instantOf(earliest.date, earliest.time, timeZone);
-  const latestAt = instantOf(latest.date, latest.time, timeZone);
+  const minutes = /^\d+$/.test(lateMinutes.trim())
+    ? Number(lateMinutes.trim())
+    : null;
+  const latestAt =
+    startAt !== null && minutes !== null ? later(startAt, minutes) : null;
   const startProblem =
     mode === "later" && startAt === null
       ? t("OnlineExams.pickTime")
@@ -150,11 +146,9 @@ export function PublishSection({
         ? t("OnlineExams.startPassed")
         : null;
   const latestProblem =
-    latestAt === null
-      ? t("OnlineExams.pickTime")
-      : startAt !== null && latestAt.getTime() < startAt.getTime()
-        ? t("OnlineExams.latestBefore")
-        : null;
+    minutes === null || minutes < 1 || minutes > 10080
+      ? t("OnlineExams.lateMinutesInvalid")
+      : null;
 
   const ask = () => {
     setTried(true);
@@ -163,12 +157,12 @@ export function PublishSection({
   };
   const confirm = () => {
     setAsking(false);
-    if (!latestAt || (mode === "later" && !startAt)) return;
+    if (minutes === null || (mode === "later" && !startAt)) return;
     onPublish({
       ...(mode === "later" && startAt
         ? { startsAt: startAt.toISOString() }
         : {}),
-      latestStartAt: latestAt.toISOString(),
+      latestStartMinutes: minutes,
     });
   };
 
@@ -228,37 +222,32 @@ export function PublishSection({
               <p className="mds-help">{t("OnlineExams.earliestStartHelp")}</p>
             </fieldset>
           ) : null}
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mds-label">
-              {t("OnlineExams.latestStartLabel")}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              <Field
-                label={t("OnlineExams.dateLabel")}
-                error={tried && latestProblem ? latestProblem : undefined}
-              >
-                <Input
-                  type="date"
-                  value={latest.date}
-                  onChange={(e) => {
-                    setLatestTouched(true);
-                    setLatest({ ...latest, date: e.target.value });
-                  }}
-                />
-              </Field>
-              <Field label={t("OnlineExams.timeLabel")}>
-                <Input
-                  type="time"
-                  value={latest.time}
-                  onChange={(e) => {
-                    setLatestTouched(true);
-                    setLatest({ ...latest, time: e.target.value });
-                  }}
-                />
-              </Field>
-            </div>
-            <p className="mds-help">{t("OnlineExams.latestStartHelp")}</p>
-          </fieldset>
+          <Field
+            label={t("OnlineExams.lateMinutesLabel")}
+            error={tried && latestProblem ? latestProblem : undefined}
+          >
+            <Input
+              inputMode="numeric"
+              value={lateMinutes}
+              onChange={(e) =>
+                setLateMinutes(e.target.value.replace(/\D/g, ""))
+              }
+              className="w-24"
+            />
+          </Field>
+          <p className="mds-help">
+            {latestAt
+              ? t(
+                  mode === "now"
+                    ? "OnlineExams.lateMinutesHelpNow"
+                    : "OnlineExams.lateMinutesHelp",
+                  {
+                    minutes: minutes ?? 0,
+                    time: fieldsOf(latestAt, timeZone).time,
+                  }
+                )
+              : t("OnlineExams.latestStartHelp")}
+          </p>
           <p className="mds-caption text-neutral-muted">
             {t("OnlineExams.timeZoneNote", { zone: timeZone })}
           </p>

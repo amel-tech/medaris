@@ -230,6 +230,22 @@ describe("online exams, publishing (e2e)", () => {
     expect(audit.map((a) => a.action)).toContain("online_exam.publish");
   });
 
+  it("counts the late window in minutes from the start it sets, now included", async () => {
+    const examId = await readyExam();
+    const before = Date.now();
+    const res = await publish(examId, {
+      version: 3,
+      latestStartMinutes: 20,
+    }).expect(200);
+    const startsAt = new Date(res.body.startsAt).getTime();
+    // Opened now (to the minute), and open to late starters for twenty minutes.
+    expect(startsAt).toBeLessThanOrEqual(before);
+    expect(startsAt).toBeGreaterThan(before - 2 * MINUTE);
+    expect(new Date(res.body.latestStartAt).getTime()).toBe(
+      startsAt + 20 * MINUTE
+    );
+  });
+
   it("lists every problem of an exam that is not ready, and plans nothing", async () => {
     const empty = (
       await http()

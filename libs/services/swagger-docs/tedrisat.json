@@ -31230,6 +31230,13 @@
             "type": "string",
             "example": "2026-12-01T17:10:00.000Z",
             "description": "Until when a talebe may start; every attempt gets the whole time. Left out, the earliest start plus 10 minutes. Before the earliest start is 400 EXAM_TIME_PASSED."
+          },
+          "latestStartMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10080,
+            "example": 10,
+            "description": "How many minutes after the earliest start a talebe may still start, counted from the start the server sets (now, when `startsAt` is left out). Used when `latestStartAt` is left out; both left out, 10."
           }
         },
         "required": [
