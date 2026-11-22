@@ -310,7 +310,7 @@
     "errorFailed": "Something went wrong. Try again in a moment.",
     "entryResult": "See the result",
     "toMyExams": "My exams",
-    "factColors": "In the list of questions below, the ones you have not answered are yellow, the ones you skipped are orange, and the ones you answered are plain (white on the light theme, dark on the dark theme).",
+    "factColors": "In the list of questions below, the ones you have not answered are plain, the ones you answered are blue, and the ones you skipped are dark yellow.",
     "staleTitle": "Medaris was updated",
     "stale": "Reload the page to go on. The time has stopped; your choices are kept in this tab and are saved after the reload.",
     "reload": "Reload the page"
