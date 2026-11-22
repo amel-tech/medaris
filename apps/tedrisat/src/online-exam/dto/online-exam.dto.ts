@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDate,
   IsEnum,
   IsInt,
   IsOptional,
@@ -26,32 +27,37 @@ import {
   Scoring,
   TOPIC_NAME_MAX,
   TOPIC_NUMBER_MAX,
-  ZEROTH_OPTION_MAX,
-  ZEROTH_QUESTION_MAX,
 } from "../domain/online-exam";
 
 const trimmed = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() : value;
 const trimmedOrNull = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() || null : value;
-const trimmedEach = ({ value }: { value: unknown }) =>
-  Array.isArray(value)
-    ? value.map((v) => (typeof v === "string" ? v.trim() : v))
-    : value;
+
+/**
+ * The largest Postgres `integer`: the columns' bound, not a product limit.
+ * Above it a write would fail in the database (500) instead of here (400).
+ */
+const INTEGER_MAX = 2_147_483_647;
 
 /** The version every write names: the draft's read, or the answer of the write before. */
 class VersionedDto {
   @ApiProperty({
     minimum: 1,
+    maximum: INTEGER_MAX,
     description:
       "The exam's version the page holds; an older one is refused (409 EXAM_STALE).",
   })
   @IsInt()
   @Min(1)
+  @Max(INTEGER_MAX)
   version!: number;
 }
 
-/** "Sınavı hazırla": the exam's settings, its zeroth question and its topics; only what is sent changes. */
+/**
+ * "Sınavı hazırla": the exam's settings and its topics; only what is sent
+ * changes. Its zeroth question is the medrese's, copied when it is published.
+ */
 export class UpdateOnlineExamDto extends VersionedDto {
   @ApiPropertyOptional({ maxLength: ONLINE_EXAM_TITLE_MAX })
   @Transform(trimmed)
@@ -63,11 +69,14 @@ export class UpdateOnlineExamDto extends VersionedDto {
 
   @ApiPropertyOptional({
     minimum: 1,
-    description: '"Süre (dakika)"; no upper bound.',
+    maximum: INTEGER_MAX,
+    description:
+      '"Süre (dakika)"; no upper bound but the column\'s (the owner: "Sınır yok").',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(INTEGER_MAX)
   durationMinutes?: number;
 
   @ApiPropertyOptional({
@@ -81,30 +90,6 @@ export class UpdateOnlineExamDto extends VersionedDto {
   @IsString()
   @MaxLength(ONLINE_EXAM_INSTRUCTIONS_MAX)
   instructions?: string | null;
-
-  @ApiPropertyOptional({
-    maxLength: ZEROTH_QUESTION_MAX,
-    description: "The preparer's question about the hadith.",
-  })
-  @Transform(trimmed)
-  @IsOptional()
-  @IsString()
-  @MaxLength(ZEROTH_QUESTION_MAX)
-  zerothQuestion?: string;
-
-  @ApiPropertyOptional({
-    type: [String],
-    description:
-      "The zeroth question's options in their order; empty fields are not sent. Replaces them all.",
-  })
-  @Transform(trimmedEach)
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(50)
-  @IsString({ each: true })
-  @MinLength(1, { each: true })
-  @MaxLength(ZEROTH_OPTION_MAX, { each: true })
-  zerothOptions?: string[];
 
   @ApiPropertyOptional({
     type: [String],
@@ -172,6 +157,31 @@ export class UpdateCourseTopicDto {
 }
 
 export class VersionDto extends VersionedDto {}
+
+/** "Yayınla": now, or at a day and time, with a latest start. */
+export class PublishOnlineExamDto extends VersionedDto {
+  @ApiPropertyOptional({
+    type: Date,
+    example: "2026-12-01T17:00:00.000Z",
+    description:
+      "The earliest start, which becomes the exam celse's time; left out, now. Seconds are dropped. Before this minute is 400 EXAM_TIME_PASSED.",
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startsAt?: Date;
+
+  @ApiPropertyOptional({
+    type: Date,
+    example: "2026-12-01T17:10:00.000Z",
+    description:
+      "Until when a talebe may start; every attempt gets the whole time. Left out, the earliest start plus 10 minutes. Before the earliest start is 400 EXAM_TIME_PASSED.",
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  latestStartAt?: Date;
+}
 
 class QuestionOptionDto {
   @ApiProperty({ maxLength: OPTION_TEXT_MAX })
@@ -302,13 +312,34 @@ export class ExamQuestionResponse {
   lacks!: string[];
 }
 
+/** One thing that keeps the exam from being published. */
+export class PublishProblemResponse {
+  @ApiProperty({
+    enum: ["NO_QUESTION", "QUESTION", "POINTS", "NO_ZEROTH"],
+    description:
+      "NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question.",
+  })
+  kind!: "NO_QUESTION" | "QUESTION" | "POINTS" | "NO_ZEROTH";
+  @ApiPropertyOptional() number?: number;
+  @ApiPropertyOptional({
+    type: [String],
+    enum: ["text", "option", "correct", "topic"],
+  })
+  lacks?: string[];
+  @ApiPropertyOptional({ example: "80.00" }) total?: string;
+}
+
 export class OnlineExamDraftResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty({ format: "uuid" }) courseId!: string;
   @ApiProperty() title!: string;
   @ApiProperty() durationMinutes!: number;
   @ApiProperty({ type: String, nullable: true }) instructions!: string | null;
-  @ApiProperty() zerothQuestion!: string;
+  @ApiProperty({
+    description:
+      "The medrese's zeroth question as it was copied when the exam was published; empty in a draft.",
+  })
+  zerothQuestion!: string;
   @ApiProperty({ type: [ZerothOptionResponse] })
   zerothOptions!: ZerothOptionResponse[];
   @ApiProperty({
@@ -331,6 +362,20 @@ export class OnlineExamDraftResponse {
   pointsTotal!: string;
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "The earliest start, its celse's time; null for a draft, which has no celse.",
+  })
+  startsAt!: Date | null;
+  @ApiProperty({ type: Date, nullable: true })
+  latestStartAt!: Date | null;
+  @ApiProperty({
+    type: [PublishProblemResponse],
+    description: "What keeps it from being published; empty when it can be.",
+  })
+  problems!: PublishProblemResponse[];
   @ApiProperty() version!: number;
 }
 
@@ -371,6 +416,12 @@ export class OnlineExamSummaryResponse {
   @ApiProperty() questionCount!: number;
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description: "When it opens; null for a draft.",
+  })
+  startsAt!: Date | null;
   @ApiProperty() updatedAt!: Date;
 }
 

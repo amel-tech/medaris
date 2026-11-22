@@ -1,4 +1,5 @@
 import { BadRequestError, ConflictError, NotFoundError } from "@medaris/common";
+import type { PublishProblem, PublishTimeProblem } from "../domain/online-exam";
 
 /**
  * The refusals of an online exam's preparation (MDRS-299), with the codes
@@ -18,11 +19,14 @@ export class ExamStaleError extends ConflictError {
   }
 }
 
-/** The exam has opened (published): its questions no longer change. */
+/**
+ * The exam is published: nothing of it changes. Until it opens it can be
+ * taken back to a draft; once it has opened, not even that.
+ */
 export class ExamLockedError extends ConflictError {
   static readonly code = "EXAM_LOCKED";
   constructor(examId: string) {
-    super(ExamLockedError.code, `Exam ${examId} has opened`, { examId });
+    super(ExamLockedError.code, `Exam ${examId} is published`, { examId });
   }
 }
 
@@ -69,6 +73,24 @@ export class TopicNotFoundError extends NotFoundError {
     super(TopicNotFoundError.code, `No topic ${topicId} in the course`, {
       topicId,
     });
+  }
+}
+
+/**
+ * A topic that questions carry is not deleted: they would lose it. The
+ * refusal names them, each by its exam and its number there.
+ */
+export class TopicInUseError extends ConflictError {
+  static readonly code = "TOPIC_IN_USE";
+  constructor(
+    topicId: string,
+    questions: Array<{ examId: string; examTitle: string; number: number }>
+  ) {
+    super(
+      TopicInUseError.code,
+      `${questions.length} questions carry topic ${topicId}`,
+      { topicId, questions }
+    );
   }
 }
 
@@ -123,6 +145,35 @@ export class OnlineExamNotFoundError extends NotFoundError {
   static readonly code = "EXAM_NOT_FOUND";
   constructor(examId: string) {
     super(OnlineExamNotFoundError.code, `No online exam ${examId}`, {
+      examId,
+    });
+  }
+}
+
+/** The exam is not complete yet: every problem is listed, and nothing is published. */
+export class ExamNotReadyError extends ConflictError {
+  static readonly code = "EXAM_NOT_READY";
+  constructor(examId: string, problems: PublishProblem[]) {
+    super(ExamNotReadyError.code, `Exam ${examId} is not ready to publish`, {
+      examId,
+      problems,
+    });
+  }
+}
+
+/** The start chosen has passed, or the latest start is before it. */
+export class ExamTimePassedError extends BadRequestError {
+  static readonly code = "EXAM_TIME_PASSED";
+  constructor(reason: PublishTimeProblem) {
+    super(ExamTimePassedError.code, `Cannot publish: ${reason}`, { reason });
+  }
+}
+
+/** Taking back an exam that is a draft already. */
+export class ExamNotPublishedError extends ConflictError {
+  static readonly code = "EXAM_NOT_PUBLISHED";
+  constructor(examId: string) {
+    super(ExamNotPublishedError.code, `Exam ${examId} is not published`, {
       examId,
     });
   }

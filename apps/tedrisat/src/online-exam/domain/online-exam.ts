@@ -170,3 +170,96 @@ export const pointsFit = (
   const left = TOTAL_HUNDREDTHS - own;
   return { fits: sharing ? left > 0 : left >= 0, left };
 };
+
+// ----- publishing ------------------------------------------------------------------------------
+
+/**
+ * The latest start the page fills in: the earliest plus ten minutes. Those
+ * who asked for exams, relayed on 22 Nov 2026: "'sınava en geç başlama
+ * saati' de defaultta 10 dakika sonra olacak".
+ */
+export const LATEST_START_DEFAULT_MINUTES = 10;
+
+/** What keeps an exam from being published, in the order the page lists them. */
+export type PublishProblem =
+  | { kind: "NO_QUESTION" }
+  | { kind: "QUESTION"; number: number; lacks: QuestionLack[] }
+  | { kind: "POINTS"; total: string }
+  | { kind: "NO_ZEROTH" };
+
+/**
+ * An exam is published with one question at least, every question complete,
+ * points that total 100 and its madrasah's zeroth question. `pointsTotal` is
+ * the total as the draft reads it ("100.00").
+ */
+export const publishProblems = (exam: {
+  questions: ReadonlyArray<QuestionShape>;
+  pointsTotal: string;
+  hasZeroth: boolean;
+}): PublishProblem[] => {
+  const problems: PublishProblem[] = [];
+  if (exam.questions.length === 0) problems.push({ kind: "NO_QUESTION" });
+  exam.questions.forEach((q, i) => {
+    const lacks = lacksOf(q);
+    if (lacks.length > 0) {
+      problems.push({ kind: "QUESTION", number: i + 1, lacks });
+    }
+  });
+  if (
+    exam.questions.length > 0 &&
+    exam.pointsTotal !== pointsText(TOTAL_HUNDREDTHS)
+  ) {
+    problems.push({ kind: "POINTS", total: exam.pointsTotal });
+  }
+  if (!exam.hasZeroth) problems.push({ kind: "NO_ZEROTH" });
+  return problems;
+};
+
+/** The minute an instant falls in: the celse's time has no seconds. */
+export const toMinute = (at: Date): Date =>
+  new Date(Math.floor(at.getTime() / 60_000) * 60_000);
+
+/** Why a start cannot be published; null when it can. */
+export type PublishTimeProblem = "START_PASSED" | "LATEST_BEFORE_START";
+
+/**
+ * The earliest start is this minute or later, and the latest start is not
+ * before it. Both are whole minutes (`toMinute`).
+ */
+export const publishTimeProblem = (
+  startsAt: Date,
+  latestStartAt: Date,
+  now: Date
+): PublishTimeProblem | null => {
+  if (startsAt.getTime() < toMinute(now).getTime()) return "START_PASSED";
+  if (latestStartAt.getTime() < startsAt.getTime()) {
+    return "LATEST_BEFORE_START";
+  }
+  return null;
+};
+
+export type OnlineExamStatus = "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+
+/**
+ * Where an exam stands: a draft until it is published; scheduled until its
+ * celse starts; open until the last who may start, starting at the latest
+ * start, has used the whole time; closed after that, or once closed early.
+ */
+export const examStatus = (
+  exam: {
+    publishedAt: Date | null;
+    closedEarlyAt: Date | null;
+    startsAt: Date | null;
+    latestStartAt: Date | null;
+    durationMinutes: number;
+  },
+  now: Date
+): OnlineExamStatus => {
+  if (exam.closedEarlyAt) return "CLOSED";
+  if (!exam.publishedAt || !exam.startsAt) return "DRAFT";
+  if (now.getTime() < exam.startsAt.getTime()) return "SCHEDULED";
+  const lastEnd =
+    (exam.latestStartAt ?? exam.startsAt).getTime() +
+    exam.durationMinutes * 60_000;
+  return now.getTime() < lastEnd ? "OPEN" : "CLOSED";
+};

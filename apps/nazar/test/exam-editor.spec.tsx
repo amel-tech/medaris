@@ -22,6 +22,8 @@ const actions = {
   removeExamQuestion: vi.fn(),
   createCourseTopic: vi.fn(),
   createOnlineExam: vi.fn(),
+  setExamQuestionPoints: vi.fn(),
+  removeCourseTopic: vi.fn(),
 };
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
@@ -29,6 +31,9 @@ vi.mock("~/features/online-exams/actions", () => ({
   removeExamQuestion: (...a: unknown[]) => actions.removeExamQuestion(...a),
   createCourseTopic: (...a: unknown[]) => actions.createCourseTopic(...a),
   createOnlineExam: (...a: unknown[]) => actions.createOnlineExam(...a),
+  setExamQuestionPoints: (...a: unknown[]) =>
+    actions.setExamQuestionPoints(...a),
+  removeCourseTopic: (...a: unknown[]) => actions.removeCourseTopic(...a),
 }));
 
 const draft = {
@@ -185,7 +190,13 @@ describe("the exam editor (MDRS-299)", () => {
 
   const echo = (
     id: string,
-    body: { text: string; options: object[]; topicIds: string[] },
+    body: {
+      text: string;
+      options: object[];
+      topicIds: string[];
+      answerMode?: string;
+      scoring?: string | null;
+    },
     version: number
   ) => ({
     success: true,
@@ -196,8 +207,8 @@ describe("the exam editor (MDRS-299)", () => {
         number: 1,
         text: body.text,
         options: body.options.map((o, i) => ({ id: `o${i}`, ...o })),
-        answerMode: "SINGLE",
-        scoring: null,
+        answerMode: body.answerMode ?? "SINGLE",
+        scoring: body.scoring ?? null,
         topicIds: body.topicIds,
         ownPoints: null,
         points: "100.00",
@@ -315,5 +326,235 @@ describe("the exam editor (MDRS-299)", () => {
       "q1",
       expect.objectContaining({ topicIds: ["t7"] })
     );
+  });
+
+  /**
+   * The kit's controls by what they say: a check box or a radio is labelled by
+   * the text beside it. A check box is pressed by its label: happy-dom does not
+   * forward a click on the box to its input, as the browser does.
+   */
+  const control = (
+    root: HTMLElement,
+    role: "checkbox" | "radio",
+    label: string,
+    nth = 0
+  ) => {
+    const found = [...root.querySelectorAll(`[role=${role}]`)].filter((c) => {
+      const id = c.getAttribute("aria-labelledby");
+      return id !== null && document.getElementById(id)?.textContent === label;
+    })[nth] as HTMLElement;
+    return role === "checkbox"
+      ? (found.closest("label") as HTMLElement)
+      : found;
+  };
+  const field = (root: HTMLElement, label: string) => {
+    const l = [...root.querySelectorAll("label")].find((it) =>
+      it.textContent?.startsWith(label)
+    ) as HTMLLabelElement;
+    return (document.getElementById(l.htmlFor) ??
+      l.querySelector("input")) as HTMLInputElement;
+  };
+  const option = (root: HTMLElement, n: number) =>
+    [...root.querySelectorAll("input")].find(
+      (i) => i.getAttribute("aria-label") === `${n}. şık`
+    ) as HTMLInputElement;
+  const topicNumbers = (root: HTMLElement) =>
+    [...root.querySelectorAll("input")].find(
+      (i) => i.getAttribute("placeholder") === "3, 7"
+    ) as HTMLInputElement;
+
+  it("asks how a question with two correct options is answered and scored, and sends it", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Hangileri kıyasın rüknüdür?");
+    await typeInto(option(root, 1), "Asıl");
+    await typeInto(option(root, 2), "Fer");
+    await typeInto(option(root, 3), "Rivayet");
+    // One correct option: radio buttons, nothing asked.
+    await click(control(root, "checkbox", "Doğru", 0));
+    expect(root.textContent).not.toContain("Cevaplama");
+    await click(control(root, "checkbox", "Doğru", 1));
+    expect(root.textContent).toContain("Cevaplama");
+    expect(root.textContent).not.toContain("Puanlama");
+    await click(control(root, "radio", "Çoklu seçim"));
+    await click(control(root, "radio", "Kesirli, yanlış düşer"));
+    await typeInto(topicNumbers(root), "3");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({
+        answerMode: "MULTIPLE",
+        scoring: "IN_SHARES",
+        version: 2,
+      })
+    );
+    expect(root.textContent).toContain("Çoklu seçim · Kesirli, yanlış düşer");
+    // No own points typed: no points write.
+    expect(actions.setExamQuestionPoints).not.toHaveBeenCalled();
+  });
+
+  it("shows own points at once, and sets them after the save with the version the save gave", async () => {
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later(echo(id, body, 3))
+    );
+    // Held from when it is called, so the answers come in the order of the calls.
+    actions.setExamQuestionPoints.mockImplementation(() =>
+      later({
+        success: true,
+        data: {
+          questions: [{ questionId: "q1", points: "10.00", own: true }],
+          total: "10.00",
+          version: 4,
+        },
+      })
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Soru");
+    await typeInto(field(root, "Kendi puanı"), "10");
+    await click(button(root, "Kaydet"));
+    expect(root.textContent).toContain("10 puan · kendi puanı");
+    held.shift()?.(); // made
+    await settle();
+    held.shift()?.(); // saved
+    await settle();
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      3,
+      "10.00"
+    );
+    expect(root.textContent).toContain("Kaydediliyor…");
+    held.shift()?.(); // points set
+    await settle();
+    expect(root.textContent).toContain("10 puan · kendi puanı");
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+  });
+
+  it("keeps the typed points when they do not fit, and says how many are left", async () => {
+    const two = {
+      ...draft,
+      questions: [
+        {
+          ...echo("q1", { text: "Birinci", options: [], topicIds: [] }, 1).data
+            .question,
+          ownPoints: "50.00",
+          points: "50.00",
+        },
+        {
+          ...echo("q2", { text: "İkinci", options: [], topicIds: [] }, 1).data
+            .question,
+          number: 2,
+          points: "50.00",
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => ({
+      ...echo(id, body, 2),
+      data: {
+        ...echo(id, body, 2).data,
+        question: { ...echo(id, body, 2).data.question, number: 2 },
+      },
+    }));
+    actions.setExamQuestionPoints.mockResolvedValue({
+      success: false,
+      code: "POINTS_OVER_TOTAL",
+      pointsLeft: "50.00",
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={two} />));
+    expect(root.textContent).toContain("50 puan · kendi puanı");
+    expect(root.textContent).toContain("50 puan · eşit pay");
+    await click(
+      [...root.querySelectorAll("button")].filter(
+        (b) => b.textContent === "Düzenle"
+      )[1] as HTMLButtonElement
+    );
+    await typeInto(field(root, "Kendi puanı"), "60");
+    await click(button(root, "Kaydet"));
+    await settle(80);
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q2",
+      2,
+      "60.00"
+    );
+    expect(document.body.textContent).toContain(
+      "verilebilecek en çok 50 puan kaldı"
+    );
+    expect(root.textContent).toContain("Kaydedilemedi");
+    // The shares stay as the server has them; the typed points wait in the form.
+    expect(root.textContent).toContain("50 puan · eşit pay");
+    await click(
+      [...root.querySelectorAll("button")].filter(
+        (b) => b.textContent === "Düzenle"
+      )[1] as HTMLButtonElement
+    );
+    expect(field(root, "Kendi puanı").value).toBe("60");
+  });
+
+  const removeChip = async (label: string) => {
+    await click(
+      root().querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement
+    );
+    await settle(80);
+    await click(
+      button(document.querySelector("[role=alertdialog]") as HTMLElement, "Sil")
+    );
+    await settle(80);
+  };
+  const root = () => document.body;
+  const chips = () =>
+    [...document.querySelectorAll("#topics-title ~ ul li")].map((li) =>
+      li.textContent?.trim()
+    );
+
+  it("takes a topic off at once, and puts it back naming the questions that carry it", async () => {
+    actions.removeCourseTopic.mockImplementation(() =>
+      later({
+        success: false,
+        code: "TOPIC_IN_USE",
+        questions: [{ examId: "e2", examTitle: "Ara sınav", number: 2 }],
+      })
+    );
+    await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    expect(chips()).toEqual(["3. Kıyas"]);
+    await removeChip("3. Kıyas konusunu sil");
+    expect(chips()).toEqual([]);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t3");
+    held.shift()?.();
+    await settle(80);
+    expect(chips()).toEqual(["3. Kıyas"]);
+    expect(document.body.textContent).toContain(
+      "şu sorular onu taşıyor: Ara sınav, 2. soru"
+    );
+  });
+
+  it("deletes a new topic taken off while it was being made, by the id the server gave", async () => {
+    actions.createCourseTopic.mockImplementation(() =>
+      later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
+    );
+    actions.removeCourseTopic.mockResolvedValue({ success: true });
+    const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(page, "Konu ekle"));
+    expect(chips()).toEqual(["1. İcma", "3. Kıyas"]);
+    await removeChip("1. İcma konusunu sil");
+    expect(chips()).toEqual(["3. Kıyas"]);
+    held.shift()?.(); // the topic is made
+    await settle(80);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
+    expect(chips()).toEqual(["3. Kıyas"]);
   });
 });

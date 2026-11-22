@@ -286,7 +286,9 @@ export const SessionPage = async ({
           format: t(
             session.exam.format === "ORAL"
               ? "SessionPage.examOral"
-              : "SessionPage.examWritten"
+              : session.exam.format === "MULTIPLE_CHOICE"
+                ? "SessionPage.examMultipleChoice"
+                : "SessionPage.examWritten"
           ),
           maxScore: t("SessionPage.examMaxScore", {
             max: session.exam.maxScore,

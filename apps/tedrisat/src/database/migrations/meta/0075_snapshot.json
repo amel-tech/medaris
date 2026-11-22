@@ -1,6 +1,6 @@
 {
   "id": "369e3c79-8c1d-41c7-9d3b-71fe2e8e3567",
-  "prevId": "38e35ab4-b578-4495-9496-3473cdc437d3",
+  "prevId": "c4e0681e-f795-45e7-a777-edb13baa531e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7532,7 +7532,8 @@
       "schema": "public",
       "values": [
         "WRITTEN",
-        "ORAL"
+        "ORAL",
+        "MULTIPLE_CHOICE"
       ]
     },
     "public.offsite_request_status": {

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, type SQLWrapper, sql } from "drizzle-orm";
 import type { DatabaseService } from "../database/database.service";
 import { deleteAssignmentsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -357,7 +357,44 @@ export async function deleteLessonExams(
     .from(lessonExams)
     .where(inArray(lessonExams.lessonId, lessonIds));
   await tx.delete(examResults).where(inArray(examResults.examId, examIds));
+  // An online exam (MDRS-299) whose celse goes is a draft again: it keeps its
+  // questions, and the restricting key to the celse is cleared first.
+  await tx
+    .update(onlineExams)
+    .set({
+      lessonId: null,
+      publishedAt: null,
+      latestStartAt: null,
+      version: sql`${onlineExams.version} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(inArray(onlineExams.lessonId, lessonIds));
   await tx.delete(lessonExams).where(inArray(lessonExams.lessonId, lessonIds));
+}
+
+/**
+ * Deletes one session and everything that hangs off it, inside the caller's
+ * transaction, as the archive's session purge does. Used when an online
+ * exam's publication is taken back before it opens (MDRS-299): its draft has
+ * no celse. `lesson_invitations` stays, so the sweep sends the CANCEL.
+ */
+export async function deleteSession(
+  tx: Tx,
+  lessonId: string,
+  reason: DeletionReason
+): Promise<void> {
+  const ids = [lessonId];
+  await tx
+    .delete(lessonRecordings)
+    .where(inArray(lessonRecordings.lessonId, ids));
+  await tx.delete(lessonNotes).where(inArray(lessonNotes.lessonId, ids));
+  await tx
+    .delete(lessonQuestions)
+    .where(inArray(lessonQuestions.lessonId, ids));
+  await deleteLessonResources(tx, ids, reason);
+  await deleteLessonSubmissions(tx, ids, reason);
+  await deleteLessonAssignments(tx, ids, reason);
+  await tx.delete(lessons).where(eq(lessons.id, lessonId));
 }
 
 /** The ids of every course of a köşk, hidden or not. */

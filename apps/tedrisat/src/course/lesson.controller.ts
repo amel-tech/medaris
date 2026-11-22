@@ -350,7 +350,7 @@ export class LessonController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or a new time or length was sent for an online exam's celse, which its exam page changes (ONLINE_EXAM_SESSION, MDRS-299).",
   })
   @Patch("lessons/:id")
   @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
@@ -384,7 +384,7 @@ export class LessonController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN), or the session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299).",
   })
   @Post("lessons/:id/cancel")
   @HttpCode(HttpStatus.OK)
@@ -413,6 +413,10 @@ export class LessonController {
   @ApiOkResponse({ type: LessonMutationResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299).",
+  })
   @Delete("lessons/:id")
   @Authz([PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE], byLessonCourse)
   async archive(

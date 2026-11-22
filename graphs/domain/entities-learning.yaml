@@ -149,7 +149,7 @@ entities:
     fields:
       id: { type: string, format: uuid }
       lessonId: { type: string, format: uuid, unique: true, references: Lesson, note: "on delete restrict; the unique index makes it one exam per session" }
-      format: { enum: [WRITTEN, ORAL], default: WRITTEN }
+      format: { enum: [WRITTEN, ORAL, MULTIPLE_CHOICE], default: WRITTEN, note: "MULTIPLE_CHOICE only by publishing an online exam (MDRS-299); Celse planla offers the other two" }
       maxScore: { type: integer, minimum: 1, maximum: 1000, default: 100, note: "check lesson_exams_max_score_check (EXAM_DEFAULT_MAX_SCORE 100, EXAM_MAX_SCORE_LIMIT 1000)" }
       topics: { type: [string, "null"], maxLength: 2000 }
       location: { type: [string, "null"], maxLength: 200, note: "an exam with a location is in person, else online" }
