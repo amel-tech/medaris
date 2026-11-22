@@ -227,6 +227,50 @@ describe("the exam page (MDRS-299)", () => {
     expect(button(host, "Burada aç")).toBeTruthy();
   });
 
+  it("says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload", async () => {
+    const { UnrecognizedActionError } = await import(
+      "next/dist/client/components/unrecognized-action-error"
+    );
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.saveExamAnswer.mockRejectedValue(
+      new UnrecognizedActionError("Server Action was not found")
+    );
+    const host = await mount(briefing());
+    await click(button(host, "Sınava başla"));
+    await settle();
+    await click(radio(host, "Elif"));
+    await settle();
+    expect(host.textContent).toContain("Medaris güncellendi");
+    expect(button(host, "Sayfayı yenile")).toBeTruthy();
+    const kept = JSON.parse(
+      window.sessionStorage.getItem("exam-unsent:l1") ?? "[]"
+    );
+    expect(kept).toEqual([["q1", { optionIds: ["a"], skipped: false }]]);
+  });
+
+  it("sends the choices kept before a reload once the attempt is taken back", async () => {
+    window.sessionStorage.setItem(
+      "exam-unsent:l1",
+      JSON.stringify([["q2", { optionIds: ["d"], skipped: false }]])
+    );
+    mocks.resumeExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.saveExamAnswer.mockResolvedValue(
+      ok({ written: true, secondsLeft: 1700 })
+    );
+    await mount(
+      briefing({
+        attempt: { status: "IN_PROGRESS", finishedAt: null, finishedBy: null },
+      } as Partial<ExamBriefingResponse>)
+    );
+    await settle();
+    expect(mocks.saveExamAnswer).toHaveBeenCalledWith(
+      "l1",
+      "q2",
+      expect.objectContaining({ optionIds: ["d"], seq: 1 })
+    );
+    expect(window.sessionStorage.getItem("exam-unsent:l1")).toBeNull();
+  });
+
   it("ends the exam when the time runs out, with the answers saved", async () => {
     mocks.startExamAttempt.mockResolvedValue(ok(attempt(1)));
     mocks.tickExamClock.mockResolvedValue(
