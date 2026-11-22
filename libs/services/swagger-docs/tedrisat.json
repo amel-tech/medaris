@@ -30535,7 +30535,8 @@
         "type": "string",
         "enum": [
           "ALL_OR_NOTHING",
-          "IN_SHARES"
+          "IN_SHARES",
+          "ANY_CORRECT"
         ]
       },
       "ExamQuestionResponse": {

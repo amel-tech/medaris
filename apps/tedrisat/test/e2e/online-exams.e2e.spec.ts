@@ -237,6 +237,23 @@ describe("online exams, preparation (e2e)", () => {
     ).toBe("TOPIC_NOT_FOUND");
     // Nothing of the refused writes was kept.
     expect((await draft(examId)).version).toBe(2);
+
+    // Check boxes with two correct options, any one of them enough (the
+    // owner, 22 Nov 2026).
+    const any = await save({
+      version: 2,
+      options: [
+        { text: "A", correct: true },
+        { text: "B", correct: true },
+        { text: "C", correct: false },
+      ],
+      answerMode: "MULTIPLE",
+      scoring: "ANY_CORRECT",
+    }).expect(200);
+    expect(any.body.question).toMatchObject({
+      answerMode: "MULTIPLE",
+      scoring: "ANY_CORRECT",
+    });
   });
 
   it("shares the points left exactly, and refuses own points past 100", async () => {

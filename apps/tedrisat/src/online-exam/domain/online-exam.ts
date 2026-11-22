@@ -12,10 +12,16 @@ export enum AnswerMode {
   MULTIPLE = "MULTIPLE",
 }
 
-/** How a MULTIPLE question is scored: "Hepsi ya da hiç" or "Kesirli, yanlış düşer". */
+/**
+ * How a MULTIPLE question is scored: "Hepsi ya da hiç", "Kesirli, yanlış
+ * düşer", or "Doğrulardan biri yeterli" (the owner, 22 Nov 2026: "çoklu
+ * seçimde çoklu doğru cevap işaretlendi diyelim, doğru cevaplardan herhangi
+ * birini işaretlemesi de yeterli olsun puanı tam alması için").
+ */
 export enum Scoring {
   ALL_OR_NOTHING = "ALL_OR_NOTHING",
   IN_SHARES = "IN_SHARES",
+  ANY_CORRECT = "ANY_CORRECT",
 }
 
 /** A new draft's length, "Süre (dakika)"; there is no upper bound (the owner: "Sınır yok"). */

@@ -143,6 +143,17 @@ describe("a talebe's sitting of an online exam (MDRS-299)", () => {
     });
   });
 
+  it("scores check boxes in full when any correct one is marked and no wrong one", () => {
+    // The owner, 22 Nov 2026: "doğru cevaplardan herhangi birini işaretlemesi
+    // de yeterli olsun puanı tam alması için".
+    const any = multiple("q", Scoring.ANY_CORRECT, ["a", "b"], ["a", "b", "c"]);
+    expect(earnedPart(any, ["a"])).toEqual({ numerator: 1, denominator: 1 });
+    expect(earnedPart(any, ["a", "b"]).numerator).toBe(1);
+    expect(earnedPart(any, ["a", "c"]).numerator).toBe(0);
+    expect(earnedPart(any, ["a", "b", "c"]).numerator).toBe(0);
+    expect(earnedPart(any, []).numerator).toBe(0);
+  });
+
   it("sums the exact points and rounds once, to two decimals", () => {
     // Three questions sharing 100: 33.33… each. Two right is 66.666…, 66.67.
     const qs = [

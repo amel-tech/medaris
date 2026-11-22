@@ -407,6 +407,40 @@ describe("the exam editor (MDRS-299)", () => {
     expect(actions.setExamQuestionPoints).not.toHaveBeenCalled();
   });
 
+  it("offers check boxes where any correct one is enough, and sends it", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Hangileri kıyasın rüknüdür?");
+    await typeInto(option(root, 1), "Asıl");
+    await typeInto(option(root, 2), "Fer");
+    await typeInto(option(root, 3), "Rivayet");
+    await click(control(root, "checkbox", "Doğru", 0));
+    await click(control(root, "checkbox", "Doğru", 1));
+    await click(control(root, "radio", "Çoklu seçim"));
+    await click(control(root, "radio", "Doğrulardan biri yeterli"));
+    await typeInto(topicNumbers(root), "3");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({
+        answerMode: "MULTIPLE",
+        scoring: "ANY_CORRECT",
+      })
+    );
+    expect(root.textContent).toContain(
+      "Çoklu seçim · Doğrulardan biri yeterli"
+    );
+  });
+
   it("shows own points at once, and sets them after the save with the version the save gave", async () => {
     actions.addExamQuestion.mockReturnValue(
       later({ success: true, data: { version: 2, question: { id: "q1" } } })

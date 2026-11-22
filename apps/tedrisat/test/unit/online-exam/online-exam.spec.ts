@@ -61,6 +61,9 @@ describe("online exam rules (MDRS-299)", () => {
     );
     expect(modeFits(AnswerMode.MULTIPLE, null, 2)).toBe(false);
     expect(modeFits(AnswerMode.MULTIPLE, Scoring.IN_SHARES, 2)).toBe(true);
+    expect(modeFits(AnswerMode.MULTIPLE, Scoring.ANY_CORRECT, 2)).toBe(true);
+    expect(modeFits(AnswerMode.MULTIPLE, Scoring.ANY_CORRECT, 1)).toBe(false);
+    expect(modeFits(AnswerMode.SINGLE, Scoring.ANY_CORRECT, 2)).toBe(false);
   });
 
   it("reads points with a comma or a point, two decimals at most", () => {

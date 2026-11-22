@@ -2464,6 +2464,8 @@
     "scoringAllHelp": "Puanı, doğru şıkların hepsini işaretleyip başka şık işaretlemeyen alır.",
     "scoringShares": "Kesirli, yanlış düşer",
     "scoringSharesHelp": "Her doğru işaret puanın eşit bir payını kazandırır, her yanlış işaret bir pay düşürür; puan sıfırın altına inmez.",
+    "scoringAny": "Doğrulardan biri yeterli",
+    "scoringAnyHelp": "Doğru şıklardan en az birini işaretleyip yanlış şık işaretlemeyen puanın tamamını alır.",
     "ownPointsLabel": "Kendi puanı",
     "ownPointsHelp": "Boş bırakırsanız kalan puandan eşit pay alır. En çok iki ondalıkla yazın: 5 ya da 2,5 gibi.",
     "pointsInvalid": "Puanı sıfırdan büyük, en çok 100 ve en çok iki ondalıklı bir sayı olarak yazın.",

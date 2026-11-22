@@ -889,7 +889,9 @@ function QuestionRow({
           ? `${t("OnlineExams.modeMultiple")} · ${
               question.scoring === "IN_SHARES"
                 ? t("OnlineExams.scoringShares")
-                : t("OnlineExams.scoringAll")
+                : question.scoring === "ANY_CORRECT"
+                  ? t("OnlineExams.scoringAny")
+                  : t("OnlineExams.scoringAll")
             }`
           : t("OnlineExams.modeSingle")}
         {share
@@ -1101,6 +1103,11 @@ function QuestionForm({
               value: "IN_SHARES",
               label: t("OnlineExams.scoringShares"),
               description: t("OnlineExams.scoringSharesHelp"),
+            },
+            {
+              value: "ANY_CORRECT",
+              label: t("OnlineExams.scoringAny"),
+              description: t("OnlineExams.scoringAnyHelp"),
             },
           ]}
         />
