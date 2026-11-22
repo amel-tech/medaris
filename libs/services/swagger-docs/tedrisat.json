@@ -15100,6 +15100,103 @@
           "online-exams"
         ]
       }
+    },
+    "/madrasahs/{id}/exam-zeroth-question": {
+      "get": {
+        "description": "Medrese ayarları' \"Sınavların sıfırıncı sorusu\": the question and its options in their order. Empty while the medrese has none; an exam of its courses is then not published.",
+        "operationId": "getMadrasahZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `madrasah.settings_edit` on the medrese."
+          },
+          "404": {
+            "description": "MADRASAH_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "put": {
+        "description": "Replaces the question and all its options. The exams already published keep the one they were published with. Written to `audit_log` as `madrasah.zeroth_question.update` with what it was and what it is; a save that changes nothing writes nothing.",
+        "operationId": "saveMadrasahZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveZerothQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `madrasah.settings_edit` on the medrese."
+          },
+          "404": {
+            "description": "MADRASAH_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save the medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      }
     }
   },
   "info": {
@@ -30171,6 +30268,57 @@
             "maximum": 999
           }
         }
+      },
+      "MadrasahZerothQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Empty while the medrese has no question."
+          },
+          "options": {
+            "description": "In their order.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The last save; null while the medrese has no question."
+          }
+        },
+        "required": [
+          "text",
+          "options",
+          "updatedAt"
+        ]
+      },
+      "SaveZerothQuestionDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "The question about the hadith the page shows fixed."
+          },
+          "options": {
+            "minItems": 2,
+            "maxItems": 10,
+            "description": "Its options in their order, each different; none is correct and none carries points.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "options"
+        ]
       }
     }
   }

@@ -120,6 +120,7 @@ GET /madrasahs/:id/courses -> madrasah.course_open | madrasah.course_hide | madr
 GET /madrasahs/:id/dashboard -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/deactivation-preview -> platform.madrasah_edit on byExistingMadrasah
 GET /madrasahs/:id/exam-summary -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
+GET /madrasahs/:id/exam-zeroth-question -> madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/head-muderris/delegations -> platform.head_muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/hosting-kosks -> madrasah.course_open on byExistingMadrasah
 GET /madrasahs/:id/nazirs -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -290,6 +291,7 @@ PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
+PUT /madrasahs/:id/exam-zeroth-question -> madrasah.settings_edit on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
