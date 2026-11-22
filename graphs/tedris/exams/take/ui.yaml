@@ -134,7 +134,9 @@ nodes:
   finishedRegion: { type: page, component: Page, role: region, name: { labelledBy: finishedTitle }, in: [finished, already_finished] }
   finishedTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.finishedTitle }, in: [finished, already_finished] } # h2
   finishedByTalebe: { type: text, component: Text, text: { key: planned.Exams.finishedByTalebe, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'talebe'" }
-  finishedByTime: { type: text, component: Text, text: { key: planned.Exams.finishedByTime, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'time'" } # also an early close by the team (planned.Exams.closedEarly is not drawn: rule closed-early-words)
+  finishedByTime: { type: text, component: Text, text: { key: planned.Exams.finishedByTime, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'time'" } # the time ran out
+  finishedByTeam: { type: text, component: Text, text: { key: planned.Exams.finishedByTeam, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'team'" } # the team closed it early
+  finishedEnded: { type: text, component: Text, text: { key: planned.Exams.finishedEnded }, in: [finished], when: "endedBy == 'unknown'" } # how it ended could not be read
   resultWhere: { type: text, component: Text, text: { key: planned.Exams.resultWhere }, in: [finished] }
   alreadyTaken: { type: text, component: Text, text: { key: planned.Exams.alreadyTaken }, in: [already_finished] }
   toMine: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [finished, already_finished] } # to Sınavlarım (tedris.exams.mine), where the result is read once released
@@ -171,5 +173,5 @@ rules:
   - { id: list-on-a-phone, rule: "Proposal, not drawn: on a phone the list Sorular sits behind a button \"Sorular\" in the bar, a disclosure that opens it over the question and closes when a question is picked." }
   - { id: focus, rule: "Going to a question (Önceki, Sonraki, Soruyu atla, a pick in the list, a resume) puts the focus on its text, so a screen reader reads the question first (focus). Sınavı bitir? opens on Sınava dön, and closing it returns the focus to Sınavı bitir; the restart's dialog opens on Anladım. Proposal: nothing is built." }
   - { id: answered-in-words, rule: "The list Sorular says each question's state in words (Cevaplandı, Atlandı, Görülmedi) in each item's name, beside any colour or mark, and the question shown carries aria-current." }
-  - { id: closed-early-words, rule: "An exam the team closes early ends the attempt as the time does (the context's endedBy is time for both); the page then says so in its own words, a key not drawn here because the flow does not tell the two apart." }
+  - { id: closed-early-words, rule: "An attempt that ends with no answer to the page's Bitir (the time, an early close by the team, or a Bitir whose answer was lost) is read again (getExamBriefing, the attempt's finishedBy), and the end screen says which, in its own words: finishedByTalebe, finishedByTime, finishedByTeam; finishedEnded when that read fails." }
   - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review, Turkish only; composed.Exams.* is a value shown alone. No key of the app is reused: none of tedris.json's says what these screens say." }

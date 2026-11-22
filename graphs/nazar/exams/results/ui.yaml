@@ -82,7 +82,7 @@ nodes:
   countsLine: { type: text, component: Text, text: { key: planned.Exams.countsLine, params: { seats: counts.seats, started: counts.started, inProgress: counts.inProgress, finished: counts.finished, missed: counts.missed } }, in: [empty, overview, confirmRelease, releasing] } # one sentence, every count in numbers and words
   averageLine: { type: text, component: Text, text: { key: planned.Exams.averageLine, params: { average: counts.average } }, in: [overview, confirmRelease, releasing] }
   releaseHint: { type: text, component: Text, role: note, text: { key: planned.Exams.releaseHint }, in: [overview, confirmRelease, releasing], when: notReleased }
-  releaseButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Evaluation.release }, in: [overview, releasing], when: notReleased, disabledIn: [releasing], emits: RELEASE } # Değerlendirme's own words; on while the exam is still open (rule release-while-open)
+  releaseButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Evaluation.release }, in: [overview, releasing], when: releasable, disabledIn: [releasing], emits: RELEASE } # Değerlendirme's own words; on while the exam is still open (rule release-while-open)
   releasedBadge: { type: status, component: Status, text: { key: Evaluation.released }, in: [overview], when: "results == 'opened'" } # "Sonuçlar açık", Değerlendirme's badge
   releasedLine: { type: text, component: Text, text: { key: planned.Exams.releasedLine, params: { releasedAt: release.releasedAt, releasedBy: release.releasedBy } }, in: [overview], when: "results == 'opened'" } # when and by whom
 
@@ -167,6 +167,8 @@ nodes:
   topicDetailQuestions: { type: list, component: List, role: list, name: { key: planned.Exams.topicQuestionsLabel }, in: [topicDetail] }
   topicDetailQuestion: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.questionStart, params: { number: q.number, textStart: q.textStart } }, in: [topicDetail], repeat: topicView.questions }
   topicTalebeTable: { type: list, component: List, role: table, name: { key: planned.Exams.topicTalebeLabel }, in: [topicDetail] } # from the weakest in the topic to the strongest
+  colTopicTalebe: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTalebe }, in: [topicDetail] }
+  colTopicPercent: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTopicPercent }, in: [topicDetail] }
   topicTalebeName: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.name, params: { name: row.name } }, in: [topicDetail], repeat: topicView.talebe }
   topicTalebePercent: { type: text, component: Text, role: cell, text: { key: planned.Exams.percent, params: { percent: row.percent } }, in: [topicDetail], repeat: topicView.talebe }
   backFromTopic: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResults }, in: [topicDetail], emits: BACK }

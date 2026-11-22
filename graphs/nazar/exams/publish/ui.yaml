@@ -33,9 +33,10 @@ samples:
 
 nodes:
   # --- the page, its title and where the exam stands -----------------------------------------------------------------------------------
-  publishPage: { type: page, component: Page, role: main, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, forbidden, loadFailed] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
-  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly] } # h1
-  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly] }
+  publishPage: { type: page, component: Page, role: main, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed, forbidden, loadFailed] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
+  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed] } # h1
+  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed] }
+  closedBadge: { type: status, component: Status, text: { key: planned.Exams.statusClosed }, in: [closed] } # "Bitti": every attempt has ended
   draftBadge: { type: status, component: Status, text: { key: planned.Exams.statusDraft }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused], when: "status == 'draft'" }
   scheduledBadge: { type: status, component: Status, text: { key: planned.Exams.statusScheduled, params: { when: exam.startsAt } }, in: [scheduled, unpublishing, scheduleForm, scheduling, scheduleRefused], when: isScheduled }
   openBadge: { type: status, component: Status, text: { key: planned.Exams.statusOpen }, in: [open, unpublishRefused, closeAsk, closingEarly, unpublishing], when: isOpen }

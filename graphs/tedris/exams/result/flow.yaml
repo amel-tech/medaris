@@ -114,6 +114,7 @@ states:
     by: human
     on:
       RETRY: { target: opening, say: "they press Yeniden dene" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   awaitingRelease:
     title: Sonuç henüz açıklanmadı
@@ -145,6 +146,7 @@ states:
     by: human
     on:
       BACK: resultShown
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   answersShown:
     title: The talebe's answers
@@ -152,6 +154,7 @@ states:
     by: human
     on:
       BACK: resultShown
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   readingCourse:
     title: Read the standing across the course
@@ -167,6 +170,7 @@ states:
     by: human
     on:
       BACK: resultShown
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   list_opened:
     title: Sınavlarım is opened

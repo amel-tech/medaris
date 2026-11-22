@@ -476,7 +476,7 @@ actions:
         score: { type: [string, "null"] }
         counts: { type: [object, "null"], description: "only when released: { right, wrong, blank }, a question in shares counted right when it got all its points, wrong when it got less, blank when nothing was chosen" }
         topics: { type: array, description: "only when released, the weakest first; a question with two topics counts in both", items: { type: object, properties: { topicId: { type: string, format: uuid }, name: { type: string }, percent: { type: integer, minimum: 0, maximum: 100 }, right: { type: integer, minimum: 0 }, wrong: { type: integer, minimum: 0 } } } }
-        questions: { type: [array, "null"], description: "only when released and closed: text, options with chosen and correct, points got" }
+        questions: { type: [array, "null"], description: "only when released and closed, in the talebe's own order: each { number, question, answer, correct, got, points }, answer (the options chosen, or none) and correct being the options' texts" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: the caller did not take this exam" }
@@ -887,13 +887,18 @@ actions:
     result:
       status: 200
       type: object
-      required: [talebe, counts, topics, zeroth, released]
+      description: "One read draws every screen of nazar.exams.results: the overview, and the screens of a talebe, a topic and a question"
+      required: [exam, talebe, counts, topics, questions, zeroth, released, release, mayRelease]
       properties:
-        talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, switches: [at], zerothOptionId }" } }
-        counts: { type: object, description: "{ seats, started, inProgress, finished, missed }" }
-        topics: { type: array, items: { type: object, description: "{ topicId, name, percent }" } }
-        zeroth: { type: object, description: "{ question, options: [{ id, text, count }] }" }
-        released: { type: boolean }
+        exam: { type: object, description: "{ title, course, when, zerothQuestion }" }
+        talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, right, wrong, blank, restarts, switches: [{ at, erased }], zerothOptionId, answers: [{ questionId, number, textStart, optionIds, correctOptionIds, points, got }] in the talebe's own order }" } }
+        counts: { type: object, description: "{ seats, started, inProgress, finished, missed, average }" }
+        topics: { type: array, items: { type: object, description: "{ topicId, name, percent, questionIds, talebe: [{ userId, name, percent }] from the weakest in the topic to the strongest }" } }
+        questions: { type: array, items: { type: object, description: "{ questionId, number, textStart, points, rightPercent, blank, options: [{ id, text, correct, chosen }] }" } }
+        zeroth: { type: object, description: "{ question, options: [{ id, text, count, percent }] }" }
+        released: { type: boolean, description: "the results are released, by this page or by Değerlendirme" }
+        release: { type: [object, "null"], description: "{ releasedAt, releasedBy } once released" }
+        mayRelease: { type: boolean, description: "the caller holds session.manage on the course, which releaseExamResults asks" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
@@ -911,7 +916,8 @@ actions:
     description: >-
       The zeroth questions of the online exams in the span and the place chosen, those asked in the same words with the same options
       counted together, each with how many exams asked it, how many talebe answered and how many chose each option. A count under five
-      is not sent: it is sent as fewerThanFive, and so is any count from which it could be worked out. No name, no user id, no single
+      is not sent: it is sent as fewerThanFive. An option's count from which a hidden one could be worked out is not sent either: it is
+      sent as hidden, which says nothing of its size, never as fewerThanFive. No name, no user id, no single
       answer. A köşk nazımı gets the exams of their own köşk only.
     needs: exam.zeroth_read in the platform scope, or in the köşk asked for (a köşk nazımı holds it in their köşk)
     query:
@@ -927,7 +933,7 @@ actions:
     result:
       status: 200
       type: array
-      items: { type: object, description: "{ questionKey, question, exams, answered | fewerThanFive, options: [{ text, count | fewerThanFive }] }" }
+      items: { type: object, description: "{ questionKey, question, exams, answered | fewerThanFive, options: [{ text, count | fewerThanFive | hidden }] }" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.zeroth_read is not held in the platform scope or in the köşk asked for" }
@@ -953,7 +959,7 @@ actions:
     result:
       status: 200
       type: object
-      description: "{ question, options, total: counts, exams: [{ lessonId, courseTitle, koskName, startsAt, counts }] }, every count under five sent as fewerThanFive"
+      description: "{ question, options, total: counts, exams: [{ lessonId, courseTitle, koskName, startsAt, counts }] }, every count under five sent as fewerThanFive, and an option's count that would give one away as hidden"
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "as listZerothAnswerCounts" }

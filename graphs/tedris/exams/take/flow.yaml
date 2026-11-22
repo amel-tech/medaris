@@ -135,11 +135,13 @@ context:
       notSaved: the page says the answer, or the zeroth answer, could not be saved
       startFailed: the briefing says the exam could not be started
   endedBy:
-    values: [talebe, time]
+    values: [talebe, time, team, unknown]
     initial: talebe
     say:
       talebe: the talebe ended the exam with Bitir
-      time: the time ran out, or the team closed the exam early
+      time: the time ran out
+      team: the team closed the exam early (nazar.exams.publish)
+      unknown: the attempt has ended and the page could not read how
   pending:
     values: [none, choice]
     initial: none
@@ -168,7 +170,8 @@ effects:
   savedNotice: { set: { notice: saved } }
   notSavedNotice: { set: { notice: notSaved } }
   startFailedNotice: { set: { notice: startFailed } }
-  byTime: { set: { endedBy: time } }
+  endedRead: { havoc: [endedBy] }
+  endedUnknown: { set: { endedBy: unknown } }
   keepChoice: { set: { pending: choice } }
   choiceSent: { set: { pending: none } }
 failures:
@@ -191,6 +194,7 @@ failures:
     ended: [ATTEMPT_NOT_FOUND]
     gone: [EXAM_NOT_FOUND]
     offline: [network, timeout, 5xx]
+    other: [HTTP_401]
   saving:
     from: saveExamAnswer
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
@@ -202,11 +206,16 @@ failures:
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
     ended: [ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
+    other: [HTTP_401]
   finishing:
     from: finishExamAttempt
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
     ended: [ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
+    other: [HTTP_401, VALIDATION_ERROR]
+  timeUp:
+    from: getExamBriefing
+    other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, HTTP_400, HTTP_401, network, timeout, 5xx]
 # The main story: a talebe opens an open exam, answers the zeroth question, starts, answers a question, goes on, and finishes.
 main:
   given: { window: open, attempt: none, mode: single }
@@ -318,6 +327,7 @@ states:
       FAIL.ended: { target: timeUp, say: "the attempt ended meanwhile, by the time or by an early close" }
       FAIL.gone: notFound
       FAIL.offline: { target: offline, say: "the connection is still gone" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the page says it could not go on" }
   question:
     title: A question of the exam
     description: >-
@@ -395,6 +405,7 @@ states:
       FAIL.elsewhere: { target: elsewhere, say: "the switch was to another tab of the exam, which now holds it: not a restart" }
       FAIL.ended: { target: timeUp, say: "the attempt had ended meanwhile" }
       FAIL.offline: { target: offline, say: "the connection is gone" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the page says it could not go on" }
   restarted:
     title: The exam starts again
     description: >-
@@ -426,14 +437,18 @@ states:
       FAIL.elsewhere: { target: elsewhere, say: "another tab or device has opened the exam since: nothing ends from this page" }
       FAIL.ended: { target: timeUp, say: "it had ended meanwhile, by the time or by an early close" }
       FAIL.offline: { target: offline, say: "the connection is gone: the attempt is still in progress, and Bitir can be pressed again" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the attempt is still in progress, and the page says it could not end it" }
   timeUp:
-    title: The time has run out
+    title: The attempt has ended
     description: >-
-      The exam ends by itself with the answers saved so far, and the talebe is told it ended because the time ran out: tickExamClock
-      answers FINISHED, or an answer is refused because the attempt has ended. The same end comes when the team closes the exam early
-      (nazar.exams.publish), and the page then says that instead.
-    always:
-      - { target: finished, effect: [byTime], say: "the exam is handed in with the answers saved so far" }
+      The attempt ended with no answer to this page's Bitir: tickExamClock answers FINISHED, an answer is refused because the attempt
+      has ended, or the attempt is gone when the page comes back (the time ran out, the team closed the exam early, or a Bitir whose
+      answer was lost on the way). The page reads the exam again, getExamBriefing, whose attempt says how it ended (finishedBy), and
+      the talebe is told that, with the answers saved so far.
+    invoke: { action: getExamBriefing }
+    on:
+      DONE: { target: finished, effect: [endedRead], say: "the read says how it ended: by Bitir, by the time or by the team" }
+      FAIL.other: { target: finished, effect: [endedUnknown], say: "the read fails: the page says the exam has ended, with the answers saved so far" }
   finished:
     title: Sınav bitti
     description: >-

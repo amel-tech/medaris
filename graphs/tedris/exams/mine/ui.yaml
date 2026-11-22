@@ -51,8 +51,8 @@ nodes:
   openFacts: { type: text, component: Text, text: { key: planned.Exams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], repeat: exams.open }
   openUntil: { type: text, component: Text, text: { key: planned.Exams.openUntil, params: { until: row.until } }, in: [listed], repeat: exams.open } # the latest start, in the talebe's zone
   openState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateCanStart, planned.Exams.stateInProgress] }, in: [listed], repeat: exams.open }
-  enterButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.enterLabel, params: { title: row.title } }, text: { key: planned.Exams.enter }, in: [listed], repeat: exams.open.notStarted, emits: ENTER } # to the briefing (tedris.exams.take)
-  continueButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.continueLabel, params: { title: row.title } }, text: { key: planned.Exams.continue }, in: [listed], repeat: exams.open.inProgress, emits: ENTER } # to the attempt, where it stopped
+  enterButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.enterLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.enter }, in: [listed], repeat: exams.open.notStarted, emits: ENTER } # to the briefing (tedris.exams.take)
+  continueButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.continueLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.continue }, in: [listed], repeat: exams.open.inProgress, emits: ENTER } # to the attempt, where it stopped
 
   # --- Yaklaşan --------------------------------------------------------------------------------------------------------------------
   comingRegion: { type: page, component: Page, role: region, name: { labelledBy: comingTitle }, in: [listed] }
@@ -75,7 +75,7 @@ nodes:
   pastFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPage.examWritten, SessionPage.examOral] }, in: [listed], repeat: exams.past }
   pastState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateTook, planned.Exams.stateMissed, planned.Exams.stateReleased] }, in: [listed], repeat: exams.past } # "Girdin" until the release, "Girmedin" for one not taken, "Sonuç açıklandı" after
   pastScore: { type: text, component: Text, text: { oneOf: [planned.Exams.score, planned.Exams.notReleased] }, in: [listed], repeat: exams.past } # "{score} / 100" once released, else "Sonuç henüz açıklanmadı"
-  resultLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.resultLabel, params: { title: row.title } }, text: { key: planned.Exams.result }, in: [listed], repeat: exams.past.choice, emits: READ_RESULT } # a multiple-choice exam the talebe took: their own screen of it
+  resultLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.resultLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.result }, in: [listed], repeat: exams.past.choice, emits: READ_RESULT } # a multiple-choice exam the talebe took: their own screen of it
   gradesLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.gradesLabel, params: { course: row.course } }, text: { key: CoursePage.tabGrades }, in: [listed], repeat: exams.past.writtenOrOral, emits: READ_GRADES } # a written or oral exam: the course's Notlarım
 
   # --- no exam, and a read that failed ---------------------------------------------------------------------------------------------

@@ -144,7 +144,7 @@ effects:
   clearNotice: { set: { notice: "none" } }
   saved: { set: { notice: saved } }
   copied: { set: { notice: copied, questionsSoFar: some } }
-  removed: { set: { notice: removed } }
+  removed: { havoc: [questionsSoFar], set: { notice: removed } }
   questionAdded: { set: { questionsSoFar: some, notice: "none" } }
   topicAdded: { set: { notice: topicAdded } }
   topicExists: { set: { notice: topicExists } }
@@ -193,6 +193,12 @@ failures:
     forbidden: [AUTHZ_FORBIDDEN]
     other: [COURSE_NOT_FOUND, network, timeout, 5xx]
   savingTopics:
+    from: updateOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    other: [TOPIC_NOT_FOUND, VALIDATION_ERROR, EXAM_NOT_FOUND, network, timeout, 5xx]
+  pickingNewTopic:
     from: updateOnlineExam
     forbidden: [AUTHZ_FORBIDDEN]
     stale: [EXAM_STALE]
@@ -328,7 +334,9 @@ states:
       FAIL.other: { target: settings, effect: [failed], say: "it could not be saved" }
   readingCopies:
     title: Read the course's earlier online exams
-    description: The action listMyTeachingExams, GET /me/teaching-exams?courseId=, for the course's earlier exams of the format Çoktan seçmeli.
+    description: >-
+      The action listMyTeachingExams, GET /me/teaching-exams?courseId=&when=past: the course's earlier exams ("Aynı dersin önceki
+      sınavını kopyala"), of which the dialog keeps those of the format Çoktan seçmeli (MULTIPLE_CHOICE).
     invoke: { action: listMyTeachingExams }
     on:
       DONE: copyPick
@@ -422,15 +430,29 @@ states:
       FAIL.other: { target: topics, effect: [failed] }
   addingTopic:
     title: Add a topic to the course's list
-    description: The action createCourseTopic, POST /courses/{id}/exam-topics; the new topic is picked for this exam as well.
+    description: >-
+      The action createCourseTopic, POST /courses/{id}/exam-topics; the new topic joins the course's list, and is then picked for
+      this exam (pickingNewTopic).
     invoke: { action: createCourseTopic }
     on:
-      DONE: { target: topics, effect: [topicAdded], say: "the topic joins the course's list" }
+      DONE: { target: pickingNewTopic, say: "the topic joins the course's list" }
       FAIL.exists: { target: topics, effect: [topicExists], say: "the course has a topic of that name" }
       FAIL.tooLong: { target: topics, effect: [topicTooLong], say: "the name is more than three words" }
       FAIL.empty: { target: topics, effect: [topicEmpty], say: "the name is empty" }
       FAIL.forbidden: { target: forbidden }
       FAIL.other: { target: topics, effect: [failed] }
+  pickingNewTopic:
+    title: Pick the new topic for this exam
+    description: >-
+      The action updateOnlineExam with the exam's topics and the new one, naming the version the page holds. If it fails, the topic
+      stays in the course's list, unpicked, and the page says the change was not saved.
+    invoke: { action: updateOnlineExam }
+    on:
+      DONE: { target: topics, effect: [topicAdded], say: "the new topic is picked for this exam" }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed], say: "the topic is in the course's list but not picked: the page says so" }
   renamingTopic:
     title: Rename a topic
     description: The action renameCourseTopic, PATCH /courses/{id}/exam-topics/{topicId}; every exam and question of the course keeps it.

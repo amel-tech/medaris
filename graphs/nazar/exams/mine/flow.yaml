@@ -107,9 +107,12 @@ states:
       NAVIGATE: left
   empty:
     title: No exams yet
-    description: The page says "Henüz sınav yok." and offers "Yeni sınav".
+    description: >-
+      The page says "Henüz sınav yok." and offers "Yeni sınav". The filters stay, so that one that left nothing can be changed or
+      cleared here.
     by: human
     on:
+      FILTER: { target: opening, say: "they change or clear a filter: the list is read again" }
       CREATE:
         - { guard: "courses == 'one'", target: draft_created, say: "they press Yeni sınav, and prepare exams for one course" }
         - { target: choosingCourse, say: "they press Yeni sınav, and prepare exams for several courses" }

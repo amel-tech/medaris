@@ -44,8 +44,8 @@ nodes:
   forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: planned.Exams.noCourseToPrepare }, in: [forbidden] } # a neutral alert, as the page's own problem is drawn
 
   # --- the filters -----------------------------------------------------------------------------------------------------------------
-  statusFilter: { type: field, component: TextField, role: combobox, text: { key: Courses.filters.status.label }, in: [listed, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü, Taslak, Zamanlandı, Yayında, Bitti, Sonuçlar açıklandı
-  courseFilter: { type: field, component: TextField, role: combobox, text: { key: Students.filters.course.label }, in: [listed, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü and the courses the person prepares exams for
+  statusFilter: { type: field, component: TextField, role: combobox, text: { key: Courses.filters.status.label }, in: [listed, empty, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü, Taslak, Zamanlandı, Yayında, Bitti, Sonuçlar açıklandı
+  courseFilter: { type: field, component: TextField, role: combobox, text: { key: Students.filters.course.label }, in: [listed, empty, choosingCourse], disabledIn: [choosingCourse], emits: FILTER } # Tümü and the courses the person prepares exams for
 
   # --- the table of exams ----------------------------------------------------------------------------------------------------------
   examsTable: { type: list, component: List, role: table, name: { key: planned.Exams.tableLabel }, in: [listed, choosingCourse] } # upcoming first, soonest first; then past, latest first

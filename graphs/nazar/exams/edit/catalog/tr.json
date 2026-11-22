@@ -87,6 +87,7 @@
   "planned.Exams.questionTopicsLabel": "Bu sorunun konuları",
   "planned.Exams.readAgain": "Yeniden oku",
   "planned.Exams.readOnlyBody": "Talebeler sınava başlayabildiği için sorular, şıklar, puanlar, konular, sıfırıncı soru ve süre artık değiştirilemez.",
+  "planned.Exams.readOnlyLength": "{minutes} dakika",
   "planned.Exams.readOnlyTitle": "Sınav açıldı",
   "planned.Exams.remove": "Kaldır",
   "planned.Exams.removeBody": "{n}. soru kaldırılsın mı? Puanı diğer sorulara yeniden paylaştırılır.",

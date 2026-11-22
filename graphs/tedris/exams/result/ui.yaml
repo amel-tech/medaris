@@ -69,9 +69,9 @@ nodes:
   topicsRegion: { type: page, component: Page, role: region, name: { labelledBy: topicsTitle }, in: [topicsShown] }
   topicsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.byTopic }, in: [topicsShown] } # h2
   topicsList: { type: list, component: List, role: list, name: { labelledBy: topicsTitle }, in: [topicsShown] } # the weakest topic first
-  topicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.topic } }, in: [topicsShown], repeat: result.topics }
-  topicLine: { type: text, component: Text, text: { key: planned.Exams.topicLine, params: { percent: row.percent, topicRight: row.topicRight, topicWrong: row.topicWrong } }, in: [topicsShown], repeat: result.topics } # the figures in words
-  topicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [topicsShown], repeat: result.topics } # only repeats topicLine; aria-valuenow is the percentage
+  topicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.name } }, in: [topicsShown], repeat: result.topics }
+  topicLine: { type: text, component: Text, text: { key: planned.Exams.topicLine, params: { percent: row.percent, topicRight: row.right, topicWrong: row.wrong } }, in: [topicsShown], repeat: result.topics } # the figures in words
+  topicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.name, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [topicsShown], repeat: result.topics } # only repeats topicLine; aria-valuenow is the percentage
 
   # --- the talebe's answers --------------------------------------------------------------------------------------------------------
   answersRegion: { type: page, component: Page, role: region, name: { labelledBy: answersTitle }, in: [answersShown] }
@@ -87,9 +87,9 @@ nodes:
   courseRegion: { type: page, component: Page, role: region, name: { labelledBy: courseTitle }, in: [courseTopics] }
   courseTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.courseTopics }, in: [courseTopics] } # h2
   courseList: { type: list, component: List, role: list, name: { labelledBy: courseTitle }, in: [courseTopics] } # the weakest topic first
-  courseTopicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.topic } }, in: [courseTopics], repeat: standing }
+  courseTopicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.name } }, in: [courseTopics], repeat: standing }
   courseTopicLine: { type: text, component: Text, text: { key: planned.Exams.courseTopicLine, params: { percent: row.percent, exams: row.exams } }, in: [courseTopics], repeat: standing }
-  courseTopicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [courseTopics], repeat: standing }
+  courseTopicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.name, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [courseTopics], repeat: standing }
 
   # --- no such exam, and a read that failed ----------------------------------------------------------------------------------------
   notFoundAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.resultNotFoundTitle }, text: { key: planned.Exams.resultNotFound }, in: [notFound] } # a neutral alert, as a page's own problem is drawn

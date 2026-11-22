@@ -263,7 +263,7 @@ states:
     invoke: { action: unpublishOnlineExam }
     on:
       DONE: { guard: "started == 'nobody'", target: draft_again, say: "it is a draft again" }
-      FAIL.started: { target: unpublishRefused, effect: [someoneStarted], say: "a talebe started it meanwhile" }
+      FAIL.started: { target: unpublishRefused, effect: [someoneStarted, nowOpen], say: "a talebe started it meanwhile, so it is open" }
       FAIL.forbidden: forbidden
       FAIL.other:
         - { guard: isScheduled, target: scheduled, effect: [failed] }

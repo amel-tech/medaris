@@ -69,6 +69,8 @@
   "planned.Exams.finishedTitle": "Sınav bitti",
   "planned.Exams.finishedByTalebe": "Sınavı {at} saatinde bitirdin. Cevapların kaydedildi.",
   "planned.Exams.finishedByTime": "Süre doldu; sınav {at} saatinde, kaydedilen cevaplarla bitti.",
+  "planned.Exams.finishedByTeam": "Ekip sınavı {at} saatinde erken bitirdi; sınavın kaydedilen cevaplarla bitti.",
+  "planned.Exams.finishedEnded": "Sınavın kaydedilen cevaplarla bitti.",
   "planned.Exams.resultWhere": "Sonucun, sınavın sonuçları açıklandığında Sınavlarım’da görünür.",
   "planned.Exams.alreadyTaken": "Bu sınava girdin; bir sınava bir kez girilir. Sonucunu Sınavlarım’da görebilirsin.",
   "planned.Exams.mine": "Sınavlarım"

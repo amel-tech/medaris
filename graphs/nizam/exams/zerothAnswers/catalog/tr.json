@@ -20,6 +20,7 @@
   "planned.Exams.optionCountsLabel": "Şıkları seçen talebe sayıları",
   "planned.Exams.zerothOptionCount": "{zerothOption}: {zerothCount} talebe (%{zerothPercent})",
   "planned.Exams.zerothOptionFew": "{zerothOption}: 5'ten az talebe",
+  "planned.Exams.zerothOptionHidden": "{zerothOption}: gizlendi",
   "planned.Exams.optionBarLabel": "{zerothOption}: %{zerothPercent}",
   "planned.Exams.percent": "%{percent}",
   "planned.Exams.openExams": "Sınavlar",

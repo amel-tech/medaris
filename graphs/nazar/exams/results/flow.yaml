@@ -60,6 +60,12 @@ context:
     say:
       closed: the results are not released yet
       opened: the results are released to the talebe
+  mayRelease:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person may release the results (session.manage on the course, as releaseExamResults asks)
+      no: the person prepares the course's exams (exam.prepare) but may not release their results
   toast:
     values: [none, released, refused, failed]
     initial: none
@@ -71,12 +77,14 @@ context:
 guards:
   stillOpen: "exam == 'open'"
   notReleased: "results == 'closed'"
+  releasable: "results == 'closed' and mayRelease == 'yes'"
 effects:
   clearToast: { set: { toast: none } }
   releasedNow: { set: { results: opened, toast: released } }
   toastRefused: { set: { toast: refused } }
   toastFailed: { set: { toast: failed } }
-  attemptsMove: { havoc: [attempts, exam] }
+  attemptsMove: { havoc: [attempts, exam, results] }
+  releaseUnsure: { havoc: [results], set: { toast: none } }
 failures:
   opening:
     from: getOnlineExamResults
@@ -85,9 +93,10 @@ failures:
   releasing:
     from: releaseExamResults
     forbidden: [AUTHZ_FORBIDDEN]
-    other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, network, timeout, 5xx]
+    unsure: [network, timeout, 5xx]
+    other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
 main:
-  given: { attempts: some, exam: closed, results: closed }
+  given: { attempts: some, exam: closed, results: closed, mayRelease: yes }
   events: [DONE, RELEASE, CONFIRM, DONE]
 initial: opening
 states:
@@ -96,7 +105,9 @@ states:
     description: >-
       The action getOnlineExamResults, GET /lessons/{id}/online-exam/results: every talebe with a seat in the course and where they
       are, the scores, the switches with their times, the zeroth answers, and over them all the counts, the topics and the questions.
-      To a person outside the course team the exam's results are not there: the API refuses them.
+      To a person outside the course team the exam's results are not there: the API refuses them. The read also says whether the
+      results are released (by this page or by Değerlendirme), and whether the person may release them. The screens of a talebe, a
+      topic and a question are drawn from this one read; nothing else is called.
     invoke: { action: getOnlineExamResults }
     on:
       DONE: loaded
@@ -145,7 +156,7 @@ states:
       OPEN_TALEBE: { target: talebeDetail, effect: [clearToast], say: "they open a talebe's attempt" }
       OPEN_TOPIC: { target: topicDetail, effect: [clearToast], say: "they open a topic" }
       OPEN_QUESTION: { target: questionDetail, effect: [clearToast], say: "they open a question" }
-      RELEASE: { guard: notReleased, target: confirmRelease, effect: [clearToast], say: "they press Sonuçları talebelere aç" }
+      RELEASE: { guard: releasable, target: confirmRelease, effect: [clearToast], say: "they press Sonuçları talebelere aç" }
       REFRESH: { guard: stillOpen, target: opening, effect: [attemptsMove, clearToast], say: "the exam is open: the page reads it again a little later" }
       NAVIGATE: left
   talebeDetail:
@@ -191,6 +202,7 @@ states:
     on:
       DONE: { target: released, effect: [releasedNow], say: "the results are released" }
       FAIL.forbidden: { target: overview, effect: [toastRefused], say: "the release is refused: nothing is released" }
+      FAIL.unsure: { target: opening, effect: [releaseUnsure], say: "no answer came: the release may have been done, so the page reads the exam again and says what it holds" }
       FAIL.other: { target: overview, effect: [toastFailed], say: "the release could not be done: nothing is released" }
   released:
     title: The results are released

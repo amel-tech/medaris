@@ -80,6 +80,7 @@
   "planned.Exams.questionNumber": "{number}. soru",
   "planned.Exams.optionCountsLabel": "Şıkları seçen talebe sayıları",
   "planned.Exams.colOption": "Şık",
+  "planned.Exams.colTopicPercent": "Konudaki başarı (%)",
   "planned.Exams.colChosen": "Seçen",
   "planned.Exams.correctBadge": "Doğru cevap",
   "planned.Exams.chosenCount": "{chosen} talebe",

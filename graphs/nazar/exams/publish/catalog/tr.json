@@ -41,6 +41,7 @@
   "planned.Exams.scheduleConfirm": "Zamanla",
   "planned.Exams.scheduledBody": "Açılış: {when} · En geç başlama: {latest}. Açılana kadar talebeler yalnız tarihini görür; sorularını görmez.",
   "planned.Exams.statusDraft": "Taslak",
+  "planned.Exams.statusClosed": "Bitti",
   "planned.Exams.statusOpen": "Yayında",
   "planned.Exams.statusScheduled": "Zamanlandı · {when}",
   "planned.Exams.statusScheduledTitle": "Zamanlandı",
