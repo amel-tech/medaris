@@ -182,4 +182,138 @@ describe("the exam editor (MDRS-299)", () => {
     await settle();
     expect(root.textContent).toContain("1. İcma");
   });
+
+  const echo = (
+    id: string,
+    body: { text: string; options: object[]; topicIds: string[] },
+    version: number
+  ) => ({
+    success: true,
+    data: {
+      version,
+      question: {
+        id,
+        number: 1,
+        text: body.text,
+        options: body.options.map((o, i) => ({ id: `o${i}`, ...o })),
+        answerMode: "SINGLE",
+        scoring: null,
+        topicIds: body.topicIds,
+        ownPoints: null,
+        points: "100.00",
+        complete: false,
+        lacks: [],
+      },
+    },
+  });
+  const textOf = (root: HTMLElement) =>
+    root.querySelector("textarea") as HTMLTextAreaElement;
+
+  it("makes a question once when it is saved again before the server answers, and shows the latest text", async () => {
+    let version = 1;
+    actions.addExamQuestion.mockImplementation(() =>
+      later({
+        success: true,
+        data: { version: ++version, question: { id: "q1" } },
+      })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later(echo(id, body, ++version))
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Birinci yazış");
+    await click(button(root, "Kaydet"));
+    await click(button(root, "Düzenle"));
+    await typeInto(textOf(root), "İkinci yazış");
+    await click(button(root, "Kaydet"));
+
+    held.shift()?.(); // the question is made, once
+    await settle();
+    held.shift()?.(); // the first save answers with the first text
+    await settle();
+    expect(root.textContent).toContain("İkinci yazış");
+    expect(root.textContent).not.toContain("Birinci yazış");
+    held.shift()?.(); // the second save, by the id the first made
+    await settle();
+    expect(actions.addExamQuestion).toHaveBeenCalledTimes(1);
+    expect(actions.saveExamQuestion).toHaveBeenCalledTimes(2);
+    expect(actions.saveExamQuestion.mock.calls.map((c) => c[1])).toEqual([
+      "q1",
+      "q1",
+    ]);
+    expect(root.textContent).toContain("İkinci yazış");
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+  });
+
+  it("deletes on the server a question taken off while it was being made", async () => {
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.removeExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 3 },
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Silinecek soru");
+    await click(button(root, "Kaydet"));
+    await click(button(root, "Sil"));
+    await settle(80);
+    const ask = document.querySelector("[role=alertdialog]") as HTMLElement;
+    await click(button(ask, "Sil"));
+    await settle(80);
+    expect(root.textContent).not.toContain("Silinecek soru");
+    held.shift()?.();
+    await settle();
+    expect(actions.saveExamQuestion).not.toHaveBeenCalled();
+    expect(actions.removeExamQuestion).toHaveBeenCalledWith("e1", "q1", 2);
+  });
+
+  it("sends a topic added on the page by the id the server gave it", async () => {
+    actions.createCourseTopic.mockReturnValue(
+      later({ success: true, data: { id: "t7", number: 7, name: "İcma" } })
+    );
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    const label = [...root.querySelectorAll("label")].find((l) =>
+      l.textContent?.includes("Numara")
+    ) as HTMLLabelElement;
+    await typeInto(
+      (document.getElementById(label.htmlFor) ??
+        label.querySelector("input")) as HTMLInputElement,
+      "7"
+    );
+    const nameLabel = [...root.querySelectorAll("label")].find((l) =>
+      l.textContent?.includes("Konu (bir ile üç kelime)")
+    ) as HTMLLabelElement;
+    await typeInto(
+      (document.getElementById(nameLabel.htmlFor) ??
+        nameLabel.querySelector("input")) as HTMLInputElement,
+      "İcma"
+    );
+    await click(button(root, "Konu ekle"));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Soru");
+    await typeInto(
+      [...root.querySelectorAll("input")].find(
+        (i) => i.getAttribute("placeholder") === "3, 7"
+      ) as HTMLInputElement,
+      "7"
+    );
+    await click(button(root, "Kaydet"));
+    held.shift()?.(); // the topic is made
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({ topicIds: ["t7"] })
+    );
+  });
 });
