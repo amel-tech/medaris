@@ -158,6 +158,7 @@ states:
       "Kayıtlı". No code of the page sets a focus.
     on:
       SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Kayıtlı tab" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab before taking anyone out" }
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
     source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234
 
@@ -173,6 +174,8 @@ states:
       The row's button opens the dialog; Base UI hands the focus back to it when the dialog closes without a removal.
     on:
       REMOVE: { guard: "viewer == 'remover'", target: form, effect: [openedDialog], source: apps/nazar/features/enrolments/components/roster-table.tsx:107, say: "she presses 'Dersten çıkar' on a talebe's row" }
+      SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Kayıtlı, the tab she is on: nothing changes" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab before taking anyone out" }
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
     source: apps/nazar/features/enrolments/components/roster-table.tsx:223
 
@@ -235,6 +238,7 @@ states:
       FAIL.gone: { guard: "answer == 'gone'", target: reading, effect: [goneToast], source: apps/nazar/features/enrolments/components/remove-dialog.tsx:79, say: "the seat has moved: an info notice, the dialog closes" }
       FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refusedToast], source: apps/nazar/features/enrolments/enrolments.ts:213, say: "'Bunu yapma izniniz yok.': the dialog stays with the reason" }
       FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nazar/features/enrolments/enrolments.ts:218, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.': the dialog stays" }
+      CANCEL: { target: submitting, source: apps/nazar/features/enrolments/components/remove-dialog.tsx:90, say: "Vazgeç, the close icon or Escape: nothing happens, the removal is still sent (RMV-3)" }
     source: apps/nazar/features/enrolments/components/remove-dialog.tsx:56
 
   reading:
@@ -262,6 +266,7 @@ states:
       removal on this tab. The talebe is not told here that they were sent the reason (RMV-1).
     on:
       SHOW_REMOVED: { target: removedList, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab" }
+      SHOW_ENROLLED: { target: afterRemoval, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Kayıtlı, the tab she is on: nothing changes" }
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
     source: apps/nazar/features/enrolments/components/roster-table.tsx:223
 
@@ -277,8 +282,23 @@ states:
       happen (the seat had moved) the tab holds no new row and says "Erişimi kaldırılan talebe yok". The toast of the removal may
       still be up. The talebe's own side of this is tedris.course.readProgramme (access withdrawn).
     on:
+      SHOW_ENROLLED: { target: afterRemoval, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she goes back to Kayıtlı: the list is the one without the talebe" }
+      SHOW_REMOVED: { target: removedList, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Erişimi kaldırılanlar, the tab she is on: nothing changes" }
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
     source: apps/nazar/features/enrolments/components/removed-table.tsx:70
+
+  removedEarlier:
+    title: Erişimi kaldırılanlar before this removal
+    by: human
+    description: >-
+      The same tab opened before the dialog was: its note (RMV-2) and the table "Dersten erişimi kaldırılan talebeler" with the people
+      taken out earlier, or "Erişimi kaldırılan talebe yok"; which of the two is not this story's (the earlier rows are not drawn). The
+      talebe of this story is still on Kayıtlı.
+    on:
+      SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she goes back to Kayıtlı" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Erişimi kaldırılanlar, the tab she is on: nothing changes" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:272
 
   left:
     title: She leaves the page
