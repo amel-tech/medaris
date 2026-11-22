@@ -32,6 +32,7 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
+import { textProps } from "../arabic";
 import {
   type AnswerModeValue,
   lacksOf,
@@ -902,15 +903,26 @@ function QuestionRow({
             }`
           : ""}
       </p>
-      <p className="mds-body" dir="auto">
-        {question.text || t("OnlineExams.noText")}
-      </p>
+      {question.text ? (
+        <p className="mds-body" {...textProps(question.text)}>
+          {question.text}
+        </p>
+      ) : (
+        <p className="mds-body">{t("OnlineExams.noText")}</p>
+      )}
       {question.options.length > 0 ? (
+        // The list stays left to right with its letter on the left; each
+        // option's text is its own run, and "Doğru" is never inside it.
         <ol className="mds-body-sm flex flex-col gap-1" type="A">
           {question.options.map((o) => (
-            <li key={o.id} dir="auto">
-              {o.text}
-              {o.correct ? ` · ${t("OnlineExams.correct")}` : ""}
+            <li key={o.id}>
+              <span {...textProps(o.text)}>{o.text}</span>
+              {o.correct ? (
+                <>
+                  {" "}
+                  <Badge variant="success">{t("OnlineExams.correct")}</Badge>
+                </>
+              ) : null}
             </li>
           ))}
         </ol>
@@ -1032,7 +1044,7 @@ function QuestionForm({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
-          dir="auto"
+          {...textProps(text)}
           maxLength={4000}
         />
       </Field>
@@ -1044,7 +1056,7 @@ function QuestionForm({
               aria-label={t("OnlineExams.optionLabel", { n: i + 1 })}
               value={o.text}
               onChange={(e) => setOption(i, { text: e.target.value })}
-              dir="auto"
+              {...textProps(o.text)}
               maxLength={1000}
               className="min-inline-0 flex-1"
             />

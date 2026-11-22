@@ -23,15 +23,19 @@ import {
   startExamAttempt,
   tickExamClock,
 } from "../actions";
+import { textProps } from "../arabic";
 import {
   clockText,
   holderIdFor,
   LAST_FIVE_SECONDS,
   type LocalAnswer,
   nextIndex,
+  readTextScale,
   stateOf,
+  TEXT_SCALES,
   TICK_MS,
   takeErrorKey,
+  writeTextScale,
 } from "../take-model";
 
 type Phase = "briefing" | "running" | "elsewhere" | "ended";
@@ -98,6 +102,16 @@ export function ExamTake({
   const [starting, setStarting] = useState(false);
   const [asking, setAsking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // A− / A+ on the questions' text, kept for this exam in this tab (a reload keeps it).
+  const [textStep, setTextStep] = useState(0);
+  useEffect(() => {
+    setTextStep(readTextScale(lessonId, window.sessionStorage));
+  }, [lessonId]);
+  const stepText = (by: number) => {
+    const next = Math.min(Math.max(textStep + by, 0), TEXT_SCALES.length - 1);
+    setTextStep(next);
+    writeTextScale(lessonId, next, window.sessionStorage);
+  };
 
   const holder = useRef("");
   const seq = useRef(0);
@@ -414,6 +428,10 @@ export function ExamTake({
       go(to, to !== null && to <= index);
     };
 
+    const scale = TEXT_SCALES[textStep];
+    const optionText = (text: string) =>
+      textProps(text, `calc(var(--fs-body) * ${scale})`, scale);
+
     return (
       <div className="flex flex-col gap-section">
         <section
@@ -461,11 +479,38 @@ export function ExamTake({
           <section
             className="mds-card flex flex-col gap-3"
             aria-labelledby="exam-question"
+            data-text-scale={scale}
           >
-            <p className="mds-caption text-neutral-muted">
-              {t("questionPoints", { points: q.points })}
-            </p>
-            <h1 id="exam-question" className="mds-body-lg" dir="auto">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="mds-caption text-neutral-muted">
+                {t("questionPoints", { points: q.points })}
+              </p>
+              <div className="flex gap-1">
+                <Button
+                  size="small"
+                  variant="outline"
+                  aria-label={t("textSmaller")}
+                  disabled={textStep === 0}
+                  onClick={() => stepText(-1)}
+                >
+                  A−
+                </Button>
+                <Button
+                  size="small"
+                  variant="outline"
+                  aria-label={t("textBigger")}
+                  disabled={textStep === TEXT_SCALES.length - 1}
+                  onClick={() => stepText(1)}
+                >
+                  A+
+                </Button>
+              </div>
+            </div>
+            <h1
+              id="exam-question"
+              className="mds-body"
+              {...textProps(q.text, `calc(var(--fs-body) * ${scale})`, scale)}
+            >
               {q.text}
             </h1>
             {q.answerMode === "MULTIPLE" ? (
@@ -474,7 +519,7 @@ export function ExamTake({
                 {q.options.map((o) => (
                   <Checkbox
                     key={o.id}
-                    label={<span dir="auto">{o.text}</span>}
+                    label={<span {...optionText(o.text)}>{o.text}</span>}
                     checked={mine?.optionIds.includes(o.id) ?? false}
                     onCheckedChange={(on) =>
                       choose(
@@ -493,7 +538,7 @@ export function ExamTake({
                 onChange={(value) => choose([value])}
                 options={q.options.map((o) => ({
                   value: o.id,
-                  label: <span dir="auto">{o.text}</span>,
+                  label: <span {...optionText(o.text)}>{o.text}</span>,
                 }))}
               />
             )}
@@ -625,6 +670,22 @@ export function ExamTake({
           <li>{t("factConnection")}</li>
           <li>{t("factSwitch")}</li>
           <li>{t("factSkip")}</li>
+          <li>
+            {t("factTextSize")}{" "}
+            {/* What the two buttons look like; the sentence says what they do. */}
+            <span
+              className="inline-flex gap-1 align-middle"
+              aria-hidden="true"
+              data-testid="text-size-sample"
+            >
+              <span className="mds-btn mds-btn--small mds-btn--outline">
+                A−
+              </span>
+              <span className="mds-btn mds-btn--small mds-btn--outline">
+                A+
+              </span>
+            </span>
+          </li>
           <li>{t("factFinish")}</li>
         </ul>
         {brief.instructions ? (

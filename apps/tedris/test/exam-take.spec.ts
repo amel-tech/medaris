@@ -139,6 +139,7 @@ const mount = async (b: ExamBriefingResponse) => {
 };
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   for (const m of Object.values(mocks)) m.mockReset();
   held.length = 0;
   mocks.tickExamClock.mockResolvedValue(
@@ -274,5 +275,52 @@ describe("the exam page (MDRS-299)", () => {
     expect(
       list.querySelector("[aria-label='1. soru, Cevaplandı']")
     ).toBeTruthy();
+  });
+
+  it("says in the briefing what A− and A+ do, and draws them", async () => {
+    const host = await mount(briefing());
+    const sample = host.querySelector(
+      "[data-testid=text-size-sample]"
+    ) as HTMLElement;
+    expect(sample.getAttribute("aria-hidden")).toBe("true");
+    expect(sample.textContent).toBe("A−A+");
+    expect(sample.querySelector("button")).toBeNull();
+    expect(sample.closest("li")?.textContent).toContain(
+      "Soruların yazısını büyütüp küçültebilirsin"
+    );
+  });
+
+  it("makes the text bigger step by step, stops at the largest, and keeps it for a reload", async () => {
+    const arabic = attempt();
+    arabic.questions[0].options = [
+      { id: "a", text: "زَيْدٌ فِي الدَّارِ" },
+      { id: "b", text: "Be" },
+    ];
+    mocks.startExamAttempt.mockResolvedValue(ok(arabic));
+    const host = await mount(briefing());
+    await click(button(host, "Sınava başla"));
+    await settle();
+    const card = () => host.querySelector("[data-text-scale]") as HTMLElement;
+    expect(card().dataset.textScale).toBe("1");
+    expect(button(host, "A−").disabled).toBe(true);
+    for (let i = 0; i < 3; i++) await click(button(host, "A+"));
+    expect(card().dataset.textScale).toBe("1.5");
+    expect(button(host, "A+").disabled).toBe(true);
+    expect(window.sessionStorage.getItem("exam-text-scale:l1")).toBe("3");
+    // An Arabic option is its own Arabic run.
+    const run = [...host.querySelectorAll("[lang=ar]")].find(
+      (el) => el.textContent === "زَيْدٌ فِي الدَّارِ"
+    ) as HTMLElement;
+    expect(run.getAttribute("dir")).toBe("rtl");
+
+    await cleanup();
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    const again = await mount(briefing());
+    await click(button(again, "Sınava başla"));
+    await settle();
+    expect(
+      (again.querySelector("[data-text-scale]") as HTMLElement).dataset
+        .textScale
+    ).toBe("1.5");
   });
 });

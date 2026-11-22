@@ -814,4 +814,46 @@ describe("the exam editor (MDRS-299)", () => {
       "Süre sıfırdan büyük bir tam sayı olmalı."
     );
   });
+
+  it("draws an Arabic option as its own Arabic run, with Doğru beside it", async () => {
+    const arabic = {
+      ...draft,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "Aşağıdakilerden hangisinde haber şibh-i cümle gelmiştir?",
+          options: [
+            { id: "o1", text: "زَيْدٌ ذَهَبَ إِلَى الْبَيْتِ", correct: false },
+            { id: "o2", text: "زَيْدٌ فِي الدَّارِ", correct: true },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: null,
+          points: "100.00",
+          complete: true,
+          lacks: [],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={arabic} />)
+    );
+    const items = [...root.querySelectorAll("ol[type=A] > li")];
+    expect(items).toHaveLength(2);
+    const [, second] = items as HTMLElement[];
+    expect(second.getAttribute("dir")).toBeNull();
+    const run = second.querySelector("[lang=ar]") as HTMLElement;
+    expect(run.getAttribute("dir")).toBe("rtl");
+    expect(run.textContent).toBe("زَيْدٌ فِي الدَّارِ");
+    expect(run.textContent).not.toContain("Doğru");
+    expect(second.textContent).toContain("Doğru");
+    // The Latin question text is left to the browser.
+    const question = [...root.querySelectorAll("p")].find((p) =>
+      p.textContent?.startsWith("Aşağıdakilerden")
+    ) as HTMLElement;
+    expect(question.getAttribute("dir")).toBe("auto");
+    expect(question.getAttribute("lang")).toBeNull();
+  });
 });
