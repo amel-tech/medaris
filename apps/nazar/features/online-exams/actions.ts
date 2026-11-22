@@ -10,6 +10,7 @@ import type {
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   SaveExamQuestionDto,
+  TopicRemovedResponse,
 } from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
@@ -154,9 +155,12 @@ export interface TopicCarrier {
   number: number;
 }
 
-/** A topic removal's answer; TOPIC_IN_USE names the questions that carry it. */
+/**
+ * A topic removal's answer: the exams whose pick it took off, with their new
+ * versions; TOPIC_IN_USE names the questions that carry it.
+ */
 export type TopicRemovalOutcome =
-  | { success: true }
+  | { success: true; data: TopicRemovedResponse }
   | { success: false; code: string; questions?: TopicCarrier[] }
   | Unauthenticated;
 
@@ -170,7 +174,7 @@ export async function removeCourseTopic(
   );
   if (isUnauthenticated(result))
     return unauthenticated({ reauth: result.reauth });
-  if (result.success) return { success: true };
+  if (result.success) return { success: true, data: result.data };
   const questions = (result.errorBody as { context?: { questions?: unknown } })
     ?.context?.questions;
   return {

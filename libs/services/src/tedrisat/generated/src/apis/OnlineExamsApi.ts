@@ -28,6 +28,7 @@ import type {
   SaveExamQuestionDto,
   SaveZerothQuestionDto,
   SetQuestionPointsDto,
+  TopicRemovedResponse,
   UpdateCourseTopicDto,
   UpdateOnlineExamDto,
   VersionDto,
@@ -59,6 +60,8 @@ import {
     SaveZerothQuestionDtoToJSON,
     SetQuestionPointsDtoFromJSON,
     SetQuestionPointsDtoToJSON,
+    TopicRemovedResponseFromJSON,
+    TopicRemovedResponseToJSON,
     UpdateCourseTopicDtoFromJSON,
     UpdateCourseTopicDtoToJSON,
     UpdateOnlineExamDtoFromJSON,
@@ -481,10 +484,10 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.
+     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on: the answer names each with its new version, so a page holding one of them writes on without EXAM_STALE. Written to `audit_log` as `exam_topic.remove`.
      * Delete a topic from the course\'s list
      */
-    async removeCourseTopicRaw(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async removeCourseTopicRaw(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TopicRemovedResponse>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -520,15 +523,16 @@ export class OnlineExamsApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => TopicRemovedResponseFromJSON(jsonValue));
     }
 
     /**
-     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.
+     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on: the answer names each with its new version, so a page holding one of them writes on without EXAM_STALE. Written to `audit_log` as `exam_topic.remove`.
      * Delete a topic from the course\'s list
      */
-    async removeCourseTopic(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.removeCourseTopicRaw(requestParameters, initOverrides);
+    async removeCourseTopic(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TopicRemovedResponse> {
+        const response = await this.removeCourseTopicRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

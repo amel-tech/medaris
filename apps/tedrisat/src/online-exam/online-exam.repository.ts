@@ -88,6 +88,34 @@ const constraintOf = (error: unknown): string | null => {
   return null;
 };
 
+const FOREIGN_KEY_VIOLATION = "23503";
+/** The foreign keys from an exam's picks and its questions to a course topic. */
+const TOPIC_FOREIGN_KEYS = new Set([
+  "exam_question_topics_topic_id_course_exam_topics_id_fk",
+  "online_exam_topics_topic_id_course_exam_topics_id_fk",
+]);
+/**
+ * The topic a write named that was deleted under it: a topic removal holds
+ * the topic's row while the write's foreign key waits for it, and commits.
+ * Null for any other error.
+ */
+const deletedTopicOf = (error: unknown): string | null => {
+  const e = error as {
+    code?: string;
+    constraint?: string;
+    detail?: string;
+    cause?: unknown;
+  };
+  if (
+    e?.code === FOREIGN_KEY_VIOLATION &&
+    TOPIC_FOREIGN_KEYS.has(e.constraint ?? "")
+  ) {
+    return /\(topic_id\)=\(([^)]+)\)/.exec(e.detail ?? "")?.[1] ?? "";
+  }
+  if (e?.cause) return deletedTopicOf(e.cause);
+  return null;
+};
+
 /**
  * Online multiple-choice exams (MDRS-299), the team's side: the draft as the
  * exam page reads it, and every write of it. A write takes the exam row for
@@ -365,14 +393,37 @@ export class OnlineExamRepository {
   /**
    * Deletes a topic from the course's list, unless questions carry it
    * (TOPIC_IN_USE, naming them). The exams that had picked it lose the pick,
-   * and their version moves on, as any change to an exam's topics does.
+   * and their version moves on, as any change to an exam's topics does; they
+   * are returned with their new versions.
+   *
+   * Locks run in one order, the exam rows before the topic's, as in `write`,
+   * where an exam's row is taken first and the topic's key afterwards (for
+   * the foreign key of a pick or a question's topic). The other order was a
+   * cycle with a question save, which Postgres ends with 40P01.
    */
   async removeTopic(
     courseId: string,
     topicId: string,
     actorId: string
-  ): Promise<void> {
-    await this.db.transaction(async (tx) => {
+  ): Promise<Array<{ id: string; version: number }>> {
+    return this.db.transaction(async (tx) => {
+      await tx
+        .select({ id: onlineExams.id })
+        .from(onlineExams)
+        .where(
+          and(
+            eq(onlineExams.courseId, courseId),
+            inArray(
+              onlineExams.id,
+              tx
+                .select({ examId: onlineExamTopics.examId })
+                .from(onlineExamTopics)
+                .where(eq(onlineExamTopics.topicId, topicId))
+            )
+          )
+        )
+        .orderBy(onlineExams.id)
+        .for("update");
       const [topic] = await tx
         .select()
         .from(courseExamTopics)
@@ -385,8 +436,10 @@ export class OnlineExamRepository {
         .for("update");
       if (!topic) throw new TopicNotFoundError(topicId);
       // A question saved with the topic meanwhile takes a key-share lock on
-      // it for its foreign key: it waits for this lock, or it went first and
-      // is seen here.
+      // it for its foreign key: it waits for this lock and then finds the
+      // topic gone (TOPIC_NOT_FOUND, see `write`), or it went first and is
+      // seen here. An exam that picked it meanwhile is seen below and
+      // updated; its write has committed, so nothing waits.
       const carriers = await tx
         .select({
           examId: examQuestions.examId,
@@ -424,8 +477,9 @@ export class OnlineExamRepository {
         .select({ examId: onlineExamTopics.examId })
         .from(onlineExamTopics)
         .where(eq(onlineExamTopics.topicId, topicId));
+      let moved: Array<{ id: string; version: number }> = [];
       if (picks.length > 0) {
-        await tx
+        moved = await tx
           .update(onlineExams)
           .set({
             version: sql`${onlineExams.version} + 1`,
@@ -436,7 +490,8 @@ export class OnlineExamRepository {
               onlineExams.id,
               picks.map((p) => p.examId)
             )
-          );
+          )
+          .returning({ id: onlineExams.id, version: onlineExams.version });
         await tx
           .delete(onlineExamTopics)
           .where(eq(onlineExamTopics.topicId, topicId));
@@ -454,6 +509,7 @@ export class OnlineExamRepository {
           unpicked: picks.length,
         },
       });
+      return moved.sort((a, b) => a.id.localeCompare(b.id));
     });
   }
 
@@ -504,6 +560,24 @@ export class OnlineExamRepository {
    * all in one transaction. Returns `write`'s result and the new version.
    */
   async write<T>(
+    w: IExamWrite,
+    audit: { action: string; entityId?: string; details?: object },
+    write: (tx: Tx) => Promise<T>
+  ): Promise<{ result: T; version: number }> {
+    try {
+      return await this.writeOnce(w, audit, write);
+    } catch (error) {
+      // A topic deleted while this write named it: a refusal, not a 500.
+      // No retry: the write is refused as if the topic had been gone before.
+      const topicId = deletedTopicOf(error);
+      if (topicId !== null) {
+        throw new TopicNotOfCourseError(topicId === "" ? [] : [topicId]);
+      }
+      throw error;
+    }
+  }
+
+  private writeOnce<T>(
     w: IExamWrite,
     audit: { action: string; entityId?: string; details?: object },
     write: (tx: Tx) => Promise<T>

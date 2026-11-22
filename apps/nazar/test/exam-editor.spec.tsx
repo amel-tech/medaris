@@ -550,7 +550,10 @@ describe("the exam editor (MDRS-299)", () => {
     actions.createCourseTopic.mockImplementation(() =>
       later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
     );
-    actions.removeCourseTopic.mockResolvedValue({ success: true });
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [] },
+    });
     const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
     await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
     await click(button(page, "Konu ekle"));
@@ -561,6 +564,61 @@ describe("the exam editor (MDRS-299)", () => {
     await settle(80);
     expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
     expect(chips()).toEqual(["3. Kıyas"]);
+  });
+
+  it("deletes a new topic whose create answered while its confirmation was open", async () => {
+    actions.createCourseTopic.mockImplementation(() =>
+      later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
+    );
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [] },
+    });
+    const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(page, "Konu ekle"));
+    // The confirmation opens on the topic while it still has its local id.
+    await click(
+      root().querySelector(
+        'button[aria-label="1. İcma konusunu sil"]'
+      ) as HTMLButtonElement
+    );
+    await settle(80);
+    held.shift()?.(); // the create answers, with the server's id
+    await settle(80);
+    await click(
+      button(document.querySelector("[role=alertdialog]") as HTMLElement, "Sil")
+    );
+    await settle(80);
+    expect(chips()).toEqual(["3. Kıyas"]);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
+  });
+
+  it("takes the exam's version from a topic removal's answer", async () => {
+    const picked = {
+      ...draft,
+      courseTopics: [
+        { id: "t3", number: 3, name: "Kıyas", picked: true, questionCount: 0 },
+      ],
+      topicIds: ["t3"],
+    } as unknown as OnlineExamDraftResponse;
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [{ id: "e1", version: 7 }] },
+    });
+    actions.saveExamSettings.mockResolvedValue({
+      success: true,
+      data: { version: 8 },
+    });
+    await render(wrap(<ExamEditor courseId="c1" draft={picked} />));
+    await removeChip("3. Kıyas konusunu sil");
+    await typeInto(settingsField("Süre (dakika)"), "30");
+    await click(button(root(), "Ayarları kaydet"));
+    await settle(80);
+    expect(actions.saveExamSettings).toHaveBeenCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 30, version: 7 })
+    );
   });
 
   const settingsField = (label: string) => {

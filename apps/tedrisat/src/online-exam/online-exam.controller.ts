@@ -32,7 +32,6 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
-  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -51,6 +50,7 @@ import {
   OnlineExamSummaryResponse,
   SaveExamQuestionDto,
   SetQuestionPointsDto,
+  TopicRemovedResponse,
   UpdateCourseTopicDto,
   UpdateOnlineExamDto,
   VersionDto,
@@ -337,21 +337,20 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Delete a topic from the course's list",
     description:
-      "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.",
+      "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on: the answer names each with its new version, so a page holding one of them writes on without EXAM_STALE. Written to `audit_log` as `exam_topic.remove`.",
     operationId: "removeCourseTopic",
   })
-  @ApiNoContentResponse()
+  @ApiOkResponse({ type: TopicRemovedResponse })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND, TOPIC_NOT_FOUND" })
   @ApiConflictResponse({ description: "TOPIC_IN_USE" })
   @Authz(PERMISSIONS.EXAM_PREPARE, byParam(ENTITIES.COURSE, "id"))
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete("courses/:id/exam-topics/:topicId")
   removeTopic(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) courseId: string,
     @Param("topicId", ParseUUIDPipe) topicId: string
-  ): Promise<void> {
+  ): Promise<TopicRemovedResponse> {
     return this.service.removeTopic(courseId, topicId, request.user);
   }
 }

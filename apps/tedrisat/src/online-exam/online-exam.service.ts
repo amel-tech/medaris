@@ -311,13 +311,14 @@ export class OnlineExamService {
     return this.repo.updateTopic(courseId, topicId, input, user.sub);
   }
 
+  /** The exams whose pick it took off, each with its new version. */
   async removeTopic(
     courseId: string,
     topicId: string,
     user: AuthenticatedUser
-  ): Promise<void> {
+  ): Promise<{ exams: Array<{ id: string; version: number }> }> {
     await this.course(courseId, user);
-    await this.repo.removeTopic(courseId, topicId, user.sub);
+    return { exams: await this.repo.removeTopic(courseId, topicId, user.sub) };
   }
 
   private assertTopicName(name: string): void {

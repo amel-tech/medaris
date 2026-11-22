@@ -225,6 +225,14 @@ export function ExamEditor({
         });
         if (!went(saved) || !("data" in saved)) return failed();
         version.current = saved.data.version;
+        // What the server now holds, whichever save this is: the topics it
+        // picked for the exam, and the question's own points.
+        setTopics((all) =>
+          all.map((topic) =>
+            topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
+          )
+        );
+        patch(key, { ownPoints: saved.data.question.ownPoints });
         if (!latest()) return;
         // Its own points are a second write, after the save, naming the
         // version the save gave; the page goes on showing what was typed.
@@ -259,21 +267,17 @@ export function ExamEditor({
             return failed();
           }
           version.current = set.data.version;
-          if (!latest()) return;
+          // The server's own points, from every answer: a later save that
+          // fails falls back on them.
           const mine = set.data.questions.find((q) => q.questionId === id);
+          patch(key, { ownPoints: mine?.own ? mine.points : null });
+          if (!latest()) return;
           patch(key, {
-            ownPoints: mine?.own ? mine.points : null,
             wantedPoints: undefined,
             pending: false,
             failed: false,
           });
         }
-        // A topic typed by number that the exam had not picked is picked now.
-        setTopics((all) =>
-          all.map((topic) =>
-            topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
-          )
-        );
       } catch {
         threw();
         failed();
@@ -412,10 +416,13 @@ export function ExamEditor({
   };
 
   const removeTopic = (key: string) => {
-    const gone = topics.find((topic) => topic.id === key);
+    // The confirmation may hold the local id of a topic whose create has
+    // answered since: the list shows it by the id the server gave.
+    const shownId = topicIdOf.current.get(key) ?? key;
+    const gone = topics.find((topic) => topic.id === shownId);
     if (!gone) return;
     topicsRemoved.current.add(key);
-    setTopics((all) => all.filter((topic) => topic.id !== key));
+    setTopics((all) => all.filter((topic) => topic.id !== shownId));
     const restore = () => {
       topicsRemoved.current.delete(key);
       setTopics((all) =>
@@ -433,8 +440,10 @@ export function ExamEditor({
         const result = await removeCourseTopic(courseId, id);
         if (handleUnauthenticated(result as never)) return restore();
         if ("success" in result && result.success) {
-          // An exam that had picked it moves on a version, this one too.
-          if (gone.picked) version.current += 1;
+          // The exams that had picked it moved on a version; the answer
+          // names this one's when it was among them.
+          const mine = result.data.exams.find((exam) => exam.id === draft.id);
+          if (mine) version.current = mine.version;
           return;
         }
         if ("code" in result && result.code === "TOPIC_IN_USE")

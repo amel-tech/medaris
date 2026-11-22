@@ -365,6 +365,23 @@ export class ExamPointsResponse {
   version!: number;
 }
 
+export class ExamVersionRefResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({
+    description: "The exam's new version, which its next write names.",
+  })
+  version!: number;
+}
+
+export class TopicRemovedResponse {
+  @ApiProperty({
+    type: [ExamVersionRefResponse],
+    description:
+      "The exams that had picked the topic, each with the version the removal moved it to; empty when none had.",
+  })
+  exams!: ExamVersionRefResponse[];
+}
+
 export class OnlineExamSummaryResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty() title!: string;
