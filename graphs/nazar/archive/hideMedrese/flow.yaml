@@ -222,6 +222,8 @@ states:
       FAIL.already: { guard: "elsewhere == 'adminHid'", target: lockedHidden, effect: [alreadyHidden], say: "the başnazım hid it first, at the platform level; her page is read again and the banner has no button", source: apps/nazar/features/archive/components/hide-madrasah.tsx:50 }
       FAIL.forbidden: { target: shownMedrese, effect: [hideRefused], source: apps/nazar/features/archive/components/hide-madrasah.tsx:63 }
       FAIL.other: { target: shownMedrese, effect: [hideFailed], source: apps/nazar/features/archive/components/hide-madrasah.tsx:63 }
+      CANCEL: { target: hiding, source: apps/nazar/features/archive/components/hide-madrasah.tsx:107, say: "Vazgeç or Esc: nothing happens, the hiding goes on (HIDEMED-3)" }
+      CLOSE: { target: hiding, source: apps/nazar/features/archive/components/hide-madrasah.tsx:107, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/archive/components/hide-madrasah.tsx:48
 
   hidden:
