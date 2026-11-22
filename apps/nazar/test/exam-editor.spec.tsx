@@ -10,6 +10,9 @@ import { cleanup, click, render, settle, type as typeInto } from "./dom";
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
+  // As Next's: the error a call to a Server Action the server no longer has throws.
+  unstable_isUnrecognizedActionError: (error: unknown) =>
+    error instanceof Error && error.name === "UnrecognizedActionError",
 }));
 
 /** Server answers the test lets through when it wants. */
@@ -173,6 +176,66 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).toContain("Bir soru");
     expect(root.textContent).toContain("Kaydedilemedi");
     expect(button(root, "Yeniden dene")).toBeTruthy();
+  });
+
+  // happy-dom here has no localStorage: a small one in memory.
+  const memory = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => memory.get(k) ?? null,
+      setItem: (k: string, v: string) => void memory.set(k, v),
+      removeItem: (k: string) => void memory.delete(k),
+      clear: () => memory.clear(),
+    },
+  });
+  // A failed save in one test must not come back in the next.
+  afterEach(() => memory.clear());
+
+  it("says Medaris was updated when a save names a gone Server Action, and keeps the question for the reload", async () => {
+    window.localStorage.clear();
+    const gone = Object.assign(new Error("Server Action was not found"), {
+      name: "UnrecognizedActionError",
+    });
+    actions.addExamQuestion.mockRejectedValue(gone);
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Kalan soru");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(document.body.textContent).toContain("Medaris güncellendi");
+    expect(button(document.body, "Yenile")).toBeTruthy();
+    const kept = JSON.parse(
+      window.localStorage.getItem("exam-unsaved:e1") ?? "[]"
+    );
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toMatchObject({ id: "", text: "Kalan soru" });
+  });
+
+  it("brings back the questions not saved before a reload, to try again", async () => {
+    window.localStorage.setItem(
+      "exam-unsaved:e1",
+      JSON.stringify([
+        {
+          id: "",
+          text: "Geri gelen soru",
+          options: [
+            { text: "Bir", correct: true },
+            { text: "İki", correct: false },
+          ],
+          topicIds: ["t3"],
+          answerMode: "SINGLE",
+          scoring: null,
+          points: null,
+        },
+      ])
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await settle();
+    expect(root.textContent).toContain("Geri gelen soru");
+    expect(root.textContent).toContain("Kaydedilemedi");
+    expect(button(root, "Yeniden dene")).toBeTruthy();
+    window.localStorage.clear();
   });
 
   it("shows a new topic with its number at once", async () => {
