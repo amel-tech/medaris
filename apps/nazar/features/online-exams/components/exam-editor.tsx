@@ -9,6 +9,8 @@ import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { Field } from "@medaris/ui/mds/field";
+import { Icon } from "@medaris/ui/mds/icon";
+import { IconButton } from "@medaris/ui/mds/icon-button";
 import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
@@ -21,6 +23,7 @@ import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
   addExamQuestion,
   createCourseTopic,
+  removeCourseTopic,
   removeExamQuestion,
   saveExamQuestion,
   setExamQuestionPoints,
@@ -149,6 +152,7 @@ export function ExamEditor({
   const savesOf = useRef(new Map<string, number>());
   const removed = useRef(new Set<string>());
   const topicIdOf = useRef(new Map<string, string>());
+  const topicsRemoved = useRef(new Set<string>());
   const idOf = (key: string) =>
     serverIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
 
@@ -344,11 +348,16 @@ export function ExamEditor({
     // In the same queue as the questions, so a question saved after it with
     // its number is sent with the id the server gave it.
     enqueue(async () => {
+      // Taken off before it was sent: nothing goes, as with an unsaved question.
+      if (topicsRemoved.current.has(key)) return;
       try {
         const made = await createCourseTopic(courseId, name, number);
         if (!went(made) || !("data" in made)) return drop();
         const topic = made.data;
         topicIdOf.current.set(key, topic.id);
+        // Taken off while it was being made: the removal queued after this
+        // deletes it by this id.
+        if (topicsRemoved.current.has(key)) return;
         setTopics((all) =>
           all
             .map((it) =>
@@ -359,6 +368,56 @@ export function ExamEditor({
       } catch {
         threw();
         drop();
+      }
+    });
+  };
+
+  const removeTopic = (key: string) => {
+    const gone = topics.find((topic) => topic.id === key);
+    if (!gone) return;
+    topicsRemoved.current.add(key);
+    setTopics((all) => all.filter((topic) => topic.id !== key));
+    const restore = () => {
+      topicsRemoved.current.delete(key);
+      setTopics((all) =>
+        [...all, { ...gone, id: topicIdOf.current.get(key) ?? gone.id }].sort(
+          (a, b) => a.number - b.number
+        )
+      );
+    };
+    enqueue(async () => {
+      // Read when it runs: a create queued before it may have made it.
+      const id =
+        topicIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
+      if (id === "") return;
+      try {
+        const result = await removeCourseTopic(courseId, id);
+        if (handleUnauthenticated(result as never)) return restore();
+        if ("success" in result && result.success) {
+          // An exam that had picked it moves on a version, this one too.
+          if (gone.picked) version.current += 1;
+          return;
+        }
+        if ("code" in result && result.code === "TOPIC_IN_USE")
+          notify({
+            tone: "error",
+            title: t("OnlineExams.failed"),
+            description: t("OnlineExams.topicInUse", {
+              questions: (result.questions ?? [])
+                .map((q) =>
+                  t("OnlineExams.topicInUseItem", {
+                    exam: q.examTitle,
+                    number: q.number,
+                  })
+                )
+                .join("; "),
+            }),
+          });
+        else went(result);
+        restore();
+      } catch {
+        threw();
+        restore();
       }
     });
   };
@@ -380,7 +439,7 @@ export function ExamEditor({
 
   return (
     <div className="flex flex-col gap-section">
-      <TopicsSection topics={topics} onAdd={addTopic} />
+      <TopicsSection topics={topics} onAdd={addTopic} onRemove={removeTopic} />
       <section
         className="flex flex-col gap-3"
         aria-labelledby="questions-title"
@@ -447,11 +506,14 @@ export function ExamEditor({
 function TopicsSection({
   topics,
   onAdd,
+  onRemove,
 }: {
   topics: Topic[];
   onAdd: (name: string, number: number | undefined) => void;
+  onRemove: (key: string) => void;
 }) {
   const t = useTranslations("nazar");
+  const [asking, setAsking] = useState<Topic | null>(null);
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -472,17 +534,51 @@ function TopicsSection({
       {topics.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
           {topics.map((topic) => (
-            <li key={topic.id}>
+            <li key={topic.id} className="flex items-center gap-1">
               <Badge variant={topic.picked ? "brand" : "outline"}>
                 {t("OnlineExams.topicChip", {
                   number: topic.number,
                   name: topic.name,
                 })}
               </Badge>
+              <IconButton
+                size="small"
+                variant="ghost"
+                icon={<Icon name="close" size="sm" />}
+                label={t("OnlineExams.removeTopicLabel", {
+                  number: topic.number,
+                  name: topic.name,
+                })}
+                onClick={() => setAsking(topic)}
+              />
             </li>
           ))}
         </ul>
       ) : null}
+      <AlertDialog
+        open={asking !== null}
+        onOpenChange={(open) => {
+          if (!open) setAsking(null);
+        }}
+        title={
+          asking
+            ? t("OnlineExams.removeTopicTitle", {
+                number: asking.number,
+                name: asking.name,
+              })
+            : ""
+        }
+        confirmLabel={t("OnlineExams.remove")}
+        cancelLabel={t("OnlineExams.cancel")}
+        closeLabel={t("Shell.close")}
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (asking) onRemove(asking.id);
+          setAsking(null);
+        }}
+      >
+        {t("OnlineExams.removeTopicBody")}
+      </AlertDialog>
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={submit}

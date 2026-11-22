@@ -2398,6 +2398,11 @@
     "pointsRefused": "هذه الدرجة لا تتسع: بقي {left} درجة على الأكثر، ويجب أن يبقى شيء للأسئلة التي تتقاسم.",
     "pointsOwn": "{points} درجة · خاصة",
     "pointsShare": "{points} درجة · حصة متساوية",
-    "modeInvalid": "للاختيار المتعدد حدّد خيارين صحيحين على الأقل."
+    "modeInvalid": "للاختيار المتعدد حدّد خيارين صحيحين على الأقل.",
+    "removeTopicLabel": "حذف الموضوع {number}. {name}",
+    "removeTopicTitle": "حذف {number}. {name}؟",
+    "removeTopicBody": "يُحذف الموضوع من قائمة الدرس. ولا يُحذف موضوع يحمله سؤال.",
+    "topicInUse": "لا يمكن حذف هذا الموضوع؛ تحمله هذه الأسئلة: {questions}.",
+    "topicInUseItem": "{exam}، السؤال {number}"
   }
 }

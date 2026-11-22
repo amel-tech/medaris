@@ -23,6 +23,7 @@ const actions = {
   createCourseTopic: vi.fn(),
   createOnlineExam: vi.fn(),
   setExamQuestionPoints: vi.fn(),
+  removeCourseTopic: vi.fn(),
 };
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
@@ -32,6 +33,7 @@ vi.mock("~/features/online-exams/actions", () => ({
   createOnlineExam: (...a: unknown[]) => actions.createOnlineExam(...a),
   setExamQuestionPoints: (...a: unknown[]) =>
     actions.setExamQuestionPoints(...a),
+  removeCourseTopic: (...a: unknown[]) => actions.removeCourseTopic(...a),
 }));
 
 const draft = {
@@ -500,5 +502,59 @@ describe("the exam editor (MDRS-299)", () => {
       )[1] as HTMLButtonElement
     );
     expect(field(root, "Kendi puanı").value).toBe("60");
+  });
+
+  const removeChip = async (label: string) => {
+    await click(
+      root().querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement
+    );
+    await settle(80);
+    await click(
+      button(document.querySelector("[role=alertdialog]") as HTMLElement, "Sil")
+    );
+    await settle(80);
+  };
+  const root = () => document.body;
+  const chips = () =>
+    [...document.querySelectorAll("#topics-title ~ ul li")].map((li) =>
+      li.textContent?.trim()
+    );
+
+  it("takes a topic off at once, and puts it back naming the questions that carry it", async () => {
+    actions.removeCourseTopic.mockImplementation(() =>
+      later({
+        success: false,
+        code: "TOPIC_IN_USE",
+        questions: [{ examId: "e2", examTitle: "Ara sınav", number: 2 }],
+      })
+    );
+    await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    expect(chips()).toEqual(["3. Kıyas"]);
+    await removeChip("3. Kıyas konusunu sil");
+    expect(chips()).toEqual([]);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t3");
+    held.shift()?.();
+    await settle(80);
+    expect(chips()).toEqual(["3. Kıyas"]);
+    expect(document.body.textContent).toContain(
+      "şu sorular onu taşıyor: Ara sınav, 2. soru"
+    );
+  });
+
+  it("deletes a new topic taken off while it was being made, by the id the server gave", async () => {
+    actions.createCourseTopic.mockImplementation(() =>
+      later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
+    );
+    actions.removeCourseTopic.mockResolvedValue({ success: true });
+    const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(page, "Konu ekle"));
+    expect(chips()).toEqual(["1. İcma", "3. Kıyas"]);
+    await removeChip("1. İcma konusunu sil");
+    expect(chips()).toEqual(["3. Kıyas"]);
+    held.shift()?.(); // the topic is made
+    await settle(80);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
+    expect(chips()).toEqual(["3. Kıyas"]);
   });
 });

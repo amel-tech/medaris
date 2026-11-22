@@ -2398,6 +2398,11 @@
     "pointsRefused": "These points do not fit: at most {left} points are left to give, and the questions that share must keep some.",
     "pointsOwn": "{points} points · own",
     "pointsShare": "{points} points · equal share",
-    "modeInvalid": "For multiple selection, mark at least two correct options."
+    "modeInvalid": "For multiple selection, mark at least two correct options.",
+    "removeTopicLabel": "Delete topic {number}. {name}",
+    "removeTopicTitle": "Delete {number}. {name}?",
+    "removeTopicBody": "The topic is deleted from the course's list. A topic a question carries is not deleted.",
+    "topicInUse": "This topic cannot be deleted; these questions carry it: {questions}.",
+    "topicInUseItem": "{exam}, question {number}"
   }
 }

@@ -2398,6 +2398,11 @@
     "pointsRefused": "Bu puan sığmıyor: verilebilecek en çok {left} puan kaldı; eşit pay alan sorulara da puan kalmalı.",
     "pointsOwn": "{points} puan · kendi puanı",
     "pointsShare": "{points} puan · eşit pay",
-    "modeInvalid": "Çoklu seçim için en az iki doğru şık işaretleyin."
+    "modeInvalid": "Çoklu seçim için en az iki doğru şık işaretleyin.",
+    "removeTopicLabel": "{number}. {name} konusunu sil",
+    "removeTopicTitle": "{number}. {name} silinsin mi?",
+    "removeTopicBody": "Konu dersin listesinden silinir. Bir soru taşıyorsa silinmez.",
+    "topicInUse": "Bu konu silinemez; şu sorular onu taşıyor: {questions}.",
+    "topicInUseItem": "{exam}, {number}. soru"
   }
 }

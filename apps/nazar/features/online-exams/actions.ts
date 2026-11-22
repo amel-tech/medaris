@@ -124,3 +124,38 @@ export async function setExamQuestionPoints(
     ...(typeof left === "string" ? { pointsLeft: left } : {}),
   };
 }
+
+/** A question that carries a topic, as TOPIC_IN_USE names it. */
+export interface TopicCarrier {
+  examId: string;
+  examTitle: string;
+  number: number;
+}
+
+/** A topic removal's answer; TOPIC_IN_USE names the questions that carry it. */
+export type TopicRemovalOutcome =
+  | { success: true }
+  | { success: false; code: string; questions?: TopicCarrier[] }
+  | Unauthenticated;
+
+/** Deletes a topic from the course's list (`DELETE /courses/:id/exam-topics/:topicId`). */
+export async function removeCourseTopic(
+  courseId: string,
+  topicId: string
+): Promise<TopicRemovalOutcome> {
+  const result = await authenticatedAction((api) =>
+    api.onlineExams.removeCourseTopic({ id: courseId, topicId })
+  );
+  if (isUnauthenticated(result))
+    return unauthenticated({ reauth: result.reauth });
+  if (result.success) return { success: true };
+  const questions = (result.errorBody as { context?: { questions?: unknown } })
+    ?.context?.questions;
+  return {
+    success: false,
+    code: errorCodeOf(result.errorBody),
+    ...(Array.isArray(questions)
+      ? { questions: questions as TopicCarrier[] }
+      : {}),
+  };
+}
