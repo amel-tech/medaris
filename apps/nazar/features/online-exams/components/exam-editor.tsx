@@ -3,34 +3,53 @@
 import type {
   ExamQuestionResponse,
   OnlineExamDraftResponse,
+  PublishProblemResponse,
 } from "@medaris/services/tedrisat";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { Field } from "@medaris/ui/mds/field";
+import { Icon } from "@medaris/ui/mds/icon";
+import { IconButton } from "@medaris/ui/mds/icon-button";
 import { Input } from "@medaris/ui/mds/input";
+import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
   addExamQuestion,
   createCourseTopic,
+  type ExamSettings,
+  publishOnlineExam,
+  removeCourseTopic,
   removeExamQuestion,
   saveExamQuestion,
+  saveExamSettings,
+  setExamQuestionPoints,
 } from "../actions";
 import {
+  type AnswerModeValue,
   lacksOf,
+  minutesFromText,
+  modeFits,
   nextFreeNumber,
   numbersOf,
   OPTION_FIELDS,
   onlineExamErrorKey,
+  ownHundredthsOf,
+  pointsFromText,
+  pointsText,
+  READS_AGAIN,
+  type ScoringValue,
+  sharesOf,
   topicsByNumbers,
 } from "../online-exams";
+import { PublishSection } from "./exam-publish";
 
 type Outcome =
   | { success: true; data: unknown }
@@ -45,12 +64,26 @@ type Question = ExamQuestionResponse & {
   key: string;
   pending?: boolean;
   failed?: boolean;
+  /** Own points typed and not yet taken (hundredths, null = the share), kept for the form and "Yeniden dene". */
+  wantedPoints?: number | null;
 };
 type QuestionBody = {
   text: string;
   options: Array<{ text: string; correct: boolean }>;
   topicIds: string[];
+  answerMode: AnswerModeValue;
+  scoring: ScoringValue | null;
+  /** Own points in hundredths; null shares what the others leave. */
+  points: number | null;
 };
+
+/** A question's own points as typed: on their way, refused, or the API's. */
+const typedOwnOf = (q: Question): number | null =>
+  q.wantedPoints !== undefined ? q.wantedPoints : ownHundredthsOf(q.ownPoints);
+
+/** The own points the shares are drawn from: a refused value never counts. */
+const ownOf = (q: Question): number | null =>
+  q.failed ? ownHundredthsOf(q.ownPoints) : typedOwnOf(q);
 
 let localKeys = 0;
 const localKey = () => `local-${++localKeys}`;
@@ -66,11 +99,18 @@ const localKey = () => `local-${++localKeys}`;
 export function ExamEditor({
   courseId,
   draft,
+  publish,
 }: {
   courseId: string;
   draft: OnlineExamDraftResponse;
+  /** "Yayınla" under the questions; left out, the editor has none. */
+  publish?: {
+    timeZone: string;
+    onPublished: (next: OnlineExamDraftResponse) => void;
+  };
 }) {
   const t = useTranslations("nazar");
+  const format = useFormatter();
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();
@@ -79,6 +119,14 @@ export function ExamEditor({
     draft.questions.map((q) => ({ ...q, key: q.id }))
   );
   const [editing, setEditing] = useState<string | null>(null);
+  const [settings, setSettings] = useState<ExamSettings>({
+    title: draft.title,
+    durationMinutes: draft.durationMinutes,
+    instructions: draft.instructions ?? null,
+  });
+  const [settingsState, setSettingsState] = useState<
+    "saved" | "pending" | "failed"
+  >("saved");
   const [inFlight, setInFlight] = useState(0);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -100,7 +148,7 @@ export function ExamEditor({
         title: t("OnlineExams.failed"),
         description: words(onlineExamErrorKey(result.code)),
       });
-      if (result.code === "EXAM_STALE") router.refresh();
+      if (READS_AGAIN.has(result.code)) router.refresh();
       return false;
     }
     return true;
@@ -125,6 +173,8 @@ export function ExamEditor({
   const savesOf = useRef(new Map<string, number>());
   const removed = useRef(new Set<string>());
   const topicIdOf = useRef(new Map<string, string>());
+  const topicsRemoved = useRef(new Set<string>());
+  const settingsSaves = useRef(0);
   const idOf = (key: string) =>
     serverIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
 
@@ -148,6 +198,9 @@ export function ExamEditor({
       text: body.text,
       options: body.options.map((o, i) => ({ id: `${key}-${i}`, ...o })),
       topicIds: body.topicIds,
+      answerMode: body.answerMode,
+      scoring: body.scoring,
+      wantedPoints: body.points,
       lacks,
       complete: lacks.length === 0,
       pending: true,
@@ -173,21 +226,95 @@ export function ExamEditor({
           .map((topicId) => topicIdOf.current.get(topicId) ?? topicId)
           .filter((topicId) => !topicId.startsWith("local-"));
         const saved = await saveExamQuestion(draft.id, id, {
-          ...body,
+          text: body.text,
+          options: body.options,
           topicIds,
-          answerMode: "SINGLE",
+          answerMode: body.answerMode,
+          scoring: body.scoring,
           version: version.current,
         });
         if (!went(saved) || !("data" in saved)) return failed();
         version.current = saved.data.version;
-        if (!latest()) return;
-        patch(key, { ...saved.data.question, pending: false, failed: false });
-        // A topic typed by number that the exam had not picked is picked now.
+        // What the server now holds, whichever save this is: the topics it
+        // picked for the exam, and the question's own points.
         setTopics((all) =>
           all.map((topic) =>
             topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
           )
         );
+        patch(key, { ownPoints: saved.data.question.ownPoints });
+        if (!latest()) return;
+        // Its own points are a second write, after the save, naming the
+        // version the save gave; the page goes on showing what was typed.
+        const pointsChange =
+          body.points !== ownHundredthsOf(saved.data.question.ownPoints);
+        patch(key, {
+          ...saved.data.question,
+          ...(pointsChange
+            ? { wantedPoints: body.points }
+            : { wantedPoints: undefined, pending: false, failed: false }),
+        });
+        if (pointsChange) {
+          const set = await setExamQuestionPoints(
+            draft.id,
+            id,
+            version.current,
+            body.points === null ? null : pointsText(body.points)
+          );
+          if (handleUnauthenticated(set as never)) return failed();
+          if (!("data" in set)) {
+            if ("code" in set && set.code === "POINTS_OVER_TOTAL")
+              notify({
+                tone: "error",
+                title: t("OnlineExams.failed"),
+                description: t("OnlineExams.pointsRefused", {
+                  left: format.number(Number(set.pointsLeft ?? 0), {
+                    maximumFractionDigits: 2,
+                  }),
+                }),
+              });
+            else went(set);
+            return failed();
+          }
+          version.current = set.data.version;
+          // The server's own points, from every answer: a later save that
+          // fails falls back on them.
+          const mine = set.data.questions.find((q) => q.questionId === id);
+          patch(key, { ownPoints: mine?.own ? mine.points : null });
+          if (!latest()) return;
+          patch(key, {
+            wantedPoints: undefined,
+            pending: false,
+            failed: false,
+          });
+        }
+      } catch {
+        threw();
+        failed();
+      }
+    });
+  };
+
+  // The settings are one more write in the same queue: it names the version
+  // the write before it gave, and only the latest save draws its answer. A
+  // failure keeps what was typed on the page and offers it again.
+  const saveSettings = (next: ExamSettings) => {
+    const save = ++settingsSaves.current;
+    const latest = () => settingsSaves.current === save;
+    const failed = () => {
+      if (latest()) setSettingsState("failed");
+    };
+    setSettings(next);
+    setSettingsState("pending");
+    enqueue(async () => {
+      try {
+        const saved = await saveExamSettings(draft.id, {
+          ...next,
+          version: version.current,
+        });
+        if (!went(saved) || !("data" in saved)) return failed();
+        version.current = saved.data.version;
+        if (latest()) setSettingsState("saved");
       } catch {
         threw();
         failed();
@@ -274,11 +401,16 @@ export function ExamEditor({
     // In the same queue as the questions, so a question saved after it with
     // its number is sent with the id the server gave it.
     enqueue(async () => {
+      // Taken off before it was sent: nothing goes, as with an unsaved question.
+      if (topicsRemoved.current.has(key)) return;
       try {
         const made = await createCourseTopic(courseId, name, number);
         if (!went(made) || !("data" in made)) return drop();
         const topic = made.data;
         topicIdOf.current.set(key, topic.id);
+        // Taken off while it was being made: the removal queued after this
+        // deletes it by this id.
+        if (topicsRemoved.current.has(key)) return;
         setTopics((all) =>
           all
             .map((it) =>
@@ -293,12 +425,125 @@ export function ExamEditor({
     });
   };
 
-  const numbered = questions.map((q, i) => ({ ...q, number: i + 1 }));
+  const removeTopic = (key: string) => {
+    // The confirmation may hold the local id of a topic whose create has
+    // answered since: the list shows it by the id the server gave.
+    const shownId = topicIdOf.current.get(key) ?? key;
+    const gone = topics.find((topic) => topic.id === shownId);
+    if (!gone) return;
+    topicsRemoved.current.add(key);
+    setTopics((all) => all.filter((topic) => topic.id !== shownId));
+    const restore = () => {
+      topicsRemoved.current.delete(key);
+      setTopics((all) =>
+        [...all, { ...gone, id: topicIdOf.current.get(key) ?? gone.id }].sort(
+          (a, b) => a.number - b.number
+        )
+      );
+    };
+    enqueue(async () => {
+      // Read when it runs: a create queued before it may have made it.
+      const id =
+        topicIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
+      if (id === "") return;
+      try {
+        const result = await removeCourseTopic(courseId, id);
+        if (handleUnauthenticated(result as never)) return restore();
+        if ("success" in result && result.success) {
+          // The exams that had picked it moved on a version; the answer
+          // names this one's when it was among them.
+          const mine = result.data.exams.find((exam) => exam.id === draft.id);
+          if (mine) version.current = mine.version;
+          return;
+        }
+        if ("code" in result && result.code === "TOPIC_IN_USE")
+          notify({
+            tone: "error",
+            title: t("OnlineExams.failed"),
+            description: t("OnlineExams.topicInUse", {
+              questions: (result.questions ?? [])
+                .map((q) =>
+                  t("OnlineExams.topicInUseItem", {
+                    exam: q.examTitle,
+                    number: q.number,
+                  })
+                )
+                .join("; "),
+            }),
+          });
+        else went(result);
+        restore();
+      } catch {
+        threw();
+        restore();
+      }
+    });
+  };
+
+  // Every question's points, drawn from the own points with the API's rule:
+  // each answer (a save, a points write, a removal) moves the shares at once.
+  // A question that is only a form on the page is not on the server yet.
+  const shares = sharesOf(
+    questions
+      .filter((q) => q.id !== "" || q.pending)
+      .map((q) => ({ key: q.key, own: ownOf(q) }))
+  );
+  const numbered = questions.map((q, i) => ({
+    ...q,
+    number: i + 1,
+    share: shares.get(q.key),
+  }));
   const view = { ...draft, courseTopics: topics };
+
+  // What the page knows keeps the exam from being published: the questions
+  // as they now stand, and what only the server knows (the points total
+  // and the medrese's zeroth question) as it was read.
+  const problems: PublishProblemResponse[] = !publish
+    ? []
+    : [
+        ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
+        ...numbered
+          .filter((q) => q.lacks.length > 0)
+          .map((q) => ({
+            kind: "QUESTION" as const,
+            number: q.number,
+            lacks: q.lacks,
+          })),
+        ...draft.problems.filter(
+          (p) => p.kind === "POINTS" || p.kind === "NO_ZEROTH"
+        ),
+      ];
+  const [sending, setSending] = useState(false);
+  /** Publishing runs after every write queued before it, naming the version they leave. */
+  const publishNow = (times: { startsAt?: string; latestStartAt?: string }) => {
+    if (!publish) return;
+    setSending(true);
+    enqueue(async () => {
+      try {
+        const result = await publishOnlineExam(draft.id, {
+          ...times,
+          version: version.current,
+        });
+        if (!went(result) || !("data" in result)) return;
+        version.current = result.data.version;
+        publish.onPublished(result.data);
+      } catch {
+        threw();
+      } finally {
+        setSending(false);
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col gap-section">
-      <TopicsSection topics={topics} onAdd={addTopic} />
+      <SettingsSection
+        settings={settings}
+        state={settingsState}
+        onSave={saveSettings}
+        onRetry={() => saveSettings(settings)}
+      />
+      <TopicsSection topics={topics} onAdd={addTopic} onRemove={removeTopic} />
       <section
         className="flex flex-col gap-3"
         aria-labelledby="questions-title"
@@ -343,6 +588,9 @@ export function ExamEditor({
                         correct: o.correct,
                       })),
                       topicIds: q.topicIds,
+                      answerMode: q.answerMode,
+                      scoring: q.scoring,
+                      points: typedOwnOf(q),
                     })
                   }
                   onRemove={() => removeQuestion(q.key)}
@@ -355,18 +603,147 @@ export function ExamEditor({
           <Button onClick={addQuestion}>{t("OnlineExams.addQuestion")}</Button>
         </div>
       </section>
+      {publish ? (
+        <PublishSection
+          problems={problems}
+          questionCount={numbered.length}
+          durationMinutes={draft.durationMinutes}
+          timeZone={publish.timeZone}
+          holding={editing !== null}
+          sending={sending}
+          onPublish={publishNow}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * "Ayarlar": the exam's title, its length and the team's instructions, saved
+ * together. The fields keep what was typed whatever the server answers.
+ */
+function SettingsSection({
+  settings,
+  state,
+  onSave,
+  onRetry,
+}: {
+  settings: ExamSettings;
+  state: "saved" | "pending" | "failed";
+  onSave: (settings: ExamSettings) => void;
+  onRetry: () => void;
+}) {
+  const t = useTranslations("nazar");
+  const [title, setTitle] = useState(settings.title);
+  const [minutes, setMinutes] = useState(String(settings.durationMinutes));
+  const [instructions, setInstructions] = useState(settings.instructions ?? "");
+  const [problem, setProblem] = useState<"title" | "minutes" | null>(null);
+  const typed: ExamSettings | null = (() => {
+    const durationMinutes = minutesFromText(minutes);
+    if (title.trim() === "" || durationMinutes === null) return null;
+    return {
+      title: title.trim(),
+      durationMinutes,
+      instructions: instructions.trim() === "" ? null : instructions.trim(),
+    };
+  })();
+  const unchanged =
+    typed !== null &&
+    typed.title === settings.title &&
+    typed.durationMinutes === settings.durationMinutes &&
+    typed.instructions === settings.instructions;
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (title.trim() === "") return setProblem("title");
+    if (minutesFromText(minutes) === null) return setProblem("minutes");
+    setProblem(null);
+    if (typed && !unchanged) onSave(typed);
+  };
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="settings-title">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 id="settings-title" className="mds-h2">
+          {t("OnlineExams.settingsTitle")}
+        </h2>
+        {state === "pending" ? (
+          <span className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.saving")}
+          </span>
+        ) : null}
+        {state === "failed" ? (
+          <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
+        ) : null}
+      </div>
+      <form
+        className="mds-card flex max-inline-measure flex-col gap-3 p-4"
+        onSubmit={submit}
+        noValidate
+        aria-labelledby="settings-title"
+      >
+        <Field
+          label={t("OnlineExams.examTitleLabel")}
+          error={
+            problem === "title" ? t("OnlineExams.titleMissing") : undefined
+          }
+        >
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+          />
+        </Field>
+        <Field
+          label={t("OnlineExams.durationLabel")}
+          help={t("OnlineExams.durationHelp")}
+          error={
+            problem === "minutes" ? t("OnlineExams.durationInvalid") : undefined
+          }
+        >
+          <Input
+            inputMode="numeric"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))}
+            className="w-24"
+          />
+        </Field>
+        <Field
+          label={t("OnlineExams.instructionsLabel")}
+          help={t("OnlineExams.instructionsHelp")}
+        >
+          <Textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={4}
+            dir="auto"
+            maxLength={4000}
+          />
+        </Field>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={unchanged}>
+            {t("OnlineExams.saveSettings")}
+          </Button>
+          {state === "failed" ? (
+            <Button variant="secondary" onClick={onRetry}>
+              {t("OnlineExams.retry")}
+            </Button>
+          ) : null}
+        </div>
+      </form>
+    </section>
   );
 }
 
 function TopicsSection({
   topics,
   onAdd,
+  onRemove,
 }: {
   topics: Topic[];
   onAdd: (name: string, number: number | undefined) => void;
+  onRemove: (key: string) => void;
 }) {
   const t = useTranslations("nazar");
+  const [asking, setAsking] = useState<Topic | null>(null);
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -387,17 +764,51 @@ function TopicsSection({
       {topics.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
           {topics.map((topic) => (
-            <li key={topic.id}>
+            <li key={topic.id} className="flex items-center gap-1">
               <Badge variant={topic.picked ? "brand" : "outline"}>
                 {t("OnlineExams.topicChip", {
                   number: topic.number,
                   name: topic.name,
                 })}
               </Badge>
+              <IconButton
+                size="small"
+                variant="ghost"
+                icon={<Icon name="close" size="sm" />}
+                label={t("OnlineExams.removeTopicLabel", {
+                  number: topic.number,
+                  name: topic.name,
+                })}
+                onClick={() => setAsking(topic)}
+              />
             </li>
           ))}
         </ul>
       ) : null}
+      <AlertDialog
+        open={asking !== null}
+        onOpenChange={(open) => {
+          if (!open) setAsking(null);
+        }}
+        title={
+          asking
+            ? t("OnlineExams.removeTopicTitle", {
+                number: asking.number,
+                name: asking.name,
+              })
+            : ""
+        }
+        confirmLabel={t("OnlineExams.remove")}
+        cancelLabel={t("OnlineExams.cancel")}
+        closeLabel={t("Shell.close")}
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (asking) onRemove(asking.id);
+          setAsking(null);
+        }}
+      >
+        {t("OnlineExams.removeTopicBody")}
+      </AlertDialog>
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={submit}
@@ -435,12 +846,17 @@ function QuestionRow({
   onRemove,
 }: {
   draft: OnlineExamDraftResponse;
-  question: Question;
+  question: Question & { share?: { hundredths: number; own: boolean } };
   onEdit: () => void;
   onRetry: () => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("nazar");
+  const format = useFormatter();
+  const share = question.share;
+  const shown = share
+    ? format.number(share.hundredths / 100, { maximumFractionDigits: 2 })
+    : "";
   const [asking, setAsking] = useState(false);
   const topics = numbersOf(question.topicIds, draft.courseTopics);
   return (
@@ -468,6 +884,22 @@ function QuestionRow({
           <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
         ) : null}
       </div>
+      <p className="mds-body-sm text-neutral-muted">
+        {question.answerMode === "MULTIPLE"
+          ? `${t("OnlineExams.modeMultiple")} · ${
+              question.scoring === "IN_SHARES"
+                ? t("OnlineExams.scoringShares")
+                : t("OnlineExams.scoringAll")
+            }`
+          : t("OnlineExams.modeSingle")}
+        {share
+          ? ` · ${
+              share.own
+                ? t("OnlineExams.pointsOwn", { points: shown })
+                : t("OnlineExams.pointsShare", { points: shown })
+            }`
+          : ""}
+      </p>
       <p className="mds-body" dir="auto">
         {question.text || t("OnlineExams.noText")}
       </p>
@@ -522,11 +954,25 @@ function QuestionForm({
   onSave,
 }: {
   draft: OnlineExamDraftResponse;
-  question: ExamQuestionResponse;
+  question: Question;
   onCancel: () => void;
   onSave: (body: QuestionBody) => void;
 }) {
   const t = useTranslations("nazar");
+  const format = useFormatter();
+  const [mode, setMode] = useState<AnswerModeValue>(question.answerMode);
+  const [scoring, setScoring] = useState<ScoringValue>(
+    question.scoring ?? "ALL_OR_NOTHING"
+  );
+  const [points, setPoints] = useState(() => {
+    const own = typedOwnOf(question);
+    return own === null
+      ? ""
+      : format.number(own / 100, {
+          maximumFractionDigits: 2,
+          useGrouping: false,
+        });
+  });
   const [text, setText] = useState(question.text);
   const [options, setOptions] = useState(() => {
     const filled = question.options.map((o) => ({
@@ -546,16 +992,29 @@ function QuestionForm({
   );
   const setOption = (i: number, change: Partial<(typeof options)[number]>) =>
     setOptions((all) => all.map((o, j) => (j === i ? { ...o, ...change } : o)));
+  const filled = options
+    .filter((o) => o.text.trim() !== "")
+    .map((o) => ({ text: o.text.trim(), correct: o.correct }));
+  const correctCount = filled.filter((o) => o.correct).length;
+  // How it is answered is asked only with two correct options or more; with
+  // one it is radio buttons, as the API's modeFits has it.
+  const several = correctCount >= 2;
+  const answerMode: AnswerModeValue = several ? mode : "SINGLE";
+  const answerScoring = answerMode === "MULTIPLE" ? scoring : null;
+  const own = points.trim() === "" ? null : pointsFromText(points);
+  const pointsInvalid = points.trim() !== "" && own === null;
+  const fits = modeFits(answerMode, answerScoring, correctCount);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (picked.unknown.length > 0) return;
+    if (picked.unknown.length > 0 || pointsInvalid || !fits) return;
     onSave({
       text: text.trim(),
-      options: options
-        .filter((o) => o.text.trim() !== "")
-        .map((o) => ({ text: o.text.trim(), correct: o.correct })),
+      options: filled,
       topicIds: picked.ids,
+      answerMode,
+      scoring: answerScoring,
+      points: own,
     });
   };
 
@@ -608,6 +1067,56 @@ function QuestionForm({
           </Button>
         </div>
       </fieldset>
+      {several ? (
+        <RadioGroup
+          legend={t("OnlineExams.modeLegend")}
+          value={mode}
+          onChange={(value) => setMode(value as AnswerModeValue)}
+          options={[
+            {
+              value: "SINGLE",
+              label: t("OnlineExams.modeSingle"),
+              description: t("OnlineExams.modeSingleHelp"),
+            },
+            {
+              value: "MULTIPLE",
+              label: t("OnlineExams.modeMultiple"),
+              description: t("OnlineExams.modeMultipleHelp"),
+            },
+          ]}
+        />
+      ) : null}
+      {answerMode === "MULTIPLE" ? (
+        <RadioGroup
+          legend={t("OnlineExams.scoringLegend")}
+          value={scoring}
+          onChange={(value) => setScoring(value as ScoringValue)}
+          options={[
+            {
+              value: "ALL_OR_NOTHING",
+              label: t("OnlineExams.scoringAll"),
+              description: t("OnlineExams.scoringAllHelp"),
+            },
+            {
+              value: "IN_SHARES",
+              label: t("OnlineExams.scoringShares"),
+              description: t("OnlineExams.scoringSharesHelp"),
+            },
+          ]}
+        />
+      ) : null}
+      <Field
+        label={t("OnlineExams.ownPointsLabel")}
+        help={t("OnlineExams.ownPointsHelp")}
+        error={pointsInvalid ? t("OnlineExams.pointsInvalid") : undefined}
+      >
+        <Input
+          value={points}
+          onChange={(e) => setPoints(e.target.value)}
+          inputMode="decimal"
+          className="w-24"
+        />
+      </Field>
       <Field
         label={t("OnlineExams.topicNumbersLabel")}
         help={
@@ -631,7 +1140,10 @@ function QuestionForm({
         />
       </Field>
       <div className="flex gap-2">
-        <Button type="submit" disabled={picked.unknown.length > 0}>
+        <Button
+          type="submit"
+          disabled={picked.unknown.length > 0 || pointsInvalid || !fits}
+        >
           {t("OnlineExams.save")}
         </Button>
         <Button variant="ghost" onClick={onCancel}>

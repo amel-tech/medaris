@@ -1,9 +1,14 @@
+import type { OnlineExamSummaryResponse } from "@medaris/services/tedrisat";
+import { Badge } from "@medaris/ui/mds/badge";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
+import { getLocale } from "next-intl/server";
 import {
   PAGE_CODES,
   pageGate,
   readCoursePermissions,
 } from "~/features/account/course-permissions";
+import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
@@ -11,14 +16,37 @@ import { NewExamForm } from "./new-exam-form";
 
 /** "Sınavlar" of a course (MDRS-299): its online exams, and "Yeni sınav". Opens with `exam.prepare`. */
 export async function ExamsPage({ courseId }: { courseId: string }) {
-  const [t, exams, permissions] = await Promise.all([
+  const [t, locale, me, exams, permissions] = await Promise.all([
     getMessages("nazar"),
+    getLocale(),
+    getViewer(),
     readOnce("the course's online exams", (api) =>
       api.onlineExams.listOnlineExams({ id: courseId })
     ),
     readCoursePermissions(courseId),
   ]);
   const gate = pageGate([exams], permissions, PAGE_CODES.exams);
+  const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
+  const when = (at: Date | null) =>
+    at
+      ? new Intl.DateTimeFormat(locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone,
+        }).format(new Date(at))
+      : "";
+  const status = (exam: OnlineExamSummaryResponse) =>
+    exam.status === "SCHEDULED" ? (
+      <Badge variant="brand">
+        {t("OnlineExams.statusScheduled", { when: when(exam.startsAt) })}
+      </Badge>
+    ) : exam.status === "OPEN" ? (
+      <Badge variant="success">{t("OnlineExams.statusOpen")}</Badge>
+    ) : exam.status === "CLOSED" ? (
+      <Badge variant="outline">{t("OnlineExams.statusClosed")}</Badge>
+    ) : (
+      <Badge variant="secondary">{t("OnlineExams.statusDraft")}</Badge>
+    );
   return (
     <>
       <header className="flex max-inline-measure flex-col gap-1">
@@ -56,7 +84,22 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
                     {t("OnlineExams.questionCount", {
                       count: exam.questionCount,
                     })}
-                  </span>
+                  </span>{" "}
+                  {status(exam)}
+                  {exam.status !== "DRAFT" ? (
+                    <>
+                      {" · "}
+                      <a
+                        className="mds-link mds-body-sm"
+                        href={`/ders/${courseId}/sinavlar/${exam.id}/sonuclar`}
+                        aria-label={t("ExamResults.linkLabel", {
+                          title: exam.title,
+                        })}
+                      >
+                        {t("ExamResults.link")}
+                      </a>
+                    </>
+                  ) : null}
                 </li>
               ))}
             </ul>

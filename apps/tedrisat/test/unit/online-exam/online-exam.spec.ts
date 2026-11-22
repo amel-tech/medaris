@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   AnswerMode,
+  examStatus,
   lacksOf,
   modeFits,
   nextFreeTopicNumber,
   pointsFit,
   pointsFromText,
   pointsText,
+  publishProblems,
+  publishTimeProblem,
   Scoring,
   sharePoints,
   shareText,
+  toMinute,
   topicNameKey,
   topicWordCount,
 } from "../../../src/online-exam/domain/online-exam";
+import { TopicInUseError } from "../../../src/online-exam/errors/online-exam.errors";
 
 describe("online exam rules (MDRS-299)", () => {
   it("compares topic names in Turkish lower case", () => {
@@ -101,5 +106,91 @@ describe("online exam rules (MDRS-299)", () => {
     expect(
       pointsFit([{ ownHundredths: 9900 }, { ownHundredths: null }])
     ).toEqual({ fits: true, left: 100 });
+  });
+
+  it("publishes one question at least, each complete, out of 100, with a zeroth question", () => {
+    const complete = {
+      text: "Kıyasın rükünleri kaç tanedir?",
+      options: [
+        { text: "Üç", correct: false },
+        { text: "Dört", correct: true },
+      ],
+      topicIds: ["t1"],
+    };
+    expect(
+      publishProblems({ questions: [], pointsTotal: "0.00", hasZeroth: false })
+    ).toEqual([{ kind: "NO_QUESTION" }, { kind: "NO_ZEROTH" }]);
+    expect(
+      publishProblems({
+        questions: [complete, { ...complete, topicIds: [], options: [] }],
+        pointsTotal: "80.00",
+        hasZeroth: true,
+      })
+    ).toEqual([
+      { kind: "QUESTION", number: 2, lacks: ["option", "correct", "topic"] },
+      { kind: "POINTS", total: "80.00" },
+    ]);
+    expect(
+      publishProblems({
+        questions: [complete],
+        pointsTotal: "100.00",
+        hasZeroth: true,
+      })
+    ).toEqual([]);
+  });
+
+  it("starts this minute or later, and lets a talebe start until the latest start", () => {
+    const now = new Date("2026-12-01T17:00:40Z");
+    const at = (iso: string) => new Date(iso);
+    expect(toMinute(now)).toEqual(at("2026-12-01T17:00:00Z"));
+    expect(
+      publishTimeProblem(
+        at("2026-12-01T17:00:00Z"),
+        at("2026-12-01T17:10:00Z"),
+        now
+      )
+    ).toBeNull();
+    expect(
+      publishTimeProblem(
+        at("2026-12-01T16:59:00Z"),
+        at("2026-12-01T17:10:00Z"),
+        now
+      )
+    ).toBe("START_PASSED");
+    expect(
+      publishTimeProblem(
+        at("2026-12-01T18:00:00Z"),
+        at("2026-12-01T17:59:00Z"),
+        now
+      )
+    ).toBe("LATEST_BEFORE_START");
+
+    const exam = {
+      publishedAt: at("2026-11-30T10:00:00Z"),
+      closedEarlyAt: null,
+      startsAt: at("2026-12-01T17:00:00Z"),
+      latestStartAt: at("2026-12-01T17:10:00Z"),
+      durationMinutes: 60,
+    };
+    expect(
+      examStatus({ ...exam, publishedAt: null, startsAt: null }, now)
+    ).toBe("DRAFT");
+    expect(examStatus(exam, at("2026-12-01T16:59:59Z"))).toBe("SCHEDULED");
+    // The last to start, at the latest start, has the whole hour.
+    expect(examStatus(exam, at("2026-12-01T18:09:59Z"))).toBe("OPEN");
+    expect(examStatus(exam, at("2026-12-01T18:10:00Z"))).toBe("CLOSED");
+    expect(examStatus({ ...exam, closedEarlyAt: now }, now)).toBe("CLOSED");
+  });
+
+  it("refuses to delete a topic that questions carry, naming each by its exam and number", () => {
+    const error = new TopicInUseError("t1", [
+      { examId: "e1", examTitle: "Ara sınav", number: 3 },
+    ]);
+    expect(error.code).toBe("TOPIC_IN_USE");
+    expect(error.status).toBe(409);
+    expect(error.context).toEqual({
+      topicId: "t1",
+      questions: [{ examId: "e1", examTitle: "Ara sınav", number: 3 }],
+    });
   });
 });

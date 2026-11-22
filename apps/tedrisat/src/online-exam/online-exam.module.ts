@@ -5,6 +5,9 @@ import { DatabaseModule } from "../database/database.module";
 import { ExamAttemptController } from "./exam-attempt.controller";
 import { ExamAttemptRepository } from "./exam-attempt.repository";
 import { ExamAttemptService } from "./exam-attempt.service";
+import { ExamResultsController } from "./exam-results.controller";
+import { ExamResultsRepository } from "./exam-results.repository";
+import { ExamResultsService } from "./exam-results.service";
 import { MyExamsController } from "./my-exams.controller";
 import { MyExamsRepository } from "./my-exams.repository";
 import { MyExamsService } from "./my-exams.service";
@@ -17,8 +20,8 @@ import { ZerothQuestionService } from "./zeroth-question.service";
 
 /**
  * Online multiple-choice exams (MDRS-299): topics, drafts and questions, each
- * medrese's zeroth question, a talebe's sitting of a published exam, and the
- * talebe's own exams and results.
+ * medrese's zeroth question, a talebe's sitting of a published exam, the
+ * team's results and early close, and the talebe's own exams and results.
  */
 @Module({
   imports: [AuthGuardModule, CourseModule, DatabaseModule],
@@ -26,6 +29,7 @@ import { ZerothQuestionService } from "./zeroth-question.service";
     OnlineExamController,
     ZerothQuestionController,
     ExamAttemptController,
+    ExamResultsController,
     MyExamsController,
   ],
   providers: [
@@ -35,6 +39,8 @@ import { ZerothQuestionService } from "./zeroth-question.service";
     ZerothQuestionRepository,
     ExamAttemptService,
     ExamAttemptRepository,
+    ExamResultsService,
+    ExamResultsRepository,
     MyExamsService,
     MyExamsRepository,
   ],

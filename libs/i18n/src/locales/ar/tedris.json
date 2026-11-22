@@ -651,7 +651,8 @@
     "resourcesOwn": "هذه الحلقة",
     "resourcesCourse": "الدرس كله",
     "rowRecording": "يوجد تسجيل",
-    "download": " (يُنزَّل)"
+    "download": " (يُنزَّل)",
+    "examMultipleChoice": "اختيار من متعدد"
   },
   "AccountPage": {
     "pageTitle": "الحساب",
