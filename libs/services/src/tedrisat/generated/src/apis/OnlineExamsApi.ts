@@ -25,6 +25,7 @@ import type {
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
   OnlineExamSummaryResponse,
+  PublishOnlineExamDto,
   SaveExamQuestionDto,
   SaveZerothQuestionDto,
   SetQuestionPointsDto,
@@ -54,6 +55,8 @@ import {
     OnlineExamDraftResponseToJSON,
     OnlineExamSummaryResponseFromJSON,
     OnlineExamSummaryResponseToJSON,
+    PublishOnlineExamDtoFromJSON,
+    PublishOnlineExamDtoToJSON,
     SaveExamQuestionDtoFromJSON,
     SaveExamQuestionDtoToJSON,
     SaveZerothQuestionDtoFromJSON,
@@ -101,6 +104,11 @@ export interface ListOnlineExamsRequest {
     id: string;
 }
 
+export interface PublishOnlineExamRequest {
+    examId: string;
+    publishOnlineExamDto: PublishOnlineExamDto;
+}
+
 export interface RemoveCourseTopicRequest {
     id: string;
     topicId: string;
@@ -127,6 +135,11 @@ export interface SetExamQuestionPointsRequest {
     examId: string;
     questionId: string;
     setQuestionPointsDto: SetQuestionPointsDto;
+}
+
+export interface UnpublishOnlineExamRequest {
+    examId: string;
+    versionDto: VersionDto;
 }
 
 export interface UpdateCourseTopicRequest {
@@ -352,7 +365,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The settings, the zeroth question with its options, the course\'s topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.
+     * The settings, the zeroth question copied at publication (empty in a draft), the course\'s topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.
      * An online exam as its page reads it
      */
     async getOnlineExamDraftRaw(requestParameters: GetOnlineExamDraftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamDraftResponse>> {
@@ -387,7 +400,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The settings, the zeroth question with its options, the course\'s topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.
+     * The settings, the zeroth question copied at publication (empty in a draft), the course\'s topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.
      * An online exam as its page reads it
      */
     async getOnlineExamDraft(requestParameters: GetOnlineExamDraftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
@@ -480,6 +493,60 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async listOnlineExams(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlineExamSummaryResponse>> {
         const response = await this.listOnlineExamsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Yayınla: now, or at a day and time, with a latest start
+     */
+    async publishOnlineExamRaw(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamDraftResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling publishOnlineExam().'
+            );
+        }
+
+        if (requestParameters['publishOnlineExamDto'] == null) {
+            throw new runtime.RequiredError(
+                'publishOnlineExamDto',
+                'Required parameter "publishOnlineExamDto" was null or undefined when calling publishOnlineExam().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/publish`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PublishOnlineExamDtoToJSON(requestParameters['publishOnlineExamDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OnlineExamDraftResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Yayınla: now, or at a day and time, with a latest start
+     */
+    async publishOnlineExam(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
+        const response = await this.publishOnlineExamRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -777,6 +844,60 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Deletes the celse it was published with (the talebe get the calendar CANCEL) and makes it a draft again, with all it had. Once it has opened it is 409 EXAM_LOCKED. Written to `audit_log` as `online_exam.unpublish`, and its celse as `lesson.delete`.
+     * Taslağa al: take a published exam back, until it opens
+     */
+    async unpublishOnlineExamRaw(requestParameters: UnpublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamDraftResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling unpublishOnlineExam().'
+            );
+        }
+
+        if (requestParameters['versionDto'] == null) {
+            throw new runtime.RequiredError(
+                'versionDto',
+                'Required parameter "versionDto" was null or undefined when calling unpublishOnlineExam().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/unpublish`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: VersionDtoToJSON(requestParameters['versionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OnlineExamDraftResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Deletes the celse it was published with (the talebe get the calendar CANCEL) and makes it a draft again, with all it had. Once it has opened it is 409 EXAM_LOCKED. Written to `audit_log` as `online_exam.unpublish`, and its celse as `lesson.delete`.
+     * Taslağa al: take a published exam back, until it opens
+     */
+    async unpublishOnlineExam(requestParameters: UnpublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
+        const response = await this.unpublishOnlineExamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Every exam and question that carries it reads the new name and number. Written to `audit_log` as `exam_topic.rename`.
      * Rename or renumber a topic, for the whole course
      */
@@ -839,8 +960,8 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Only what is sent changes. `zerothOptions` and `topicIds` replace the lists they name; unpicking a topic takes it off the questions that carried it. Written to `audit_log` as `online_exam.update`.
-     * Change an online exam\'s settings, zeroth question or topics
+     * Only what is sent changes. `topicIds` replaces the list; unpicking a topic takes it off the questions that carried it. The zeroth question is the medrese\'s, copied when the exam is published. Written to `audit_log` as `online_exam.update`.
+     * Change an online exam\'s settings or topics
      */
     async updateOnlineExamRaw(requestParameters: UpdateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExamVersionResponse>> {
         if (requestParameters['examId'] == null) {
@@ -884,8 +1005,8 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Only what is sent changes. `zerothOptions` and `topicIds` replace the lists they name; unpicking a topic takes it off the questions that carried it. Written to `audit_log` as `online_exam.update`.
-     * Change an online exam\'s settings, zeroth question or topics
+     * Only what is sent changes. `topicIds` replaces the list; unpicking a topic takes it off the questions that carried it. The zeroth question is the medrese\'s, copied when the exam is published. Written to `audit_log` as `online_exam.update`.
+     * Change an online exam\'s settings or topics
      */
     async updateOnlineExam(requestParameters: UpdateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamVersionResponse> {
         const response = await this.updateOnlineExamRaw(requestParameters, initOverrides);

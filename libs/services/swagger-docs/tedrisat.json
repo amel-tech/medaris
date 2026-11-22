@@ -4347,7 +4347,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or a new time or length was sent for an online exam's celse, which its exam page changes (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -4389,6 +4389,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "The session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -4447,7 +4450,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN), or the session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -14538,7 +14541,7 @@
     },
     "/online-exams/{examId}": {
       "get": {
-        "description": "The settings, the zeroth question with its options, the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
+        "description": "The settings, the zeroth question copied at publication (empty in a draft), the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
         "operationId": "getOnlineExamDraft",
         "parameters": [
           {
@@ -14579,7 +14582,7 @@
         ]
       },
       "patch": {
-        "description": "Only what is sent changes. `zerothOptions` and `topicIds` replace the lists they name; unpicking a topic takes it off the questions that carried it. Written to `audit_log` as `online_exam.update`.",
+        "description": "Only what is sent changes. `topicIds` replaces the list; unpicking a topic takes it off the questions that carried it. The zeroth question is the medrese's, copied when the exam is published. Written to `audit_log` as `online_exam.update`.",
         "operationId": "updateOnlineExam",
         "parameters": [
           {
@@ -14630,7 +14633,122 @@
             "bearer": []
           }
         ],
-        "summary": "Change an online exam's settings, zeroth question or topics",
+        "summary": "Change an online exam's settings or topics",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/publish": {
+      "post": {
+        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+        "operationId": "publishOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, EXAM_TIME_PASSED"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_READY, EXAM_STALE, EXAM_LOCKED (published already)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Yayınla: now, or at a day and time, with a latest start",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/unpublish": {
+      "post": {
+        "description": "Deletes the celse it was published with (the talebe get the calendar CANCEL) and makes it a draft again, with all it had. Once it has opened it is 409 EXAM_LOCKED. Written to `audit_log` as `online_exam.unpublish`, and its celse as `lesson.delete`.",
+        "operationId": "unpublishOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Taslağa al: take a published exam back, until it opens",
         "tags": [
           "online-exams"
         ]
@@ -19105,7 +19223,8 @@
         "type": "string",
         "enum": [
           "WRITTEN",
-          "ORAL"
+          "ORAL",
+          "MULTIPLE_CHOICE"
         ]
       },
       "LessonExamResponse": {
@@ -21221,7 +21340,7 @@
         "properties": {
           "format": {
             "default": "WRITTEN",
-            "description": "\"Yazılı\" (WRITTEN, the default) or \"Şifahi\" (ORAL).",
+            "description": "\"Yazılı\" (WRITTEN, the default) or \"Şifahi\" (ORAL). MULTIPLE_CHOICE is planned only by publishing an online exam (MDRS-299).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ExamFormat"
@@ -29719,6 +29838,12 @@
               "CLOSED"
             ]
           },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it opens; null for a draft."
+          },
           "updatedAt": {
             "format": "date-time",
             "type": "string"
@@ -29729,6 +29854,7 @@
           "title",
           "questionCount",
           "status",
+          "startsAt",
           "updatedAt"
         ]
       },
@@ -29919,6 +30045,43 @@
           "lacks"
         ]
       },
+      "PublishProblemResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "NO_QUESTION",
+              "QUESTION",
+              "POINTS",
+              "NO_ZEROTH"
+            ],
+            "description": "NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question."
+          },
+          "number": {
+            "type": "number"
+          },
+          "lacks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "text",
+                "option",
+                "correct",
+                "topic"
+              ]
+            }
+          },
+          "total": {
+            "type": "string",
+            "example": "80.00"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "OnlineExamDraftResponse": {
         "type": "object",
         "properties": {
@@ -29941,7 +30104,8 @@
             "nullable": true
           },
           "zerothQuestion": {
-            "type": "string"
+            "type": "string",
+            "description": "The medrese's zeroth question as it was copied when the exam was published; empty in a draft."
           },
           "zerothOptions": {
             "type": "array",
@@ -29983,6 +30147,24 @@
               "CLOSED"
             ]
           },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest start, its celse's time; null for a draft, which has no celse."
+          },
+          "latestStartAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "problems": {
+            "description": "What keeps it from being published; empty when it can be.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublishProblemResponse"
+            }
+          },
           "version": {
             "type": "number"
           }
@@ -30000,6 +30182,9 @@
           "questions",
           "pointsTotal",
           "status",
+          "startsAt",
+          "latestStartAt",
+          "problems",
           "version"
         ]
       },
@@ -30009,6 +30194,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "title": {
@@ -30018,25 +30204,14 @@
           "durationMinutes": {
             "type": "number",
             "minimum": 1,
-            "description": "\"Süre (dakika)\"; no upper bound."
+            "maximum": 2147483647,
+            "description": "\"Süre (dakika)\"; no upper bound but the column's (the owner: \"Sınır yok\")."
           },
           "instructions": {
             "type": "string",
             "nullable": true,
             "maxLength": 4000,
             "description": "The team's own words for the briefing; blank is none."
-          },
-          "zerothQuestion": {
-            "type": "string",
-            "maxLength": 1000,
-            "description": "The preparer's question about the hadith."
-          },
-          "zerothOptions": {
-            "description": "The zeroth question's options in their order; empty fields are not sent. Replaces them all.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "topicIds": {
             "description": "The course topics the exam picks, in order. Unpicking one takes it off the questions that carried it.",
@@ -30063,12 +30238,39 @@
           "version"
         ]
       },
+      "PublishOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-12-01T17:00:00.000Z",
+            "description": "The earliest start, which becomes the exam celse's time; left out, now. Seconds are dropped. Before this minute is 400 EXAM_TIME_PASSED."
+          },
+          "latestStartAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-12-01T17:10:00.000Z",
+            "description": "Until when a talebe may start; every attempt gets the whole time. Left out, the earliest start plus 10 minutes. Before the earliest start is 400 EXAM_TIME_PASSED."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
       "VersionDto": {
         "type": "object",
         "properties": {
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           }
         },
@@ -30114,6 +30316,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "text": {
@@ -30166,6 +30369,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "points": {

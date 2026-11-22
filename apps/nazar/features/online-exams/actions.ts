@@ -9,6 +9,7 @@ import type {
   CourseTopicResponse,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
+  OnlineExamDraftResponse,
   SaveExamQuestionDto,
   TopicRemovedResponse,
 } from "@medaris/services/tedrisat";
@@ -112,6 +113,46 @@ export async function removeExamQuestion(
   return outcomeOf(
     await authenticatedAction((api) =>
       api.onlineExams.removeExamQuestion({ examId, questionId, version })
+    )
+  );
+}
+
+/**
+ * "Yayınla": `startsAt` left out opens it now; `latestStartAt` left out is
+ * the start plus ten minutes. Both are ISO instants. The answer is the exam
+ * as it now stands, published.
+ */
+export async function publishOnlineExam(
+  examId: string,
+  input: { version: number; startsAt?: string; latestStartAt?: string }
+): Promise<ActionOutcome<OnlineExamDraftResponse>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.publishOnlineExam({
+        examId,
+        publishOnlineExamDto: {
+          version: input.version,
+          ...(input.startsAt ? { startsAt: new Date(input.startsAt) } : {}),
+          ...(input.latestStartAt
+            ? { latestStartAt: new Date(input.latestStartAt) }
+            : {}),
+        },
+      })
+    )
+  );
+}
+
+/** "Taslağa al", until it opens: the answer is the exam, a draft again. */
+export async function unpublishOnlineExam(
+  examId: string,
+  version: number
+): Promise<ActionOutcome<OnlineExamDraftResponse>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.unpublishOnlineExam({
+        examId,
+        versionDto: { version },
+      })
     )
   );
 }

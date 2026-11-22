@@ -19,7 +19,8 @@
  */
 export const ExamFormat = {
     Written: 'WRITTEN',
-    Oral: 'ORAL'
+    Oral: 'ORAL',
+    MultipleChoice: 'MULTIPLE_CHOICE'
 } as const;
 export type ExamFormat = typeof ExamFormat[keyof typeof ExamFormat];
 

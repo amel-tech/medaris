@@ -34,6 +34,13 @@ import {
     ZerothOptionResponseToJSON,
     ZerothOptionResponseToJSONTyped,
 } from './ZerothOptionResponse';
+import type { PublishProblemResponse } from './PublishProblemResponse';
+import {
+    PublishProblemResponseFromJSON,
+    PublishProblemResponseFromJSONTyped,
+    PublishProblemResponseToJSON,
+    PublishProblemResponseToJSONTyped,
+} from './PublishProblemResponse';
 
 /**
  * 
@@ -72,7 +79,7 @@ export interface OnlineExamDraftResponse {
      */
     instructions: string | null;
     /**
-     * 
+     * The medrese's zeroth question as it was copied when the exam was published; empty in a draft.
      * @type {string}
      * @memberof OnlineExamDraftResponse
      */
@@ -114,6 +121,24 @@ export interface OnlineExamDraftResponse {
      */
     status: OnlineExamDraftResponseStatusEnum;
     /**
+     * The earliest start, its celse's time; null for a draft, which has no celse.
+     * @type {Date}
+     * @memberof OnlineExamDraftResponse
+     */
+    startsAt: Date | null;
+    /**
+     * 
+     * @type {Date}
+     * @memberof OnlineExamDraftResponse
+     */
+    latestStartAt: Date | null;
+    /**
+     * What keeps it from being published; empty when it can be.
+     * @type {Array<PublishProblemResponse>}
+     * @memberof OnlineExamDraftResponse
+     */
+    problems: Array<PublishProblemResponse>;
+    /**
      * 
      * @type {number}
      * @memberof OnlineExamDraftResponse
@@ -150,6 +175,9 @@ export function instanceOfOnlineExamDraftResponse(value: object): value is Onlin
     if (!('questions' in value) || value['questions'] === undefined) return false;
     if (!('pointsTotal' in value) || value['pointsTotal'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
+    if (!('latestStartAt' in value) || value['latestStartAt'] === undefined) return false;
+    if (!('problems' in value) || value['problems'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     return true;
 }
@@ -176,6 +204,9 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         'questions': ((json['questions'] as Array<any>).map(ExamQuestionResponseFromJSON)),
         'pointsTotal': json['pointsTotal'],
         'status': json['status'],
+        'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
+        'latestStartAt': (json['latestStartAt'] == null ? null : new Date(json['latestStartAt'])),
+        'problems': ((json['problems'] as Array<any>).map(PublishProblemResponseFromJSON)),
         'version': json['version'],
     };
 }
@@ -203,6 +234,9 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         'questions': ((value['questions'] as Array<any>).map(ExamQuestionResponseToJSON)),
         'pointsTotal': value['pointsTotal'],
         'status': value['status'],
+        'startsAt': ((value['startsAt'] as any).toISOString()),
+        'latestStartAt': ((value['latestStartAt'] as any).toISOString()),
+        'problems': ((value['problems'] as Array<any>).map(PublishProblemResponseToJSON)),
         'version': value['version'],
     };
 }

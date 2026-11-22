@@ -48,6 +48,7 @@ import {
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
   OnlineExamSummaryResponse,
+  PublishOnlineExamDto,
   SaveExamQuestionDto,
   SetQuestionPointsDto,
   TopicRemovedResponse,
@@ -136,7 +137,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "An online exam as its page reads it",
     description:
-      "The settings, the zeroth question with its options, the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
+      "The settings, the zeroth question copied at publication (empty in a draft), the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
     operationId: "getOnlineExamDraft",
   })
   @ApiOkResponse({ type: OnlineExamDraftResponse })
@@ -152,9 +153,9 @@ export class OnlineExamController {
   }
 
   @ApiOperation({
-    summary: "Change an online exam's settings, zeroth question or topics",
+    summary: "Change an online exam's settings or topics",
     description:
-      "Only what is sent changes. `zerothOptions` and `topicIds` replace the lists they name; unpicking a topic takes it off the questions that carried it. Written to `audit_log` as `online_exam.update`.",
+      "Only what is sent changes. `topicIds` replaces the list; unpicking a topic takes it off the questions that carried it. The zeroth question is the medrese's, copied when the exam is published. Written to `audit_log` as `online_exam.update`.",
     operationId: "updateOnlineExam",
   })
   @ApiOkResponse({ type: ExamVersionResponse })
@@ -171,6 +172,55 @@ export class OnlineExamController {
     @Body() dto: UpdateOnlineExamDto
   ): Promise<ExamVersionResponse> {
     return this.service.updateExam(examId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Yayınla: now, or at a day and time, with a latest start",
+    description:
+      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+    operationId: "publishOnlineExam",
+  })
+  @ApiOkResponse({ type: OnlineExamDraftResponse })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR, EXAM_TIME_PASSED" })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description: "EXAM_NOT_READY, EXAM_STALE, EXAM_LOCKED (published already)",
+  })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @HttpCode(HttpStatus.OK)
+  @Post("online-exams/:examId/publish")
+  publish(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string,
+    @Body() dto: PublishOnlineExamDto
+  ): Promise<OnlineExamDraftResponse> {
+    return this.service.publish(examId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Taslağa al: take a published exam back, until it opens",
+    description:
+      "Deletes the celse it was published with (the talebe get the calendar CANCEL) and makes it a draft again, with all it had. Once it has opened it is 409 EXAM_LOCKED. Written to `audit_log` as `online_exam.unpublish`, and its celse as `lesson.delete`.",
+    operationId: "unpublishOnlineExam",
+  })
+  @ApiOkResponse({ type: OnlineExamDraftResponse })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description: "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE",
+  })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @HttpCode(HttpStatus.OK)
+  @Post("online-exams/:examId/unpublish")
+  unpublish(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string,
+    @Body() dto: VersionDto
+  ): Promise<OnlineExamDraftResponse> {
+    return this.service.unpublish(examId, dto.version, request.user);
   }
 
   @ApiOperation({

@@ -40,6 +40,14 @@ export function onlineExamErrorKey(code: string): string {
       return "OnlineExams.topicNumberTaken";
     case "TOPIC_TOO_LONG":
       return "OnlineExams.topicTooLong";
+    case "EXAM_NOT_READY":
+      return "OnlineExams.notReadyRefused";
+    case "EXAM_TIME_PASSED":
+      return "OnlineExams.timePassed";
+    case "EXAM_LOCKED":
+      return "OnlineExams.locked";
+    case "EXAM_NOT_PUBLISHED":
+      return "OnlineExams.notPublished";
     case "QUESTION_MODE_INVALID":
       return "OnlineExams.modeInvalid";
     case "VALIDATION_ERROR":
@@ -74,6 +82,14 @@ export const nextFreeNumber = (taken: Iterable<number>): number => {
   while (held.has(n)) n += 1;
   return n;
 };
+
+/** The refusals that mean the page no longer shows the exam as it stands: it is read again. */
+export const READS_AGAIN = new Set([
+  "EXAM_STALE",
+  "EXAM_NOT_READY",
+  "EXAM_LOCKED",
+  "EXAM_NOT_PUBLISHED",
+]);
 
 export type AnswerModeValue = "SINGLE" | "MULTIPLE";
 export type ScoringValue = "ALL_OR_NOTHING" | "IN_SHARES";

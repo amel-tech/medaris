@@ -1,15 +1,22 @@
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
+import { getLocale } from "next-intl/server";
 import {
   PAGE_CODES,
   pageGate,
   readCoursePermissions,
 } from "~/features/account/course-permissions";
+import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
-import { ExamEditor } from "./exam-editor";
+import { ExamWorkspace } from "./exam-workspace";
 
-/** One online exam's draft (MDRS-299): the course's topics and the exam's questions. */
+/**
+ * One online exam (MDRS-299): while a draft, the course's topics, the exam's
+ * questions and "Yayınla"; once published, the exam read-only with when it
+ * opens. Times are on the viewer's clock.
+ */
 export async function ExamPage({
   courseId,
   examId,
@@ -17,8 +24,10 @@ export async function ExamPage({
   courseId: string;
   examId: string;
 }) {
-  const [t, draft, permissions] = await Promise.all([
+  const [t, locale, me, draft, permissions] = await Promise.all([
     getMessages("nazar"),
+    getLocale(),
+    getViewer(),
     readOnce("the online exam", (api) =>
       api.onlineExams.getOnlineExamDraft({ examId })
     ),
@@ -47,10 +56,12 @@ export async function ExamPage({
         </a>
         <h1 className="mds-h1">{draft.data.title}</h1>
       </header>
-      <ExamEditor
+      <ExamWorkspace
         key={draft.data.version}
         courseId={courseId}
         draft={draft.data}
+        timeZone={resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE)}
+        locale={locale}
       />
     </>
   );

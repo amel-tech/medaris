@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -31,10 +31,11 @@ export class SessionExamDto {
     enum: ExamFormat,
     enumName: "ExamFormat",
     default: ExamFormat.WRITTEN,
-    description: '"Yazılı" (WRITTEN, the default) or "Şifahi" (ORAL).',
+    description:
+      '"Yazılı" (WRITTEN, the default) or "Şifahi" (ORAL). MULTIPLE_CHOICE is planned only by publishing an online exam (MDRS-299).',
   })
   @IsOptional()
-  @IsEnum(ExamFormat)
+  @IsIn([ExamFormat.WRITTEN, ExamFormat.ORAL])
   format?: ExamFormat;
 
   @ApiPropertyOptional({
