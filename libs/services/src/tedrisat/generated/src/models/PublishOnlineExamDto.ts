@@ -37,6 +37,12 @@ export interface PublishOnlineExamDto {
      * @memberof PublishOnlineExamDto
      */
     latestStartAt?: Date;
+    /**
+     * How many minutes after the earliest start a talebe may still start, counted from the start the server sets (now, when `startsAt` is left out). Used when `latestStartAt` is left out; both left out, 10.
+     * @type {number}
+     * @memberof PublishOnlineExamDto
+     */
+    latestStartMinutes?: number;
 }
 
 /**
@@ -60,6 +66,7 @@ export function PublishOnlineExamDtoFromJSONTyped(json: any, ignoreDiscriminator
         'version': json['version'],
         'startsAt': json['startsAt'] == null ? undefined : (new Date(json['startsAt'])),
         'latestStartAt': json['latestStartAt'] == null ? undefined : (new Date(json['latestStartAt'])),
+        'latestStartMinutes': json['latestStartMinutes'] == null ? undefined : json['latestStartMinutes'],
     };
 }
 
@@ -77,6 +84,7 @@ export function PublishOnlineExamDtoToJSONTyped(value?: PublishOnlineExamDto | n
         'version': value['version'],
         'startsAt': value['startsAt'] == null ? undefined : ((value['startsAt']).toISOString()),
         'latestStartAt': value['latestStartAt'] == null ? undefined : ((value['latestStartAt']).toISOString()),
+        'latestStartMinutes': value['latestStartMinutes'],
     };
 }
 

@@ -2516,7 +2516,11 @@
     "staleTitle": "Medaris güncellendi",
     "staleBody": "Kaydetmek için sayfayı yenile. Kaydedilmemiş sorular bu tarayıcıda saklandı; yenileyince geri gelir.",
     "reload": "Yenile",
-    "restored": "Kaydedilmemiş {count} soru geri getirildi; \"Yeniden dene\" ile kaydedebilirsin."
+    "restored": "Kaydedilmemiş {count} soru geri getirildi; \"Yeniden dene\" ile kaydedebilirsin.",
+    "lateMinutesLabel": "Geç kalanlar kaç dakika sonrasına kadar başlayabilir",
+    "lateMinutesInvalid": "1 ile 10080 arasında bir dakika yaz.",
+    "lateMinutesHelp": "Talebeler açılıştan {minutes} dakika sonrasına, {time} saatine kadar başlayabilir. Her talebe sürenin tamamını alır.",
+    "lateMinutesHelpNow": "Talebeler yayınladığın andan {minutes} dakika sonrasına kadar başlayabilir; şimdi yayınlarsan {time} saatine kadar. Her talebe sürenin tamamını alır."
   },
   "ExamResults": {
     "title": "Sonuçlar",

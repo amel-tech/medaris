@@ -635,7 +635,10 @@ export function ExamEditor({
       ];
   const [sending, setSending] = useState(false);
   /** Publishing runs after every write queued before it, naming the version they leave. */
-  const publishNow = (times: { startsAt?: string; latestStartAt?: string }) => {
+  const publishNow = (times: {
+    startsAt?: string;
+    latestStartMinutes: number;
+  }) => {
     if (!publish) return;
     setSending(true);
     enqueue(async () => {

@@ -125,7 +125,12 @@ export async function removeExamQuestion(
  */
 export async function publishOnlineExam(
   examId: string,
-  input: { version: number; startsAt?: string; latestStartAt?: string }
+  input: {
+    version: number;
+    startsAt?: string;
+    latestStartAt?: string;
+    latestStartMinutes?: number;
+  }
 ): Promise<ActionOutcome<OnlineExamDraftResponse>> {
   return outcomeOf(
     await authenticatedAction((api) =>
@@ -136,6 +141,9 @@ export async function publishOnlineExam(
           ...(input.startsAt ? { startsAt: new Date(input.startsAt) } : {}),
           ...(input.latestStartAt
             ? { latestStartAt: new Date(input.latestStartAt) }
+            : {}),
+          ...(input.latestStartMinutes !== undefined
+            ? { latestStartMinutes: input.latestStartMinutes }
             : {}),
         },
       })
