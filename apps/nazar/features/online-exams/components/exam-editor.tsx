@@ -106,6 +106,9 @@ export function ExamEditor({
     return true;
   };
 
+  /** A write that threw (the session store out of reach): said, as a refusal is. */
+  const threw = () => notify({ tone: "error", title: t("OnlineExams.failed") });
+
   /** Runs `job` after every write queued before it. */
   const enqueue = (job: () => Promise<void>) => {
     setInFlight((n) => n + 1);
@@ -115,12 +118,31 @@ export function ExamEditor({
       .finally(() => setInFlight((n) => n - 1));
   };
 
+  // What the queued writes read when they run, not when they were queued:
+  // each question's server id once made, the number of its latest save, the
+  // questions taken off the page, and each new topic's server id.
+  const serverIdOf = useRef(new Map<string, string>());
+  const savesOf = useRef(new Map<string, number>());
+  const removed = useRef(new Set<string>());
+  const topicIdOf = useRef(new Map<string, string>());
+  const idOf = (key: string) =>
+    serverIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
+
   const patch = (key: string, change: Partial<Question>) =>
     setQuestions((all) =>
       all.map((q) => (q.key === key ? { ...q, ...change } : q))
     );
 
   const saveQuestion = (key: string, body: QuestionBody) => {
+    const save = (savesOf.current.get(key) ?? 0) + 1;
+    savesOf.current.set(key, save);
+    // Only the latest save of a question writes what it shows; an older
+    // answer only moves the version on.
+    const latest = () =>
+      savesOf.current.get(key) === save && !removed.current.has(key);
+    const failed = () => {
+      if (latest()) patch(key, { pending: false, failed: true });
+    };
     const lacks = lacksOf(body);
     patch(key, {
       text: body.text,
@@ -133,55 +155,79 @@ export function ExamEditor({
     });
     setEditing(null);
     enqueue(async () => {
-      let id = questions.find((q) => q.key === key)?.id ?? "";
-      if (id === "") {
-        const added = await addExamQuestion(draft.id, version.current);
-        if (!went(added) || !("data" in added)) {
-          patch(key, { pending: false, failed: true });
-          return;
+      if (removed.current.has(key)) return;
+      try {
+        let id = idOf(key);
+        if (id === "") {
+          const added = await addExamQuestion(draft.id, version.current);
+          if (!went(added) || !("data" in added)) return failed();
+          version.current = added.data.version;
+          id = added.data.question.id;
+          serverIdOf.current.set(key, id);
+          patch(key, { id });
+          // Taken off meanwhile: the removal queued after this deletes it.
+          if (removed.current.has(key)) return;
         }
-        version.current = added.data.version;
-        id = added.data.question.id;
-        patch(key, { id });
+        // A topic added on this page is sent by the id the server gave it.
+        const topicIds = body.topicIds
+          .map((topicId) => topicIdOf.current.get(topicId) ?? topicId)
+          .filter((topicId) => !topicId.startsWith("local-"));
+        const saved = await saveExamQuestion(draft.id, id, {
+          ...body,
+          topicIds,
+          answerMode: "SINGLE",
+          version: version.current,
+        });
+        if (!went(saved) || !("data" in saved)) return failed();
+        version.current = saved.data.version;
+        if (!latest()) return;
+        patch(key, { ...saved.data.question, pending: false, failed: false });
+        // A topic typed by number that the exam had not picked is picked now.
+        setTopics((all) =>
+          all.map((topic) =>
+            topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
+          )
+        );
+      } catch {
+        threw();
+        failed();
       }
-      const saved = await saveExamQuestion(draft.id, id, {
-        ...body,
-        answerMode: "SINGLE",
-        version: version.current,
-      });
-      if (!went(saved) || !("data" in saved)) {
-        patch(key, { pending: false, failed: true });
-        return;
-      }
-      version.current = saved.data.version;
-      patch(key, { ...saved.data.question, pending: false, failed: false });
-      // A topic typed by number that the exam had not picked is picked now.
-      setTopics((all) =>
-        all.map((topic) =>
-          body.topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
-        )
-      );
     });
   };
 
   const removeQuestion = (key: string) => {
-    const gone = questions.find((q) => q.key === key);
-    if (!gone) return;
+    const index = questions.findIndex((q) => q.key === key);
+    if (index === -1) return;
+    const gone = questions[index];
+    removed.current.add(key);
     setQuestions((all) => all.filter((q) => q.key !== key));
-    if (gone.id === "") return;
+    // Never saved: nothing of it is on the server.
+    if (idOf(key) === "" && !savesOf.current.has(key)) return;
+    const restore = () => {
+      removed.current.delete(key);
+      setQuestions((all) => {
+        const back = [...all];
+        back.splice(index, 0, {
+          ...gone,
+          id: idOf(key),
+          pending: false,
+          failed: true,
+        });
+        return back;
+      });
+    };
     enqueue(async () => {
-      const result = await removeExamQuestion(
-        draft.id,
-        gone.id,
-        version.current
-      );
-      if (!went(result) || !("data" in result)) {
-        setQuestions((all) =>
-          [...all, gone].sort((a, b) => a.number - b.number)
-        );
-        return;
+      // Read when it runs: a save queued before it may have made the question.
+      const id = idOf(key);
+      if (id === "") return;
+      try {
+        const result = await removeExamQuestion(draft.id, id, version.current);
+        if (!went(result) || !("data" in result)) return restore();
+        version.current = result.data.version;
+      } catch {
+        threw();
+        restore();
       }
-      version.current = result.data.version;
     });
   };
 
@@ -223,21 +269,28 @@ export function ExamEditor({
         },
       ].sort((a, b) => a.number - b.number)
     );
-    void (async () => {
-      const made = await createCourseTopic(courseId, name, number);
-      if (!went(made) || !("data" in made)) {
-        setTopics((all) => all.filter((topic) => topic.id !== key));
-        return;
+    const drop = () =>
+      setTopics((all) => all.filter((topic) => topic.id !== key));
+    // In the same queue as the questions, so a question saved after it with
+    // its number is sent with the id the server gave it.
+    enqueue(async () => {
+      try {
+        const made = await createCourseTopic(courseId, name, number);
+        if (!went(made) || !("data" in made)) return drop();
+        const topic = made.data;
+        topicIdOf.current.set(key, topic.id);
+        setTopics((all) =>
+          all
+            .map((it) =>
+              it.id === key ? { ...it, ...topic, pending: false } : it
+            )
+            .sort((a, b) => a.number - b.number)
+        );
+      } catch {
+        threw();
+        drop();
       }
-      const topic = made.data;
-      setTopics((all) =>
-        all
-          .map((it) =>
-            it.id === key ? { ...it, ...topic, pending: false } : it
-          )
-          .sort((a, b) => a.number - b.number)
-      );
-    })();
+    });
   };
 
   const numbered = questions.map((q, i) => ({ ...q, number: i + 1 }));
@@ -388,6 +441,7 @@ function QuestionRow({
   onRemove: () => void;
 }) {
   const t = useTranslations("nazar");
+  const [asking, setAsking] = useState(false);
   const topics = numbersOf(question.topicIds, draft.courseTopics);
   return (
     <article className="mds-card flex flex-col gap-2 p-4">
@@ -436,16 +490,23 @@ function QuestionRow({
         <Button size="small" variant="outline" onClick={onEdit}>
           {t("OnlineExams.edit")}
         </Button>
+        {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
+            is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
+        <Button size="small" variant="ghost" onClick={() => setAsking(true)}>
+          {t("OnlineExams.remove")}
+        </Button>
         <AlertDialog
+          open={asking}
+          onOpenChange={setAsking}
           title={t("OnlineExams.removeTitle", { number: question.number })}
           confirmLabel={t("OnlineExams.remove")}
+          cancelLabel={t("OnlineExams.cancel")}
+          closeLabel={t("Shell.close")}
           confirmVariant="destructive"
-          onConfirm={onRemove}
-          trigger={
-            <Button size="small" variant="ghost">
-              {t("OnlineExams.remove")}
-            </Button>
-          }
+          onConfirm={() => {
+            setAsking(false);
+            onRemove();
+          }}
         >
           {t("OnlineExams.removeBody")}
         </AlertDialog>
