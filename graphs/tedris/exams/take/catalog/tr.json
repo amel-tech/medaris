@@ -27,7 +27,7 @@
   "planned.Exams.factMarks": "Yuvarlak düğmeli bir soruda bir şık seçersin; kutulu bir soruda doğru bulduğun bütün şıkları işaretlersin.",
   "planned.Exams.factQuestions": "{count} soru var. Puanlar 100 üzerindendir; her sorunun puanı yanında yazar.",
   "planned.Exams.factSaved": "Seçtiğin her cevap o anda kaydedilir. Sonda göndermen gereken bir şey yoktur.",
-  "planned.Exams.factSkip": "Bir soruyu atlayabilirsin; son sorudan sonra atladığın sorular yeniden gelir. Sorular listesinden istediğin soruya gidebilirsin.",
+  "planned.Exams.factSkip": "Soru atlayabilirsin; son sorudan sonra atladığın sorular yeniden gelir. Sorular listesinden istediğin soruya gidebilirsin.",
   "planned.Exams.factSwitch": "Başka bir sekmeye ya da pencereye geçersen bu sayılır ve ders kadrosu her geçişi saatiyle görür.",
   "planned.Exams.factTextSize": "Soruların yazısını büyütüp küçültebilirsin: soru kartının üstündeki A− ve A+ düğmeleri bunu yapar.",
   "planned.Exams.finish": "Sınavı bitir",
