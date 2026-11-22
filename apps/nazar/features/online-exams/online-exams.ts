@@ -161,3 +161,48 @@ export function minutesFromText(text: string): number | null {
   const minutes = Number(typed);
   return Number.isSafeInteger(minutes) && minutes >= 1 ? minutes : null;
 }
+
+/** A question typed on the page that the server has not taken yet. */
+export type UnsavedQuestion = {
+  /** The server's id when the question exists there; "" for a new one. */
+  id: string;
+  text: string;
+  options: Array<{ text: string; correct: boolean }>;
+  topicIds: string[];
+  answerMode: AnswerModeValue;
+  scoring: ScoringValue | null;
+  /** Own points in hundredths; null shares what the others leave. */
+  points: number | null;
+};
+
+const unsavedKey = (examId: string) => `exam-unsaved:${examId}`;
+
+/**
+ * The questions not yet saved, kept in the browser so a reload (a new
+ * version of Medaris, a closed tab) does not lose what was typed.
+ */
+export function readUnsaved(
+  examId: string,
+  storage: Pick<Storage, "getItem">
+): UnsavedQuestion[] {
+  try {
+    const raw = storage.getItem(unsavedKey(examId));
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? (parsed as UnsavedQuestion[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeUnsaved(
+  examId: string,
+  questions: UnsavedQuestion[],
+  storage: Pick<Storage, "setItem" | "removeItem">
+): void {
+  try {
+    if (questions.length === 0) storage.removeItem(unsavedKey(examId));
+    else storage.setItem(unsavedKey(examId), JSON.stringify(questions));
+  } catch {
+    // A full or blocked storage keeps the page working; nothing is kept.
+  }
+}

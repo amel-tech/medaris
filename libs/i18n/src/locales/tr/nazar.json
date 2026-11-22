@@ -2511,7 +2511,11 @@
       "saveFailed": "Sıfırıncı soru kaydedilemedi",
       "removeFailed": "Derse özel soru kaldırılamadı",
       "loadFailed": "Sıfırıncı soru okunamadı. Sayfayı yenileyip tekrar deneyin."
-    }
+    },
+    "staleTitle": "Medaris güncellendi",
+    "staleBody": "Kaydetmek için sayfayı yenile. Kaydedilmemiş sorular bu tarayıcıda saklandı; yenileyince geri gelir.",
+    "reload": "Yenile",
+    "restored": "Kaydedilmemiş {count} soru geri getirildi; \"Yeniden dene\" ile kaydedebilirsin."
   },
   "ExamResults": {
     "title": "Sonuçlar",

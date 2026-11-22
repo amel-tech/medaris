@@ -16,7 +16,10 @@ import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
-import { useRouter } from "next/navigation";
+import {
+  unstable_isUnrecognizedActionError as isStaleAction,
+  useRouter,
+} from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
@@ -46,9 +49,12 @@ import {
   pointsFromText,
   pointsText,
   READS_AGAIN,
+  readUnsaved,
   type ScoringValue,
   sharesOf,
   topicsByNumbers,
+  type UnsavedQuestion,
+  writeUnsaved,
 } from "../online-exams";
 import { PublishSection } from "./exam-publish";
 
@@ -140,6 +146,65 @@ export function ExamEditor({
     return () => window.removeEventListener("beforeunload", hold);
   }, [inFlight]);
 
+  // What was typed and not saved is kept in this browser: a reload after a
+  // new version of Medaris, or a closed tab, brings it back to try again.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    const kept = readUnsaved(draft.id, window.localStorage);
+    if (kept.length === 0) return;
+    setQuestions((all) => {
+      const next = [...all];
+      for (const item of kept) {
+        const lacks = lacksOf(item);
+        const shown = {
+          text: item.text,
+          options: item.options.map((o, i) => ({ id: `kept-${i}`, ...o })),
+          topicIds: item.topicIds,
+          answerMode: item.answerMode,
+          scoring: item.scoring,
+          wantedPoints: item.points,
+          lacks,
+          complete: lacks.length === 0,
+          pending: false,
+          failed: true,
+        };
+        const at = item.id ? next.findIndex((q) => q.id === item.id) : -1;
+        if (at >= 0) next[at] = { ...next[at], ...shown };
+        else
+          next.push({
+            ...shown,
+            key: localKey(),
+            id: "",
+            number: next.length + 1,
+            ownPoints: null,
+            points: "",
+          } as Question);
+      }
+      return next;
+    });
+    notify({
+      tone: "info",
+      title: t("OnlineExams.restored", { count: kept.length }),
+    });
+  }, [draft.id, notify, t]);
+  useEffect(() => {
+    if (!restored.current) return;
+    const unsaved: UnsavedQuestion[] = questions
+      .filter((q) => q.pending || q.failed)
+      .map((q) => ({
+        id: q.id,
+        text: q.text,
+        options: q.options.map((o) => ({ text: o.text, correct: o.correct })),
+        topicIds: q.topicIds,
+        answerMode: q.answerMode as AnswerModeValue,
+        scoring: (q.scoring ?? null) as ScoringValue | null,
+        points: typedOwnOf(q),
+      }));
+    writeUnsaved(draft.id, unsaved, window.localStorage);
+  }, [draft.id, questions]);
+
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
     if (handleUnauthenticated(result as never)) return false;
@@ -155,8 +220,27 @@ export function ExamEditor({
     return true;
   };
 
-  /** A write that threw (the session store out of reach): said, as a refusal is. */
-  const threw = () => notify({ tone: "error", title: t("OnlineExams.failed") });
+  /**
+   * A write that threw, said as a refusal is. One that names a Server Action
+   * the server no longer has means Medaris was updated while the page was
+   * open: only a reload can save, and what was typed is kept for it.
+   */
+  const threw = (error?: unknown) => {
+    if (isStaleAction(error)) {
+      notify({
+        id: "exam-stale-deploy",
+        tone: "error",
+        title: t("OnlineExams.staleTitle"),
+        description: t("OnlineExams.staleBody"),
+        action: {
+          label: t("OnlineExams.reload"),
+          onClick: () => window.location.reload(),
+        },
+      });
+      return;
+    }
+    notify({ tone: "error", title: t("OnlineExams.failed") });
+  };
 
   /** Runs `job` after every write queued before it. */
   const enqueue = (job: () => Promise<void>) => {
@@ -289,8 +373,8 @@ export function ExamEditor({
             failed: false,
           });
         }
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
         failed();
       }
     });
@@ -316,8 +400,8 @@ export function ExamEditor({
         if (!went(saved) || !("data" in saved)) return failed();
         version.current = saved.data.version;
         if (latest()) setSettingsState("saved");
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
         failed();
       }
     });
@@ -352,8 +436,8 @@ export function ExamEditor({
         const result = await removeExamQuestion(draft.id, id, version.current);
         if (!went(result) || !("data" in result)) return restore();
         version.current = result.data.version;
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
         restore();
       }
     });
@@ -419,8 +503,8 @@ export function ExamEditor({
             )
             .sort((a, b) => a.number - b.number)
         );
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
         drop();
       }
     });
@@ -474,8 +558,8 @@ export function ExamEditor({
           });
         else went(result);
         restore();
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
         restore();
       }
     });
@@ -531,8 +615,8 @@ export function ExamEditor({
         if (!went(result) || !("data" in result)) return;
         version.current = result.data.version;
         publish.onPublished(result.data);
-      } catch {
-        threw();
+      } catch (error) {
+        threw(error);
       } finally {
         setSending(false);
       }
