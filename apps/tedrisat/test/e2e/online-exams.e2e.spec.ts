@@ -270,6 +270,20 @@ describe("online exams, preparation (e2e)", () => {
       code: "POINTS_OVER_TOTAL",
       context: { pointsLeft: "60.00" },
     });
+    // Clearing a question's own points puts it back into the equal share.
+    const cleared = await points(questionIds[0], null).expect(200);
+    version = cleared.body.version;
+    expect(
+      cleared.body.questions.map((q: { points: string; own: boolean }) => [
+        q.points,
+        q.own,
+      ])
+    ).toEqual([
+      ["33.33", false],
+      ["33.33", false],
+      ["33.33", false],
+    ]);
+    version = (await points(questionIds[0], "40").expect(200)).body.version;
     const removed = await http()
       .delete(
         `/online-exams/${examId}/questions/${questionIds[0]}?version=${version}`

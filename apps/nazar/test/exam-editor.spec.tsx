@@ -448,6 +448,60 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).not.toContain("Kaydediliyor…");
   });
 
+  it("puts a question back into the equal share when its own points are cleared", async () => {
+    const withOwn = {
+      ...draft,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "Soru",
+          options: [
+            { id: "o1", text: "Bir", correct: true },
+            { id: "o2", text: "İki", correct: false },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: "5.00",
+          points: "5.00",
+          complete: true,
+          lacks: [],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => {
+      const saved = echo(id, body, 2);
+      saved.data.question.ownPoints = "5.00" as unknown as null;
+      return saved;
+    });
+    actions.setExamQuestionPoints.mockResolvedValue({
+      success: true,
+      data: {
+        questions: [{ questionId: "q1", points: "100.00", own: false }],
+        total: "100.00",
+        version: 3,
+      },
+    });
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={withOwn} />)
+    );
+    await click(button(root, "Düzenle"));
+    expect(field(root, "Kendi puanı").value).toBe("5");
+    await typeInto(field(root, "Kendi puanı"), "");
+    await click(button(root, "Kaydet"));
+    await settle();
+    await settle();
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      2,
+      null
+    );
+    expect(root.textContent).not.toContain("Kaydedilemedi");
+    expect(root.textContent).toContain("100 puan · eşit pay");
+  });
+
   it("keeps the typed points when they do not fit, and says how many are left", async () => {
     const two = {
       ...draft,
