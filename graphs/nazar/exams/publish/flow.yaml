@@ -17,7 +17,8 @@
 #   - The length is required: "o olmadan sınav yayına alınamasın" (22 Nov, NO_DURATION).
 #
 # Not built: moving a scheduled exam in place, or changing it in the editor while scheduled (it is taken back to a draft first); a
-# notification that says an exam is scheduled or opened (the celse's own 24-hour reminder runs; not verified).
+# notification when the exam opens. Publishing does tell the course's talebe it is scheduled (EXAM_SCHEDULED) and puts it in their
+# calendar through the celse's invitation, as every exam celse does (the owner, 22 Nov: "evet, takvime de düşsün").
 # Choices made in the code that are not his: "Taslağa al" deletes the celse; it is offered until the exam opens; "İleri bir tarihte"
 # starts at the next whole hour; one confirmation before publishing.
 schema: delurio-graph/0

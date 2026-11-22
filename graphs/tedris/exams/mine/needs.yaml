@@ -93,11 +93,13 @@ needs:
   - id: told-when-an-exam-is-set
     need: >-
       The talebe is told, in their notifications and by e-mail as the account's settings allow, when an exam of their course is
-      scheduled or opened, and is reminded before it opens.
+      scheduled (and it goes into their calendar), and is reminded before it opens.
     evidence:
       - state: listed
-    missing: "MDRS-299: publishing makes an exam celse, so its 24-hour reminder runs as for every exam celse, but no notification says an online exam is scheduled or opened; not verified on the stack"
-    note: "Owner: \"Zamanlanınca + 24 saat önce\". Exam celses are reminded 24 hours before today (LessonExam.remindedAt)."
+      - source: apps/tedrisat/src/course/course.service.ts:1409
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
+    note: "Owner, 22 Nov: \"evet, takvime de düşsün\". Publishing sends EXAM_SCHEDULED and queues the calendar invitation through createExamSession; the 24-hour reminder is LessonExam.remindedAt. No notification is sent when it opens."
 
   - id: reached-from-the-course-too
     need: >-

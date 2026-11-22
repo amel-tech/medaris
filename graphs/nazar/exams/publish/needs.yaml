@@ -1,6 +1,6 @@
 # What must exist for the course team to publish an online exam: written needs-first on 21 November 2026 from the owner's rules, then met
 # by MDRS-299 (#415, #431); each met need names its code or test. Still missing: moving a scheduled exam in place, a page that redraws
-# itself when the exam opens, and a notification when it is scheduled or opened.
+# itself when the exam opens, and a notification when it opens (the one when it is scheduled is sent).
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.publish
@@ -128,14 +128,16 @@ needs:
 
   - id: the-talebe-are-told
     need: >-
-      The talebe of the course are told when an exam is scheduled or opened, in their notifications and by e-mail as their settings
-      allow, and are reminded 24 hours before it opens. Moving the exam moves the reminder.
+      The talebe of the course are told when an exam is scheduled, in their notifications and by e-mail as their settings
+      allow, it goes into their calendar, and they are reminded 24 hours before it opens. Moving the exam moves the reminder.
     evidence:
       - state: scheduled
       - state: open
       - node: notifiedNote
-    missing: "MDRS-299: the exam celse's 24-hour reminder runs as for every exam celse, but no notification says an online exam is scheduled or opened; not verified on the stack"
-    note: "Owner: \"Zamanlanınca + 24 saat önce\"; as exam celses are reminded today (LessonExam.remindedAt)."
+      - source: apps/tedrisat/src/course/course.service.ts:1409
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
+    note: "Owner, 22 Nov, asked whether a notification goes when it is scheduled: \"evet, takvime de düşsün\". Publishing plans the exam celse through createExamSession, which sends EXAM_SCHEDULED and queues the celse's calendar invitation (a CANCEL when it is taken back); the 24-hour reminder is LessonExam.remindedAt. No notification is sent when it opens."
 
   - id: only-the-course-team-and-audited
     need: >-

@@ -6,6 +6,7 @@ import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses, lessons } from "../../src/database/schema/course.schema";
 import { lessonExams } from "../../src/database/schema/lesson-exam.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
 import {
   madrasahZerothOptions,
   madrasahZerothQuestions,
@@ -177,6 +178,15 @@ describe("online exams, publishing (e2e)", () => {
 
     const lessonId = await celseOf(examId);
     expect(lessonId).not.toBeNull();
+    // The course's talebe are told it is scheduled, as for every exam celse
+    // (EXAM_SCHEDULED; the calendar invitation follows from the celse).
+    const told = await db()
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, CAST.TALEBE));
+    expect(
+      told.filter((n) => n.type === "EXAM_SCHEDULED").map((n) => n.targetId)
+    ).toEqual([lessonId]);
     const [celse] = await db()
       .select()
       .from(lessons)
