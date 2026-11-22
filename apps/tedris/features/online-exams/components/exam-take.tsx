@@ -159,6 +159,15 @@ export function ExamTake({
   const [notice, setNotice] = useState<string | null>(null);
   // A− / A+ on the questions' text, kept for this exam in this tab (a reload keeps it).
   const [textStep, setTextStep] = useState(0);
+  // The page's width without its scrollbar: the running exam grows with A+
+  // and takes all of it at the largest step.
+  const [pageWidth, setPageWidth] = useState(0);
+  useEffect(() => {
+    const measure = () => setPageWidth(document.documentElement.clientWidth);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   useEffect(() => {
     setTextStep(readTextScale(lessonId, window.sessionStorage));
   }, [lessonId]);
@@ -523,210 +532,240 @@ export function ExamTake({
       go(to, to !== null && to <= index);
     };
 
+    // A− / A+ zoom the whole exam: the bar, the question, its buttons and the
+    // list. The area widens with each step past the page's column, and the
+    // largest step spans the whole width of the screen.
     const scale = TEXT_SCALES[textStep];
-    const optionText = (text: string) =>
-      textProps(text, `calc(var(--fs-body) * ${scale})`, scale);
+    const widest = textStep === TEXT_SCALES.length - 1;
+    const optionText = (text: string) => textProps(text, "var(--fs-body)", 1);
 
     return (
-      <div className="flex flex-col gap-section">
-        <section
-          className="mds-card flex flex-wrap items-center justify-between gap-3"
-          aria-label={t("barLabel")}
+      <div
+        className="px-gutter"
+        data-exam-area
+        style={
+          pageWidth > 0
+            ? {
+                inlineSize: pageWidth,
+                marginInlineStart: `calc(50% - ${pageWidth / 2}px)`,
+              }
+            : undefined
+        }
+      >
+        <div
+          style={{
+            maxInlineSize: widest
+              ? "none"
+              : `calc((var(--layout-content-max) - 2 * var(--spacing-gutter)) * ${scale})`,
+            marginInline: "auto",
+          }}
         >
-          <p
-            className="mds-h3 mds-num"
-            style={
-              lastFive ? { color: "var(--text-error-default)" } : undefined
-            }
-            data-last-five={lastFive || undefined}
-            role="timer"
-            aria-label={t("timeLeftLabel")}
-            data-testid="exam-clock"
-          >
-            {clockText(left)}
-            {lastFive ? (
-              <span className="mds-body-sm"> · {t("lastFive")}</span>
-            ) : null}
-          </p>
-          <p className="mds-body-sm">
-            {t("counter", {
-              number: String(index + 1),
-              count: String(questions.length),
-            })}
-          </p>
-          <p className="mds-body-sm text-neutral-muted" aria-live="polite">
-            {pending > 0 ? t("saving") : ""}
-          </p>
-        </section>
-
-        {offline && stale ? (
-          <Alert tone="warning" title={t("staleTitle")}>
-            <p>{t("stale")}</p>
-            <p>
-              <Button onClick={() => window.location.reload()}>
-                {t("reload")}
-              </Button>
-            </p>
-          </Alert>
-        ) : offline ? (
-          <Alert tone="warning" title={t("offlineTitle")}>
-            <p>{t("offline")}</p>
-          </Alert>
-        ) : null}
-        {notice ? (
-          <p className="mds-body-sm" aria-live="polite">
-            {notice}
-          </p>
-        ) : null}
-
-        {q ? (
-          <section
-            className="mds-card flex flex-col gap-3"
-            aria-labelledby="exam-question"
+          <div
+            className="flex flex-col gap-section"
+            style={{ zoom: scale }}
             data-text-scale={scale}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="mds-caption text-neutral-muted">
-                {t("questionPoints", { points: q.points })}
-              </p>
-              <div className="flex gap-1">
-                <Button
-                  size="small"
-                  variant="outline"
-                  aria-label={t("textSmaller")}
-                  disabled={textStep === 0}
-                  onClick={() => stepText(-1)}
-                >
-                  A−
-                </Button>
-                <Button
-                  size="small"
-                  variant="outline"
-                  aria-label={t("textBigger")}
-                  disabled={textStep === TEXT_SCALES.length - 1}
-                  onClick={() => stepText(1)}
-                >
-                  A+
-                </Button>
-              </div>
-            </div>
-            <h1
-              id="exam-question"
-              className="mds-body"
-              {...textProps(q.text, `calc(var(--fs-body) * ${scale})`, scale)}
+            <section
+              className="mds-card flex flex-wrap items-center justify-between gap-3"
+              aria-label={t("barLabel")}
             >
-              {q.text}
-            </h1>
-            {q.answerMode === "MULTIPLE" ? (
-              <fieldset className="mds-choice-group">
-                <legend className="mds-label">{t("optionsLegend")}</legend>
-                {q.options.map((o) => (
-                  <Checkbox
-                    key={o.id}
-                    label={<span {...optionText(o.text)}>{o.text}</span>}
-                    checked={mine?.optionIds.includes(o.id) ?? false}
-                    onCheckedChange={(on) =>
-                      choose(
-                        on
-                          ? [...(mine?.optionIds ?? []), o.id]
-                          : (mine?.optionIds ?? []).filter((id) => id !== o.id)
-                      )
-                    }
-                  />
-                ))}
-              </fieldset>
-            ) : (
-              <RadioGroup
-                legend={t("optionsLegend")}
-                value={mine?.optionIds[0] ?? null}
-                onChange={(value) => choose([value])}
-                options={q.options.map((o) => ({
-                  value: o.id,
-                  label: <span {...optionText(o.text)}>{o.text}</span>,
-                }))}
-              />
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={index === 0}
-                onClick={() => go(index - 1)}
+              <p
+                className="mds-h3 mds-num"
+                style={
+                  lastFive ? { color: "var(--text-error-default)" } : undefined
+                }
+                data-last-five={lastFive || undefined}
+                role="timer"
+                aria-label={t("timeLeftLabel")}
+                data-testid="exam-clock"
               >
-                {t("previous")}
-              </Button>
-              <Button variant="ghost" onClick={skip}>
-                {t("skip")}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={nextIndex(ids, answers, index) === null}
-                onClick={() => {
-                  const to = nextIndex(ids, answers, index);
-                  go(to, to !== null && to <= index);
-                }}
-              >
-                {t("next")}
-              </Button>
-              <Button onClick={() => setAsking(true)}>{t("finish")}</Button>
-            </div>
-          </section>
-        ) : null}
+                {clockText(left)}
+                {lastFive ? (
+                  <span className="mds-body-sm"> · {t("lastFive")}</span>
+                ) : null}
+              </p>
+              <p className="mds-body-sm">
+                {t("counter", {
+                  number: String(index + 1),
+                  count: String(questions.length),
+                })}
+              </p>
+              <p className="mds-body-sm text-neutral-muted" aria-live="polite">
+                {pending > 0 ? t("saving") : ""}
+              </p>
+            </section>
 
-        <nav
-          className="mds-card flex flex-col gap-2"
-          aria-label={t("questionsTitle")}
-        >
-          <h2 className="mds-h3">{t("questionsTitle")}</h2>
-          <ol className="flex flex-wrap gap-2">
-            {questions.map((it, i) => {
-              const state = stateOf(answers.get(it.id));
-              return (
-                <li key={it.id}>
-                  <Button
-                    size="small"
-                    variant="outline"
-                    data-state={state}
-                    style={{
-                      ...INDICATOR[state],
-                      ...(i === index ? CURRENT : null),
-                    }}
-                    aria-current={i === index ? "step" : undefined}
-                    aria-label={t("listItemLabel", {
-                      number: String(i + 1),
-                      state: t(
-                        state === "answered"
-                          ? "stateAnswered"
-                          : state === "skipped"
-                            ? "stateSkipped"
-                            : "stateUnseen"
-                      ),
-                    })}
-                    onClick={() => go(i)}
-                  >
-                    {i + 1}
+            {offline && stale ? (
+              <Alert tone="warning" title={t("staleTitle")}>
+                <p>{t("stale")}</p>
+                <p>
+                  <Button onClick={() => window.location.reload()}>
+                    {t("reload")}
                   </Button>
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+                </p>
+              </Alert>
+            ) : offline ? (
+              <Alert tone="warning" title={t("offlineTitle")}>
+                <p>{t("offline")}</p>
+              </Alert>
+            ) : null}
+            {notice ? (
+              <p className="mds-body-sm" aria-live="polite">
+                {notice}
+              </p>
+            ) : null}
 
-        <AlertDialog
-          open={asking}
-          onOpenChange={setAsking}
-          title={t("finishTitle")}
-          confirmLabel={t("confirmFinish")}
-          cancelLabel={t("backToExam")}
-          onConfirm={() => void finish()}
-        >
-          <p>
-            {t("finishBody", {
-              unanswered: String(unanswered),
-              skipped: String(skipped),
-              timeLeft: clockText(left),
-            })}
-          </p>
-        </AlertDialog>
+            {q ? (
+              <section
+                className="mds-card flex flex-col gap-3"
+                aria-labelledby="exam-question"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="mds-caption text-neutral-muted">
+                    {t("questionPoints", { points: q.points })}
+                  </p>
+                  <div className="flex gap-1">
+                    <Button
+                      size="small"
+                      variant="outline"
+                      aria-label={t("textSmaller")}
+                      disabled={textStep === 0}
+                      onClick={() => stepText(-1)}
+                    >
+                      A−
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outline"
+                      aria-label={t("textBigger")}
+                      disabled={textStep === TEXT_SCALES.length - 1}
+                      onClick={() => stepText(1)}
+                    >
+                      A+
+                    </Button>
+                  </div>
+                </div>
+                <h1
+                  id="exam-question"
+                  className="mds-body"
+                  {...textProps(q.text, "var(--fs-body)", 1)}
+                >
+                  {q.text}
+                </h1>
+                {q.answerMode === "MULTIPLE" ? (
+                  <fieldset className="mds-choice-group">
+                    <legend className="mds-label">{t("optionsLegend")}</legend>
+                    {q.options.map((o) => (
+                      <Checkbox
+                        key={o.id}
+                        label={<span {...optionText(o.text)}>{o.text}</span>}
+                        checked={mine?.optionIds.includes(o.id) ?? false}
+                        onCheckedChange={(on) =>
+                          choose(
+                            on
+                              ? [...(mine?.optionIds ?? []), o.id]
+                              : (mine?.optionIds ?? []).filter(
+                                  (id) => id !== o.id
+                                )
+                          )
+                        }
+                      />
+                    ))}
+                  </fieldset>
+                ) : (
+                  <RadioGroup
+                    legend={t("optionsLegend")}
+                    value={mine?.optionIds[0] ?? null}
+                    onChange={(value) => choose([value])}
+                    options={q.options.map((o) => ({
+                      value: o.id,
+                      label: <span {...optionText(o.text)}>{o.text}</span>,
+                    }))}
+                  />
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={index === 0}
+                    onClick={() => go(index - 1)}
+                  >
+                    {t("previous")}
+                  </Button>
+                  <Button variant="ghost" onClick={skip}>
+                    {t("skip")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={nextIndex(ids, answers, index) === null}
+                    onClick={() => {
+                      const to = nextIndex(ids, answers, index);
+                      go(to, to !== null && to <= index);
+                    }}
+                  >
+                    {t("next")}
+                  </Button>
+                  <Button onClick={() => setAsking(true)}>{t("finish")}</Button>
+                </div>
+              </section>
+            ) : null}
+
+            <nav
+              className="mds-card flex flex-col gap-2"
+              aria-label={t("questionsTitle")}
+            >
+              <h2 className="mds-h3">{t("questionsTitle")}</h2>
+              <ol className="flex flex-wrap gap-2">
+                {questions.map((it, i) => {
+                  const state = stateOf(answers.get(it.id));
+                  return (
+                    <li key={it.id}>
+                      <Button
+                        size="small"
+                        variant="outline"
+                        data-state={state}
+                        style={{
+                          ...INDICATOR[state],
+                          ...(i === index ? CURRENT : null),
+                        }}
+                        aria-current={i === index ? "step" : undefined}
+                        aria-label={t("listItemLabel", {
+                          number: String(i + 1),
+                          state: t(
+                            state === "answered"
+                              ? "stateAnswered"
+                              : state === "skipped"
+                                ? "stateSkipped"
+                                : "stateUnseen"
+                          ),
+                        })}
+                        onClick={() => go(i)}
+                      >
+                        {i + 1}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+
+            <AlertDialog
+              open={asking}
+              onOpenChange={setAsking}
+              title={t("finishTitle")}
+              confirmLabel={t("confirmFinish")}
+              cancelLabel={t("backToExam")}
+              onConfirm={() => void finish()}
+            >
+              <p>
+                {t("finishBody", {
+                  unanswered: String(unanswered),
+                  skipped: String(skipped),
+                  timeLeft: clockText(left),
+                })}
+              </p>
+            </AlertDialog>
+          </div>
+        </div>
       </div>
     );
   }
