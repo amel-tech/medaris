@@ -153,3 +153,11 @@ export function sharesOf(
     ])
   );
 }
+
+/** A length typed in minutes: a whole number above zero, with no upper bound; null when it is not one. */
+export function minutesFromText(text: string): number | null {
+  const typed = text.trim();
+  if (!/^\d+$/.test(typed)) return null;
+  const minutes = Number(typed);
+  return Number.isSafeInteger(minutes) && minutes >= 1 ? minutes : null;
+}

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
+import { courseExamTopics } from "../../src/database/schema/online-exam.schema";
 import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   bearerOf,
@@ -322,7 +323,10 @@ describe("online exams, preparation (e2e)", () => {
       },
     });
 
-    await remove(icma.id).expect(204);
+    // The answer names the exam whose pick it took off, with its new
+    // version, so the page writes on without EXAM_STALE.
+    const removed = await remove(icma.id).expect(200);
+    expect(removed.body).toEqual({ exams: [{ id: examId, version: 5 }] });
     const after = await draft(examId);
     expect(after.version).toBe(5);
     expect(after.topicIds).toEqual([kiyas.id]);
@@ -342,6 +346,57 @@ describe("online exams, preparation (e2e)", () => {
     ]);
     // Only the course team removes a topic.
     await remove(kiyas.id).set("Authorization", as(CAST.TALEBE)).expect(403);
+  });
+
+  it("answers no exam when the topic was picked by none", async () => {
+    const usul = await topic("Usul");
+    const removed = await http()
+      .delete(`/courses/${ids.courseId}/exam-topics/${usul.id}`)
+      .set("Authorization", as(CAST.MUDERRIS))
+      .expect(200);
+    expect(removed.body).toEqual({ exams: [] });
+  });
+
+  it("refuses as TOPIC_NOT_FOUND a save whose topic is deleted while it waits on it", async () => {
+    const usul = await topic("Usul");
+    const examId = await newExam();
+    const added = await http()
+      .post(`/online-exams/${examId}/questions`)
+      .set("Authorization", as(CAST.MUDERRIS))
+      .send({ version: 1 })
+      .expect(201);
+    // Holding the topic's row, as a topic removal does, the save passes its
+    // check of the course's topics and waits at its foreign key; the topic
+    // then goes, and the save meets the foreign key violation.
+    let saving: Promise<request.Response> | undefined;
+    await db().transaction(async (tx) => {
+      await tx
+        .select({ id: courseExamTopics.id })
+        .from(courseExamTopics)
+        .where(eq(courseExamTopics.id, usul.id))
+        .for("update");
+      saving = http()
+        .put(`/online-exams/${examId}/questions/${added.body.question.id}`)
+        .set("Authorization", as(CAST.MUDERRIS))
+        .send({
+          version: 2,
+          text: "Usulün kaynakları nelerdir?",
+          options: [
+            { text: "Kitap", correct: true },
+            { text: "Şiir", correct: false },
+          ],
+          answerMode: "SINGLE",
+          topicIds: [usul.id],
+        })
+        .then((response) => response);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await tx.delete(courseExamTopics).where(eq(courseExamTopics.id, usul.id));
+    });
+    const refused = await (saving as Promise<request.Response>);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("TOPIC_NOT_FOUND");
+    // Nothing of the save stayed: the exam is where it was.
+    expect((await draft(examId)).version).toBe(2);
   });
 
   it("asks exam.prepare on the course: a hoca and a nazır given it, not session.manage or a talebe", async () => {

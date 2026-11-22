@@ -187,6 +187,7 @@ src/models/ExamQuestionResponse.ts
 src/models/ExamQuestionWriteResponse.ts
 src/models/ExamReleaseResponse.ts
 src/models/ExamResultResponse.ts
+src/models/ExamVersionRefResponse.ts
 src/models/ExamVersionResponse.ts
 src/models/ExtendBanDto.ts
 src/models/ExtendBanScope.ts
@@ -469,6 +470,7 @@ src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
+src/models/TopicRemovedResponse.ts
 src/models/UpdateCourseDeckDto.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateCourseNazirDto.ts
