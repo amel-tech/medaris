@@ -327,6 +327,7 @@ states:
     on:
       SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:207, say: "they press another row: the contact details of that applicant are read and audited" }
       TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they open Karara bağlanan" }
+      TAB_WAITING: { target: waitingDetail, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab already selected: Base UI's tab ignores a press on the active tab, and nothing changes" }
       OPEN_KOSK:
         target: koskForm
         effect: [clearNote]
@@ -348,6 +349,7 @@ states:
     on:
       SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:207, say: "they press another row" }
       TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they go back to Bekleyen" }
+      TAB_DECIDED: { target: decidedDetail, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Karara bağlanan, the tab already selected: Base UI's tab ignores a press on the active tab, and nothing changes" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   koskForm:

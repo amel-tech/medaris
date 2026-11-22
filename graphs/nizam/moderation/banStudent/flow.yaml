@@ -186,6 +186,7 @@ states:
     source: apps/nizam/features/applications/components/roster-table.tsx:223
     on:
       OPEN_DIALOG: { target: settle, effect: [openedDialog], source: apps/nizam/features/applications/components/roster-table.tsx:133, say: "they press 'Yasakla: {name}' on the talebe's row" }
+      SHOW_ENROLLED: { target: rosterPage, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Kayıtlı', the tab already shown: nothing happens (a Base UI tab ignores a press while it is selected)" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   settle:
@@ -264,6 +265,8 @@ states:
       FAIL.notAllowed: { guard: "answer == 'notAllowed'", target: formReady, effect: [notAllowedToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu yasağı koymak için yetkiniz yok.'" }
       FAIL.invalidTarget: { guard: "answer == 'invalidTarget'", target: formReady, effect: [invalidTargetToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu kişi yasaklanamaz.', for the caller or a person who runs the course" }
       FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nizam/features/bans/present.ts:117, say: "'İşlem tamamlanamadı.': COURSE_NOT_FOUND and the refused body have no words of their own here, so they read as the generic line" }
+      # The window drops every way of closing while `saving` (ban-dialog.tsx:126): the press changes nothing and the ban is still sent.
+      CANCEL: { target: submitting, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Vazgeç or the close icon while the ban is sent: nothing happens and nothing says so (BANST-5)" }
     source: apps/nizam/features/bans/components/ban-dialog.tsx:84
 
   savedRow:
@@ -279,6 +282,7 @@ states:
     source: apps/nizam/features/bans/components/ban-dialog.tsx:100
     on:
       OPEN_BANS: { target: listed, source: apps/nizam/lib/shell-nav.ts:245, say: "they take 'Yasaklamalar' in the sidebar" }
+      SHOW_ENROLLED: { target: savedRow, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Kayıtlı', the tab still shown: nothing happens (a Base UI tab ignores a press while it is selected)" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   listed:

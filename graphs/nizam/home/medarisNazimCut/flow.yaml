@@ -233,11 +233,16 @@ states:
       The başnazım has taken platform.deck_publish away. Nothing pushes the change: the page she has open still shows the deck requests
       card, the menu entry, the grant and the number, until the page is read again (a reload, or any link followed). What she may do is
       already cut, because tedrisat reads her codes on every request (apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:49-52): the
-      deck requests link that this page still draws opens a page that now says "Bu bölüm için izniniz yok". The links of the page are
-      drawn on the cut home (homeShown) and not again here.
+      deck requests link that this page still draws opens a page that now says "Bu bölüm için izniniz yok". Every other link of the
+      page goes where it goes on the cut home (homeShown).
     source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
     on:
       RELOAD: { target: homeCut, effect: [taken], say: "she reloads the page: the reads run again with the permissions she holds now" }
+      OPEN_DECKS: { guard: decksHeld, target: noAccess, effect: [taken], say: "'Tümünü gör' or 'İncele' of the deck requests card, still drawn: the queue is read with the codes she holds now and answers 'Bu bölüm için izniniz yok', and the shell around it is read again without the entry", source: apps/nizam/features/dashboard/components/medaris-home.tsx:107 }
+      OPEN_APPLICATIONS: { guard: appsHeld, target: applications_opened, say: "'Tümünü gör' or 'İncele' of the applications card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:63 }
+      OPEN_PASSIVE: { guard: passiveHeld, target: passive_opened, say: "'Tümünü gör' of the passive scopes card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 }
+      OPEN_BANS: { guard: bansHeld, target: bans_opened, say: "'Yasaklamalar’a git' of the bans card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu's 'Kalıcı yasak talepleri', as on the cut home", source: apps/nizam/lib/shell-nav.ts:122 }
 
   homeCut:
     title: The home, after the reload
@@ -245,9 +250,13 @@ states:
     description: >-
       The same page read again: the deck requests card, its menu entry, its grant card and its share of the greeting's number are gone (and
       "Talepler", the group caption, goes too when nothing else of hers belongs under it). The rest is as it was, and its links go where
-      they went (drawn on homeShown).
+      they went on homeShown.
     source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
     on:
+      OPEN_APPLICATIONS: { guard: appsHeld, target: applications_opened, say: "'Tümünü gör' or 'İncele' of the applications card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:63 }
+      OPEN_PASSIVE: { guard: passiveHeld, target: passive_opened, say: "'Tümünü gör' of the passive scopes card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 }
+      OPEN_BANS: { guard: bansHeld, target: bans_opened, say: "'Yasaklamalar’a git' of the bans card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu's 'Kalıcı yasak talepleri'", source: apps/nizam/lib/shell-nav.ts:122 }
       NAVIGATE: { target: left, say: "she goes on to another page" }
 
   noAccess:
@@ -261,6 +270,7 @@ states:
     source: apps/nizam/components/errors/no-access.tsx:27
     on:
       BACK_HOME: { target: readingPermissions, say: "'Ana sayfaya dön' is a link to '/': the page is read again" }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu stays around the refusal: its 'Kalıcı yasak talepleri' leads to 'Sayfa bulunamadı' (F-P0-4)", source: apps/nizam/lib/shell-nav.ts:122 }
 
   applications_opened: { type: final, title: The köşk applications queue is opened, leavesPage: true }
   decks_opened: { type: final, title: The deck publication requests queue is opened, leavesPage: true }

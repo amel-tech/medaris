@@ -402,6 +402,8 @@ states:
     source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:39
     invoke: { action: hideKosk }
     on:
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:60, say: "they press Vazgeç, or Esc: nothing happens, the hide goes on (onOpenChange is ignored while saving)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:60, say: "they press the close icon: nothing happens, the hide goes on" }
       DONE: { guard: "elsewhere != 'hidden'", target: viewing, effect: [nowHidden], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:48, say: "the köşk is hidden; the page shows the hidden note and the restore row" }
       FAIL.settled: { guard: "elsewhere == 'hidden'", target: hideConfirm, effect: [hideSettled], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:41, say: "the köşk was hidden meanwhile: an error toast and the dialog stays open" }
 
@@ -415,6 +417,7 @@ states:
     source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:65
     invoke: { action: previewKoskDeactivation }
     on:
+      CLOSE: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184, say: "they press the close icon while it reads: nothing is saving yet, so the dialog closes" }
       DONE: { target: passiveReady, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:71, say: "the numbers are on the screen" }
       CANCEL: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197, say: "they close the dialog while it reads" }
 
@@ -445,6 +448,8 @@ states:
     source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:86
     invoke: { action: deactivateKosk }
     on:
+      CANCEL: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press Vazgeç, or Esc: nothing happens, the köşk is still taken out of service (onOpenChange is ignored while saving)" }
+      CLOSE: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press the close icon: nothing happens, the call goes on" }
       DONE: { guard: "impact == 'fresh'", target: viewing, effect: [passivated], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:90, say: "the köşk is passive and its nazımları are off the post" }
       FAIL.changed: { guard: "impact == 'stale'", target: passiveChanged, effect: [impactRead], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:101, say: "409 with the fresh numbers: they replace the old ones and nothing is retried by itself" }
 
@@ -483,6 +488,7 @@ states:
     source: apps/nizam/features/kosks/components/nazim-picker.tsx:64
     invoke: { action: lookupUser }
     on:
+      CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon while it searches: nothing is saving, so the dialog closes and the answer is dropped" }
       DONE: { target: addReady, source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "the person is chosen and the field is cleared" }
       CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they close the dialog while it searches; the answer is dropped" }
 
@@ -508,6 +514,8 @@ states:
     source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:84
     invoke: { action: addKoskNazims }
     on:
+      CANCEL: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:112, say: "they press Vazgeç, or Esc: nothing happens, the add goes on (onOpenChange is ignored while saving)" }
+      CLOSE: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:112, say: "they press the close icon: nothing happens, the add goes on" }
       DONE:
         - { guard: "mayAdd and person == 'new' and view == 'passive'", target: viewing, effect: [addedAgain], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the köşk had no nazım and is active again" }
         - { guard: "mayAdd and person == 'new'", target: viewing, effect: [added], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the person is a nazım of the köşk: a toast, the dialog closes, the table has a row more" }
@@ -562,6 +570,8 @@ states:
     source: apps/nizam/features/hosting/components/revoke-dialog.tsx:77
     invoke: { action: revokeKoskHostingRight }
     on:
+      CANCEL: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "they press Vazgeç, or Esc: nothing happens, the right is still taken back (onOpenChange is ignored while saving)" }
+      CLOSE: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "they press the close icon: nothing happens, the call goes on" }
       DONE: { target: viewing, effect: [revoked], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn" }
 
   kosks_opened:

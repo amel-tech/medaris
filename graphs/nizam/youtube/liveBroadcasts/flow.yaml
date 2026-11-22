@@ -705,6 +705,7 @@ states:
     on:
       DONE: { guard: "reveal == 'ok'", target: panelShown, effect: [keyShown], say: "the field shows the key; 'Göster' becomes 'Gizle'" }
       FAIL.failed: { guard: "reveal == 'failed'", target: panel, effect: [keyFailed], say: "a toast says the key could not be read; the field stays dots" }
+      CLOSE: { target: back, effect: [keyMasked], say: "they close the dialog while the key is read: the answer is dropped and the key is never shown" }
 
   panelShown:
     title: Yayın bilgileri, the key shown

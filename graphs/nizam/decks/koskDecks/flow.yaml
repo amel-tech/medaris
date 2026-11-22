@@ -426,6 +426,8 @@ states:
       TYPE_NAME:
         - { guard: fromProposal, target: formProposal, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
         - { target: formScratch, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
+      CHOOSE_HADEETH: { target: formInvalid, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card; the name is still empty, so the error stays", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      CHOOSE_VOCABULARY: { target: formInvalid, effect: [chosenVocabulary], say: "they choose 'Kelime': the error stays with the empty name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
       SUBMIT: { target: formInvalid, say: "they press 'Desteyi aç' again: the same refusal, the focus goes to the field again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
       BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
       CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
@@ -559,6 +561,7 @@ states:
       closes the dialog; the other refusals keep it open with an error toast.
     invoke: { action: hideKoskDeck }
     on:
+      CANCEL: { target: hiding, say: "Vazgeç, the close icon or Escape: nothing happens, the hide goes on (onOpenChange is ignored while busy)", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:391 }
       DONE: { guard: "answer == 'done'", target: afterHide, effect: [hidden], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:169, say: "hidden: the toast 'Deste gizlendi', the dialog closes and the row leaves (e2e deck-review#9)" }
       FAIL.gone: { guard: deckGone, target: afterHide, effect: [hideGone], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:163, say: "404 KOSK_DECK_NOT_FOUND: someone hid it first, or it is gone: an error toast, the row leaves, the dialog closes" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmHide, effect: [hideForbidden], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:162, say: "403: an error toast 'Bu işlem için izniniz yok.'; the dialog stays open" }

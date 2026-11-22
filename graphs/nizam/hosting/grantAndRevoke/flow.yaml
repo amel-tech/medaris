@@ -249,6 +249,9 @@ states:
       CLOSE_LIST:
         - { guard: picked, target: grantReady, source: libs/ui/src/mds/select.tsx:72, say: "Escape: the list closes and the earlier choice stands" }
         - { target: grantForm, source: libs/ui/src/mds/select.tsx:72, say: "Escape: the list closes with nothing chosen" }
+      OPEN_LIST:
+        - { guard: picked, target: grantReady, source: libs/ui/src/mds/select.tsx:61, say: "they press the select again: Base UI leaves the trigger outside the list's backdrop and its press toggles the list shut; the earlier choice stands" }
+        - { target: grantForm, source: libs/ui/src/mds/select.tsx:61, say: "they press the select again: the list closes with nothing chosen" }
 
   grantReady:
     title: Barındırma hakkı ver, a medrese chosen
@@ -292,6 +295,7 @@ states:
     source: apps/nizam/features/hosting/components/grant-dialog.tsx:55
     invoke: { action: grantKoskHostingRight }
     on:
+      CANCEL: { target: granting, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon: nothing happens, the call goes on (HOST-2)" }
       DONE: { guard: "answer == 'done'", target: listed, effect: [granted], source: apps/nizam/features/hosting/components/grant-dialog.tsx:65, say: "a toast says the medrese may open courses here, the window closes, the page is read again and the table has the new row; the focus goes back to 'Barındırma hakkı ver'" }
       FAIL.madrasahGone: { guard: "answer == 'madrasahGone'", target: grantReady, effect: [grantMadrasahGone], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "a toast 'Barındırma hakkı verilemedi' says the medrese is gone or hidden; the window stays open and the list is not read again (HOST-4)" }
       FAIL.koskGone: { guard: "answer == 'koskGone'", target: grantReady, effect: [grantKoskGone], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "the toast says the köşk is gone; the window stays open" }
@@ -348,6 +352,7 @@ states:
     source: apps/nizam/features/hosting/components/revoke-dialog.tsx:77
     invoke: { action: revokeKoskHostingRight }
     on:
+      CANCEL: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Vazgeç or the close icon: nothing happens, the call goes on (HOST-2)" }
       DONE:
         - { guard: "answer == 'done' and courses == 'none'", target: afterRevoke, effect: [revokedNoCourses], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn; there was nothing to decide" }
         - { guard: "answer == 'done' and choice == 'keep'", target: afterRevoke, effect: [revokedKept], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn and the courses carry on" }

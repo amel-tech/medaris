@@ -159,7 +159,7 @@ states:
       The dialog is open, titled "Görevden al" under the person's name, over the inert roster, and the focus is on "Vazgeç" (permissions#4). It calls GET
       /nizam/medaris-nazims/:userId/given (every opening asks again: nothing is kept; the list of the last opening may show for a moment before the first
       ask clears it: not verified). While it waits the body is two bars in a div marked aria-busy and hidden from assistive technology, so nothing is said or
-      announced (NZDIS-2), the intro line is already there, and "Görevden al" is off. 'Vazgeç', Esc and the close icon work while it reads (not drawn). Any failure of
+      announced (NZDIS-2), the intro line is already there, and "Görevden al" is off. 'Vazgeç', Esc and the close icon work while it reads. Any failure of
       the read, even a 404 because the person stopped being a Medaris nazımı meanwhile, draws the load-failed alert. The dialog is described by its whole body, so a
       reader hears all of it as the description (F-W2-13).
     invoke: { action: getMedarisNazimGiven }
@@ -168,6 +168,8 @@ states:
         - { guard: asks, target: choosing, source: "apps/nizam/features/permissions/present.ts:227" }
         - { target: nothingToAsk }
       FAIL.unread: loadFailed
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc, while the list is read: nothing is saving, so the dialog closes", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:152 }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon while the list is read: the dialog closes", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:152 }
     source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:77
 
   loadFailed:
@@ -261,6 +263,8 @@ states:
       FAIL.gone: { target: backToDialog, effect: [gone], guard: "elsewhere == 'gone'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108 }
       FAIL.forbidden: { target: backToDialog, effect: [refused] }
       FAIL.other: { target: backToDialog, effect: [failed] }
+      CANCEL: { target: dismissing, say: "Vazgeç or Esc: nothing happens, the dismissal goes on (NZDIS-3)", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:152 }
+      CLOSE: { target: dismissing, say: "the close icon: nothing happens, the dismissal goes on (NZDIS-3)", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:152 }
     source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:102
 
   backToDialog:

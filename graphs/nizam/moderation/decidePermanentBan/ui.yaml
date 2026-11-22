@@ -65,7 +65,9 @@ nodes:
 
   # ---- the tabs: Bekleyen and Karara bağlanan, each with its count ---------------------------------------------------------------------
   tabList: { type: list, component: List, role: tablist, name: { key: planned.PermanentBans.tabsLabel }, in: [empty, loadingTab, waitingDetail, decidedDetail] } # the neighbours' tabs have no tab panel (F-X-1); see rule tabs-need-a-panel
-  tabWaiting: { type: action, component: Button, role: tab, text: { key: AppealsPage.tabs.PENDING }, in: [empty, loadingTab, waitingDetail, decidedDetail], emits: TAB_WAITING } # its name carries the count: "Bekleyen 2"
+  # The tabs are the kit's (libs/ui/src/mds/tabs.tsx), as in the three neighbours: nothing holds them while the decided list is read, so
+  # Bekleyen can be pressed then (duringStep); the graph has it taken where the read leads, as the page is not built yet.
+  tabWaiting: { type: action, component: Button, role: tab, text: { key: AppealsPage.tabs.PENDING }, in: [empty, loadingTab, waitingDetail, decidedDetail], emits: TAB_WAITING, duringStep: true } # its name carries the count: "Bekleyen 2"
   tabDecided: { type: action, component: Button, role: tab, text: { key: AppealsPage.tabs.DECIDED }, in: [empty, loadingTab, waitingDetail, decidedDetail], emits: TAB_DECIDED }
   waitingCount: { type: text, component: Text, text: { key: planned.PermanentBans.count, params: { count: counts.pending } }, in: [empty, loadingTab, waitingDetail, decidedDetail] }
   decidedCount: { type: text, component: Text, text: { key: planned.PermanentBans.count, params: { count: counts.decided } }, in: [empty, loadingTab, waitingDetail, decidedDetail] }
