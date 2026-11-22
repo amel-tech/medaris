@@ -16,6 +16,11 @@
 #   - The team reads each talebe's answer to the zeroth question; Medaris management reads them in aggregate
 #     (nizam.exams.zerothAnswers).
 #
+# Decided by the owner on 22 Nov 2026: those who prepare the exam see its results, so that the next exam is prepared from them
+# ("görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada"; the read asks exam.prepare). Asked whether they
+# may release the results too, he answered with that sentence: the release stays as the existing releaseExamResults has it
+# (session.manage), and the page shows its button only to someone who holds that (mayRelease).
+#
 # Drawn here, and not decided by the owner: the release asks once before it goes (Değerlendirme today releases with one press and no
 # question, finding F-D1-28 of nazar.evaluation.examScores); the button is on while the exam is still open, as Değerlendirme's is, and
 # the question says how many talebe are still in it (ui.yaml rule release-while-open).
