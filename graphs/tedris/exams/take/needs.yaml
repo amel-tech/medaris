@@ -200,7 +200,7 @@ needs:
       - node: questionList
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:675
       - test: apps/tedris/test/exam-take.spec.ts
-        name: "colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed"
+        name: "colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
 
   - id: previous-and-next
@@ -336,7 +336,7 @@ needs:
       - state: question
       - source: apps/tedris/features/online-exams/arabic.ts
       - test: apps/tedris/test/exam-take.spec.ts
-        name: "makes the text bigger step by step, stops at the largest, and keeps it for a reload"
+        name: "zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload"
     note: The faces are the design system's (Scheherazade New for the Qur'an, Noto Naskh Arabic for other Arabic).
 
   - id: in-the-talebe-s-language
@@ -382,7 +382,7 @@ needs:
       - node: factTextSize
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:528
       - test: apps/tedris/test/exam-take.spec.ts
-        name: "makes the text bigger step by step, stops at the largest, and keeps it for a reload"
+        name: "zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload"
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says in the briefing what A− and A+ do, and draws them"
     note: >-
@@ -399,7 +399,7 @@ needs:
       - node: questionListItem
       - node: factColors
       - test: apps/tedris/test/exam-take.spec.ts
-        name: "colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed"
+        name: "colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed"
       - test: apps/tedris/test/exam-take.spec.ts
         name: "names the list's colours among what to know before the start"
     note: >-

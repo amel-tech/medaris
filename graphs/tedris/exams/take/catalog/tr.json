@@ -20,7 +20,7 @@
   "planned.Exams.counter": "Soru {number}/{count}",
   "planned.Exams.elsewhere": "Bu sınavı başka bir sekmede ya da cihazda açtın; cevapların artık orada kaydediliyor. Buradan devam etmek istersen sınavı burada aç.",
   "planned.Exams.elsewhereTitle": "Sınav başka bir yerde açık",
-  "planned.Exams.factColors": "Alttaki sorular listesinde cevaplamadığın sorular sarı, atladıkların turuncu, cevapladıkların düz (açık temada beyaz, koyu temada koyu) görünür.",
+  "planned.Exams.factColors": "Alttaki sorular listesinde cevaplamadığın sorular düz, cevapladıkların mavi, atladıkların koyu sarı görünür.",
   "planned.Exams.factConnection": "Bağlantın koparsa ya da sayfa kapanırsa sınav kaldığın yerden devam eder; bu sırada süre işlemez.",
   "planned.Exams.factFinish": "“Sınavı bitir” ile sınavı istediğin an bitirirsin. Süre dolunca sınav, kaydedilen cevaplarla kendiliğinden biter.",
   "planned.Exams.factLength": "Sınav {minutes} dakika sürer. Ne zaman başlarsan başla, sürenin tamamı senindir.",

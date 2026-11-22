@@ -395,7 +395,7 @@ describe("the exam page (MDRS-299)", () => {
     vi.restoreAllMocks();
   });
 
-  it("colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed", async () => {
+  it("colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed", async () => {
     const three = attempt();
     three.questions = [
       ...three.questions,
@@ -434,10 +434,10 @@ describe("the exam page (MDRS-299)", () => {
     const answered = item("1. soru, Cevaplandı");
     const skipped = item("2. soru, Atlandı");
     const unanswered = item("3. soru, Cevaplanmadı");
-    expect(answered.style.background).toBe("var(--background-neutral-surface)");
+    expect(answered.style.background).toBe("var(--background-info-bold)");
     expect(skipped.style.background).toBe("var(--background-warning-bold)");
     expect(unanswered.style.background).toBe(
-      "var(--background-warning-subtle)"
+      "var(--background-neutral-surface)"
     );
     // The current question keeps its colour, with a ring on top.
     expect(skipped.getAttribute("aria-current")).toBe("step");
@@ -445,10 +445,33 @@ describe("the exam page (MDRS-299)", () => {
     expect(answered.style.boxShadow).toBe("");
   });
 
+  it("takes back the choice when an answered question is skipped", async () => {
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.saveExamAnswer.mockResolvedValue(
+      ok({ written: true, secondsLeft: 1700 })
+    );
+    const host = await mount(briefing());
+    await click(button(host, "Sınava başla"));
+    await settle();
+    await click(radio(host, "Elif"));
+    await settle();
+    await click(button(host, "Önceki"));
+    await settle();
+    await click(button(host, "Soruyu atla"));
+    await settle();
+    expect(mocks.saveExamAnswer).toHaveBeenLastCalledWith(
+      "l1",
+      "q1",
+      expect.objectContaining({ optionIds: [], skipped: true })
+    );
+    const list = host.querySelector("nav") as HTMLElement;
+    expect(list.querySelector("[aria-label='1. soru, Atlandı']")).toBeTruthy();
+  });
+
   it("names the list's colours among what to know before the start", async () => {
     const host = await mount(briefing());
     expect(host.textContent).toContain(
-      "cevaplamadığın sorular sarı, atladıkların turuncu"
+      "cevaplamadığın sorular düz, cevapladıkların mavi, atladıkların koyu sarı"
     );
   });
   it("says in the briefing what A− and A+ do, and draws them", async () => {

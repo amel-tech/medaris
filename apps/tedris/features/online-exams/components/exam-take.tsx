@@ -85,20 +85,23 @@ const lostConnection = (result: unknown) => {
  * Each button's name says its state too, so colour is never the only cue.
  */
 const INDICATOR: Record<QuestionState, CSSProperties> = {
+  // Not answered yet: plain.
   unseen: {
-    background: "var(--background-warning-subtle)",
-    borderColor: "var(--border-warning-default)",
-    color: "var(--text-warning-default)",
+    background: "var(--background-neutral-surface)",
+    borderColor: "var(--border-neutral-strong)",
+    color: "var(--text-neutral-default)",
   },
+  // Skipped: dark yellow.
   skipped: {
     background: "var(--background-warning-bold)",
     borderColor: "var(--border-warning-default)",
     color: "var(--text-neutral-on-bold)",
   },
+  // Answered: blue.
   answered: {
-    background: "var(--background-neutral-surface)",
-    borderColor: "var(--border-neutral-strong)",
-    color: "var(--text-neutral-default)",
+    background: "var(--background-info-bold)",
+    borderColor: "var(--border-info-default)",
+    color: "var(--text-neutral-on-bold)",
   },
 };
 
@@ -524,7 +527,9 @@ export function ExamTake({
     };
     const skip = () => {
       if (!q) return;
-      const answer = { optionIds: mine?.optionIds ?? [], skipped: true };
+      // "Soruyu atla" leaves the question blank: a choice made before is
+      // taken back, and the question comes back after the last one.
+      const answer = { optionIds: [], skipped: true };
       const next = new Map(answers).set(q.id, answer);
       setAnswers(next);
       void send(q.id, answer);
