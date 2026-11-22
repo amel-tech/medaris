@@ -4,6 +4,7 @@ DELETE /courses/:id/decks/:deckId -> deck.manage_course on course
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
+DELETE /courses/:id/exam-topics/:topicId -> exam.prepare on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse

@@ -32,6 +32,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -331,5 +332,26 @@ export class OnlineExamController {
     @Body() dto: UpdateCourseTopicDto
   ): Promise<CourseTopicResponse> {
     return this.service.updateTopic(courseId, topicId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Delete a topic from the course's list",
+    description:
+      "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.",
+    operationId: "removeCourseTopic",
+  })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND, TOPIC_NOT_FOUND" })
+  @ApiConflictResponse({ description: "TOPIC_IN_USE" })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byParam(ENTITIES.COURSE, "id"))
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("courses/:id/exam-topics/:topicId")
+  removeTopic(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) courseId: string,
+    @Param("topicId", ParseUUIDPipe) topicId: string
+  ): Promise<void> {
+    return this.service.removeTopic(courseId, topicId, request.user);
   }
 }

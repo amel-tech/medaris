@@ -13,6 +13,7 @@ import {
   topicNameKey,
   topicWordCount,
 } from "../../../src/online-exam/domain/online-exam";
+import { TopicInUseError } from "../../../src/online-exam/errors/online-exam.errors";
 
 describe("online exam rules (MDRS-299)", () => {
   it("compares topic names in Turkish lower case", () => {
@@ -101,5 +102,17 @@ describe("online exam rules (MDRS-299)", () => {
     expect(
       pointsFit([{ ownHundredths: 9900 }, { ownHundredths: null }])
     ).toEqual({ fits: true, left: 100 });
+  });
+
+  it("refuses to delete a topic that questions carry, naming each by its exam and number", () => {
+    const error = new TopicInUseError("t1", [
+      { examId: "e1", examTitle: "Ara sınav", number: 3 },
+    ]);
+    expect(error.code).toBe("TOPIC_IN_USE");
+    expect(error.status).toBe(409);
+    expect(error.context).toEqual({
+      topicId: "t1",
+      questions: [{ examId: "e1", examTitle: "Ara sınav", number: 3 }],
+    });
   });
 });

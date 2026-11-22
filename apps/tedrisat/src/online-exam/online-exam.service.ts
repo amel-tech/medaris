@@ -311,6 +311,15 @@ export class OnlineExamService {
     return this.repo.updateTopic(courseId, topicId, input, user.sub);
   }
 
+  async removeTopic(
+    courseId: string,
+    topicId: string,
+    user: AuthenticatedUser
+  ): Promise<void> {
+    await this.course(courseId, user);
+    await this.repo.removeTopic(courseId, topicId, user.sub);
+  }
+
   private assertTopicName(name: string): void {
     const words = topicWordCount(name);
     if (words > TOPIC_WORDS_MAX) throw new TopicTooLongError(words);
