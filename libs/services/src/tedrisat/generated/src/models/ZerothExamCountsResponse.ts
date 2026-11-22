@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { ZerothCountResponse } from './ZerothCountResponse';
-import {
-    ZerothCountResponseFromJSON,
-    ZerothCountResponseFromJSONTyped,
-    ZerothCountResponseToJSON,
-    ZerothCountResponseToJSONTyped,
-} from './ZerothCountResponse';
-
 /**
  * 
  * @export
@@ -52,17 +44,17 @@ export interface ZerothExamCountsResponse {
      */
     startsAt: Date;
     /**
-     * 
-     * @type {ZerothCountResponse}
+     * How many talebe answered it in this exam.
+     * @type {number}
      * @memberof ZerothExamCountsResponse
      */
-    answered: ZerothCountResponse;
+    answered: number;
     /**
      * A count per option, in the order of the question's options.
-     * @type {Array<ZerothCountResponse>}
+     * @type {Array<number>}
      * @memberof ZerothExamCountsResponse
      */
-    options: Array<ZerothCountResponse>;
+    options: Array<number>;
 }
 
 /**
@@ -92,8 +84,8 @@ export function ZerothExamCountsResponseFromJSONTyped(json: any, ignoreDiscrimin
         'courseTitle': json['courseTitle'],
         'koskName': json['koskName'],
         'startsAt': (new Date(json['startsAt'])),
-        'answered': ZerothCountResponseFromJSON(json['answered']),
-        'options': ((json['options'] as Array<any>).map(ZerothCountResponseFromJSON)),
+        'answered': json['answered'],
+        'options': json['options'],
     };
 }
 
@@ -112,8 +104,8 @@ export function ZerothExamCountsResponseToJSONTyped(value?: ZerothExamCountsResp
         'courseTitle': value['courseTitle'],
         'koskName': value['koskName'],
         'startsAt': ((value['startsAt']).toISOString()),
-        'answered': ZerothCountResponseToJSON(value['answered']),
-        'options': ((value['options'] as Array<any>).map(ZerothCountResponseToJSON)),
+        'answered': value['answered'],
+        'options': value['options'],
     };
 }
 

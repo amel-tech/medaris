@@ -3807,7 +3807,7 @@
   },
   "ZerothAnswersPage": {
     "title": "Sıfırıncı soru cevapları",
-    "intro": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevaplar, toplu olarak. Talebe adı ya da tek bir cevap gösterilmez; 5'ten az olan sayılar sayıyla yazılmaz.",
+    "intro": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevaplar, toplu olarak. Talebe adı ya da tek bir cevap gösterilmez.",
     "hadithMeaning": "Bizi aldatan bizden değildir.",
     "filtersLabel": "Süzgeçler",
     "dateSpan": "Tarih aralığı",
@@ -3823,13 +3823,9 @@
     "questionsTitle": "Sorular ({count})",
     "askedInExams": "{exams} sınavda soruldu",
     "answeredCount": "{answered} talebe cevapladı",
-    "answeredFew": "5'ten az talebe cevapladı",
-    "answeredHidden": "Cevaplayan sayısı gizlendi",
     "optionCountsLabel": "Şıkları seçen talebe sayıları",
     "optionCount": "{option}: {count} talebe (%{percent})",
     "optionCountOnly": "{option}: {count} talebe",
-    "optionFew": "{option}: 5'ten az talebe",
-    "optionHidden": "{option}: gizlendi",
     "openExams": "Sınavlar",
     "openExamsLabel": "{question} sorusunu soran sınavlar",
     "questionGone": "Bu soruyu bu aralıkta soran sınav artık yok; liste olduğu gibi kaldı.",
@@ -3838,11 +3834,11 @@
     "colDate": "Tarih",
     "colAnswered": "Cevaplayan",
     "colOptions": "Şıklar",
-    "fewerThanFive": "5'ten az",
-    "hidden": "gizlendi",
     "backToQuestions": "Sorulara dön",
     "loadFailedTitle": "Sayılar okunamadı",
     "loadFailed": "Bağlantınızı kontrol edip yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "spanReversed": "Başlangıç, bitişten sonra olamaz.",
+    "detailFailedTitle": "Bu sorunun sınavları okunamadı"
   }
 }

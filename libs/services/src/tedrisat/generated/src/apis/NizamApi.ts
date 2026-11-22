@@ -1152,7 +1152,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.
+     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count as it is. Written to `audit_log` as `exam.zeroth_read`.
      * The exams that asked one zeroth question, each with its counts
      */
     async getZerothQuestionExamsRaw(requestParameters: GetZerothQuestionExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ZerothQuestionExamsResponse>> {
@@ -1221,7 +1221,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.
+     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count as it is. Written to `audit_log` as `exam.zeroth_read`.
      * The exams that asked one zeroth question, each with its counts
      */
     async getZerothQuestionExams(requestParameters: GetZerothQuestionExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ZerothQuestionExamsResponse> {
@@ -1524,7 +1524,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.
+     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option, every count as it is. Written to `audit_log` as `exam.zeroth_read`.
      * How the zeroth questions were answered, in aggregate
      */
     async listZerothAnswerCountsRaw(requestParameters: ListZerothAnswerCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ZerothAnswerCountsResponse>> {
@@ -1585,7 +1585,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.
+     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option, every count as it is. Written to `audit_log` as `exam.zeroth_read`.
      * How the zeroth questions were answered, in aggregate
      */
     async listZerothAnswerCounts(requestParameters: ListZerothAnswerCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ZerothAnswerCountsResponse> {

@@ -11,7 +11,7 @@ import {
   isSystemAdmin,
   PlatformAccessService,
 } from "../platform-access/platform-access.service";
-import { maskQuestion, maskTable, zerothKey } from "./domain/zeroth-counts";
+import { questionTable, zerothKey } from "./domain/zeroth-counts";
 import type {
   ZerothAnswerCountsResponse,
   ZerothAnswersQuery,
@@ -91,15 +91,14 @@ export class ZerothAnswersService {
     return {
       questions: groups.map((group) => {
         const sums = sumOf(group);
-        const counts = maskQuestion(sums.answered, sums.options);
         return {
           questionKey: group.key,
           question: group.question,
           exams: group.exams.length,
-          answered: counts.answered,
+          answered: sums.answered,
           options: group.options.map((text, j) => ({
             text,
-            count: counts.options[j],
+            count: sums.options[j],
           })),
         };
       }),
@@ -117,8 +116,8 @@ export class ZerothAnswersService {
     const group = groupOf(await this.repo.exams(filter)).find(
       (g) => g.key === questionKey
     );
-    if (!group) throw new ZerothQuestionNotFoundError(questionKey);
-    const table = maskTable(
+    if (!group) throw new ZerothQuestionNotFoundError();
+    const table = questionTable(
       group.exams.map((exam) =>
         group.options.map((_, j) => exam.options[j]?.count ?? 0)
       )

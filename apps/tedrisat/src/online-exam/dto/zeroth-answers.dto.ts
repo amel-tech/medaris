@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsDate, IsOptional, IsUUID } from "class-validator";
-import { ZerothMask } from "../domain/zeroth-counts";
 
 /**
  * The span and the place of nizam's "Sıfırıncı soru cevapları" (MDRS-299).
@@ -48,28 +47,9 @@ export class ZerothAnswersQuery {
   courseId?: string;
 }
 
-/** A count, or why it is not sent. */
-export class ZerothCountResponse {
-  @ApiProperty({
-    type: Number,
-    nullable: true,
-    description: "null when masked",
-  })
-  count!: number | null;
-
-  @ApiProperty({
-    enum: ZerothMask,
-    enumName: "ZerothMask",
-    nullable: true,
-    description:
-      'FEWER_THAN_FIVE: under five ("5\'ten az"). HIDDEN: five or more, hidden so that a count under five cannot be worked out from the others ("gizlendi"). null: the count is sent.',
-  })
-  masked!: ZerothMask | null;
-}
-
 export class ZerothOptionCountResponse {
   @ApiProperty() text!: string;
-  @ApiProperty({ type: ZerothCountResponse }) count!: ZerothCountResponse;
+  @ApiProperty({ description: "How many talebe chose it." }) count!: number;
 }
 
 /** A zeroth question over every exam of the span and the place that asked it in the same words. */
@@ -81,11 +61,8 @@ export class ZerothQuestionCountsResponse {
   questionKey!: string;
   @ApiProperty() question!: string;
   @ApiProperty({ description: "How many exams asked it." }) exams!: number;
-  @ApiProperty({
-    type: ZerothCountResponse,
-    description: "How many talebe answered it.",
-  })
-  answered!: ZerothCountResponse;
+  @ApiProperty({ description: "How many talebe answered it." })
+  answered!: number;
   @ApiProperty({
     type: [ZerothOptionCountResponse],
     description: "Its options in their order, with how many chose each.",
@@ -132,22 +109,20 @@ export class ZerothExamCountsResponse {
   @ApiProperty() koskName!: string;
   @ApiProperty({ type: Date, description: "Its celse's time." })
   startsAt!: Date;
-  @ApiProperty({ type: ZerothCountResponse }) answered!: ZerothCountResponse;
+  @ApiProperty({ description: "How many talebe answered it in this exam." })
+  answered!: number;
   @ApiProperty({
-    type: [ZerothCountResponse],
+    type: [Number],
     description: "A count per option, in the order of the question's options.",
   })
-  options!: ZerothCountResponse[];
+  options!: number[];
 }
 
 export class ZerothQuestionExamsResponse {
   @ApiProperty() questionKey!: string;
   @ApiProperty() question!: string;
-  @ApiProperty({
-    type: ZerothCountResponse,
-    description: "Over every exam: the same as the list shows.",
-  })
-  answered!: ZerothCountResponse;
+  @ApiProperty({ description: "Over every exam: the same as the list shows." })
+  answered!: number;
   @ApiProperty({
     type: [ZerothOptionCountResponse],
     description: "Over every exam, as the list shows them.",

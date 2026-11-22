@@ -13,14 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { ZerothCountResponse } from './ZerothCountResponse';
-import {
-    ZerothCountResponseFromJSON,
-    ZerothCountResponseFromJSONTyped,
-    ZerothCountResponseToJSON,
-    ZerothCountResponseToJSONTyped,
-} from './ZerothCountResponse';
-
 /**
  * 
  * @export
@@ -34,11 +26,11 @@ export interface ZerothOptionCountResponse {
      */
     text: string;
     /**
-     * 
-     * @type {ZerothCountResponse}
+     * How many talebe chose it.
+     * @type {number}
      * @memberof ZerothOptionCountResponse
      */
-    count: ZerothCountResponse;
+    count: number;
 }
 
 /**
@@ -61,7 +53,7 @@ export function ZerothOptionCountResponseFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'text': json['text'],
-        'count': ZerothCountResponseFromJSON(json['count']),
+        'count': json['count'],
     };
 }
 
@@ -77,7 +69,7 @@ export function ZerothOptionCountResponseToJSONTyped(value?: ZerothOptionCountRe
     return {
         
         'text': value['text'],
-        'count': ZerothCountResponseToJSON(value['count']),
+        'count': value['count'],
     };
 }
 

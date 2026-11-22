@@ -64,14 +64,11 @@ const list: ZerothAnswerCountsResponse = {
       questionKey: KEY,
       question: "Bu hadisi ne zaman öğrendiniz?",
       exams: 12,
-      answered: { count: 238, masked: null },
+      answered: 238,
       options: [
-        { text: "Bu derste", count: { count: 97, masked: null } },
-        { text: "Daha önce", count: { count: null, masked: "HIDDEN" } },
-        {
-          text: "Hiç duymadım",
-          count: { count: null, masked: "FEWER_THAN_FIVE" },
-        },
+        { text: "Bu derste", count: 97 },
+        { text: "Daha önce", count: 139 },
+        { text: "Hiç duymadım", count: 2 },
       ],
     },
   ],
@@ -128,7 +125,7 @@ describe("the filters of Sıfırıncı soru cevapları (MDRS-299)", () => {
 });
 
 describe("the page", () => {
-  it("says every count in words, with no number or percentage for a masked one", async () => {
+  it("says every count as it is, small ones included, with its percentage", async () => {
     const root = await render(
       wrap(
         <ZerothAnswersView
@@ -143,9 +140,10 @@ describe("the page", () => {
     expect(text).toContain("12 sınavda soruldu");
     expect(text).toContain("238 talebe cevapladı");
     expect(text).toContain("Bu derste: 97 talebe (%41)");
-    expect(text).toContain("Daha önce: gizlendi");
-    expect(text).toContain("Hiç duymadım: 5'ten az talebe");
-    expect(text).not.toMatch(/Hiç duymadım: \d+ talebe/);
+    expect(text).toContain("Daha önce: 139 talebe (%58)");
+    expect(text).toContain("Hiç duymadım: 2 talebe (%1)");
+    expect(text).not.toContain("5'ten az");
+    expect(text).not.toContain("gizlendi");
     const hadith = root.querySelector("[lang=ar]") as HTMLElement;
     expect(hadith.getAttribute("dir")).toBe("rtl");
     expect(text).toContain("Bütün köşkler");
@@ -172,7 +170,7 @@ describe("the page", () => {
     );
   });
 
-  it("opens a question's exams by its key, and shows each exam's row masked as sent", async () => {
+  it("opens a question's exams by its key, and shows each exam's row as it is", async () => {
     const root = await render(
       wrap(
         <ZerothAnswersView
@@ -198,10 +196,10 @@ describe("the page", () => {
     const detail: ZerothQuestionExamsResponse = {
       questionKey: KEY,
       question: "Bu hadisi ne zaman öğrendiniz?",
-      answered: { count: 23, masked: null },
+      answered: 23,
       options: [
-        { text: "Bu derste", count: { count: 13, masked: null } },
-        { text: "Daha önce", count: { count: 10, masked: null } },
+        { text: "Bu derste", count: 13 },
+        { text: "Daha önce", count: 10 },
       ],
       exams: [
         {
@@ -209,22 +207,16 @@ describe("the page", () => {
           courseTitle: "Akaid",
           koskName: "Başka Köşk",
           startsAt: new Date("2026-11-20T17:00:00Z"),
-          answered: { count: 15, masked: null },
-          options: [
-            { count: null, masked: "HIDDEN" },
-            { count: null, masked: "HIDDEN" },
-          ],
+          answered: 15,
+          options: [7, 8],
         },
         {
           examId: "e2",
           courseTitle: "Fıkıh Usulü I",
           koskName: "Örnek Köşkü",
           startsAt: new Date("2026-11-16T17:00:00Z"),
-          answered: { count: 8, masked: null },
-          options: [
-            { count: null, masked: "HIDDEN" },
-            { count: null, masked: "FEWER_THAN_FIVE" },
-          ],
+          answered: 8,
+          options: [6, 2],
         },
       ],
     };
@@ -243,7 +235,7 @@ describe("the page", () => {
     );
     expect(rows).toHaveLength(2);
     expect(rows[1]).toContain("Fıkıh Usulü I");
-    expect(rows[1]).toContain("Daha önce: 5'ten az talebe");
+    expect(rows[1]).toContain("Daha önce: 2 talebe (%25)");
     expect(page.textContent).toContain("Bu derste: 13 talebe (%57)");
     const back = [...page.querySelectorAll("button")].find(
       (b) => b.textContent === "Sorulara dön"
@@ -268,5 +260,44 @@ describe("the page", () => {
     expect(root.querySelector("output")?.textContent).toBe(
       "Bu soruyu bu aralıkta soran sınav artık yok; liste olduğu gibi kaldı."
     );
+  });
+
+  it("does not send a span whose start is after its end, and says so under the end", async () => {
+    const root = await render(
+      wrap(
+        <ZerothAnswersView
+          kosk={null}
+          filters={{ from: "2026-11-22", to: "2026-11-01" }}
+          list={list}
+          detail={null}
+        />
+      )
+    );
+    const apply = [...root.querySelectorAll("button")].find(
+      (b) => b.textContent === "Uygula"
+    ) as HTMLButtonElement;
+    await click(apply);
+    expect(push).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("Başlangıç, bitişten sonra olamaz.");
+  });
+
+  it("says a question's exams could not be read, with a retry, instead of showing the list", async () => {
+    const root = await render(
+      wrap(
+        <ZerothAnswersView
+          kosk={null}
+          filters={{ ...filters, question: KEY }}
+          list={list}
+          detail={null}
+        />
+      )
+    );
+    const text = root.textContent ?? "";
+    expect(text).toContain("Bu sorunun sınavları okunamadı");
+    expect(text).not.toContain("12 sınavda soruldu");
+    const retry = [...root.querySelectorAll("button")].find(
+      (b) => b.textContent === "Yeniden dene"
+    );
+    expect(retry).toBeTruthy();
   });
 });

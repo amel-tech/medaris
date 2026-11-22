@@ -3807,7 +3807,7 @@
   },
   "ZerothAnswersPage": {
     "title": "Zeroth question answers",
-    "intro": "How the zeroth question of the multiple-choice exams was answered, in aggregate. No talebe's name or single answer is shown; counts under 5 are not written as numbers.",
+    "intro": "How the zeroth question of the multiple-choice exams was answered, in aggregate. No talebe's name or single answer is shown.",
     "hadithMeaning": "Whoever deceives us is not of us.",
     "filtersLabel": "Filters",
     "dateSpan": "Date range",
@@ -3823,13 +3823,9 @@
     "questionsTitle": "Questions ({count})",
     "askedInExams": "Asked in {exams} exams",
     "answeredCount": "{answered} talebe answered",
-    "answeredFew": "Fewer than 5 talebe answered",
-    "answeredHidden": "The number who answered is hidden",
     "optionCountsLabel": "How many talebe chose each option",
     "optionCount": "{option}: {count} talebe ({percent}%)",
     "optionCountOnly": "{option}: {count} talebe",
-    "optionFew": "{option}: fewer than 5 talebe",
-    "optionHidden": "{option}: hidden",
     "openExams": "Exams",
     "openExamsLabel": "Exams that asked {question}",
     "questionGone": "No exam in this range asks this question any more; the list stays as it was.",
@@ -3838,11 +3834,11 @@
     "colDate": "Date",
     "colAnswered": "Answered",
     "colOptions": "Options",
-    "fewerThanFive": "Fewer than 5",
-    "hidden": "hidden",
     "backToQuestions": "Back to the questions",
     "loadFailedTitle": "The counts could not be read",
     "loadFailed": "Check your connection and try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "spanReversed": "The start cannot be after the end.",
+    "detailFailedTitle": "This question's exams could not be read"
   }
 }
