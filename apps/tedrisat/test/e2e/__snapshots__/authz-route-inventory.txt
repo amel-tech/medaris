@@ -164,6 +164,7 @@ GET /nizam/scoped-policies -> no AuthzGuard
 GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
 GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
+GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -280,6 +281,7 @@ POST /nizam/partner-applications -> no AuthzGuard
 POST /nizam/permission-groups -> no AuthzGuard
 POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
+POST /online-exams/:examId/close -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse

@@ -86,6 +86,20 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
                     })}
                   </span>{" "}
                   {status(exam)}
+                  {exam.status !== "DRAFT" ? (
+                    <>
+                      {" · "}
+                      <a
+                        className="mds-link mds-body-sm"
+                        href={`/ders/${courseId}/sinavlar/${exam.id}/sonuclar`}
+                        aria-label={t("ExamResults.linkLabel", {
+                          title: exam.title,
+                        })}
+                      >
+                        {t("ExamResults.link")}
+                      </a>
+                    </>
+                  ) : null}
                 </li>
               ))}
             </ul>
