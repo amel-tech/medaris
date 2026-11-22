@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.13.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.12.1...tedris-web-v2.13.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 publish an online exam with its celse ([#415](https://github.com/amel-tech/medaris/issues/415)) ([aefea23](https://github.com/amel-tech/medaris/commit/aefea23e752caca52970fe25dddbed64ab447f3c))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 a talebe takes a published online exam ([#416](https://github.com/amel-tech/medaris/issues/416)) ([91c2bec](https://github.com/amel-tech/medaris/commit/91c2bec41be7fd24a2b17d2abf4bb062fbdebaa2))
+
 ## [2.12.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.12.0...tedris-web-v2.12.1) (2026-11-22)
 
 

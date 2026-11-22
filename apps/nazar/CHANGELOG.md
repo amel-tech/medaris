@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.15](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.14...nazar-web-v0.2.15) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 exam settings, and [#412](https://github.com/amel-tech/medaris/issues/412)'s review fixes ([#413](https://github.com/amel-tech/medaris/issues/413)) ([5269910](https://github.com/amel-tech/medaris/commit/526991043b38ae9f1bc86ad4a1ccf8e2ead1f91e))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 publish an online exam with its celse ([#415](https://github.com/amel-tech/medaris/issues/415)) ([aefea23](https://github.com/amel-tech/medaris/commit/aefea23e752caca52970fe25dddbed64ab447f3c))
+
 ## [0.2.14](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.13...nazar-web-v0.2.14) (2026-11-22)
 
 
