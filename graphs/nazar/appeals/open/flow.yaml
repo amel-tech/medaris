@@ -240,6 +240,7 @@ states:
       FAIL.gone: { guard: "answer == 'gone'", target: settled, effect: [requestGone], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:70, say: "'Bu talep artık yok.': the dialog closes and the row leaves the list" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: formReady, effect: [forbiddenToast], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65, say: "'Bu işlem için izniniz yok.' in an error toast; the dialog stays open" }
       FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65, say: "'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.' in an error toast; the dialog stays open" }
+      CANCEL: { target: sending, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:81, say: "Vazgeç, the close icon or Escape: nothing happens, the appeal is still sent (F-B-appeals-1)" }
     source: apps/nazar/features/appeals/components/appeal-dialog.tsx:53
 
   settled:

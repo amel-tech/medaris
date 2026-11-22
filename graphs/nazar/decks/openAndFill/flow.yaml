@@ -305,6 +305,10 @@ states:
       TYPE_TITLE: { target: newDeck, effect: [typedTitle], say: "they type a title: the message goes" }
       CANCEL: { target: listAgain, say: "they press Vazgeç, or Esc" }
       CLOSE: { target: listAgain, say: "they press the Kapat icon" }
+      TOGGLE_DRAFT:
+        - { guard: "box == 'off'", target: newDeckProblem, effect: [boxOn], say: "they tick Taslak olarak kaydet: the message stays", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+        - { guard: "box == 'on'", target: newDeckProblem, effect: [boxOff], say: "they untick it", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+      SUBMIT_DECK: { target: newDeckProblem, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:79, say: "they press Deste aç again with the title still empty: nothing is sent, the message stays" }
     source: apps/nazar/features/decks/components/deck-form-dialog.tsx:59
 
   creating:
@@ -335,6 +339,10 @@ states:
     on:
       SUBMIT_DECK: { target: creating, say: "they press Deste aç again" }
       CANCEL: { target: listAgain, say: "they press Vazgeç, or Esc" }
+      TOGGLE_DRAFT:
+        - { guard: "box == 'off'", target: newDeckFailed, effect: [boxOn], say: "they tick Taslak olarak kaydet", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+        - { guard: "box == 'on'", target: newDeckFailed, effect: [boxOff], say: "they untick it", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+      CLOSE: { target: listAgain, say: "they press the Kapat icon" }
     source: apps/nazar/features/decks/components/deck-form-dialog.tsx:178
 
   deck:
@@ -383,6 +391,8 @@ states:
     on:
       TYPE_CARD: { target: deck, effect: [typedFaces], say: "they type the faces: the message goes" }
       BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile" }
     source: apps/nazar/features/decks/components/card-quick-add.tsx:187
 
   addingCard:
@@ -443,6 +453,8 @@ states:
     on:
       ADD: { target: addingCard, effect: [clearNote], say: "they press Enter again", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
       BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the boxes keep what was typed" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile" }
     source: apps/nazar/features/decks/components/card-quick-add.tsx:74
 
   batchReady:
@@ -457,6 +469,9 @@ states:
     on:
       ADD_ALL: { target: addingBatch, say: "they press Hepsini ekle" }
       DROP_BATCH: { target: deck, say: "they press Vazgeç: the batch is dropped" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the batch panel stays under the row, which the graph does not draw from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the batch panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the batch is dropped with the page" }
     source: apps/nazar/features/decks/components/card-quick-add.tsx:155
 
   batchEmpty:
@@ -467,6 +482,9 @@ states:
     by: human
     on:
       DROP_BATCH: { target: deck, say: "they press Vazgeç" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the panel stays, not drawn from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri" }
     source: apps/nazar/features/decks/components/card-quick-add.tsx:168
 
   addingBatch:
@@ -520,6 +538,9 @@ states:
     on:
       ADD_ALL: { target: addingBatch, say: "they press Hepsini ekle again" }
       DROP_BATCH: { target: deck, say: "they press Vazgeç" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the panel stays, not drawn from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the batch is dropped with the page" }
     source: apps/nazar/features/decks/components/card-quick-add.tsx:105
 
   editing:
@@ -536,6 +557,7 @@ states:
       ESCAPE: { target: deck, say: "they press Escape: the stored faces stay" }
       CANCEL_EDIT: { target: deck, say: "they press Vazgeç" }
       SAVE: { target: savingCard, say: "they press Kaydet, or Enter" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the open form is dropped" }
     source: apps/nazar/features/decks/components/card-tile.tsx:66
 
   savingCard:
@@ -568,6 +590,7 @@ states:
       ESCAPE: { target: deck, say: "they press Escape" }
       CANCEL_EDIT: { target: deck, say: "they press Vazgeç" }
       SAVE: { target: savingCard, say: "they press Kaydet again" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the open form is dropped" }
     source: apps/nazar/features/decks/components/card-tile.tsx:100
 
   confirmRemove:
@@ -612,6 +635,7 @@ states:
         say: "they press Sil again"
         source: apps/nazar/features/decks/components/card-tile.tsx:146
       BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens" }
     source: apps/nazar/features/decks/components/deck-detail-screen.tsx:77
 
   not_found:

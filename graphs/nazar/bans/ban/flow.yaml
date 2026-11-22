@@ -257,6 +257,7 @@ states:
       FAIL.courseGone: { guard: "answer == 'courseGone'", target: rowReady, effect: [courseGoneToast], source: apps/nazar/features/bans/bans.ts:364, say: "'Bu ders artık yok ya da medresenin dersi değil. …'; the dialog stays and the list of choices is not read again" }
       FAIL.invalid: { guard: "answer == 'invalid'", target: rowReady, effect: [invalidToast], source: apps/nazar/features/bans/bans.ts:365, say: "'Gerekçeyi denetleyip yeniden deneyin.'" }
       FAIL.failed: { guard: "answer == 'failed'", target: rowReady, effect: [failedToast], source: apps/nazar/features/bans/bans.ts:367, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: rowSubmitting, source: apps/nazar/features/bans/components/ban-dialog.tsx:202, say: "Vazgeç, the close icon or Escape: nothing happens, the ban is still sent (BAN-3)" }
     source: apps/nazar/features/bans/components/ban-dialog.tsx:170
 
   headerForm:
@@ -329,6 +330,7 @@ states:
       FAIL.courseGone: { guard: "answer == 'courseGone'", target: headerReady, effect: [courseGoneToast], source: apps/nazar/features/bans/bans.ts:364, say: "'Bu ders artık yok ya da medresenin dersi değil. …'" }
       FAIL.invalid: { guard: "answer == 'invalid'", target: headerReady, effect: [invalidToast], source: apps/nazar/features/bans/bans.ts:365, say: "'Gerekçeyi denetleyip yeniden deneyin.'" }
       FAIL.failed: { guard: "answer == 'failed'", target: headerReady, effect: [failedToast], source: apps/nazar/features/bans/bans.ts:367, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: headerSubmitting, source: apps/nazar/features/bans/components/ban-dialog.tsx:202, say: "Vazgeç, the close icon or Escape: nothing happens, the ban is still sent (BAN-3)" }
     source: apps/nazar/features/bans/components/ban-dialog.tsx:170
 
   savedRow:

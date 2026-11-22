@@ -57,6 +57,7 @@ scope:
     - "which people teach the course, and who is its imam: nazar.courses.changeHocas and nizam.courses.editHocalar; a course made with no hoca at all cannot exist (the API refuses an empty list), so the card's 'Bu dersin hocası yok.' line is not drawn"
     - "a body the page itself cannot produce (an unvan outside the eight codes, VALIDATION_ERROR) and a call that fails outright (the network): both end in the card keeping the choices with a toast, drawn as one refusal class; the first is unreachable from this page, the second was not verified"
     - "where else the title shows (the course page, Derslerim, the celse page, the home page, the köşk and medrese pages in Tedris; the course tables in Nizam): the flows of those pages; here only the API's answer is read"
+    - "a new choice on the card after the second hoca left (`refusedGone`): the card then has one select, a course of one hoca that no start of this graph draws; its first press ends the flow in `edit_not_drawn`"
     - "setting a title when a course is opened (the select beside each hoca of the Dersi aç form): nazar.courses.open and nizam.courses.open"
     - "the sidebar and the menu of the course scope: nazar.shell.scopeAndMenu; the menu offers 'Ders ayarları' to every course persona whatever they hold (F-D2c-2)"
 
@@ -201,6 +202,8 @@ states:
         - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
         - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
       CLOSE_LIST: { target: card, say: "Esc: the list closes and the select keeps its value" }
+      OPEN_FIRST: { target: card, say: "a click on the first select while a list is open: the list closes and none opens (the kit's Select is modal: a backdrop takes the click)", source: libs/ui/src/mds/select.tsx:79 }
+      OPEN_SECOND: { guard: pair, target: card, say: "the same on the second select", source: libs/ui/src/mds/select.tsx:79 }
     source: libs/ui/src/mds/select.tsx:79
 
   choosingDirty:
@@ -217,6 +220,10 @@ states:
         - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
         - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
       CLOSE_LIST: { target: dirty, say: "Esc: the list closes and the select keeps its value" }
+      OPEN_FIRST: { target: dirty, say: "a click on the first select while a list is open: the list closes and none opens (the kit's Select is modal: a backdrop takes the click)", source: libs/ui/src/mds/select.tsx:79 }
+      OPEN_SECOND: { guard: pair, target: dirty, say: "the same on the second select", source: libs/ui/src/mds/select.tsx:79 }
+      SUBMIT: { target: dirty, say: "a click on Kaydet while a list is open only closes the list: nothing is sent", source: libs/ui/src/mds/select.tsx:79 }
+      CANCEL: { target: dirty, say: "a click on Vazgeç while a list is open only closes the list: the choices stay", source: libs/ui/src/mds/select.tsx:79 }
     source: libs/ui/src/mds/select.tsx:79
 
   settle:
@@ -310,6 +317,7 @@ states:
       saved). The page was read again; the list now lacks the second hoca, so the card is mounted anew with one select, holding the first
       hoca's stored title. "Kaydet" and "Vazgeç" are off.
     on:
+      OPEN_FIRST: { target: edit_not_drawn, say: "they open the one select left: a card of one hoca, which the graph does not draw", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-page.tsx:114
 
@@ -331,6 +339,14 @@ states:
     description: "A 404 of the course or permission read is Next's not-found page, 'Sayfa bulunamadı' (lib/tedrisat-read.ts:46)."
     type: final
     leavesPage: true
+
+  edit_not_drawn:
+    title: They choose again on a card of one hoca
+    type: final
+    description: >-
+      After the second hoca left (`refusedGone`) the card is mounted anew with one select, which is open
+      (hoca-unvan-card.tsx:147). Choosing on it is a new round of this flow on a course of one hoca, which the graph does not draw
+      (scope.outOfView). The person stays on the page.
 
   left:
     title: They leave the page

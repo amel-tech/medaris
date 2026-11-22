@@ -319,6 +319,15 @@ states:
       CHOOSE_KOSK_ONE: { guard: "hosting == 'kosks' and kosk == 'all'", target: readingCourses, effect: [choseOneKosk], say: "they choose a köşk: ?kosk=<id> joins the address and the status filter stays", source: apps/nazar/features/courses/components/courses-table.tsx:202 }
       CHOOSE_KOSK_ALL: { guard: "kosk == 'one'", target: readingCourses, effect: [choseAllKosks], say: "they choose \"Köşk: tümü\": ?kosk= leaves the address", source: apps/nazar/features/courses/components/courses-table.tsx:205 }
       CLOSE_FILTER: { target: sorting, say: "Esc: the list closes and the page stays as it was", source: libs/ui/src/mds/select.tsx:51 }
+      # The kit's Select is modal (Base UI's default; select.tsx passes no `modal`): while it is open a transparent backdrop, cut out around its own trigger, covers the page, so a press elsewhere only closes the list.
+      OPEN_KOSK_FILTER: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press the filter again: the list closes and the page stays as it was" }
+      OPEN_STATUS_FILTER: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press the Durum filter: the open list's backdrop takes the press, the list closes and the other one stays shut" }
+      OPEN_ROW_MENU: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press a row's \"Diğer işlemler\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_COURSE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press a course's title: the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_NEW_COURSE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Medrese dersi aç\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_OFFSITE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Medrese dışı ders talebi gönder\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_ARCHIVE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Arşiv\" in the note: the open list's backdrop takes the press, the list closes and nothing else happens" }
+      CLEAR_FILTERS: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Süzgeçleri temizle\": the open list's backdrop takes the press, the list closes and nothing else happens" }
 
   choosingStatus:
     title: The Durum filter is open
@@ -333,6 +342,15 @@ states:
       CHOOSE_STATUS_PUBLISHED: { guard: "status != 'published'", target: readingCourses, effect: [chosePublished], say: "they choose \"Durum: Yayında\"", source: apps/nazar/features/courses/components/courses-table.tsx:216 }
       CHOOSE_STATUS_DRAFT: { guard: "status != 'draft'", target: readingCourses, effect: [choseDraft], say: "they choose \"Durum: Taslak\"", source: apps/nazar/features/courses/components/courses-table.tsx:216 }
       CLOSE_FILTER: { target: sorting, say: "Esc: the list closes and the page stays as it was", source: libs/ui/src/mds/select.tsx:51 }
+      # The kit's Select is modal (Base UI's default; select.tsx passes no `modal`): while it is open a transparent backdrop, cut out around its own trigger, covers the page, so a press elsewhere only closes the list.
+      OPEN_STATUS_FILTER: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press the filter again: the list closes and the page stays as it was" }
+      OPEN_KOSK_FILTER: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press the Köşk filter: the open list's backdrop takes the press, the list closes and the other one stays shut" }
+      OPEN_ROW_MENU: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press a row's \"Diğer işlemler\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_COURSE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press a course's title: the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_NEW_COURSE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Medrese dersi aç\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_OFFSITE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Medrese dışı ders talebi gönder\": the open list's backdrop takes the press, the list closes and nothing else happens" }
+      OPEN_ARCHIVE: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Arşiv\" in the note: the open list's backdrop takes the press, the list closes and nothing else happens" }
+      CLEAR_FILTERS: { target: sorting, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Süzgeçleri temizle\": the open list's backdrop takes the press, the list closes and nothing else happens" }
 
   rowMenu:
     title: A row's menu is open
@@ -347,6 +365,14 @@ states:
       CHOOSE_CHANGE_HOCAS: { target: handed_over.change_hocas, starts: { flow: nazar.courses.changeHocas }, say: "\"Hocaları değiştir\" opens the dialog for the row's course", source: apps/nazar/features/courses/components/courses-table.tsx:168 }
       CHOOSE_HIDE: { target: handed_over.hide_course, starts: { flow: nazar.archive.hideAndRestoreCourse }, say: "\"Dersi gizle\" opens the confirmation for the row's course", source: apps/nazar/features/courses/components/courses-table.tsx:173 }
       CLOSE_MENU: { target: listed, say: "Esc: the menu closes", source: libs/ui/src/mds/menu.tsx:32 }
+      # The kit's Menu is modal (Base UI's default; menu.tsx passes no `modal`): while it is open a transparent backdrop, cut out around its trigger, covers the page, so a press elsewhere only closes the menu.
+      OPEN_ROW_MENU: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press \"Diğer işlemler\" again, or another row's: the menu closes and no other opens" }
+      OPEN_KOSK_FILTER: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press the Köşk filter: the open menu's backdrop takes the press, the menu closes and nothing else happens" }
+      OPEN_STATUS_FILTER: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press the Durum filter: the open menu's backdrop takes the press, the menu closes and nothing else happens" }
+      OPEN_COURSE: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press a course's title: the open menu's backdrop takes the press, the menu closes and nothing else happens" }
+      OPEN_NEW_COURSE: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press \"Medrese dersi aç\": the open menu's backdrop takes the press, the menu closes and nothing else happens" }
+      OPEN_OFFSITE: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press \"Medrese dışı ders talebi gönder\": the open menu's backdrop takes the press, the menu closes and nothing else happens" }
+      OPEN_ARCHIVE: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press \"Arşiv\" in the note: the open menu's backdrop takes the press, the menu closes and nothing else happens" }
 
   forbidden:
     title: The list is refused
