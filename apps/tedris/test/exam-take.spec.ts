@@ -464,7 +464,7 @@ describe("the exam page (MDRS-299)", () => {
     );
   });
 
-  it("makes the text bigger step by step, stops at the largest, and keeps it for a reload", async () => {
+  it("zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload", async () => {
     const arabic = attempt();
     arabic.questions[0].options = [
       { id: "a", text: "زَيْدٌ فِي الدَّارِ" },
@@ -476,10 +476,17 @@ describe("the exam page (MDRS-299)", () => {
     await settle();
     const card = () => host.querySelector("[data-text-scale]") as HTMLElement;
     expect(card().dataset.textScale).toBe("1");
+    // The timer, the question and the list are all inside the zoomed area.
+    expect(card().querySelector("[data-testid=exam-clock]")).toBeTruthy();
+    expect(card().querySelector("nav")).toBeTruthy();
+    expect(card().parentElement?.style.maxInlineSize).not.toBe("none");
     expect(button(host, "A−").disabled).toBe(true);
     for (let i = 0; i < 3; i++) await click(button(host, "A+"));
     expect(card().dataset.textScale).toBe("1.5");
     expect(button(host, "A+").disabled).toBe(true);
+    // The whole exam is zoomed, and at the largest step it spans the screen.
+    expect(card().style.zoom).toBe("1.5");
+    expect(card().parentElement?.style.maxInlineSize).toBe("none");
     expect(window.sessionStorage.getItem("exam-text-scale:l1")).toBe("3");
     // An Arabic option is its own Arabic run.
     const run = [...host.querySelectorAll("[lang=ar]")].find(
