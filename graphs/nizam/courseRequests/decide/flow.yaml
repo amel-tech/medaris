@@ -254,6 +254,8 @@ states:
       DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:85, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
       FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:79, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :66-93).
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
     source: apps/nizam/features/platform-admin/actions.ts:95
 
   listed:
@@ -272,6 +274,7 @@ states:
       OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she opens 'Karara bağlanan'" }
       REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:238, say: "she presses 'Reddet': the dialog asks for the reason" }
       ACCEPT: { target: acceptHandOver, effect: [openedCourseForm], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234, say: "she presses 'Kabul et': the Ders aç form opens with the request's name; nothing is written yet (CREQ-4)" }
+      OPEN_PENDING: { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
       NAVIGATE: left
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298
 
@@ -284,6 +287,7 @@ states:
       the card's "Reddet" is lost with the card (CREQ-2). A toast of the last decision may still be up.
     on:
       OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she opens 'Karara bağlanan'" }
+      OPEN_PENDING: { target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
       NAVIGATE: left
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:296
 
@@ -300,6 +304,10 @@ states:
         - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298, say: "the answered requests are listed, the newest decision selected" }
       FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:77, say: "the read fails: the sticky toast, and the Alert replaces the tabs (CREQ-3)" }
       FAIL.signedOut: sent_to_sign_in
+      # The tabs stay live while the answered requests are read, and 'Bekleyen' shows its list at once (it was kept). The read already sent
+      # still lands: it fills the other tab and sets the selection to its first request, which is none of this tab's (setSelectedId, :91),
+      # so the card goes blank; that late answer is not drawn.
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen' while the answered requests are read: its list is there at once" }
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:66
 
   decidedList:
@@ -313,6 +321,7 @@ states:
       made here is the newest.
     on:
       OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
+      OPEN_DECIDED: { target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
       NAVIGATE: left
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298
 
@@ -322,6 +331,7 @@ states:
     description: "The Karara bağlanan tab is selected and says \"Karara bağlanmış talep yok.\" (an EmptyState)."
     on:
       OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen'" }
+      OPEN_DECIDED: { target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
       NAVIGATE: left
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:296
 
@@ -345,6 +355,8 @@ states:
       DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:85, say: "the read works: the answered requests (the model draws a list, not the empty line)" }
       FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:79, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :66-93).
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
     source: apps/nizam/features/platform-admin/actions.ts:95
 
   confirmReject:
