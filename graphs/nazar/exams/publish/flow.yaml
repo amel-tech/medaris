@@ -1,24 +1,25 @@
-# The course team publishes an online exam in nazar-web, now or at a day and time, takes it back while no talebe has started, and
-# closes it early after. PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's rules for
-# online exams; its screens are drawn in ui.yaml and its API is sketched in domain/planned-exams.yaml (publishOnlineExam,
-# unpublishOnlineExam, closeOnlineExamEarly, and getOnlineExamDraft for the read), every action there `planned`. There is no code and
-# no route: no state and no node has a `source`, and nothing here can be walked. `status: proposed`.
+# The course team publishes an online exam in nazar-web, now or at a day and time, takes it back to a draft until it opens, and closes
+# it early after. BUILT (MDRS-299, #415, #431): the "Yayınla" section under the questions of the exam's page and, once published, the
+# page's read-only view (features/online-exams/components/exam-publish.tsx in exam-workspace.tsx); closing early is on the results page
+# (nazar.exams.results). Its actions are publishOnlineExam, unpublishOnlineExam and closeOnlineExamEarly of domain/online-exams.yaml.
+# Written graph-first on 21 November 2026; `status: proposed`, so no state names code.
 #
-# The exam is a LessonExam of the third format, MULTIPLE_CHOICE, shown "Çoktan seçmeli" beside "Yazılı" and "Şifahi"
-# (domain/planned-exams.yaml). The page is proposed at /ders/<courseId>/sinav/<lessonId>/yayin, opened by the editor's "Yayınla"
-# (nazar.exams.edit) and from Sınavlarım (nazar.exams.mine) for an exam that is scheduled or open.
+# Publishing makes the exam celse ("Celsesiz taslak", the owner, 22 Nov 2026): at the start, lasting the length plus the late window,
+# with its LessonExam of format MULTIPLE_CHOICE; the course's or the medrese's zeroth question is copied into the exam.
 #
-# The owner's rule this flow carries (21 Nov 2026): "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar
-# olacak".
+# The owner's words this flow carries:
+#   - 21 Nov: "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak"; "şimdilik 'en erken şu saatte en geç
+#     şu saatte sınava başlanmalı' olsun, süre kısalmasın"; the celse's time is the earliest start ("Celse saati = en erken").
+#   - The late window (D1, answered): "'sınava en geç başlama saati' de defaultta 10 dakika sonra olacak. şu anki medresemiz 'sadece
+#     gecikme için bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız' dedi" (22 Nov, relayed) and "belki 10 dk değil 20 dk
+#     seçecek hoca, bunun da mümkün olması gerekmez mi sence" (22 Nov): the form asks for the minutes, 10 by default, counted from the
+#     real opening, the press itself for "Şimdi yayınla" (#431).
+#   - The length is required: "o olmadan sınav yayına alınamasın" (22 Nov, NO_DURATION).
 #
-# Decided by the owner on 21 Nov 2026:
-#   - A talebe starts between an earliest and a latest start, and always gets the full length: "şimdilik 'en erken şu saatte
-#     en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım". Asked of those who asked for exams, the owner
-#     relayed on 22 Nov 2026 (D1, closed): "sınava en geç başlama saati" defaultta 10 dakika sonra olacak; the medrese: "sadece gecikme için bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız". So the latest start is filled with
-#     the earliest start plus 10 minutes, and the team may change it.
-#   - The earliest start is the exam celse's date and time ("Celse saati = en erken"); "Şimdi yayınla" moves it to now.
-#   - An open exam that a talebe has started cannot be taken back; it can be closed early ("Geri alınamaz, erken bitirilir").
-#   - The talebe are told when it is scheduled or opened, and reminded 24 hours before ("Zamanlanınca + 24 saat önce").
+# Not built: moving a scheduled exam in place, or changing it in the editor while scheduled (it is taken back to a draft first); a
+# notification that says an exam is scheduled or opened (the celse's own 24-hour reminder runs; not verified).
+# Choices made in the code that are not his: "Taslağa al" deletes the celse; it is offered until the exam opens; "İleri bir tarihte"
+# starts at the next whole hour; one confirmation before publishing.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.publish
@@ -78,10 +79,10 @@ context:
       changed: the page says the exam changed meanwhile and was checked again
       failed: an alert says it could not be done
 guards:
+  someoneIn: "started == 'someone'"
   isDraft: "status == 'draft'"
   isScheduled: "status == 'scheduled'"
   isOpen: "status == 'open'"
-  someoneIn: "started == 'someone'"
 effects:
   clearNotice: { set: { notice: "none" } }
   someoneStarted: { set: { started: someone } }
@@ -94,8 +95,8 @@ failures:
   reading:
     from: getOnlineExamDraft
     forbidden: [AUTHZ_FORBIDDEN]
-    gone: [EXAM_NOT_FOUND, LESSON_NOT_FOUND]
-    other: [HTTP_400, network, timeout, 5xx]
+    gone: [EXAM_NOT_FOUND]
+    other: [network, timeout, 5xx]
   publishingNow:
     from: publishOnlineExam
     forbidden: [AUTHZ_FORBIDDEN]
@@ -113,8 +114,8 @@ failures:
   unpublishing:
     from: unpublishOnlineExam
     forbidden: [AUTHZ_FORBIDDEN]
-    started: [EXAM_ALREADY_STARTED]
-    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+    started: [EXAM_LOCKED]
+    other: [EXAM_NOT_PUBLISHED, EXAM_STALE, EXAM_NOT_FOUND, network, timeout, 5xx]
   closingEarly:
     from: closeOnlineExamEarly
     forbidden: [AUTHZ_FORBIDDEN]
@@ -130,7 +131,7 @@ states:
   reading:
     title: The exam is read
     description: >-
-      The action getOnlineExamDraft, GET /lessons/{id}/online-exam/edit: where the exam stands, whether it is complete and what keeps it
+      The action getOnlineExamDraft, GET /online-exams/{examId}: where the exam stands, whether it is complete and what keeps it
       from being published, its length and question count, its dates, and how many talebe have started. Only the course team that may
       prepare the exam (exam.prepare) is answered.
     invoke: { action: getOnlineExamDraft }
@@ -167,18 +168,19 @@ states:
   choose:
     title: Publish now or at a day and time
     description: >-
-      What the talebe will see is said: the course, the length, the question count. "Şimdi yayınla" opens it now, with the latest
-      start written beside it; "İleri bir tarihte yayınla" asks for a day and time.
+      What the talebe will see is said: the length and the question count. "Şimdi yayınla" opens it when the button is pressed;
+      "İleri bir tarihte" asks for a day and a time (the next whole hour first). Both ask "Geç kalanlar kaç dakika sonrasına kadar
+      başlayabilir", 10 by default, and say under it the time that comes to; one confirmation asks before it is published.
     by: human
     on:
-      PUBLISH_NOW: { target: publishingNow, effect: [clearNotice], say: "they press Şimdi yayınla, with a latest start: the earliest start is now" }
+      PUBLISH_NOW: { target: publishingNow, effect: [clearNotice], say: "they press Yayınla with Şimdi yayınla chosen, and confirm: the earliest start is the press" }
       SCHEDULE: { target: scheduleForm, effect: [clearNotice], say: "they choose a day and time" }
       CANCEL: { target: editor_opened, say: "they go back to the editor" }
   publishingNow:
     title: Publish it now
     description: >-
-      The action publishOnlineExam, POST /lessons/{id}/online-exam/publish, with no earliest start (now) and the latest start. The exam
-      celse's date and time become now, and the talebe of the course are told.
+      The action publishOnlineExam, POST /online-exams/{examId}/publish, with no earliest start (the server's now) and the late window in
+      minutes, counted from that now. The exam celse is made at that time.
     invoke: { action: publishOnlineExam }
     on:
       DONE: { target: open, effect: [nowOpen], say: "the exam is open; the talebe are told" }
@@ -190,8 +192,8 @@ states:
   scheduleForm:
     title: The day and time it opens
     description: >-
-      The earliest start, a day and a time, which becomes the exam celse's, and the latest start; in the team's time zone, with the
-      talebe's own shown beside it where they differ.
+      The earliest start, a day and a time, which becomes the exam celse's, and the late window in minutes; in the team's time zone,
+      which the form names.
     by: human
     on:
       CONFIRM:
@@ -203,8 +205,8 @@ states:
   scheduling:
     title: Schedule it
     description: >-
-      The action publishOnlineExam with the earliest and the latest start. The exam celse moves to that day and time; the talebe of
-      the course are told when it opens, and reminded 24 hours before. Publishing a scheduled exam again moves it, and the reminder.
+      The action publishOnlineExam with the earliest start and the late window in minutes. The exam celse is made at that day and time,
+      and its 24-hour reminder runs as for every exam celse.
     invoke: { action: publishOnlineExam }
     on:
       DONE: { target: scheduled, effect: [nowScheduled], say: "the exam is scheduled; the talebe are told when it opens" }
@@ -222,13 +224,14 @@ states:
   scheduled:
     title: "<gün> <saat>'te yayında"
     description: >-
-      The exam says when it opens and until when it can be started, wherever it is listed. It can be moved, changed in the editor, or
-      taken back to a draft until then; talebe see when it opens and nothing of its questions.
+      The page shows the exam read-only: when it opens and until when it can be started. "Taslağa al" takes it back to a draft until
+      then; it is not moved or changed in place (not built: take it back, then publish again). Talebe see when it opens and nothing of
+      its questions.
     by: human
     on:
       OPENS: { target: open, effect: [nowOpen], say: "the day and time come: it opens by itself" }
-      MOVE: { target: scheduleForm, effect: [clearNotice], say: "they move it" }
-      EDIT: { target: editor_opened, say: "they change it in the editor" }
+      MOVE: { target: scheduleForm, effect: [clearNotice], say: "(not built) they move it in place" }
+      EDIT: { target: editor_opened, say: "(not built) they change it in the editor while scheduled" }
       TO_DRAFT: { target: unpublishing, effect: [clearNotice], say: "they press Taslağa al" }
       NAVIGATE: left
   open:
@@ -240,10 +243,8 @@ states:
     by: human
     goal: true
     on:
-      TAKE_BACK:
-        - { guard: someoneIn, target: unpublishRefused, say: "they try to take it back after a talebe started" }
-        - { target: unpublishing, effect: [clearNotice], say: "they take it back before anyone started" }
-      CLOSE_EARLY: { guard: someoneIn, target: closeAsk, effect: [clearNotice], say: "they press Erken bitir" }
+      TAKE_BACK: { target: unpublishRefused, say: "an open exam is not taken back: the page offers no Taslağa al once it has opened" }
+      CLOSE_EARLY: { target: closeAsk, effect: [clearNotice], say: "they press Sınavı erken bitir on the results page" }
       SOMEONE_STARTS: { target: open, effect: [someoneStarted], say: "a talebe starts the exam" }
       CLOSES: { target: closed, say: "the latest start has passed and the last attempt has ended" }
       RESULTS: { target: results_opened, say: "they open the results" }
@@ -251,12 +252,12 @@ states:
   unpublishing:
     title: Take it back to a draft
     description: >-
-      The action unpublishOnlineExam, POST /lessons/{id}/online-exam/unpublish: refused once a talebe has started it, whatever the page
-      showed. The talebe who were told it was scheduled are told it was taken back.
+      The action unpublishOnlineExam, POST /online-exams/{examId}/unpublish: refused once the exam has opened (EXAM_LOCKED), whatever the
+      page showed. The celse it was published with is deleted, and the talebe get the calendar's CANCEL.
     invoke: { action: unpublishOnlineExam }
     on:
       DONE: { guard: "started == 'nobody'", target: draft_again, say: "it is a draft again" }
-      FAIL.started: { target: unpublishRefused, effect: [someoneStarted, nowOpen], say: "a talebe started it meanwhile, so it is open" }
+      FAIL.started: { target: unpublishRefused, effect: [nowOpen], say: "it opened meanwhile" }
       FAIL.forbidden: forbidden
       FAIL.other:
         - { guard: isScheduled, target: scheduled, effect: [failed] }
@@ -264,7 +265,7 @@ states:
   unpublishRefused:
     title: It cannot be taken back
     description: >-
-      The page says a talebe has started it, and how many are in progress; it offers to close it early instead.
+      The page says an open exam is not taken back to a draft; it can be closed early instead.
     by: human
     on:
       CLOSE_EARLY: { target: closingEarly, effect: [clearNotice], say: "they close it early: every attempt ends with its saved answers" }
@@ -281,8 +282,8 @@ states:
   closingEarly:
     title: Close it early
     description: >-
-      The action closeOnlineExamEarly, POST /lessons/{id}/online-exam/close: every attempt in progress ends with its saved answers and
-      is scored; no one starts it any more.
+      The action closeOnlineExamEarly, POST /online-exams/{examId}/close, from the results page: every attempt in progress ends with
+      its saved answers and is scored (finished by the team); no one starts it any more.
     invoke: { action: closeOnlineExamEarly }
     on:
       DONE: { target: closed, say: "the exam is over" }
@@ -328,9 +329,6 @@ states:
     leavesPage: true
 
 assertions:
-  - id: taken-back-only-before-anyone-starts
-    never: "state == 'draft_again' and started == 'someone'"
-    say: "An exam a talebe has started is never taken back to a draft: it can only be closed early"
-  - id: closed-early-only-when-someone-is-in-it
-    never: "state == 'closeAsk' and started == 'nobody'"
-    say: "Erken bitir is offered once a talebe has started; before that, the exam is taken back instead"
+  - id: taken-back-only-before-it-opens
+    never: "state == 'draft_again' and status == 'open'"
+    say: "An exam that has opened is never taken back to a draft: it can only be closed early"

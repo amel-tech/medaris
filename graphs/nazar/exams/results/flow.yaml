@@ -1,29 +1,20 @@
-# The course team's screens of an open or past online exam in nazar-web: who took it, the scores, the topics, the questions, and
-# releasing the results to the talebe. PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's
-# rules for online exams; the screens are drawn now (ui.yaml) and the API is sketched in domain/planned-exams.yaml. There is no code, no
-# route and no table: `status: proposed`, no state names code, and nothing here can be walked. An online exam is a LessonExam of the
-# third format, MULTIPLE_CHOICE, shown as "Çoktan seçmeli" beside "Yazılı" and "Şifahi" (the domain's header says why it is not called
-# ONLINE).
+# The course team's screens of an open or past online exam in nazar-web: who took it, the scores, the topics, the questions, each
+# talebe's answers, closing early, and releasing the results to the talebe. BUILT (MDRS-299, #417, #423): the exam's "Sonuçlar" page
+# (/ders/<courseId>/sinavlar/<examId>/sonuclar, features/online-exams/components/results-view.tsx) and each talebe's page under it
+# (sonuclar/<talebeId>); its actions are getOnlineExamResults, getOnlineExamTalebeAnswers and closeOnlineExamEarly of
+# domain/online-exams.yaml, and the existing releaseExamResults. Written graph-first on 21 November 2026; `status: proposed`.
 #
-# The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler" (for
-# nazar, the team's own screens of its exams); "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (here, the team
-# sees the same by talebe and by topic).
+# The owner's words this flow carries:
+#   - 21 Nov: "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler"; "konulara göre talebe hangi konularda ne durumda
+#     olduğunu görebilecek" (here, the team sees the same by talebe and by topic); the switches, "Evet, sayı ve zaman".
+#   - 22 Nov: those who prepare the exam see its results, "görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada"
+#     (the read asks exam.prepare); the release stays with releaseExamResults (session.manage, mayRelease).
+#   - 22 Nov: "sınav sonuçlarında talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım": a talebe's name opens
+#     their answers, question by question (talebeDetail).
 #
-# Decided by the owner on 21 Nov 2026:
-#   - An online exam is an exam celse, so its scores land in Değerlendirme as its results, and its release is Değerlendirme's: the
-#     same action, releaseExamResults, and the same words ("Sonuçları talebelere aç").
-#   - The team sees each talebe's switches to another tab or window, how many and when ("Evet, sayı ve zaman").
-#   - The team reads each talebe's answer to the zeroth question; Medaris management reads them in aggregate
-#     (nizam.exams.zerothAnswers).
-#
-# Decided by the owner on 22 Nov 2026: those who prepare the exam see its results, so that the next exam is prepared from them
-# ("görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada"; the read asks exam.prepare). Asked whether they
-# may release the results too, he answered with that sentence: the release stays as the existing releaseExamResults has it
-# (session.manage), and the page shows its button only to someone who holds that (mayRelease).
-#
-# Drawn here, and not decided by the owner: the release asks once before it goes (Değerlendirme today releases with one press and no
-# question, finding F-D1-28 of nazar.evaluation.examScores); the button is on while the exam is still open, as Değerlendirme's is, and
-# the question says how many talebe are still in it (ui.yaml rule release-while-open).
+# Choices made in the code that are not his: the release asks once; the page reads again every 30 seconds while the exam is open;
+# Değerlendirme keeps whole scores (87.50 is written as 88; the page shows the exact score); a result the team entered by hand is never
+# replaced; closing early asks exam.prepare; the talebe's page lists the questions in the exam's order, not the talebe's.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.results
@@ -108,7 +99,7 @@ states:
   opening:
     title: The exam's results are read
     description: >-
-      The action getOnlineExamResults, GET /lessons/{id}/online-exam/results: every talebe with a seat in the course and where they
+      The action getOnlineExamResults, GET /online-exams/{examId}/results: every talebe with a seat in the course and where they
       are, the scores, the switches with their times, the zeroth answers, and over them all the counts, the topics and the questions.
       To a person outside the course team the exam's results are not there: the API refuses them. The read also says whether the
       results are released (by this page or by Değerlendirme), and whether the person may release them. The screens of a talebe, a
@@ -165,10 +156,12 @@ states:
       REFRESH: { guard: stillOpen, target: opening, effect: [attemptsMove, clearToast], say: "the exam is open: the page reads it again a little later" }
       NAVIGATE: left
   talebeDetail:
-    title: A talebe's attempt
+    title: A talebe's answers
     description: >-
-      Each question in the talebe's own order, with their answer, the correct one and the points got; their answer to the zeroth
-      question; when they started and handed in; each switch to another tab or window, with when.
+      A page of its own (sonuclar/<talebeId>), read with getOnlineExamTalebeAnswers, GET /online-exams/{examId}/results/{userId}: each
+      question in the exam's order with its options, the talebe's choice marked "✓ (seçtiği)", the correct one with the "Doğru" badge,
+      "Atladı, boş kaldı" or "Boş bıraktı", and the points got; their answer to the zeroth question; how the attempt ended; each switch
+      with its time. Only a talebe who started has the link; one with no attempt or no seat is not found.
     by: human
     on:
       BACK: overview

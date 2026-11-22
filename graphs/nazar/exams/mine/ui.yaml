@@ -1,17 +1,5 @@
-# The screen of nazar.exams.mine: the course team's page "Sınavlarım", its new entry in nazar's menu, and the dialog of "Yeni sınav".
-# PLANNED, NOT BUILT (MDRS-299): the page, its menu entry, its filters, its table and its dialog do not exist, so no node carries a
-# `source`. The shell around the page is drawn by the nazar shell flows and is left out here; the menu entry is drawn alone, as the
-# new node it is, and only for a person who prepares exams for a course.
-#
-# The page has an h1, "Yeni sınav", two filters (Durum, Ders) that go into the address, and one table of exams, upcoming first and then
-# past. A row is the exam's title and course, its format as a badge ("Çoktan seçmeli", or the app's own "Yazılı" and "Şifahi"), its
-# status as a word ("Taslak", "Zamanlandı" with when it opens, "Yayında", "Bitti", "Sonuçlar açıklandı"), what the row needs to say
-# and its one action: a multiple-choice exam opens its editor or its results, a written or oral one its column in Değerlendirme.
-#
-# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
-# and the app's own where they exist: SessionPlan.examWritten and .examOral ("Yazılı", "Şifahi"), Courses.filters.status.label
-# ("Durum"), Students.filters.course.label ("Ders"), Problems.* (the refused page), Shell.retry ("Yeniden dene"),
-# OpenCourse.cancel ("Vazgeç") and Nav.ders.evaluation ("Değerlendirme"). Samples are invented and neutral.
+# The screen of nazar.exams.mine: the course team's page "Sınavlarım" across courses and its menu entry. NOT BUILT (MDRS-299): no node
+# exists; each course's own Sınavlar page is built instead (nazar.exams.edit). The keys are the plan's (`planned.Exams.*`).
 schema: delurio-graph/0
 kind: ui
 id: nazar.exams.mine

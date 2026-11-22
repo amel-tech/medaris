@@ -1,21 +1,12 @@
-# The course team's "Sınavlarım" in nazar-web: the exams of the courses a person prepares exams for, by status, and the way into
-# each. PLANNED, NOT BUILT (MDRS-299). Written needs-first on 21 November 2026 from the owner's rules for online exams, and its screens
-# drawn the same day (ui.yaml); no code and no route yet. `status: proposed`: no state names code, and nothing here can be walked. The
-# read is the planned action listMyTeachingExams of graphs/domain/planned-exams.yaml. The third format is MULTIPLE_CHOICE in the API
-# and "Çoktan seçmeli" on the screen, beside the app's own "Yazılı" and "Şifahi".
+# The course team's "Sınavlarım" in nazar-web: the exams of every course a person prepares exams for, by status, and the way into each.
+# NOT BUILT (MDRS-299): its read is listMyTeachingExams, still `planned` in domain/online-exams.yaml. What is built instead is each
+# course's own "Sınavlar" page (/ders/<courseId>/sinavlar, listOnlineExams, drawn in nazar.exams.edit's opening): its exams with their
+# status and "Yeni sınav", which makes a draft with its title and no celse ("Celsesiz taslak", the owner, 22 Nov 2026), not the plan's
+# "Celse planla" with "Sınav" and "Çoktan seçmeli" chosen. Written graph-first on 21 November 2026; `status: proposed`.
 #
-# The owner's rules this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
+# The owner's words this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
 # kendilerine özel ekranları da görebilecekler"; "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak".
-# Read for nazar as: the exams the person prepares, and their own screens of the past ones (nazar.exams.results). The menu entry is
-# drawn in ui.yaml as a new node; it joins nazar's navigation graph (graphs/nazar/nav), which is read from the code, once the page
-# exists.
-#
-# "Yeni sınav" asks for the course (when the person prepares exams for more than one) and opens that course's "Celse planla" with
-# "Sınav" and "Çoktan seçmeli" chosen: a multiple-choice exam is an exam celse, and planning it makes its draft (the domain's header).
-#
-# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse; a hoca prepares it, and so does a ders
-# nazırı the hoca gives a new grant to prepare exams ("Hoca + yetkili ders nazırı"). The list holds every exam of those courses,
-# written and oral too, as tedris's does ("Hepsi, tedris gibi").
+# The statuses are built on the course's Sınavlar page (Taslak, Yayında with its date); the menu across courses is not.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.mine
@@ -59,7 +50,7 @@ context:
       yes: the person is a hoca of a course, or holds the grant to prepare its exams
       no: the person prepares exams for no course
 failures:
-  opening: { from: listMyTeachingExams, unreadable: [VALIDATION_ERROR, network, timeout, 5xx] }
+  opening: { from: listMyTeachingExams, unreadable: [network, timeout, 5xx] }
 # A 401 is the session's, and sends the person to sign in (realm.auth.signIn); it is not drawn here.
 
 main:
@@ -136,8 +127,8 @@ states:
   draft_created:
     title: A new draft is started
     description: >-
-      The course's "Celse planla" opens with "Sınav" and "Çoktan seçmeli" chosen (nazar.sessions.plan); planning the celse makes the
-      draft, which opens in the editor (nazar.exams.edit). Nothing reaches a talebe.
+      The course's Sınavlar page with "Yeni sınav": a draft with its title and no celse, which opens in the editor (nazar.exams.edit);
+      publishing it makes the celse later. Nothing reaches a talebe.
     type: final
   exam_opened:
     title: An exam is opened

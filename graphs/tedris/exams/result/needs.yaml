@@ -1,5 +1,5 @@
-# What must exist for a talebe's own screen of a past online exam: written needs-first on 21 November 2026 from the owner's rules.
-# Every need is missing: there is no code. The owner's answers of the same day are at the top of flow.yaml.
+# What must exist for a talebe's own screen of a past online exam: written needs-first on 21 November 2026 from the owner's rules,
+# then met by MDRS-299 (#418); each met need names its code or test. One is still missing: Notlarım does not link here.
 schema: delurio-graph/0
 kind: needs
 id: tedris.exams.result
@@ -7,14 +7,19 @@ status: proposed
 needs:
   - id: the-talebe-s-own-screen
     need: >-
-      The screen is the talebe's own: it shows their attempt only, and no one else's score, answers or rank. To anyone but the
-      talebe and the course team it is no screen at all.
+      The screen is the talebe's own: it shows their attempt only, and of the others only counts: how many took the exam, the talebe's
+      place among them and how many share it. To anyone but the talebe it is no screen at all.
     evidence:
       - state: opening
       - state: resultShown
       - node: notFoundAlert
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+      - source: apps/tedrisat/src/online-exam/my-exams.controller.ts:65
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "says how many took the exam and where the talebe stands, ties shared, in the exam and in each topic"
+    note: >-
+      The first draft showed no rank. The owner, 22 Nov 2026: "talebe sınav sonucunu gördüğünde 'sınava şu kadar kişi girdi, senin
+      puanın şu, bu kadar kişiden şu sıradasınız' diye görülsün. aynı şekilde konu başına da bu sıralama olsun. eşit puan alanlar 'şu
+      sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün".
 
   - id: waits-for-the-release
     need: >-
@@ -24,7 +29,11 @@ needs:
       - state: awaitingRelease
       - node: handedIn
       - node: awaitingText
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:166
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "before the release says only that it was handed in"
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "says before the release only that the exam was taken, when and how it ended"
     note: "Owner, asked whether the team releases the results as today: \"evet\"."
 
   - id: the-score-out-of-100
@@ -36,7 +45,9 @@ needs:
       - node: scoreText
       - node: countsText
       - node: handedIn
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:143
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "after the release shows the score, the counts and the topics, the weakest first"
     note: The points of each question are nazar.exams.edit's; a blank or a skipped question gets no points.
 
   - id: standing-by-topic
@@ -47,7 +58,9 @@ needs:
       - state: topicsShown
       - node: topicLine
       - node: topicBar
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:178
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "scores and stands by topic once released, and opens the answers once closed for everyone"
     note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\"; asked how it is shown: \"Yalnız yüzde\"."
 
   - id: standing-across-the-course
@@ -55,7 +68,9 @@ needs:
     evidence:
       - state: courseTopics
       - node: courseTopicLine
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:233
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "adds the standing up across the course's released exams"
     note: "The topics are the course's (owner, asked whose they are: \"dersin\"), so they add up across exams."
 
   - id: own-answers-beside-the-correct-ones
@@ -67,7 +82,10 @@ needs:
       - node: givenAnswer
       - node: correctAnswer
       - node: pointsGot
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "once closed for everyone opens the answers with the correct options"
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "scores and stands by topic once released, and opens the answers once closed for everyone"
     note: "Owner, asked whether the talebe reads their answers with the correct ones: \"evet\"."
 
   - id: in-notlarim-with-the-other-exams
@@ -75,7 +93,7 @@ needs:
       The score also stands in the course's "Notlarım" tab beside the course's other exams, and reaches this screen from there.
     evidence:
       - state: resultShown
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the score is written to the celse's ExamResult (#417), so Notlarım lists it with the other exams, but Notlarım does not link to this screen yet"
     note: tedris.course.grades lists exam celses today, and an online exam is one (owner, 21 Nov 2026).
 
   - id: words-and-numbers-not-colour-alone
@@ -87,4 +105,4 @@ needs:
       - state: courseTopics
       - node: topicLine
       - node: courseTopicLine
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:195

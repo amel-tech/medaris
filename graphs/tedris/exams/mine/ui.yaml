@@ -1,17 +1,8 @@
-# The screen of tedris.exams.mine: the talebe's page "Sınavlarım" and its new entry in tedris's menu.
-# PLANNED, NOT BUILT (MDRS-299): the page, its menu entry, its groups and its rows do not exist, so no node carries a `source`. The
-# shell around the page (the header, the menu's other entries) is drawn by the tedris shell flows and is left out here; the menu entry
-# is drawn alone, as the new node it is.
-#
-# The page has an h1, the time zone line, and three groups, each a region named by its h2: "Şimdi açık" (the multiple-choice exams a
-# talebe may start now, or has in progress), "Yaklaşan" (every exam still to come, of every format) and "Geçmiş" (the exams that are
-# over). A group with no exam is not drawn. Each row is the exam's course, its title, its format as a badge ("Çoktan seçmeli", or the
-# app's own "Yazılı" and "Şifahi"), what the row needs to say and its one action. Its state is a word ("Başlayabilirsin", "Devam
-# ediyor", "Başlamadı", "Girdin", "Girmedin", "Sonuç açıklandı"), never a colour alone.
-#
-# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
-# and the app's own where they exist: SessionPage.examWritten and .examOral ("Yazılı", "Şifahi"), SchedulePage.zone (the time zone
-# line), CoursePage.tabGrades ("Notlarım") and planned.Exams.retry ("Yeniden dene"). Samples are invented and neutral.
+# The screen of tedris.exams.mine: the talebe's page "Sınavlarım" and its entry in tedris's menu. BUILT (MDRS-299, #418):
+# apps/tedris/app/my-exams/page.tsx (features/online-exams/components/my-exams-page.tsx), in the desktop bar and the phone menu. No node
+# carries a `source`: the graph is `proposed`. Three groups, each a region named by its h2 ("Şimdi açık", "Yaklaşan", "Geçmiş"); a
+# coming, open or running online exam links straight to its exam page (the owner, 22 Nov: "direk sınav ekranına gitsin"). The keys
+# are the plan's (`planned.Exams.*`).
 schema: delurio-graph/0
 kind: ui
 id: tedris.exams.mine

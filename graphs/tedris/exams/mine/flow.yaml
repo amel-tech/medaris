@@ -1,17 +1,16 @@
 # A talebe's "Sınavlarım" in tedris-web: the exams of their courses, open now, coming and past, and the way into each.
-# PLANNED, NOT BUILT (MDRS-299). Written needs-first on 21 November 2026 from the owner's rules for online exams, and its screens drawn
-# the same day (ui.yaml); no code and no route yet. `status: proposed`: no state names code, and nothing here can be walked. The read
-# is the planned action listMyExams of graphs/domain/planned-exams.yaml.
+# BUILT (MDRS-299, #418): apps/tedris/app/my-exams/page.tsx with features/online-exams/components/my-exams-page.tsx, in the desktop bar
+# and the phone menu; its read is listMyExams (domain/online-exams.yaml). Written graph-first on 21 November 2026; `status: proposed`,
+# so no state names code.
 #
-# The owner's rule this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
-# kendilerine özel ekranları da görebilecekler". In tedris that is the talebe's own exams and their own screen of each past one
-# (tedris.exams.result); nazar's "Sınavlarım" is the course team's (nazar.exams.mine). The menu entry is drawn in ui.yaml as a new
-# node; it joins tedris's navigation graph (graphs/tedris/nav), which is read from the code, once the page exists.
+# The owner's words this flow carries: "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında kendilerine özel
+# ekranları da görebilecekler" (21 Nov); and "tedris'te sınavlar menüsü olsun, mesela yaklaşan ve devam eden sınav varsa tıklayınca direk
+# sınav ekranına gitsin talebe ders ve celse sayfalarını atlayıp kolayca" (22 Nov): an online exam that is coming, open or in progress
+# opens its exam page straight from here, not its course or its celse. An online exam is the third format of the exam celse, and the list
+# holds every exam of the talebe's courses, whatever its format; a completed course's past exams stay, a course left takes its exams.
 #
-# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse, and the list holds every exam of the
-# talebe's courses, whatever its format. The third format is MULTIPLE_CHOICE in the API and "Çoktan seçmeli" on the screen, beside
-# "Yazılı" and "Şifahi" (an exam's place, "Çevrimiçi" or "Yüz yüze", is another thing: see the domain's header). A completed course's
-# past exams stay; a course left or lost takes its exams with it.
+# Choices made in the code that are not his: the menu entry keeps the name "Sınavlarım" (his 21 Nov word) rather than "Sınavlar"; a
+# written or oral exam leads to Notlarım after its celse, and its score is shown out of its own maximum.
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.mine
@@ -42,7 +41,7 @@ context:
       none: no course of the talebe has an exam that is scheduled, open or past
       some: at least one exam is listed
 failures:
-  opening: { from: listMyExams, unreadable: [VALIDATION_ERROR, network, timeout, 5xx] }
+  opening: { from: listMyExams, unreadable: [network, timeout, 5xx] }
 # A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
 
 main:
@@ -70,12 +69,12 @@ states:
     title: The talebe's exams
     description: >-
       Three groups, each with a heading: "Şimdi açık", "Yaklaşan", "Geçmiş". Each exam names its course, its title and its format;
-      an online one its length and its question count. An open one offers "Sınava gir", or "Devam et" when it is in progress; a
-      coming one says when it opens; a past one says its score or "Sonuç henüz açıklanmadı".
+      an online one its length and its question count. An online exam that is coming, open or in progress links straight to its exam
+      page ("Sınav sayfası", "Sınava gir", "Devam et"); a past one says its score or that it was taken, and "Sonucu gör".
     by: human
     goal: true
     on:
-      ENTER: { target: exam_entered, say: "they press Sınava gir, or Devam et" }
+      ENTER: { target: exam_entered, say: "they open a coming, open or running online exam: its exam page, not its course or celse" }
       READ_RESULT: { target: result_opened, say: "they open a past multiple-choice exam" }
       READ_GRADES: { target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam" }
       NAVIGATE: left

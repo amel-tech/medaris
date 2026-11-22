@@ -1,16 +1,6 @@
-# The screen of tedris.exams.result: a talebe's own page of one past multiple-choice exam, reached from Sınavlarım and from Notlarım.
-# PLANNED, NOT BUILT (MDRS-299): the page and every node of it do not exist, so no node carries a `source`.
-#
-# One page, under the breadcrumb "Sınavlarım / <title>": the h1 is the exam's title with its course under it. Before the release it
-# says when the exam was handed in and "Sonuç henüz açıklanmadı", and nothing else. After, the score out of 100, the counts of right,
-# wrong and blank answers, and three ways on: "Konulara göre" (the exam's topics, weakest first), "Cevaplarım" (only once the exam has
-# closed for everyone) and "Dersin konularında durumum" (the course's topics across its released exams). Each of the three is a view
-# of the same page with "Sonuca dön". A standing is said in words and numbers ("Yüzde 62 · 8 doğru, 4 yanlış"); its bar only repeats
-# it, and is named with the same figures.
-#
-# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
-# and the app's own planned.Exams.retry ("Yeniden dene"). A question or an option may be Arabic: it is set right to left on its own
-# element (rule arabic-on-its-own-element). Samples are invented and neutral.
+# The screens of tedris.exams.result: a talebe's own result of one online exam. BUILT (MDRS-299, #418) as one page with sections,
+# apps/tedris/app/my-exams/[lessonId]/page.tsx (features/online-exams/components/my-exam-result.tsx). No node carries a `source`: the
+# graph is `proposed`. The keys are the plan's (`planned.Exams.*`); the rank's words are copied from tedris-learn.json (MyExams).
 schema: delurio-graph/0
 kind: ui
 id: tedris.exams.result
@@ -27,6 +17,9 @@ samples:
   right: "41"
   wrong: "6"
   blank: "3"
+  taken: "12"
+  rank: "3"
+  tiedWith: "1"
   topic: Kıyas
   percent: "62"
   topicRight: "8"
@@ -60,7 +53,7 @@ nodes:
   answersButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.myAnswers }, in: [resultShown], when: answersOpen, emits: ANSWERS }
   answersLater: { type: text, component: Text, text: { key: planned.Exams.answersLater }, in: [resultShown], when: "closed == 'no'" } # in place of the button until the exam has closed for everyone
   courseTopicsButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.courseTopics }, in: [resultShown], emits: COURSE_TOPICS }
-  toastCourseFailed: { type: alert, component: Alert, role: alert, text: { key: planned.Exams.courseTopicsFailed }, in: [resultShown], when: "toast == 'courseFailed'" }
+  standingText: { type: text, component: Text, text: { key: planned.Exams.standingTied, params: { taken: standing.taken, score: score, rank: standing.rank, tiedWith: standing.tiedWith } }, in: [resultShown] } # "Sınava 12 kişi girdi. Puanın 62,50. 12 kişi içinde 3. sıradasın." and, with a tie, "; 1 kişi seninle aynı puanı aldı."
   backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResult }, in: [topicsShown, answersShown, courseTopics], emits: BACK }
 
   # --- the standing by topic -------------------------------------------------------------------------------------------------------
@@ -69,6 +62,7 @@ nodes:
   topicsList: { type: list, component: List, role: list, name: { labelledBy: topicsTitle }, in: [topicsShown] } # the weakest topic first
   topicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.name } }, in: [topicsShown], repeat: result.topics }
   topicLine: { type: text, component: Text, text: { key: planned.Exams.topicLine, params: { percent: row.percent, topicRight: row.right, topicWrong: row.wrong } }, in: [topicsShown], repeat: result.topics } # the figures in words
+  topicStanding: { type: text, component: Text, text: { key: planned.Exams.topicStandingTied, params: { taken: row.taken, rank: row.rank, tiedWith: row.tiedWith } }, in: [topicsShown], repeat: result.topics } # its own place, with the ties
   topicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.name, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [topicsShown], repeat: result.topics } # only repeats topicLine; aria-valuenow is the percentage
 
   # --- the talebe's answers --------------------------------------------------------------------------------------------------------
@@ -103,13 +97,13 @@ edges:
   - { labelledBy: [courseList, courseTitle] }
   - { triggers: [topicsButton, topicsShown] }
   - { triggers: [answersButton, answersShown] }
-  - { triggers: [courseTopicsButton, readingCourse] }
+  - { triggers: [courseTopicsButton, courseTopics] }
   - { triggers: [crumbRoot, list_opened] }
   - { triggers: [retryButton, opening] }
 
 rules:
   - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1, each view moves the focus to its h2, \"Sonuca dön\" gives it back to the button that opened the view, and a failed read of the course's standing moves it to its alert. The graph says nothing of the focus here because nothing is built." }
-  - { id: own-attempt-only, rule: "The page shows the talebe's own attempt and nothing of anyone else's: no rank, no average of the class, no other talebe's score (needs the-talebe-s-own-screen)." }
+  - { id: own-attempt-only, rule: "The page shows the talebe's own attempt and nothing of anyone else's but counts: how many took the exam, the talebe's place among them and how many share it, for the exam and for each topic (the owner, 22 Nov). No other talebe's name or score is sent (getMyExamResult sends only taken, rank and tiedWith)." }
   - { id: correct-only-when-closed, rule: "The correct options are drawn only once the results are released and the exam has closed for everyone; before, the page does not have them (invariant online-exam-correct-options-stay-hidden)." }
   - { id: words-and-numbers, rule: "A standing is said as a percentage and as counts, in text; the bar is a progressbar named with the same figures and only repeats them. No standing is told by colour alone." }
   - { id: arabic-on-its-own-element, rule: "A question or an option in Arabic carries dir=rtl and the Arabic font on its own element, never on a shared ancestor, so a mixed Turkish and Arabic list keeps its order." }

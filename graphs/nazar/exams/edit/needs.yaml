@@ -1,6 +1,7 @@
-# What must exist for the course team to prepare an online exam: written needs-first on 21 November 2026 from the owner's rules and
-# his answers of the same day (both quoted at the top of flow.yaml, and rule by rule in each need's note). Every need is missing:
-# there is no code.
+# What must exist for the course team to prepare an online exam: written needs-first on 21 November 2026 from the owner's rules, then met
+# by MDRS-299 (#408 to #428); each met need names its code or test. Still missing: the count against 50 questions, renaming a topic on
+# the page, the count and filter per topic, the preview, copying an earlier exam, changing a scheduled exam in place, and a walk with the
+# keyboard and a screen reader.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.edit
@@ -15,41 +16,52 @@ needs:
       - state: opening
       - state: forbidden
       - node: forbiddenAlert
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "asks exam.prepare on the course: a hoca and a nazır given it, not session.manage or a talebe"
     note: "Owner, asked who prepares: \"Hoca + yetkili ders nazırı\". The grant is new, granular and may be time-limited, as the others are."
 
   - id: an-exam-celse-of-the-online-format
     need: >-
-      An online exam is an exam celse of its course in a third format, beside written and oral. It is planned where exam celses are,
-      sits in the curriculum, Programım and the calendar as they do, and its celse's date and time are the exam's earliest start.
+      An online exam is an exam celse of its course in a third format, beside written and oral, made when the exam is published (a
+      draft has no celse). It sits in the curriculum, Programım and the calendar as exam celses do, and its celse's date and time are
+      the exam's earliest start.
     evidence:
       - state: settings
       - node: formatBadge
       - node: earliestStart
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: "Owner, asked whether it is the exam celse's third format: \"üçüncü\". Today LessonExam.format is WRITTEN or ORAL."
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
+    note: >-
+      Owner: "üçüncü" (21 Nov); "Celsesiz taslak" (22 Nov 2026).
 
   - id: a-draft-is-the-team-s-alone
     need: >-
-      A new online exam is a draft. No talebe sees it or anything of it, its celse included, until it is scheduled; from then they
-      see its date, and nothing of its questions until it opens. It can be changed freely until it opens.
+      A new online exam is a draft with no celse, so no talebe sees it or anything of it until it is published; from then they see its
+      date, and nothing of its questions until it opens.
     evidence:
       - state: settings
       - node: statusBadge
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "opens a draft with no celse, and keeps a question as written"
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"; asked whether a draft's celse shows: \"Zamanlanana kadar gizli\"."
 
   - id: one-hour-and-fifty-questions-by-default
     need: >-
-      An exam lasts 60 minutes unless the team changes it, and 50 questions are suggested: the editor counts "n/50 soru" and does not
-      stop the team at fewer or more.
+      An exam has no length until the team types one, and is not published without it. 50 questions are suggested: the editor counts
+      "n/50 soru" and does not stop the team at fewer or more.
     evidence:
       - state: settings
       - state: questions
       - node: durationField
       - node: questionCount
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: "Owner: \"sınav süresi defaultta 1 saat olacak, soru sayısı da 50 önerilecek\"."
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "starts a new exam's length blank, and sends a cleared length as none"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "lists every problem of an exam that is not ready, and plans nothing"
+    missing: "MDRS-299: the length is built as he decided on 22 Nov (no default, required to publish); the count against 50 suggested questions is not built"
+    note: >-
+      Owner, 21 Nov 2026: "sınav süresi defaultta 1 saat olacak, soru sayısı da 50 önerilecek"; then, 22 Nov 2026: "sınav süresinin
+      varsayılanı olmasın, zorunlu olsun ama boş kalsın o olmadan sınav yayına alınamasın".
 
   - id: any-length
     need: The team sets the length in whole minutes; any length above zero is taken.
@@ -57,7 +69,10 @@ needs:
       - state: settings
       - node: durationField
       - node: durationError
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "does not send a length of zero, and says why"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "answers a length or a version past the column as invalid, not as a failure"
     note: "Owner, asked for bounds: \"Sınır yok\"."
 
   - id: the-instructions-of-the-briefing
@@ -67,24 +82,31 @@ needs:
     evidence:
       - state: settings
       - node: instructionsField
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "queues the settings after a question save, with the version that save gave"
 
   - id: the-zeroth-question
     need: >-
-      Every online exam has a zeroth question, which the preparer writes: a question about the hadith "Bizi aldatan bizden değildir"
-      and its options, at least two, none of them correct, and no points. Above it the editor shows the hadith as the talebe will see
-      it, in Arabic and in its meaning, which no one changes. An exam without a zeroth question cannot be published.
+      Every online exam asks a zeroth question about the hadith "Bizi aldatan bizden değildir", with its options, at least two, none
+      of them correct, and no points: the course's own, or else its medrese's, copied into the exam when it is published. Above it the
+      hadith is shown as the talebe will see it, in Arabic and in its meaning, which no one changes. An exam with neither is not
+      published.
     evidence:
       - state: zerothForm
       - node: hadithArabic
       - node: hadithMeaning
       - node: zerothQuestionField
       - node: zerothOptionField
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/course-zeroth-section.spec.tsx
+        name: "shows the medrese's by default, and saves one for the course from it"
+      - test: apps/tedrisat/test/e2e/course-zeroth-question.e2e.spec.ts
+        name: "asks the medrese's by default, the course's own once it has one, and the medrese's again once that is taken off"
+      - test: apps/tedrisat/test/e2e/course-zeroth-question.e2e.spec.ts
+        name: "publishes a köşk's own course only with a question of its own"
     note: >-
-      Owner: "'sıfırıncı soru' olacak ... mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman
-      ezberlersiniz' diye sorulacak. doğru yanlış cevabı olan bi soru değil." Asked who sets it: "Her sınavı hazırlayan"; its form:
-      "Şıklı"; the hadith: "Arapçası + meali, sabit".
+      Owner: the zeroth question (21 Nov 2026); madrasah-wide, "şu an vize dönemindeyiz, soruyu her sınavda aynı soralım, finalde de
+      soruyu değiştiririz her dersin sınavında o yeni soru sorulur" (22 Nov, relayed); per course, "ders özelinde sıfırıncı soru
+      mümkün olsun, medreseninki default olur ders özelinde değişebilir" (22 Nov); the hadith "Böyle kalsın", no source (22 Nov).
 
   - id: topics-first-from-the-course-s-list
     need: >-
@@ -97,7 +119,10 @@ needs:
       - node: newTopicField
       - node: topicTooLongError
       - node: topicExistsError
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "numbers the course's topics, and refuses a name or a number twice"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "shows a new topic with its number at once"
     note: "Owner: \"bunun için önce sınav konuları girilecek 1-3 kelimelik 6-7 tane mesela\"; asked whose list it is: \"dersin\"."
 
   - id: topics-renamed-and-unpicked
@@ -108,7 +133,14 @@ needs:
       - state: topics
       - node: topicNameField
       - node: unpickDialog
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "deletes a topic no question carries, and refuses one that questions carry, naming them"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "takes a topic off at once, and puts it back naming the questions that carry it"
+    missing: "MDRS-299: a topic is deleted from the page (not one that questions carry: TOPIC_IN_USE); renaming it is in the API (renameCourseTopic) but the page offers no control yet"
+    note: >-
+      Owner, 22 Nov 2026: "konu silebilmek de lazım sadece ekleme var". That a topic questions carry is refused, not taken off them,
+      is my choice.
 
   - id: a-multiple-choice-question
     need: >-
@@ -121,7 +153,10 @@ needs:
       - node: optionField
       - node: optionCorrect
       - node: addOption
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "opens a draft with no celse, and keeps a question as written"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "shows a saved question at once, and sends it in the background"
     note: "Owner: \"çoktan seçmeli\"; asked how many options and correct ones: \"en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir\". Asked how many option fields a new question starts with: \"5 şık\"."
 
   - id: how-a-question-with-several-correct-is-answered
@@ -134,15 +169,21 @@ needs:
       - state: questionForm
       - node: modeGroup
       - node: scoringGroup
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: "Owner: \"birden fazla doğru olduğunda multiple choices açık olmak zorunda değil. 5 şıklı, 2'si doğru bi soruda sadece radio button olabilir. istenirse checkbox da olur bu durumda 'hepsi ya da hiç' ve 'kesirli, yanlış düşer' seçenekleri de sunulur.\""
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "asks how a question with two correct options is answered and scored, and sends it"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "offers check boxes where any correct one is enough, and sends it"
+    note: >-
+      Owner, 21 Nov 2026: radio buttons or check boxes, all or nothing or in shares; 22 Nov: "doğru cevaplardan herhangi birini
+      işaretlemesi de yeterli olsun puanı tam alması için" (ANY_CORRECT; that a wrong mark then gives nothing is my choice).
 
   - id: every-question-has-its-topics
     need: Each question is marked with one or more of the exam's topics.
     evidence:
       - state: questionForm
       - node: questionTopicBox
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "sends a topic added on the page by the id the server gave it"
     note: "Owner: \"her soru için hangi konu hakkında olduğu işaretlenecek ... her soru için bu konular işaretlenecek\"."
 
   - id: what-a-question-lacks-is-said
@@ -155,7 +196,8 @@ needs:
       - node: lacksSummary
       - node: lackTextError
       - node: rowState
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "lists every problem of an exam that is not ready, and plans nothing"
 
   - id: points-shared-equally
     need: >-
@@ -165,7 +207,8 @@ needs:
       - state: questions
       - node: rowPoints
       - node: pointsTotal
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "shares the points left exactly, and refuses own points past 100"
     note: "Owner: \"100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya puan dağıtılacak\"."
 
   - id: a-question-s-own-points
@@ -177,7 +220,8 @@ needs:
       - state: points
       - node: ownPointsField
       - node: pointsPreview
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "shows own points at once, and sets them after the save with the version the save gave"
     note: >-
       Owner: "örneğin 50 soru var her soru otomatik 2 puan, bi soruya geleceğiz 2'yi 5 yapacağız, kalan 95 puan da 49 soruya eşit
       dağılacak. sonra başka soruya geleceğiz 1.94 puanı 10 yapacağız kalan 85 puan da kalan 48 soruya eşit dağılacak".
@@ -187,7 +231,8 @@ needs:
     evidence:
       - state: points
       - node: backToShare
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "puts a question back into the equal share when its own points are cleared"
 
   - id: points-never-pass-100
     need: >-
@@ -196,7 +241,10 @@ needs:
     evidence:
       - state: pointsRefused
       - node: pointsRefusedError
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "keeps the typed points when they do not fit, and says how many are left"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "shares the points left exactly, and refuses own points past 100"
 
   - id: exact-points-shown-with-two-decimals
     need: >-
@@ -207,7 +255,8 @@ needs:
       - state: questions
       - node: rowPoints
       - node: pointsTotal
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exams.e2e.spec.ts
+        name: "shares the points left exactly, and refuses own points past 100"
     note: "Owner, asked how to round: \"Kesin tut, 2 ondalık göster\"."
 
   - id: the-questions-at-a-glance
@@ -219,14 +268,16 @@ needs:
       - node: questionsTable
       - node: topicCount
       - node: topicFilter
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/nazar/features/online-exams/components/exam-editor.tsx
+    missing: "MDRS-299: each question's row shows its text, topics, points, mode and whether it is complete; the count per topic and the filter by topic are not built"
 
   - id: removing-a-question-asks
     need: Removing a question asks first, and its points are shared again over the others.
     evidence:
       - state: questions
       - node: removeDialog
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "deletes on the server a question taken off while it was being made"
 
   - id: saved-as-the-team-works
     need: >-
@@ -237,8 +288,17 @@ needs:
       - state: questions
       - node: savedLine
       - node: staleDialog
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: The course editor already refuses a stale save (course-optimistic-version); the same is wanted here.
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "shows a saved question at once, and sends it in the background"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "keeps what was typed when the save fails, and offers it again"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "brings back the questions not saved before a reload, to try again"
+      - test: apps/nazar/test/exam-editor.spec.tsx
+        name: "keeps a question being saved when the page is drawn again with a newer read"
+    note: >-
+      Owner, 22 Nov 2026: "optimistic ui yok diyorum" (#409). Kept in the browser and offered again after a reload (#426); not started
+      over when the router draws the page again after a session renewal (#428).
 
   - id: seen-as-a-talebe-sees-it
     need: >-
@@ -248,7 +308,7 @@ needs:
       - state: preview
       - node: previewNote
       - node: previewQuestion
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the preview is not built"
 
   - id: copy-an-earlier-exam
     need: >-
@@ -258,7 +318,7 @@ needs:
       - state: copyPick
       - node: copyDialog
       - node: copiedAlert
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: copying an earlier exam is not built"
     note: "Owner, asked about reusing questions: \"Aynı dersin önceki sınavını kopyala\". A question bank and a file import come later."
 
   - id: changed-until-it-opens-and-never-after
@@ -268,7 +328,9 @@ needs:
     evidence:
       - state: readOnly
       - node: readOnlyAlert
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
+    missing: "MDRS-299: a published exam is read only (EXAM_LOCKED) and is taken back to a draft until it opens; changing it in place while scheduled is not built"
     note: "Owner, asked whether a scheduled exam can be changed: \"Açılana kadar evet\"."
 
   - id: by-keyboard-and-screen-reader
@@ -280,4 +342,4 @@ needs:
       - state: points
       - node: optionCorrect
       - node: questionTopicBox
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: built with labels and named controls, but not walked with the keyboard alone or a screen reader"

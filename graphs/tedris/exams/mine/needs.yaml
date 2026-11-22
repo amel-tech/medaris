@@ -1,5 +1,6 @@
-# What must exist for a talebe's "Sınavlarım": written needs-first on 21 November 2026 from the owner's rules for online exams.
-# Every need is missing: there is no code.
+# What must exist for a talebe's "Sınavlarım": written needs-first on 21 November 2026 from the owner's rules, then met by MDRS-299
+# (#418); each met need names its code or test. Three are still missing or partly met: the notice when an exam is set, every other way
+# into an exam celse, and a walk with the keyboard and a screen reader.
 schema: delurio-graph/0
 kind: needs
 id: tedris.exams.mine
@@ -10,7 +11,8 @@ needs:
     evidence:
       - state: listed
       - node: menuExams
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/components/phone-menu/desktop-bar.tsx
+      - source: apps/tedris/components/phone-menu/member-phone-menu.tsx
     note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to tedris's navigation graph once the page exists."
 
   - id: open-coming-and-past
@@ -23,7 +25,8 @@ needs:
       - node: openTitle
       - node: comingTitle
       - node: pastTitle
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
 
   - id: only-their-courses-and-never-a-draft
     need: >-
@@ -33,7 +36,8 @@ needs:
     evidence:
       - state: opening
       - state: listed
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "lists every exam of the talebe's courses, of every format, and no draft"
     note: "Owner, asked about completed and left courses: \"Tamamlanan kalır, ayrılan gider\"."
 
   - id: what-each-exam-says
@@ -47,7 +51,9 @@ needs:
       - node: openUntil
       - node: comingWhen
       - node: comingPlace
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exams-page.tsx:147
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "draws the groups with each exam's standing, and a score only once released"
 
   - id: enter-from-the-list
     need: An open exam is entered from its row through its briefing ("Sınava gir"); one in progress says so and offers "Devam et".
@@ -55,7 +61,12 @@ needs:
       - state: exam_entered
       - node: enterButton
       - node: continueButton
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/my-exams-model.ts
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
+    note: >-
+      Owner, 22 Nov 2026: "tedris'te sınavlar menüsü olsun, mesela yaklaşan ve devam eden sınav varsa tıklayınca direk sınav ekranına
+      gitsin talebe ders ve celse sayfalarını atlayıp kolayca". A coming, open or running online exam links straight to its exam page.
 
   - id: a-past-exam-opens-the-talebe-s-own-screen
     need: >-
@@ -66,7 +77,8 @@ needs:
       - node: pastScore
       - node: resultLink
       - node: gradesLink
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
     note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: none-yet-says-so
@@ -74,7 +86,9 @@ needs:
     evidence:
       - state: empty
       - node: emptyText
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/online-exams/components/my-exams-page.tsx:74
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "says when the list is empty, and when it could not be read"
 
   - id: told-when-an-exam-is-set
     need: >-
@@ -82,7 +96,7 @@ needs:
       scheduled or opened, and is reminded before it opens.
     evidence:
       - state: listed
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: publishing makes an exam celse, so its 24-hour reminder runs as for every exam celse, but no notification says an online exam is scheduled or opened; not verified on the stack"
     note: "Owner: \"Zamanlanınca + 24 saat önce\". Exam celses are reminded 24 hours before today (LessonExam.remindedAt)."
 
   - id: reached-from-the-course-too
@@ -91,7 +105,8 @@ needs:
       and the home page on the day it opens.
     evidence:
       - state: listed
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+      - source: apps/tedris/features/courses/components/session-page.tsx:380
+    missing: "MDRS-299: the exam celse's page offers \"Sınava gir\" (#416); the curriculum, Programım, the calendar and the home page were not checked for it"
     note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are.
 
   - id: readable-by-keyboard-and-screen-reader
@@ -103,4 +118,4 @@ needs:
       - node: openState
       - node: comingState
       - node: pastState
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: built with headings and named links (each row's link names its course and title), but not walked with the keyboard or a screen reader"

@@ -1,14 +1,8 @@
-# The screens of nazar.exams.edit: the editor of one online exam, at /ders/<courseId>/sinav/<lessonId> (proposed).
-# PLANNED, NOT BUILT (MDRS-299): the page, its forms, its dialogs and its toasts do not exist, and no node carries a `source`. The API it
-# reads and writes is domain/planned-exams.yaml, every action there planned.
-#
-# One page in four parts, each reached by its button under the title: the settings (with "Önceki sınavdan kopyala" for an empty
-# draft), the zeroth question under the fixed hadith, the topics picked from the course's list, and the questions, where a question
-# opens its form and its points open a dialog. There is no save button for the whole: each field is saved when it is left, each form
-# by its own "Kaydet", and the line under the title says what was saved and when. The words are `planned.Exams.*` (Turkish only, for
-# review), the app's own where they exist (Sessions.formSave "Kaydet", Sessions.formCancel "Vazgeç", Sessions.failed,
-# SessionPlan.breadcrumbLabel, SessionPlan.examTopicsLabel "Konular", Problems.*), and `composed.Exams.*` for a value shown alone.
-# Points are shown with two decimals and a decimal comma ("1,94"). Samples are invented and neutral.
+# The screens of nazar.exams.edit: the course's Sınavlar page with its "Sıfırıncı soru" section, and the exam's page with Ayarlar, the
+# topics, the questions and their points. BUILT (MDRS-299; see flow.yaml for the PRs): apps/nazar/app/ders/[dersId]/sinavlar and
+# features/online-exams. No node carries a `source`: the graph is `proposed`. Not built, and so drawn here only as the plan: copying an
+# earlier exam, the preview, renaming a topic on the page. The keys are the plan's (`planned.Exams.*`); the words of what was added on
+# 22 November (Kaydediliyor…, Kaydedilemedi, Yeniden dene, Medaris güncellendi) are nazar.json's (OnlineExams).
 schema: delurio-graph/0
 kind: ui
 id: nazar.exams.edit
@@ -28,6 +22,7 @@ samples:
   n: "3"
   start: Aşağıdakilerden hangisi mebnidir?
   name: İsim cümlesi
+  topic: İsim cümlesi
   number: "3"
   picked: "6"
   topics: "İsim cümlesi, Fiil cümlesi"
@@ -59,7 +54,7 @@ nodes:
   settingsRegion: { type: page, component: Page, role: region, name: { labelledBy: settingsTitle }, in: [settings, savingSettings, readingCopies, copyPick, copying] }
   settingsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.stepSettings }, in: [settings, savingSettings, readingCopies, copyPick, copying] } # h2
   titleField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.titleLabel }, value: { literal: Ara sınav }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # saved when the field is left
-  durationField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.durationLabel }, value: { literal: "60" }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # a whole number above zero; no upper bound
+  durationField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.durationLabel }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # a whole number above zero; no upper bound
   durationHelp: { type: text, component: Text, text: { key: planned.Exams.durationHelp }, in: [settings, savingSettings, readingCopies, copyPick, copying] }
   durationError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.settingsInvalid }, in: [settings], when: "notice == 'settingsInvalid'" } # under the field it is about
   instructionsField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.instructionsLabel }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # a text area; the briefing shows it under what every exam says
@@ -103,6 +98,7 @@ nodes:
   topicNumberField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.topicNumberLabel, params: { name: row.name } }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: RENAME_TOPIC, repeat: topics.all } # the topic's number in the course, changed in its row like its name
   newTopicField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.newTopicLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [addingTopic, pickingNewTopic] }
   newTopicNumberField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.newTopicNumberLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [addingTopic, pickingNewTopic] } # filled with the next free number; the team may give its own, such as its book's chapter
+  topicRemoveButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: planned.Exams.removeTopicLabel, params: { topic: row.name } }, text: { key: planned.Exams.removeTopic }, in: [topics], emits: REMOVE_TOPIC, repeat: course.topics } # on each topic chip; asks once, opened by state (#410's lesson)
   addTopic: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.addTopic }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: ADD_TOPIC }
   topicExistsError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.topicExists }, in: [topics], when: "notice == 'topicExists'" } # under the field that has the name
   topicTooLongError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.topicTooLong }, in: [topics], when: "notice == 'topicTooLong'" }
@@ -233,6 +229,9 @@ edges:
   - { triggers: [crumbRoot, left] }
 
 rules:
+  - { id: optimistic-editor, rule: "The editor saves in the background (#409, #410): a topic or a question shows at once with \"Kaydediliyor…\", the writes run in order and each names the version the one before handed back; nothing is disabled while they run. A failed write keeps what was typed, says \"Kaydedilemedi\" and offers \"Yeniden dene\"." }
+  - { id: kept-in-the-browser, rule: "The questions not saved yet are kept in the browser per exam and come back after a reload; a save that names a Server Action a new version of Medaris no longer has says \"Medaris güncellendi\" with \"Yenile\" (#426). A newer read of the page, drawn again by the router after a save that renewed the session, is taken only when nothing is on its way and no question form is open (#428)." }
+  - { id: no-default-length, rule: "A new draft has no length; \"Süre (dakika)\" is empty and required to publish (the owner, 22 Nov 2026). The three settings are saved by one \"Ayarları kaydet\" (my choice)." }
   - { id: each-lack-at-its-field, rule: "Each of lackTextError, lackOptionError, lackCorrectError and lackTopicError is shown only when the answer's lacks (saveExamQuestion) names it, and the focus goes to the first field among those named. The flow does not tell the lacks apart (question: incomplete), so the graph draws all four in questionInvalid." }
   - { id: topics-by-number, rule: "Each topic of the course has a number, shown before its name (\"3. Kıyas\"). In a question, the team types the topics' numbers (\"3, 7\") instead of searching for them (the owner, 22 Nov 2026: \"Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin kolayca\"); the boxes follow what is typed, and a number of a course topic the exam has not picked yet picks it for the exam when the question is saved. A number with no topic is said at the field and nothing is saved." }
   - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; a form that refuses or lacks something moves the focus to the first field it names (needs what-a-question-lacks-is-said); a dialog takes the focus and gives it back to the button that opened it. Nothing is built, so the graph sets no initialFocus." }

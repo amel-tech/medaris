@@ -1,5 +1,5 @@
-# What must exist for the course team's "Sınavlarım" in nazar: written needs-first on 21 November 2026 from the owner's rules for
-# online exams. Every need is missing: there is no code.
+# What must exist for the course team's "Sınavlarım" across courses: written needs-first on 21 November 2026 from the owner's rules for
+# online exams. Not built (MDRS-299): each course has its own Sınavlar page instead, drawn in nazar.exams.edit.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.mine
@@ -11,7 +11,7 @@ needs:
     evidence:
       - state: listed
       - node: menuExams
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
     note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to nazar's navigation graph once the page exists."
 
   - id: only-the-courses-they-prepare-for
@@ -26,7 +26,7 @@ needs:
       - node: rowPlace
       - node: rowScores
       - node: rowScoresLink
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
     note: "Owner, asked who prepares: \"Hoca + yetkili ders nazırı\"; asked whether written and oral exams are listed: \"Hepsi, tedris gibi\". The grant is new, granular and may be time-limited."
 
   - id: the-status-of-each-exam
@@ -37,7 +37,7 @@ needs:
       - state: listed
       - node: rowStatus
       - node: rowWhen
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
 
   - id: what-each-row-says
@@ -48,7 +48,7 @@ needs:
       - state: listed
       - node: rowQuestions
       - node: rowTaken
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
 
   - id: filter-by-status-and-course
     need: The list filters by status and by course, and the filter stays in the address.
@@ -56,7 +56,7 @@ needs:
       - state: listed
       - node: statusFilter
       - node: courseFilter
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
 
   - id: a-new-exam-starts-as-a-draft
     need: '"Yeni sınav" asks for the course and starts a draft in the editor; nothing of it reaches a talebe.'
@@ -64,7 +64,7 @@ needs:
       - state: draft_created
       - node: newExam
       - node: courseDialog
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
 
   - id: each-exam-opens-where-it-is-worked-on
     need: >-
@@ -74,7 +74,7 @@ needs:
       - state: exam_opened
       - node: rowEdit
       - node: rowResults
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
     note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: none-yet-says-so
@@ -82,11 +82,11 @@ needs:
     evidence:
       - state: empty
       - node: emptyText
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
 
   - id: reached-from-the-course-too
     need: A course's own pages lead to its exams, and to "Yeni sınav" for that course.
     evidence:
       - state: listed
-    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
     note: An online exam is an exam celse (owner, 21 Nov 2026), so Celseler and Değerlendirme lead to it as they lead to exam celses.

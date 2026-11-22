@@ -1,21 +1,19 @@
-# Medaris management reads, in nizam-web, how the zeroth question of the online exams was answered, in aggregate: never one
-# talebe's answer. PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's rules and answers
-# for online exams; the screens are drawn now (ui.yaml) and the API is sketched in domain/planned-exams.yaml. There is no code and no
-# route: `status: proposed`, no state names code, and nothing here can be walked. An online exam is a LessonExam of the third format,
-# MULTIPLE_CHOICE, shown as "Çoktan seçmeli" (the domain's header says why it is not called ONLINE).
+# Medaris management reads, in nizam-web, how the zeroth question of the online exams was answered, in aggregate: never one talebe's
+# answer. BUILT (MDRS-299, #420, #427): apps/nizam/app/sifirinci-soru-cevaplari and app/kosks/[id]/sifirinci-soru-cevaplari
+# (features/zeroth-answers), reached from the menu by a person who holds exam.zeroth_read; its reads are listZerothAnswerCounts and
+# getZerothQuestionExams of domain/online-exams.yaml (GET /nizam/exam-zeroth-answers). Written graph-first on 21 November 2026;
+# `status: proposed`, so no state names code.
 #
-# The owner's rule (21 Nov 2026): "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu
-# sıfırıncı soruda. mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye
-# sorulacak. doğru yanlış cevabı olan bi soru değil." Asked who reads the answers: "Yönetim toplu, ekip talebe bazında". Each exam's
-# preparer writes its zeroth question (nazar.exams.edit), so the questions differ from exam to exam; the course team reads its own
-# talebe's answers in nazar.exams.results.
+# The owner's words this flow carries: the zeroth question, "'bizi aldatan bizden değildir' hadisi hakkında soru olacak … doğru yanlış
+# cevabı olan bi soru değil" (21 Nov); who reads the answers, "Yönetim toplu, ekip talebe bazında" (21 Nov); "Köşk nazımı kendi
+# köşkünü" (21 Nov). The question is the course's or the medrese's since 22 Nov, so exams of one medrese can ask different ones; they
+# count together only when their words and options match letter for letter (my choice).
 #
-# Decided by the owner on 21 Nov 2026: a köşk nazımı reads the same page for the exams of their own köşk, and a count under five is
-# shown as "5'ten az" ("Köşk nazımı kendi köşkünü").
+# The counts are exact. The first draft hid every count under five and called it his rule; it was not: "ben böyle bi karar vermedim,
+# saçma bu zaten neden gizleyeyim tabi ki görünecek" (22 Nov 2026). #427 removed the hiding.
 #
-# Drawn here, and not decided by the owner: the page is a page of its own in nizam, reached from the menu by a person who holds the
-# proposed code exam.zeroth_read (the başnazım, a Medaris nazımı by grant, a köşk nazımı in their köşk); the span of dates is the last
-# 90 days when the page opens; a köşk nazımı's köşk field holds their köşk and nothing else (ui.yaml rules).
+# Choices made in the code that are not his: the span is the last 90 days when the page opens, sent as UTC+3 day bounds; the filters
+# apply with "Uygula"; every read is written to the audit log (exam.zeroth_read).
 schema: delurio-graph/0
 kind: flow
 id: nizam.exams.zerothAnswers
@@ -27,7 +25,7 @@ summary: >-
   The Medaris başnazımı, a Medaris nazımı who holds the grant, or a köşk nazımı for their own köşk, opens the zeroth question's
   page in nizam. It lists the zeroth questions of the online exams, with exams that asked the same words counted together, and for
   each how many talebe answered and how many chose each option. It filters by a span of dates, by köşk, by medrese and by course. No
-  talebe's name and no single answer is shown, and a count under five is shown as "5'ten az".
+  talebe's name and no single answer is shown; every count is exact.
 scope:
   shows: one page of nizam-web
   world: open
@@ -68,9 +66,9 @@ states:
   opening:
     title: The page is opened
     description: >-
-      The action listZerothAnswerCounts, GET /platform/exam-zeroth-answers, with the span and the place chosen (the last 90 days and
+      The action listZerothAnswerCounts, GET /nizam/exam-zeroth-answers, with the span and the place chosen (the last 90 days and
       every place the person may read, when the page opens): the zeroth questions, the same words counted together, each with how
-      many exams asked it, how many talebe answered and how many chose each option, a count under five sent as "fewer than five". The
+      many exams asked it, how many talebe answered and how many chose each option.
       read is audited. A person who holds exam.zeroth_read neither in the platform scope nor in a köşk is refused.
     invoke: { action: listZerothAnswerCounts }
     on:
@@ -95,8 +93,7 @@ states:
     title: The zeroth questions and their answers
     description: >-
       Each zeroth question, the same words of several exams counted together, with how many exams asked it, how many talebe answered,
-      and how many chose each option, as a number and a percentage; a count under five reads "5'ten az" and its percentage is not
-      shown.
+      and how many chose each option, as a number and a percentage, every count exact.
     by: human
     goal: true
     on:
@@ -106,7 +103,7 @@ states:
   questionReading:
     title: Read one question's exams
     description: >-
-      The action getZerothQuestionExams, GET /platform/exam-zeroth-answers/{questionKey}, in the same span and place: the exams that
+      The action getZerothQuestionExams, GET /nizam/exam-zeroth-answers/{questionKey}, in the same span and place: the exams that
       asked it, each with its counts, and the counts over them all. The read is audited.
     invoke: { action: getZerothQuestionExams }
     on:
@@ -117,7 +114,7 @@ states:
     title: A zeroth question
     description: >-
       The exams that asked it, each with its course, its köşk and its date and the counts of its options, and the counts over them
-      all; a count under five reads "5'ten az" here too.
+      all; every count is exact.
     by: human
     on:
       BACK: listed

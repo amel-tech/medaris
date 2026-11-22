@@ -1,48 +1,39 @@
-# A talebe takes an online multiple-choice exam in tedris-web: the briefing ("Bilmeniz gerekenler") with the zeroth question, the
-# questions, the countdown, the question list, skipping, finishing, and what a lost connection and a switch to another tab do.
-# PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's rules for online exams, then drawn
-# with its screens (ui.yaml) and its server steps on the planned API (domain/planned-exams.yaml): there is no code, no route and no
-# table, so no state and no node has a `source`, and nothing here can be walked (no binding, no replay). `status: proposed`.
-# The exam is a LessonExam of the third format, MULTIPLE_CHOICE, shown "Çoktan seçmeli" beside "Yazılı" and "Şifahi" (the domain's
-# header says why it is not called ONLINE).
+# A talebe takes an online multiple-choice exam in tedris-web: the briefing ("Bilmen gerekenler") with the zeroth question, the questions,
+# the countdown, the question list, skipping, finishing, and what a lost connection, a switch to another tab or window and a new version of
+# Medaris do. BUILT (MDRS-299, PR #416 and its follow-ups #418, #421, #425, #429): the page is
+# apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx with features/online-exams/components/exam-take.tsx, and its
+# server steps are the actions of domain/online-exams.yaml. Written graph-first on 21 November 2026 and brought to the code on 22 November;
+# the flow keeps `status: proposed` (written before the code, not captured from it), so its states name no `source`.
 #
 # The server steps: the page reads the exam (getExamBriefing), saves the zeroth answer (answerZerothQuestion), starts the attempt
-# (startExamAttempt) or takes it over where it stopped (resumeExamAttempt), saves every answer (saveExamAnswer), starts it again after
-# counts a switch (recordTabSwitch) and ends it (finishExamAttempt). The clock is the server's: the page calls tickExamClock every few
-# seconds while it holds the attempt and is connected, and its answers are the events FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE
-# (drawn as events, not as a state of their own). Önceki, Sonraki, Soruyu atla and a pick in the list send the position with the same
-# saveExamAnswer; the graph draws that call once, at a choice.
+# (startExamAttempt) or takes it over where it stopped (resumeExamAttempt), saves every answer (saveExamAnswer), counts a switch
+# (recordTabSwitch) and ends it (finishExamAttempt). The clock is the server's: the page calls tickExamClock every 10 s while it holds the
+# attempt, and its answers are the events FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE. Önceki, Sonraki, Soruyu atla and a pick in the
+# list move on the page only; a choice and a skip are saved.
 #
-# The owner's rules this flow carries (21 Nov 2026, his words):
-#   - "çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için"
-#   - "sınav sırasında talebe koparsa kaldığı yerden devam edecek, bilerek sekme veya pencere değiştirirse sınav baştan başlayacak
-#     (bu mantıklı gelmiyor bana ama öyle istendi, tekrar sorarız)"
-#   - "sınav süresi defaultta 1 saat olacak"; "sınav ekranında geri sayım olacak, son 5 dk kala geri sayım mesela kırmızı olacak"
-#   - "her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek"
-#   - "sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek"
-#   - "soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir"
-#   - "soruyu atla seçeneği olacak, son soruya gelindiğinde atlanan sorulara dönülecek"
-#   - "en son sınavı bitir butonuyla sınav bitecek"
-#   - "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda. mesela bu
-#     dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış cevabı
-#     olan bi soru değil."
+# The owner's words this flow carries:
+#   - 21 Nov: "çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için"; "sınav sırasında talebe koparsa kaldığı yerden devam
+#     edecek"; "sınav ekranında geri sayım olacak, son 5 dk kala geri sayım mesela kırmızı olacak"; "her soruda cevap seçildiğinde ilerle
+#     geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek"; "sınava girerken talebeye 'bilmeniz gerekenler'
+#     ekranı gösterilecek"; "soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir"; "soruyu atla
+#     seçeneği olacak, son soruya gelindiğinde atlanan sorulara dönülecek"; "en son sınavı bitir butonuyla sınav bitecek"; the zeroth
+#     question, "'bizi aldatan bizden değildir' hadisi hakkında soru olacak … doğru yanlış cevabı olan bi soru değil".
+#   - The clock stops while the connection is lost: "talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
+#   - A switch is only counted (22 Nov, relayed from those who asked for exams; D1, answered): "tab değiştirme meselesinde sıfırlanıp
+#     baştan başlamayacak, sadece tab değişikliğini sayacağız". The first draft started the exam again; that is gone. Another window
+#     taking the focus counts too, once the page has been away two seconds (his report "başka ekranlara geçtim sekme değiştirmedim ama
+#     saymamış" led to it, #425; the two seconds are my choice).
+#   - The indicators: "cevaplanmamışsa sarı olsun, atlanmışsa turuncu olsun, cevaplanmışsa beyaz/dark olsun" (22 Nov). The design
+#     system has no orange; skipped uses the warning's bold fill (my choice, #418).
+#   - Arabic and the text size: "arapça font boyutu küçük kalıyor … 1 rem yapalım. bir de sınav sırasında soruların bi yerine yazı boyutu
+#     büyütme küçültme butonu ekleyelim. sınav öncesi bilmeniz gerekenler listesinde bu yazsın butonların neye benzediğini de göstersin"
+#     (22 Nov): A− and A+ in the question's header, four steps (100, 115, 130, 150 %, my choice), kept in the tab; the briefing draws them.
+#   - The hadith: "Böyle kalsın", with no source line (22 Nov).
 #
-# Decided by the owner on 21 Nov 2026, when he read the first draft:
-#   - A switch to another tab or window does not start the exam again: it is only counted, and the team sees each one with its time
-#     (nazar.exams.results). The answer of those who asked for exams, relayed by the owner on 22 Nov 2026 (D1, closed):
-#     "tab değiştirme meselesinde sıfırlanıp baştan başlamayacak, sadece tab değişikliğini sayacağız".
-#   - The clock does not run while the connection is lost: "talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya
-#     hesap verir".
-#   - An exam opened in a second tab or on a second device moves there; that is not a switch.
-#   - The zeroth question is answered on the briefing, before the clock starts, and is required. It has options, no correct one and
-#     no points; the hadith is shown above it, its Arabic and its meaning, the same in every exam.
-#   - A question may have several correct options. The preparer shows it with radio buttons (one choice; any correct option gets the
-#     points) or with check boxes (several choices, scored all or nothing, or in shares with a wrong mark taking one off). Nothing
-#     tells the talebe whether a question has several correct options, or how many.
-#   - A talebe may start any time between the earliest and the latest start the team sets, and always gets the full length
-#     (nazar.exams.publish).
-#   - When the time runs out, the exam ends by itself with the answers saved so far, and the talebe is told it ended because the time
-#     ran out (asked whether it should, he answered "önerdiğin gibi").
+# Choices made in the code that are not his: the zeroth answer cannot change after the start (ZEROTH_ANSWER_LOCKED); "Sınavı bitir" on
+# an attempt that has already ended answers how it ended; an attempt whose page never comes back stays in progress until the team closes
+# the exam early (the clock runs only while the page calls); a new version of Medaris during the exam says "Medaris güncellendi" and keeps
+# the unsent choices in the tab, sent after the reload (#429).
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.take
@@ -170,12 +161,12 @@ effects:
 failures:
   reading:
     from: getExamBriefing
-    gone: [EXAM_NOT_FOUND, LESSON_NOT_FOUND]
-    other: [HTTP_400, HTTP_401, network, timeout, 5xx]
+    gone: [EXAM_NOT_FOUND]
+    other: [AUTHZ_FORBIDDEN, HTTP_401, network, timeout, 5xx]
   savingZeroth:
     from: answerZerothQuestion
     closed: [EXAM_NOT_OPEN]
-    other: [ZEROTH_OPTION_NOT_FOUND, EXAM_NOT_FOUND, VALIDATION_ERROR, HTTP_401, network, timeout, 5xx]
+    other: [ZEROTH_ANSWER_LOCKED, ZEROTH_OPTION_NOT_FOUND, EXAM_NOT_FOUND, VALIDATION_ERROR, HTTP_401, network, timeout, 5xx]
   starting:
     from: startExamAttempt
     closed: [EXAM_NOT_OPEN]
@@ -184,7 +175,7 @@ failures:
     other: [EXAM_NOT_FOUND, VALIDATION_ERROR, HTTP_401, network, timeout, 5xx]
   resuming:
     from: resumeExamAttempt
-    ended: [ATTEMPT_NOT_FOUND]
+    ended: [ATTEMPT_NOT_FOUND, ATTEMPT_ENDED]
     gone: [EXAM_NOT_FOUND]
     offline: [network, timeout, 5xx]
     other: [HTTP_401]
@@ -193,13 +184,13 @@ failures:
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
     ended: [ATTEMPT_ENDED, ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
-    other: [ANSWER_INVALID, VALIDATION_ERROR, HTTP_401]
+    other: [ANSWER_INVALID, QUESTION_NOT_FOUND, VALIDATION_ERROR, HTTP_401]
   notingSwitch:
     from: recordTabSwitch
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
-    ended: [ATTEMPT_NOT_FOUND]
+    ended: [ATTEMPT_NOT_FOUND, ATTEMPT_ENDED]
     offline: [network, timeout, 5xx]
-    other: [HTTP_401]
+    other: [HTTP_401, VALIDATION_ERROR]
   finishing:
     from: finishExamAttempt
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
@@ -208,7 +199,7 @@ failures:
     other: [HTTP_401, VALIDATION_ERROR]
   timeUp:
     from: getExamBriefing
-    other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, HTTP_400, HTTP_401, network, timeout, 5xx]
+    other: [EXAM_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_401, network, timeout, 5xx]
 # The main story: a talebe opens an open exam, answers the zeroth question, starts, answers a question, goes on, and finishes.
 main:
   given: { window: open, attempt: none, mode: single }
@@ -241,7 +232,7 @@ states:
   notFound:
     title: There is no such exam
     description: >-
-      The read was refused with EXAM_NOT_FOUND or LESSON_NOT_FOUND: the celse is no multiple-choice exam, it is a draft, or the person
+      The read was refused with EXAM_NOT_FOUND: the celse is no multiple-choice exam, it is a draft, or the person
       holds no ENROLLED seat in its course. The page says there is no such exam, and nothing of it is shown.
     by: human
     on:
@@ -343,7 +334,8 @@ states:
       TIME_UP: { target: timeUp, say: "the time runs out" }
       FINISH: { target: confirmFinish, say: "they press Sınavı bitir" }
       CONNECTION_LOST: { target: offline, say: "the connection is lost" }
-      SWITCHED_AWAY: { target: notingSwitch, say: "they switch to another tab or window and come back" }
+      SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back" }
+      TEXT_SIZE: { target: question, say: "they press A− or A+: the question and its options grow or shrink a step" }
       MOVED_ELSEWHERE: { target: elsewhere, say: "the clock's call says another tab or device has opened the exam" }
       NAVIGATE: { target: left, say: "they close the page or leave it: the attempt stays in progress and its clock stops" }
   saving:
@@ -358,6 +350,7 @@ states:
     invoke: { action: saveExamAnswer }
     on:
       CHOOSE: { target: saving, say: "they choose again before the answer comes: the new choice is sent, and the last call wins" }
+      TEXT_SIZE: { target: saving, say: "they press A− or A+ while the answer is on its way" }
       DONE: { target: question, effect: [savedNotice, choiceSent], say: "the answer to the latest call comes: the question says its answer is saved" }
       FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
       FAIL.ended: { target: timeUp, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }

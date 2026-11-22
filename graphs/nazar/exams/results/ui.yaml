@@ -1,15 +1,6 @@
-# The screens of nazar.exams.results: the team's page of one online exam (reached from Sınavlarım, nazar.exams.mine), with the talebe,
-# the topics, the questions and the zeroth question, the three detail views, the question before the release, and its toasts.
-# PLANNED, NOT BUILT (MDRS-299): no node here exists, so none carries a `source`. The release is the existing action of Değerlendirme
-# (releaseExamResults), and its button, its badge and its toasts use Değerlendirme's own words (Evaluation.release, .released,
-# .releasedToast, .releaseFailed); the rest of the words are `planned.Exams.*` (Turkish only, for review), shared with the other exam
-# flows (the same key is the same text in every exam catalog), with the app's Problems.* and Evaluation.absentExam ("Girmedi").
-# `composed.Exams.*` is a value shown alone. `Changes.note` is the one authored message.
-#
-# The page: a breadcrumb "Sınavlarım / Sonuçlar", an h1 with the exam's title, its course, date, format and status, the counts in one
-# sentence, the class average, the release, and four regions, each with its h2: Talebeler (a table, every talebe of the course),
-# Konular (a table, a bar repeating each average), Sorular (a table) and Sıfırıncı soru (the hadith, the question and its counts). A
-# row's "Ayrıntı" opens a detail view on the same page; "Sonuçlara dön" closes it. Samples are invented and neutral.
+# The screens of nazar.exams.results: the exam's Sonuçlar page and each talebe's answers page. BUILT (MDRS-299, #417, #423). No node
+# carries a `source`: the graph is `proposed`. "Sınavı erken bitir" is on this page in the code (it is drawn in nazar.exams.publish,
+# where the plan put it). The keys are the plan's (`planned.Exams.*`).
 schema: delurio-graph/0
 kind: ui
 id: nazar.exams.results

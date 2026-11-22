@@ -1,18 +1,19 @@
-# A talebe's own screen of a past online exam in tedris-web: the score, the standing by topic, and their answers.
-# PLANNED, NOT BUILT (MDRS-299). Written needs-first on 21 November 2026 from the owner's rules for online exams, and its screens drawn
-# the same day (ui.yaml); no code and no route yet. `status: proposed`: no state names code, and nothing here can be walked. The reads
-# are the planned actions getMyExamResult and getMyTopicStanding of graphs/domain/planned-exams.yaml. A multiple-choice exam
-# (MULTIPLE_CHOICE in the API, "Çoktan seçmeli" on the screen) has this screen; a written or oral one has its score in Notlarım only.
+# A talebe's own screen of a past online exam in tedris-web: the score, the rank, the standing by topic, and their answers.
+# BUILT (MDRS-299, #418): apps/tedris/app/my-exams/[lessonId]/page.tsx with features/online-exams/components/my-exam-result.tsx; its one
+# read is getMyExamResult (domain/online-exams.yaml), which carries the standing across the course as well, so the plan's second read
+# (getMyTopicStanding) is gone. Written graph-first on 21 November 2026; `status: proposed`, so no state names code.
+# A multiple-choice exam ("Çoktan seçmeli") has this screen; a written or oral one leads to Notlarım.
 #
-# The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler";
-# "her soru için hangi konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek".
+# The owner's words this flow carries: "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler"; "her soru için hangi
+# konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (21 Nov); the score
+# once the team releases the results ("evet", 21 Nov); the answers once the exam has closed for everyone ("evet", 21 Nov); the
+# standing as a percentage ("Yalnız yüzde", 21 Nov). The rank (22 Nov): "talebe sınav sonucunu gördüğünde 'sınava şu kadar kişi girdi,
+# senin puanın şu, bu kadar kişiden şu sıradasınız' diye görülsün. aynı şekilde konu başına da bu sıralama olsun. eşit puan alanlar
+# 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün".
 #
-# Decided by the owner on 21 Nov 2026:
-#   - The talebe reads the score when the course team releases the results, as exam celses work today ("evet").
-#   - Once the results are released and the exam has closed for everyone, the talebe reads the questions again with their own
-#     answer and the correct one ("evet").
-#   - The topics are the course's, so the standing is also added up across the course's exams.
-#   - The standing is a percentage, with the right and wrong counts; no word for it ("Yalnız yüzde").
+# Choices made in the code that are not his: competition ranking (1, 2, 2, 4); only finished attempts are counted; tedris says "sen"
+# where he wrote "siz"; the result is one page with sections rather than the plan's separate screens (the states below still split it
+# by what is read first).
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.result
@@ -49,27 +50,11 @@ context:
     say:
       no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress)
       yes: the exam has closed for everyone
-  courseRead:
-    values: [ok, failed]
-    initial: any
-    say:
-      ok: the standing across the course is read
-      failed: that read fails
-  toast:
-    values: [none, courseFailed]
-    initial: none
-    say:
-      none: no message
-      courseFailed: the standing across the course could not be read
 guards:
   answersOpen: "closed == 'yes'"
-effects:
-  clearToast: { set: { toast: none } }
-  courseFailed: { set: { toast: courseFailed } }
 
 failures:
   opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND], unreadable: [network, timeout, 5xx] }
-  readingCourse: { from: getMyTopicStanding, gone: [COURSE_NOT_FOUND], unreadable: [network, timeout, 5xx] }
 # A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
 
 main:
@@ -122,21 +107,22 @@ states:
     title: The talebe's result
     description: >-
       The score out of 100, the counts of right, wrong and blank answers, when it was handed in and whether the time ended it, and the
-      standing in each topic of the exam. If a switch started the attempt again, it says so and how many times. Until the exam has
-      closed for everyone, it says the answers can be read once it has; after, "Cevaplarım" opens them.
+      standing in each topic of the exam. It says how many took the exam and the talebe's place among them, and how many got the same
+      score when others did. Until the exam has closed for everyone, it says the answers can be read once it has; after, "Cevaplarım"
+      opens them.
     by: human
     goal: true
     on:
-      TOPICS: { target: topicsShown, effect: [clearToast], say: "they open the standing by topic" }
-      ANSWERS: { guard: answersOpen, target: answersShown, effect: [clearToast], say: "they open their answers, once the exam has closed for everyone" }
-      COURSE_TOPICS: { target: readingCourse, effect: [clearToast], say: "they open their standing across the course's exams" }
+      TOPICS: { target: topicsShown, say: "they open the standing by topic" }
+      ANSWERS: { guard: answersOpen, target: answersShown, say: "they open their answers, once the exam has closed for everyone" }
+      COURSE_TOPICS: { target: courseTopics, say: "they open their standing across the course's exams, which came with the same read" }
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   topicsShown:
     title: The standing by topic
     description: >-
-      For each topic of the exam: the percentage of the points its questions carry that were got, and how many of them were right and
-      wrong; the weakest topic first.
+      For each topic of the exam: the percentage of the points its questions carry that were got, how many of them were right and
+      wrong, and the talebe's place among those who took it, with the ties; the weakest topic first.
     by: human
     on:
       BACK: resultShown
@@ -150,14 +136,6 @@ states:
       BACK: resultShown
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
-  readingCourse:
-    title: Read the standing across the course
-    description: The action getMyTopicStanding, GET /courses/{id}/my-topic-standing.
-    invoke: { action: getMyTopicStanding }
-    on:
-      DONE: { guard: "courseRead == 'ok'", target: courseTopics, say: "the standing is read" }
-      FAIL.gone: { guard: "courseRead == 'failed'", target: resultShown, effect: [courseFailed], say: "the course is no longer the talebe's" }
-      FAIL.unreadable: { guard: "courseRead == 'failed'", target: resultShown, effect: [courseFailed], say: "the read fails: the result stays, with a message" }
   courseTopics:
     title: The standing across the course's exams
     description: Each topic of the course with the talebe's percentage over every exam that carried it.

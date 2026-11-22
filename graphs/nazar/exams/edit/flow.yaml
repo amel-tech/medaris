@@ -1,48 +1,36 @@
-# The course team prepares an online multiple-choice exam in nazar-web: its settings, the zeroth question, its topics, its questions
-# and their points. PLANNED, NOT BUILT (MDRS-299, Backlog). Written needs-first on 21 November 2026 from the owner's rules for online
-# exams; its screens are drawn in ui.yaml and its API is sketched in domain/planned-exams.yaml, every action there `planned`. There is
-# no code, no route and no table: no state of this flow and no node of its screens has a `source`, and nothing here can be walked
-# (no binding). `status: proposed`. Publishing and scheduling are nazar.exams.publish.
+# The course team prepares an online multiple-choice exam in nazar-web: its settings, its topics, its questions and their points, and
+# the course's zeroth question. BUILT (MDRS-299, #408, #409, #410, #412, #413, #421, #426, #428): the course's Sınavlar page
+# (/ders/<courseId>/sinavlar, features/online-exams/components/exams-page.tsx, with the course's "Sıfırıncı soru" section) and the exam's
+# page (/ders/<courseId>/sinavlar/<examId>, exam-page.tsx, exam-workspace.tsx, exam-editor.tsx); its actions are in
+# domain/online-exams.yaml. Written graph-first on 21 November 2026; `status: proposed`, so no state names code. Publishing is
+# nazar.exams.publish, drawn in the same page under the questions.
 #
-# The exam is a LessonExam of a third format, MULTIPLE_CHOICE, shown "Çoktan seçmeli" beside "Yazılı" and "Şifahi" (the session
-# plan's own words); it is not called "Çevrimiçi", which the plan already says of an exam's place (domain/planned-exams.yaml).
-# The page is proposed at /ders/<courseId>/sinav/<lessonId>, reached from Sınavlarım (nazar.exams.mine) and from the exam celse.
-# Every change is saved as it is made (updateOnlineExam, saveExamQuestion, setExamQuestionPoints ...), each write naming the version
-# the page holds, so two people editing the same exam never overwrite each other unseen (EXAM_STALE). The page holds the version of
-# getOnlineExamDraft, then of each write's answer: every write answers the exam's new version, so the page's own writes follow on
-# without reading the exam again.
+# A draft has no celse: "Yeni sınav" makes it with a title only, and publishing makes the celse ("Celsesiz taslak", the owner, 22 Nov
+# 2026). The editor saves in the background: a topic or a question shows at once, the writes run in order, each naming the version the
+# write before it handed back, and nothing is disabled while they run (the owner, 22 Nov: "optimistic ui yok diyorum"). A write that
+# fails keeps what was typed, says "Kaydedilemedi" and offers "Yeniden dene"; what was not saved is kept in the browser and comes back
+# after a reload; a new version of Medaris deployed while the page is open says "Medaris güncellendi" with "Yenile" (#426); a page drawn
+# again by the router (a session renewal) does not start the editor over (#428).
 #
-# The owner's rules this flow carries (21 Nov 2026, his words):
-#   - "çoktan seçmeli"
-#   - "her soru için hangi konu hakkında olduğu işaretlenecek, bunun için önce sınav konuları girilecek 1-3 kelimelik 6-7 tane mesela,
-#     her soru için bu konular işaretlenecek"
-#   - "100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya puan dağıtılacak ama her soruya belirli bir puan verilebilir olacak,
-#     örneğin 50 soru var her soru otomatik 2 puan, bi soruya geleceğiz 2'yi 5 yapacağız, kalan 95 puan da 49 soruya eşit dağılacak.
-#     sonra başka soruya geleceğiz 1.94 puanı 10 yapacağız kalan 85 puan da kalan 48 soruya eşit dağılacak"
-#   - "sınav süresi defaultta 1 saat olacak, soru sayısı da 50 önerilecek"
-#   - "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak"
-#   - "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda. mesela bu
-#     dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış cevabı
-#     olan bi soru değil."
+# The owner's words this flow carries:
+#   - 21 Nov: "çoktan seçmeli"; "her soru için hangi konu hakkında olduğu işaretlenecek, bunun için önce sınav konuları girilecek 1-3
+#     kelimelik 6-7 tane mesela, her soru için bu konular işaretlenecek"; "100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya
+#     puan dağıtılacak ama her soruya belirli bir puan verilebilir olacak …"; "sınav hazırlanırken taslak, yayında, 'şu gün şu saat
+#     yayında' gibi durumlar olacak".
+#   - The length, 22 Nov: "sınav süresinin varsayılanı olmasın, zorunlu olsun ama boş kalsın o olmadan sınav yayına alınamasın". This
+#     replaces his 21 Nov "sınav süresi defaultta 1 saat olacak"; the 50 suggested questions are not built.
+#   - Topic numbers, 22 Nov: "Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin
+#     kolayca"; topic deletion: "konu silebilmek de lazım sadece ekleme var".
+#   - Check boxes, 22 Nov: "doğru cevaplardan herhangi birini işaretlemesi de yeterli olsun puanı tam alması için" (ANY_CORRECT).
+#   - The zeroth question is the course's or the medrese's, no longer each exam's: "şu an vize dönemindeyiz, soruyu her sınavda aynı
+#     soralım …" (relayed) and "ders özelinde sıfırıncı soru mümkün olsun, medreseninki default olur ders özelinde değişebilir" (22 Nov).
+#     The course's question is edited on the course's Sınavlar page (zerothForm below); the medrese's in Medrese ayarları.
+#   - Arabic, 22 Nov: "arapça font boyutu küçük kalıyor … 1 rem yapalım".
 #
-# Decided by the owner on 21 Nov 2026, when he read the first draft:
-#   - An online exam is the third format of the exam celse, beside written and oral ("üçüncü"). It sits in the curriculum, Programım,
-#     the calendar and the reminder as exam celses do, and its scores fill Değerlendirme and Notlarım. The celse's date and time are
-#     the earliest start (nazar.exams.publish).
-#   - The topics are the course's ("dersin"): each exam picks from the course's list, and a new topic added here joins the list.
-#   - A hoca prepares it, and so does a ders nazırı the hoca gives a new grant to.
-#   - A question has at least two options and no upper limit; one is correct unless the preparer marks more. A question with several
-#     correct options is shown with radio buttons (one choice; any correct option gets the points) or, if the preparer wants, with
-#     check boxes, scored all or nothing, or in shares where each wrong mark takes a share off (never below 0).
-#   - Shared points are kept exact and shown with two decimals.
-#   - An earlier exam of the same course can be copied into a new draft; a question bank and a file import come later.
-#   - A scheduled exam can be changed until it opens; nothing after.
-#   - The length has no bounds other than being more than zero.
-#   - The zeroth question is written by each exam's preparer, with options and no correct one. The hadith above it is fixed, in
-#     Arabic and in its meaning. Its answers are read per talebe by the course team and in aggregate by Medaris management.
-#   - A draft online exam celse is hidden from the talebe until it is scheduled ("Zamanlanana kadar gizli"); from then they see its
-#     date, and nothing of its questions.
-#   - A new question starts with five option fields ("5 şık"); the preparer adds more or removes them, down to two.
+# Not built: copying an earlier exam (readingCopies, copyPick, copying), the preview (preview), renaming a topic on the page (the API
+# has it), changing a scheduled exam in place (it is taken back to a draft first), and the count against 50 suggested questions.
+# Choices made in the code that are not his: a topic that questions carry is not deleted (TOPIC_IN_USE); ANY_CORRECT gives nothing for
+# a wrong mark; "Ayarları kaydet" saves the three settings at once; the course's question is changed by exam.prepare.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.edit
@@ -163,8 +151,8 @@ failures:
   opening:
     from: getOnlineExamDraft
     forbidden: [AUTHZ_FORBIDDEN]
-    gone: [EXAM_NOT_FOUND, LESSON_NOT_FOUND]
-    other: [HTTP_400, network, timeout, 5xx]
+    gone: [EXAM_NOT_FOUND]
+    other: [network, timeout, 5xx]
   savingSettings:
     from: updateOnlineExam
     forbidden: [AUTHZ_FORBIDDEN]
@@ -182,12 +170,10 @@ failures:
     stale: [EXAM_STALE]
     other: [EXAM_NOT_FOUND, network, timeout, 5xx]
   savingZeroth:
-    from: updateOnlineExam
+    from: saveCourseZerothQuestion
     forbidden: [AUTHZ_FORBIDDEN]
-    stale: [EXAM_STALE]
-    locked: [EXAM_LOCKED]
     invalid: [VALIDATION_ERROR]
-    other: [TOPIC_NOT_FOUND, EXAM_NOT_FOUND, network, timeout, 5xx]
+    other: [network, timeout, 5xx]
   readingTopics:
     from: listCourseTopics
     forbidden: [AUTHZ_FORBIDDEN]
@@ -211,6 +197,11 @@ failures:
     tooLong: [TOPIC_TOO_LONG]
     empty: [VALIDATION_ERROR]
     other: [network, timeout, 5xx]
+  removingTopic:
+    from: removeCourseTopic
+    forbidden: [AUTHZ_FORBIDDEN]
+    inUse: [TOPIC_IN_USE]
+    other: [TOPIC_NOT_FOUND, network, timeout, 5xx]
   renamingTopic:
     from: renameCourseTopic
     forbidden: [AUTHZ_FORBIDDEN]
@@ -257,7 +248,7 @@ states:
   opening:
     title: The editor is opened
     description: >-
-      The action getOnlineExamDraft, GET /lessons/{id}/online-exam/edit: the settings, the zeroth question and its options, the exam's
+      The action getOnlineExamDraft, GET /online-exams/{examId}: the settings, the zeroth question and its options, the exam's
       topics and the course's list, the questions in the preparer's order with their options and correct ones, each question's points,
       whether each is complete and what it lacks, the status and the version every write names. Only a hoca of the exam's course, or a
       ders nazırı who holds exam.prepare there, is answered; to anyone else the API refuses.
@@ -321,7 +312,7 @@ states:
   savingSettings:
     title: Save a setting
     description: >-
-      The action updateOnlineExam, PATCH /lessons/{id}/online-exam, with the field changed and the version read. A length of zero or
+      The action updateOnlineExam, PATCH /online-exams/{examId}, with the field changed and the version read. A length of zero or
       less is refused at the field; a version that is no longer the stored one is refused, and the page says someone else changed the
       exam.
     invoke: { action: updateOnlineExam }
@@ -333,7 +324,7 @@ states:
       FAIL.forbidden: { target: forbidden }
       FAIL.other: { target: settings, effect: [failed], say: "it could not be saved" }
   readingCopies:
-    title: Read the course's earlier online exams
+    title: (not built) Read the course's earlier online exams
     description: >-
       The action listMyTeachingExams, GET /me/teaching-exams?courseId=&when=past: the course's earlier exams ("Aynı dersin önceki
       sınavını kopyala"), of which the dialog keeps those of the format Çoktan seçmeli (MULTIPLE_CHOICE).
@@ -342,7 +333,7 @@ states:
       DONE: copyPick
       FAIL.other: { target: settings, effect: [failed] }
   copyPick:
-    title: Copy an earlier exam of the course
+    title: (not built) Copy an earlier exam of the course
     description: >-
       A dialog with the course's earlier online exams, each with its title, its date and its question count; the one picked fills this
       draft with its settings, topics, questions, points and zeroth question, which the page asks to read again, since it changes from
@@ -352,8 +343,8 @@ states:
       PICK: { target: copying, effect: [clearNotice], say: "they pick an exam" }
       CANCEL: { target: settings, say: "they copy nothing" }
   copying:
-    title: Copy the exam
-    description: The action copyOnlineExam, POST /lessons/{id}/online-exam/copy, with the exam picked and the version read.
+    title: (not built) Copy the exam
+    description: The action copyOnlineExam (planned), POST /online-exams/{examId}/copy, with the exam picked and the version read.
     invoke: { action: copyOnlineExam }
     on:
       DONE: { target: settings, effect: [copied], say: "its contents are copied into the draft; the page asks to read the zeroth question again" }
@@ -362,11 +353,13 @@ states:
       FAIL.forbidden: { target: forbidden }
       FAIL.other: { target: copyPick, effect: [failed] }
   zerothForm:
-    title: The zeroth question
+    title: The course's zeroth question
     description: >-
-      Above it the hadith, fixed, as the talebe will see it: "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" and its meaning "Bizi aldatan bizden
-      değildir." Under it the preparer writes the question ("Bu hadisi ne zaman öğrendiniz?") and its options, at least two, none
-      correct; it carries no points. The form says the talebe answers it before the exam starts, and that it has no right answer.
+      On the course's Sınavlar page, not in the exam: the section says whether the course asks the medrese's question ("Medresenin
+      sorusu") or its own ("Bu derse özel"); "Bu ders için değiştir" opens this form, started from the medrese's question. Above it the
+      hadith, fixed: "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" and its meaning "Bizi aldatan bizden değildir." Under it the question and its options,
+      two to ten, none correct, no points. "Medresenin sorusuna dön" deletes the course's own (removeCourseZerothQuestion, not drawn as
+      a state). A change reaches only exams published after it.
     by: human
     on:
       ADD_ZEROTH_OPTION: { target: zerothForm, say: "they add an option field" }
@@ -375,13 +368,11 @@ states:
       CANCEL: { target: settings, say: "they leave it unchanged" }
   savingZeroth:
     title: Save the zeroth question
-    description: The action updateOnlineExam with the zeroth question and its options.
-    invoke: { action: updateOnlineExam }
+    description: The action saveCourseZerothQuestion, PUT /courses/{id}/exam-zeroth-question.
+    invoke: { action: saveCourseZerothQuestion }
     on:
-      DONE: { target: settings, effect: [saved], say: "it is saved" }
-      FAIL.invalid: { target: zerothForm, effect: [zerothInvalid], say: "the question or a second option is missing" }
-      FAIL.stale: { target: stale }
-      FAIL.locked: { target: opening, effect: [becameOpen] }
+      DONE: { target: settings, effect: [saved], say: "it is saved for the course" }
+      FAIL.invalid: { target: zerothForm, effect: [zerothInvalid], say: "the question, a second option or a distinct option is missing" }
       FAIL.forbidden: { target: forbidden }
       FAIL.other: { target: zerothForm, effect: [failed] }
   readingTopics:
@@ -405,7 +396,8 @@ states:
         - { guard: isCarried, target: unpickAsk, say: "they unpick a topic that questions carry: they are asked first" }
         - { target: savingTopics, effect: [clearNotice], say: "they unpick a topic no question carries" }
       ADD_TOPIC: { target: addingTopic, effect: [clearNotice], say: "they type a new topic and press Konu ekle" }
-      RENAME_TOPIC: { target: renamingTopic, effect: [clearNotice], say: "they change a topic's name in its row" }
+      RENAME_TOPIC: { target: renamingTopic, effect: [clearNotice], say: "they change a topic's name in its row (the API has it; the page offers no control yet)" }
+      REMOVE_TOPIC: { target: removingTopic, effect: [clearNotice], say: "they press a topic's remove control and confirm" }
       SETTINGS: { target: settings, effect: [clearNotice], say: "they go back to the settings" }
       QUESTIONS: { target: questions, effect: [clearNotice], say: "they go on to the questions" }
       NAVIGATE: left
@@ -453,6 +445,18 @@ states:
       FAIL.locked: { target: opening, effect: [becameOpen] }
       FAIL.forbidden: { target: forbidden }
       FAIL.other: { target: topics, effect: [failed], say: "the topic is in the course's list but not picked: the page says so" }
+  removingTopic:
+    title: Remove a topic from the course's list
+    description: >-
+      The action removeCourseTopic, DELETE /courses/{id}/exam-topics/{topicId}. The topic leaves the list at once and comes back if the
+      server refuses: a topic that questions carry is refused, naming them by exam and number (TOPIC_IN_USE). The exams that had picked
+      it lose the pick, and the answer carries their new versions, so the page's next write names the right one.
+    invoke: { action: removeCourseTopic }
+    on:
+      DONE: { target: topics, effect: [saved], say: "the topic is gone from the course's list" }
+      FAIL.inUse: { target: topics, effect: [failed], say: "questions carry it: it comes back, and the page names them" }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed] }
   renamingTopic:
     title: Rename a topic
     description: The action renameCourseTopic, PATCH /courses/{id}/exam-topics/{topicId}; every exam and question of the course keeps it.
@@ -483,7 +487,7 @@ states:
       NAVIGATE: left
   addingQuestion:
     title: Add a question
-    description: The action addExamQuestion, POST /lessons/{id}/online-exam/questions; it comes last, with five empty option fields.
+    description: The action addExamQuestion, POST /online-exams/{examId}/questions; it comes last, with five empty option fields.
     invoke: { action: addExamQuestion }
     on:
       DONE: { target: questionForm, effect: [questionAdded], say: "the new question's form opens" }
@@ -500,7 +504,7 @@ states:
       CANCEL: { target: questions, say: "they keep it" }
   removingQuestion:
     title: Remove the question
-    description: The action removeExamQuestion, DELETE /lessons/{id}/online-exam/questions/{questionId}.
+    description: The action removeExamQuestion, DELETE /online-exams/{examId}/questions/{questionId}.
     invoke: { action: removeExamQuestion }
     on:
       DONE: { target: questions, effect: [removed], say: "the question is removed and the points are shared again" }
@@ -525,7 +529,7 @@ states:
   savingQuestion:
     title: Save the question
     description: >-
-      The action saveExamQuestion, PUT /lessons/{id}/online-exam/questions/{questionId}. A question that lacks something is saved as
+      The action saveExamQuestion, PUT /online-exams/{examId}/questions/{questionId}. A question that lacks something is saved as
       incomplete, and the answer says what it lacks; check boxes with fewer than two correct options are refused.
     invoke: { action: saveExamQuestion }
     on:
@@ -560,7 +564,7 @@ states:
   settingPoints:
     title: Save the points
     description: >-
-      The action setExamQuestionPoints, PUT /lessons/{id}/online-exam/questions/{questionId}/points. Points that would take the total
+      The action setExamQuestionPoints, PUT /online-exams/{examId}/questions/{questionId}/points. Points that would take the total
       over 100, or leave nothing for the questions that share, are refused with how many points are left to give.
     invoke: { action: setExamQuestionPoints }
     on:
@@ -579,7 +583,7 @@ states:
     on:
       FIX: { target: points, say: "they change the points" }
   preview:
-    title: The exam as a talebe sees it
+    title: (not built) The exam as a talebe sees it
     description: >-
       The briefing with the zeroth question, and the questions with their options in a drawn order, as a talebe will see them, with
       nothing saved and no clock running.

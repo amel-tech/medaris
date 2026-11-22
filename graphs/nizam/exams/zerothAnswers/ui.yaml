@@ -1,13 +1,6 @@
-# The screens of nizam.exams.zerothAnswers: a page of nizam that counts how the zeroth question of the online exams was answered,
-# with its filters, the list of questions, one question's exams, and the shell's refusal.
-# PLANNED, NOT BUILT (MDRS-299): the page, its filters, its lists and its toast do not exist and carry no `source`. The refusal does
-# exist: the shell's own screen "Bu bölüm için izniniz yok" (nizam.shell.noAccessAndNotFound), whose nodes carry the real `source`
-# that nizam.youtube.liveBroadcasts gives them. The menu entry is not drawn: the menu is the captured nav graph nizam.nav.
-#
-# The words are `planned.Exams.*` (Turkish only, for review), shared with the other exam flows (the same key is the same text in every
-# exam catalog), and the app's NoAccess.* of nizam.json. `composed.Exams.*` is a value shown alone. The page only reads, so it has no
-# `changes`. A count under five is never a number on this page: it reads "5'ten az" and has no percentage (rule never-traced).
-# Samples are invented and neutral.
+# The screens of nizam.exams.zerothAnswers: "Sıfırıncı soru cevapları" in nizam, for the platform and for a köşk. BUILT (MDRS-299,
+# #420, #427; apps/nizam/features/zeroth-answers). No node carries a `source`: the graph is `proposed`. Every count is a number, with
+# its percentage; nothing is hidden (the owner, 22 Nov 2026). The keys are the plan's (`planned.Exams.*`).
 schema: delurio-graph/0
 kind: ui
 id: nizam.exams.zerothAnswers
@@ -52,9 +45,9 @@ nodes:
   questionItem: { type: page, component: Page, role: region, name: { labelledBy: questionText }, in: [listed], repeat: counts.questions }
   questionText: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: row.zerothQuestion } }, in: [listed], repeat: counts.questions } # h3, the preparer's words
   questionExams: { type: text, component: Text, text: { key: planned.Exams.askedInExams, params: { exams: row.exams } }, in: [listed], repeat: counts.questions } # "12 sınavda soruldu"
-  questionAnswered: { type: text, component: Text, text: { oneOf: [planned.Exams.answeredCount, planned.Exams.answeredFew] }, in: [listed], repeat: counts.questions } # "238 talebe cevapladı", or "5'ten az talebe cevapladı"
+  questionAnswered: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [listed], repeat: counts.questions } # "238 talebe cevapladı"
   optionCounts: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [listed], repeat: counts.questions }
-  optionCount: { type: text, component: ListItem, role: listitem, text: { oneOf: [planned.Exams.zerothOptionCount, planned.Exams.zerothOptionFew, planned.Exams.zerothOptionHidden] }, in: [listed], repeat: counts.questions.options } # "Bu derste: 97 talebe (%41)", or "Hiç duymadım: 5'ten az talebe" with no percentage
+  optionCount: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [listed], repeat: counts.questions.options } # "Bu derste: 97 talebe (%41)", every count exact
   optionBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.optionBarLabel, params: { zerothOption: row.zerothOption, zerothPercent: row.zerothPercent } }, text: { key: planned.Exams.percent, params: { percent: row.zerothPercent } }, in: [listed], repeat: counts.questions.options.shown } # repeats the line above it, only for a count shown as a number; never the only place the figure is
   openQuestion: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openExamsLabel, params: { zerothQuestion: row.zerothQuestion } }, text: { key: planned.Exams.openExams }, in: [listed], repeat: counts.questions, emits: OPEN }
   toastGone: { type: status, component: Status, role: status, text: { key: planned.Exams.zerothQuestionGone }, in: [listed], when: "toast == 'gone'" }
@@ -65,9 +58,9 @@ nodes:
   # --- one question's exams ---------------------------------------------------------------------------------------------------------
   detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [questionDetail] }
   detailTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: detail.zerothQuestion } }, in: [questionDetail] } # h2
-  detailTotal: { type: text, component: Text, text: { oneOf: [planned.Exams.answeredCount, planned.Exams.answeredFew] }, in: [questionDetail] } # over every exam that asked it
+  detailTotal: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [questionDetail] } # over every exam that asked it
   detailOptions: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [questionDetail] }
-  detailOption: { type: text, component: ListItem, role: listitem, text: { oneOf: [planned.Exams.zerothOptionCount, planned.Exams.zerothOptionFew, planned.Exams.zerothOptionHidden] }, in: [questionDetail], repeat: detail.options }
+  detailOption: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.options }
   examsTable: { type: list, component: List, role: table, name: { key: planned.Exams.examsTableLabel }, in: [questionDetail] } # newest first
   colCourse: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.course }, in: [questionDetail] }
   colKosk: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.kosk }, in: [questionDetail] }
@@ -77,8 +70,8 @@ nodes:
   examCourse: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.course, params: { course: row.course } }, in: [questionDetail], repeat: detail.exams }
   examKosk: { type: text, component: Text, role: cell, text: { key: composed.Exams.kosk, params: { kosk: row.kosk } }, in: [questionDetail], repeat: detail.exams }
   examDate: { type: text, component: Text, role: cell, text: { key: composed.Exams.date, params: { date: row.date } }, in: [questionDetail], repeat: detail.exams }
-  examAnswered: { type: text, component: Text, role: cell, text: { oneOf: [composed.Exams.answered, planned.Exams.fewerThanFive] }, in: [questionDetail], repeat: detail.exams } # "5'ten az" for an exam with fewer than five answers
-  examOptions: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.zerothOptionCount, planned.Exams.zerothOptionFew, planned.Exams.zerothOptionHidden] }, in: [questionDetail], repeat: detail.exams.options } # one line per option, the same words as above
+  examAnswered: { type: text, component: Text, role: cell, text: { key: composed.Exams.answered }, in: [questionDetail], repeat: detail.exams } # every count exact
+  examOptions: { type: text, component: Text, role: cell, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.exams.options } # one line per option, the same words as above
   backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToQuestions }, in: [questionDetail], emits: BACK }
 
   # --- the refusal: the shell's own screen, which exists (nizam.shell.noAccessAndNotFound) ---------------------------------------------
@@ -96,7 +89,7 @@ edges:
   - { triggers: [openQuestion, questionReading] }
 
 rules:
-  - { id: never-traced, rule: "No name, no user id and no single answer is on this page or in its reads (invariant zeroth-answers-never-traced). A count under five is not a number anywhere here: it reads '5'ten az', in a question's total, an option's count and an exam's row alike, and it has no percentage and no bar. The API sends such a count as fewerThanFive. It also hides an option's count from which a hidden one could be worked out (a total of five or more with one option under five and the rest shown): that count reads 'gizlendi', never '5'ten az', since it may well be five or more. On a question's screen the hiding holds over the exams' rows and the combined counts together: a count hidden in one exam's row is never worked out from the combined count and the other exams' rows (getZerothQuestionExams). A span, köşk, medrese or course narrow enough to single out a talebe therefore shows '5'ten az', never a figure." }
+  - { id: never-traced, rule: "No name, no user id and no single answer is on this page or in its reads (invariant zeroth-answers-never-traced). Every count is exact, 1 to 4 included: the owner, 22 Nov 2026, \"ben böyle bi karar vermedim, saçma bu zaten neden gizleyeyim tabi ki görünecek\" (#427)." }
   - { id: kosk-nazim-scope, rule: "Drawn, not decided: to a köşk nazımı the köşk field holds their köşk and no other, so every count is of their köşk's exams, and the medrese and course fields list only what is held there. The başnazım and a Medaris nazımı who holds exam.zeroth_read see 'Bütün köşkler' first." }
   - { id: default-span, rule: "Proposal: the page opens on the last 90 days. There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's 'bu dönem ... diğer dönem' reads (need filtered-by-time-and-place). The span and the place stay in the page's address." }
   - { id: same-words-together, rule: "Two exams' zeroth questions are counted together when their words and their options are the same, letter for letter after spaces are trimmed; a question asked in other words, or with other options, is an item of its own. An item says in how many exams it was asked and opens them." }
