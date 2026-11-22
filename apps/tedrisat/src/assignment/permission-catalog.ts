@@ -74,6 +74,9 @@ export const PLATFORM_CATALOG: ReadonlyArray<{
       PERMISSIONS.PLATFORM_POLICY_EDIT,
       // "Ortak uygulamalar": a setting of the platform, as the two above are.
       PERMISSIONS.PLATFORM_PARTNER_MANAGE,
+      // "Sıfırıncı soru cevapları" (MDRS-299): a read of the platform, as the
+      // audit trail is. A köşk nazımı holds it in their köşk by role default.
+      PERMISSIONS.EXAM_ZEROTH_READ,
     ],
   },
 ];

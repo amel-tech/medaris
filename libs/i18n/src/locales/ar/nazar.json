@@ -178,7 +178,8 @@
       "madrasah_appeal_open": "فتح اعتراض على قرار الكوشك",
       "madrasah_permanent_ban_request": "طلب حظر دائم",
       "madrasah_settings_edit": "تغيير إعدادات المدرسة وسياساتها",
-      "madrasah_nazir_appoint": "تعيين ناظر للمدرسة"
+      "madrasah_nazir_appoint": "تعيين ناظر للمدرسة",
+      "exam_zeroth_read": "قراءة إجابات السؤال الصفري في الاختبارات متعددة الخيارات إجمالًا"
     },
     "permissionNotes": {
       "course_manage_all": "تُسجَّل قراءات المحتوى في سجل التدقيق.",

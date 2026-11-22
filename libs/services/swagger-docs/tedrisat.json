@@ -16108,6 +16108,187 @@
           "my-exams"
         ]
       }
+    },
+    "/nizam/exam-zeroth-answers": {
+      "get": {
+        "description": "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.",
+        "operationId": "listZerothAnswerCounts",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not before this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not after this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "description": "One köşk. Omitted: every köşk the caller reads, which is all of them for platform management and their own for a köşk nazımı.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "description": "One medrese's courses.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "description": "One course.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothAnswerCountsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: a span with no end, or one that ends before it starts"
+          },
+          "403": {
+            "description": "`exam.zeroth_read` is held neither in the platform scope nor in the köşk asked for (a köşk nazımı holds it in their köşk)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How the zeroth questions were answered, in aggregate",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/exam-zeroth-answers/{questionKey}": {
+      "get": {
+        "description": "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.",
+        "operationId": "getZerothQuestionExams",
+        "parameters": [
+          {
+            "name": "questionKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not before this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not after this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "description": "One köşk. Omitted: every köşk the caller reads, which is all of them for platform management and their own for a köşk nazımı.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "description": "One medrese's courses.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "description": "One course.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothQuestionExamsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "`exam.zeroth_read` is held neither in the platform scope nor in the köşk asked for (a köşk nazımı holds it in their köşk)."
+          },
+          "404": {
+            "description": "ZEROTH_QUESTION_NOT_FOUND: no exam in the span and the place asked it"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The exams that asked one zeroth question, each with its counts",
+        "tags": [
+          "nizam"
+        ]
+      }
     }
   },
   "info": {
@@ -32956,6 +33137,232 @@
           "topics",
           "courseTopics",
           "questions"
+        ]
+      },
+      "ZerothMask": {
+        "type": "string",
+        "enum": [
+          "FEWER_THAN_FIVE",
+          "HIDDEN"
+        ],
+        "description": "FEWER_THAN_FIVE: under five (\"5'ten az\"). HIDDEN: five or more, hidden so that a count under five cannot be worked out from the others (\"gizlendi\"). null: the count is sent."
+      },
+      "ZerothCountResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "nullable": true,
+            "description": "null when masked"
+          },
+          "masked": {
+            "nullable": true,
+            "description": "FEWER_THAN_FIVE: under five (\"5'ten az\"). HIDDEN: five or more, hidden so that a count under five cannot be worked out from the others (\"gizlendi\"). null: the count is sent.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothMask"
+              }
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "masked"
+        ]
+      },
+      "ZerothOptionCountResponse": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "$ref": "#/components/schemas/ZerothCountResponse"
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ]
+      },
+      "ZerothQuestionCountsResponse": {
+        "type": "object",
+        "properties": {
+          "questionKey": {
+            "type": "string",
+            "description": "Names the question in `GET /nizam/exam-zeroth-answers/{questionKey}`."
+          },
+          "question": {
+            "type": "string"
+          },
+          "exams": {
+            "type": "number",
+            "description": "How many exams asked it."
+          },
+          "answered": {
+            "description": "How many talebe answered it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothCountResponse"
+              }
+            ]
+          },
+          "options": {
+            "description": "Its options in their order, with how many chose each.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionCountResponse"
+            }
+          }
+        },
+        "required": [
+          "questionKey",
+          "question",
+          "exams",
+          "answered",
+          "options"
+        ]
+      },
+      "ZerothCourseResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "courseId",
+          "courseTitle",
+          "koskId",
+          "koskName",
+          "madrasahId",
+          "madrasahName"
+        ]
+      },
+      "ZerothAnswerCountsResponse": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "description": "Newest exam first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothQuestionCountsResponse"
+            }
+          },
+          "courses": {
+            "description": "Every course of the köşks the caller reads that held a published online exam, whenever: what the köşk, medrese and course fields offer.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothCourseResponse"
+            }
+          },
+          "everyKosk": {
+            "type": "boolean",
+            "description": "Whether the caller reads every köşk (\"Bütün köşkler\"); false for a köşk nazımı, who reads their own."
+          }
+        },
+        "required": [
+          "questions",
+          "courses",
+          "everyKosk"
+        ]
+      },
+      "ZerothExamCountsResponse": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Its celse's time."
+          },
+          "answered": {
+            "$ref": "#/components/schemas/ZerothCountResponse"
+          },
+          "options": {
+            "description": "A count per option, in the order of the question's options.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothCountResponse"
+            }
+          }
+        },
+        "required": [
+          "examId",
+          "courseTitle",
+          "koskName",
+          "startsAt",
+          "answered",
+          "options"
+        ]
+      },
+      "ZerothQuestionExamsResponse": {
+        "type": "object",
+        "properties": {
+          "questionKey": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "answered": {
+            "description": "Over every exam: the same as the list shows.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothCountResponse"
+              }
+            ]
+          },
+          "options": {
+            "description": "Over every exam, as the list shows them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionCountResponse"
+            }
+          },
+          "exams": {
+            "description": "Newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothExamCountsResponse"
+            }
+          }
+        },
+        "required": [
+          "questionKey",
+          "question",
+          "answered",
+          "options",
+          "exams"
         ]
       }
     }

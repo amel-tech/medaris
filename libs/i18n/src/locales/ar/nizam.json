@@ -762,7 +762,8 @@
       "enrollments": "تسجيلات الدروس",
       "decks": "مجموعات الكشك",
       "permissions": "الصلاحيات",
-      "koskSettings": "إعدادات الكشك"
+      "koskSettings": "إعدادات الكشك",
+      "zerothAnswers": "إجابات السؤال الصفري"
     },
     "countLabels": {
       "unread": "غير مقروء",
@@ -1198,6 +1199,11 @@
         "title": "إدارة التطبيقات الشريكة",
         "short": "إدارة التطبيقات الشريكة",
         "help": "يضيف تطبيقًا شريكًا، ويغيّر اسمه، ويوقفه أو يشغّله، ويختار الأكشاك التي يعمل معها."
+      },
+      "exam_zeroth_read": {
+        "title": "قراءة إجابات السؤال الصفري",
+        "short": "قراءة إجابات السؤال الصفري",
+        "help": "يقرأ إجمالًا كيف أُجيب عن السؤال الصفري في الاختبارات متعددة الخيارات؛ ولا يظهر اسم طالب ولا إجابة منفردة."
       }
     },
     "courseShort": {
@@ -2116,7 +2122,8 @@
       "deck_manage_course": "إنشاء مجموعة الدرس وتعديلها",
       "deck_propose_kosk": "اقتراح مجموعة للكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس ومنح إذن أو مجموعة دون تجاوز أذونات صاحبها",
-      "permission_group_define": "تعريف مجموعة أذونات"
+      "permission_group_define": "تعريف مجموعة أذونات",
+      "exam_zeroth_read": "قراءة إجابات السؤال الصفري في الاختبارات متعددة الخيارات إجمالًا"
     },
     "permissionNotes": {
       "course_manage_all": "تُسجَّل قراءات المحتوى في سجل التدقيق.",
@@ -3797,5 +3804,45 @@
       "cancel": "تراجع",
       "close": "إغلاق"
     }
+  },
+  "ZerothAnswersPage": {
+    "title": "إجابات السؤال الصفري",
+    "intro": "إجابات السؤال الصفري في الاختبارات متعددة الخيارات، إجمالًا. لا يظهر اسم طالب ولا إجابة منفردة، ولا تُكتب الأعداد الأقل من 5 بالأرقام.",
+    "hadithMeaning": "من غشّنا فليس منّا.",
+    "filtersLabel": "عوامل التصفية",
+    "dateSpan": "نطاق التاريخ",
+    "from": "من",
+    "to": "إلى",
+    "kosk": "الكشك",
+    "allKosks": "جميع الأكشاك",
+    "madrasah": "المدرسة",
+    "allMadrasahs": "جميع المدارس",
+    "course": "الدرس",
+    "allCourses": "جميع الدروس",
+    "applyFilters": "تطبيق",
+    "questionsTitle": "الأسئلة ({count})",
+    "askedInExams": "طُرح في {exams} اختبارات",
+    "answeredCount": "أجاب {answered} طالبًا",
+    "answeredFew": "أجاب أقل من 5 طلاب",
+    "answeredHidden": "عدد المجيبين مخفي",
+    "optionCountsLabel": "عدد الطلاب الذين اختاروا كل خيار",
+    "optionCount": "{option}: {count} طالبًا (%{percent})",
+    "optionCountOnly": "{option}: {count} طالبًا",
+    "optionFew": "{option}: أقل من 5 طلاب",
+    "optionHidden": "{option}: مخفي",
+    "openExams": "الاختبارات",
+    "openExamsLabel": "الاختبارات التي طرحت {question}",
+    "questionGone": "لم يعد في هذا النطاق اختبار يطرح هذا السؤال؛ بقيت القائمة كما هي.",
+    "noAnswers": "لا توجد إجابات عن السؤال الصفري في النطاق الذي اخترته.",
+    "examsTableLabel": "الاختبارات التي طرحت هذا السؤال",
+    "colDate": "التاريخ",
+    "colAnswered": "المجيبون",
+    "colOptions": "الخيارات",
+    "fewerThanFive": "أقل من 5",
+    "hidden": "مخفي",
+    "backToQuestions": "العودة إلى الأسئلة",
+    "loadFailedTitle": "تعذّرت قراءة الأعداد",
+    "loadFailed": "تحقّق من اتصالك وحاول مرة أخرى.",
+    "retry": "حاول مرة أخرى"
   }
 }

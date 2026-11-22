@@ -84,7 +84,13 @@ describe("the menus as the canvases draw them", () => {
         "İtirazlar",
         "Kalıcı yasak talepleri",
       ],
-      ["Denetim", "Yasaklamalar", "Denetim kaydı", "Arşiv"],
+      [
+        "Denetim",
+        "Yasaklamalar",
+        "Denetim kaydı",
+        "Arşiv",
+        "Sıfırıncı soru cevapları",
+      ],
       [
         "Ayarlar",
         "YouTube bağlantısı",
@@ -104,7 +110,7 @@ describe("the menus as the canvases draw them", () => {
         "Deste yayın istekleri",
         "Kalıcı yasak talepleri",
       ],
-      ["Denetim", "Yasaklamalar"],
+      ["Denetim", "Yasaklamalar", "Sıfırıncı soru cevapları"],
     ]);
   });
 
@@ -119,6 +125,7 @@ describe("the menus as the canvases draw them", () => {
         "Köşk desteleri",
         "Yasaklamalar",
         "Arşiv",
+        "Sıfırıncı soru cevapları",
       ],
       ["Yönetim", "İzinler", "Köşk ayarları"],
     ]);

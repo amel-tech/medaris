@@ -52,6 +52,8 @@ import type {
   SetPlatformPolicyDto,
   UpdatePartnerDto,
   UpdatePermissionGroupDto,
+  ZerothAnswerCountsResponse,
+  ZerothQuestionExamsResponse,
 } from '../models/index';
 import {
     AppealListResponseFromJSON,
@@ -128,6 +130,10 @@ import {
     UpdatePartnerDtoToJSON,
     UpdatePermissionGroupDtoFromJSON,
     UpdatePermissionGroupDtoToJSON,
+    ZerothAnswerCountsResponseFromJSON,
+    ZerothAnswerCountsResponseToJSON,
+    ZerothQuestionExamsResponseFromJSON,
+    ZerothQuestionExamsResponseToJSON,
 } from '../models/index';
 
 export interface AcceptAppealRequest {
@@ -195,6 +201,15 @@ export interface GetPermissionGroupUsersRequest {
     id: string;
 }
 
+export interface GetZerothQuestionExamsRequest {
+    questionKey: string;
+    from: Date;
+    to: Date;
+    koskId?: string;
+    madrasahId?: string;
+    courseId?: string;
+}
+
 export interface ListAppealsRequest {
     status?: ListAppealsStatusEnum;
 }
@@ -216,6 +231,14 @@ export interface ListDeckPublishRequestsRequest {
 
 export interface ListKoskApplicationsRequest {
     status?: ListKoskApplicationsStatusEnum;
+}
+
+export interface ListZerothAnswerCountsRequest {
+    from: Date;
+    to: Date;
+    koskId?: string;
+    madrasahId?: string;
+    courseId?: string;
 }
 
 export interface ReadDeckPublishRequestCardsRequest {
@@ -1129,6 +1152,84 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.
+     * The exams that asked one zeroth question, each with its counts
+     */
+    async getZerothQuestionExamsRaw(requestParameters: GetZerothQuestionExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ZerothQuestionExamsResponse>> {
+        if (requestParameters['questionKey'] == null) {
+            throw new runtime.RequiredError(
+                'questionKey',
+                'Required parameter "questionKey" was null or undefined when calling getZerothQuestionExams().'
+            );
+        }
+
+        if (requestParameters['from'] == null) {
+            throw new runtime.RequiredError(
+                'from',
+                'Required parameter "from" was null or undefined when calling getZerothQuestionExams().'
+            );
+        }
+
+        if (requestParameters['to'] == null) {
+            throw new runtime.RequiredError(
+                'to',
+                'Required parameter "to" was null or undefined when calling getZerothQuestionExams().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        if (requestParameters['koskId'] != null) {
+            queryParameters['koskId'] = requestParameters['koskId'];
+        }
+
+        if (requestParameters['madrasahId'] != null) {
+            queryParameters['madrasahId'] = requestParameters['madrasahId'];
+        }
+
+        if (requestParameters['courseId'] != null) {
+            queryParameters['courseId'] = requestParameters['courseId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/exam-zeroth-answers/{questionKey}`;
+        urlPath = urlPath.replace(`{${"questionKey"}}`, encodeURIComponent(String(requestParameters['questionKey'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ZerothQuestionExamsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list\'s. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.
+     * The exams that asked one zeroth question, each with its counts
+     */
+    async getZerothQuestionExams(requestParameters: GetZerothQuestionExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ZerothQuestionExamsResponse> {
+        const response = await this.getZerothQuestionExamsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Waiting ones oldest first, decided ones newest first, with both tab counts.
      * Appeals (Bekleyen / Karara bağlanan)
      */
@@ -1419,6 +1520,76 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async listScopedPolicies(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScopedPolicyListResponse> {
         const response = await this.listScopedPoliciesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.
+     * How the zeroth questions were answered, in aggregate
+     */
+    async listZerothAnswerCountsRaw(requestParameters: ListZerothAnswerCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ZerothAnswerCountsResponse>> {
+        if (requestParameters['from'] == null) {
+            throw new runtime.RequiredError(
+                'from',
+                'Required parameter "from" was null or undefined when calling listZerothAnswerCounts().'
+            );
+        }
+
+        if (requestParameters['to'] == null) {
+            throw new runtime.RequiredError(
+                'to',
+                'Required parameter "to" was null or undefined when calling listZerothAnswerCounts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = (requestParameters['from'] as any).toISOString();
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = (requestParameters['to'] as any).toISOString();
+        }
+
+        if (requestParameters['koskId'] != null) {
+            queryParameters['koskId'] = requestParameters['koskId'];
+        }
+
+        if (requestParameters['madrasahId'] != null) {
+            queryParameters['madrasahId'] = requestParameters['madrasahId'];
+        }
+
+        if (requestParameters['courseId'] != null) {
+            queryParameters['courseId'] = requestParameters['courseId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/exam-zeroth-answers`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ZerothAnswerCountsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.
+     * How the zeroth questions were answered, in aggregate
+     */
+    async listZerothAnswerCounts(requestParameters: ListZerothAnswerCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ZerothAnswerCountsResponse> {
+        const response = await this.listZerothAnswerCountsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

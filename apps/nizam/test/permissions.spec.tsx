@@ -83,6 +83,7 @@ describe("codes and messages", () => {
       "platform.youtube_manage",
       "platform.policy_edit",
       "platform.partner_manage",
+      "exam.zeroth_read",
     ];
     for (const lang of ["tr", "en", "ar"] as const) {
       const catalog = (

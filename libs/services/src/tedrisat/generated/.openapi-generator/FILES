@@ -547,9 +547,17 @@ src/models/VersionDto.ts
 src/models/WeekHideResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts
+src/models/ZerothAnswerCountsResponse.ts
 src/models/ZerothAnswerDto.ts
 src/models/ZerothAnswerResponse.ts
+src/models/ZerothCountResponse.ts
+src/models/ZerothCourseResponse.ts
+src/models/ZerothExamCountsResponse.ts
+src/models/ZerothMask.ts
+src/models/ZerothOptionCountResponse.ts
 src/models/ZerothOptionResponse.ts
+src/models/ZerothQuestionCountsResponse.ts
+src/models/ZerothQuestionExamsResponse.ts
 src/models/ZerothQuestionSource.ts
 src/models/ZerothQuestionText.ts
 src/models/index.ts
