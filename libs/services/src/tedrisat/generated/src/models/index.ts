@@ -371,6 +371,8 @@ export * from './PlatformPolicyResponse';
 export * from './PolicyPersonResponse';
 export * from './ProfileVisibility';
 export * from './PublicProfileResponse';
+export * from './PublishOnlineExamDto';
+export * from './PublishProblemResponse';
 export * from './QuestionAnswerResponse';
 export * from './QuestionAnswererResponse';
 export * from './QuestionOptionDto';

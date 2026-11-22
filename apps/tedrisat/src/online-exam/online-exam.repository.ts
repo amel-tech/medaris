@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
+import { courses, lessons } from "../database/schema/course.schema";
 import {
   courseExamTopics,
   examOptions,
@@ -20,6 +21,7 @@ import {
 } from "./domain/online-exam";
 import {
   ExamLockedError,
+  ExamNotPublishedError,
   ExamStaleError,
   OnlineExamNotFoundError,
   QuestionNotFoundError,
@@ -30,7 +32,7 @@ import {
 } from "./errors/online-exam.errors";
 
 type Db = DatabaseService["db"];
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 export interface ICourseTopic {
   id: string;
@@ -53,7 +55,12 @@ export interface IOnlineExamSummary {
   id: string;
   title: string;
   questionCount: number;
+  durationMinutes: number;
   publishedAt: Date | null;
+  closedEarlyAt: Date | null;
+  /** Its celse's start; null for a draft. */
+  startsAt: Date | null;
+  latestStartAt: Date | null;
   updatedAt: Date;
 }
 
@@ -69,6 +76,11 @@ export interface IOnlineExamDraft {
   questions: IDraftQuestion[];
   publishedAt: Date | null;
   closedEarlyAt: Date | null;
+  /** The celse it was published with; null for a draft. */
+  lessonId: string | null;
+  /** That celse's start: the earliest a talebe may start. */
+  startsAt: Date | null;
+  latestStartAt: Date | null;
   version: number;
 }
 
@@ -121,13 +133,18 @@ export class OnlineExamRepository {
         id: onlineExams.id,
         title: onlineExams.title,
         questionCount: count(examQuestions.id),
+        durationMinutes: onlineExams.durationMinutes,
         publishedAt: onlineExams.publishedAt,
+        closedEarlyAt: onlineExams.closedEarlyAt,
+        startsAt: lessons.scheduledAt,
+        latestStartAt: onlineExams.latestStartAt,
         updatedAt: onlineExams.updatedAt,
       })
       .from(onlineExams)
       .leftJoin(examQuestions, eq(examQuestions.examId, onlineExams.id))
+      .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
       .where(eq(onlineExams.courseId, courseId))
-      .groupBy(onlineExams.id)
+      .groupBy(onlineExams.id, lessons.id)
       .orderBy(desc(onlineExams.updatedAt));
   }
 
@@ -158,14 +175,16 @@ export class OnlineExamRepository {
     courseId: string,
     examId: string
   ): Promise<IOnlineExamDraft | null> {
-    const [exam] = await this.db
-      .select()
+    const [found] = await this.db
+      .select({ exam: onlineExams, startsAt: lessons.scheduledAt })
       .from(onlineExams)
+      .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
       .where(
         and(eq(onlineExams.id, examId), eq(onlineExams.courseId, courseId))
       )
       .limit(1);
-    if (!exam) return null;
+    if (!found) return null;
+    const { exam } = found;
     const [zeroth, picked, questions] = await Promise.all([
       this.db
         .select({ id: zerothOptions.id, text: zerothOptions.text })
@@ -222,6 +241,9 @@ export class OnlineExamRepository {
       })),
       publishedAt: exam.publishedAt,
       closedEarlyAt: exam.closedEarlyAt,
+      lessonId: exam.lessonId,
+      startsAt: found.startsAt,
+      latestStartAt: exam.latestStartAt,
       version: exam.version,
     };
   }
@@ -381,52 +403,132 @@ export class OnlineExamRepository {
    * One write of an exam: the row taken for update, the version and the
    * state checked, `write` run, the version bumped and the audit row added,
    * all in one transaction. Returns `write`'s result and the new version.
+   *
+   * A write is of a draft unless `of` says "published": taking a
+   * publication back, which only a published exam that has not opened takes.
+   * `tx` runs it inside a transaction the caller holds: publishing writes the
+   * exam in the transaction that plans its celse.
    */
   async write<T>(
     w: IExamWrite,
     audit: { action: string; entityId?: string; details?: object },
-    write: (tx: Tx) => Promise<T>
+    write: (tx: Tx) => Promise<T>,
+    options: { of?: "draft" | "published"; tx?: Tx } = {}
   ): Promise<{ result: T; version: number }> {
-    return this.db.transaction(async (tx) => {
-      const [exam] = await tx
-        .select({
-          version: onlineExams.version,
-          publishedAt: onlineExams.publishedAt,
-        })
-        .from(onlineExams)
-        .where(
-          and(
-            eq(onlineExams.id, w.examId),
-            eq(onlineExams.courseId, w.courseId)
-          )
-        )
-        .for("update");
-      if (!exam) throw new OnlineExamNotFoundError(w.examId);
-      if (exam.publishedAt !== null) throw new ExamLockedError(w.examId);
-      if (exam.version !== w.version) {
-        throw new ExamStaleError(w.examId, w.version);
-      }
-      const result = await write(tx);
-      const [bumped] = await tx
-        .update(onlineExams)
-        .set({
-          version: sql`${onlineExams.version} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(eq(onlineExams.id, w.examId))
-        .returning({ version: onlineExams.version });
-      await tx.insert(auditLog).values({
-        actorId: w.actorId,
-        action: audit.action,
-        entity: audit.action.split(".")[0],
-        entityId: audit.entityId ?? w.examId,
-        details: { courseId: w.courseId, examId: w.examId, ...audit.details },
-      });
-      return { result, version: bumped.version };
-    });
+    const run = (tx: Tx) => this.writeIn(tx, w, audit, write, options.of);
+    return options.tx ? run(options.tx) : this.db.transaction(run);
   }
 
-  /** The exam's settings, zeroth question and topics; only what is given changes. */
+  private async writeIn<T>(
+    tx: Tx,
+    w: IExamWrite,
+    audit: { action: string; entityId?: string; details?: object },
+    write: (tx: Tx) => Promise<T>,
+    of: "draft" | "published" = "draft"
+  ): Promise<{ result: T; version: number }> {
+    const [exam] = await tx
+      .select({
+        version: onlineExams.version,
+        publishedAt: onlineExams.publishedAt,
+        lessonId: onlineExams.lessonId,
+      })
+      .from(onlineExams)
+      .where(
+        and(eq(onlineExams.id, w.examId), eq(onlineExams.courseId, w.courseId))
+      )
+      .for("update");
+    if (!exam) throw new OnlineExamNotFoundError(w.examId);
+    if (of === "draft" && exam.publishedAt !== null) {
+      throw new ExamLockedError(w.examId);
+    }
+    if (of === "published") {
+      if (exam.publishedAt === null || exam.lessonId === null) {
+        throw new ExamNotPublishedError(w.examId);
+      }
+      // The celse's time moves only under the course row's lock, which
+      // the caller holds.
+      const [celse] = await tx
+        .select({ startsAt: lessons.scheduledAt })
+        .from(lessons)
+        .where(eq(lessons.id, exam.lessonId));
+      if (!celse?.startsAt || celse.startsAt.getTime() <= Date.now()) {
+        throw new ExamLockedError(w.examId);
+      }
+    }
+    if (exam.version !== w.version) {
+      throw new ExamStaleError(w.examId, w.version);
+    }
+    const result = await write(tx);
+    const [bumped] = await tx
+      .update(onlineExams)
+      .set({
+        version: sql`${onlineExams.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(onlineExams.id, w.examId))
+      .returning({ version: onlineExams.version });
+    await tx.insert(auditLog).values({
+      actorId: w.actorId,
+      action: audit.action,
+      entity: audit.action.split(".")[0],
+      entityId: audit.entityId ?? w.examId,
+      details: { courseId: w.courseId, examId: w.examId, ...audit.details },
+    });
+    return { result, version: bumped.version };
+  }
+
+  /**
+   * Links the exam to the celse it is published with, inside its write, and
+   * copies the medrese's zeroth question into it: the talebe answer the one
+   * it was published with, whatever the medrese asks later.
+   */
+  async publish(
+    tx: Tx,
+    examId: string,
+    input: {
+      lessonId: string;
+      latestStartAt: Date;
+      zeroth: { text: string; options: string[] };
+    }
+  ): Promise<void> {
+    await tx
+      .update(onlineExams)
+      .set({
+        lessonId: input.lessonId,
+        publishedAt: new Date(),
+        latestStartAt: input.latestStartAt,
+        zerothQuestion: input.zeroth.text,
+      })
+      .where(eq(onlineExams.id, examId));
+    await tx.delete(zerothOptions).where(eq(zerothOptions.examId, examId));
+    await tx.insert(zerothOptions).values(
+      input.zeroth.options.map((text, position) => ({
+        examId,
+        position,
+        text,
+      }))
+    );
+  }
+
+  /** The medrese of the exam's course; null for a köşk's own course. */
+  async findCourseMadrasahId(courseId: string): Promise<string | null> {
+    const [course] = await this.db
+      .select({ madrasahId: courses.madrasahId })
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .limit(1);
+    return course?.madrasahId ?? null;
+  }
+
+  /** Makes the exam a draft again, its celse's key cleared before the celse goes. */
+  async unpublish(tx: Tx, examId: string): Promise<void> {
+    await tx
+      .update(onlineExams)
+      .set({ lessonId: null, publishedAt: null, latestStartAt: null })
+      .where(eq(onlineExams.id, examId));
+  }
+
+  /** The exam's settings and topics; only what is given changes. */
   async updateExam(
     tx: Tx,
     w: IExamWrite,
@@ -434,8 +536,6 @@ export class OnlineExamRepository {
       title?: string;
       durationMinutes?: number;
       instructions?: string | null;
-      zerothQuestion?: string;
-      zerothOptions?: string[];
       topicIds?: string[];
     }
   ): Promise<void> {
@@ -447,24 +547,9 @@ export class OnlineExamRepository {
       ...(input.instructions === undefined
         ? {}
         : { instructions: input.instructions }),
-      ...(input.zerothQuestion === undefined
-        ? {}
-        : { zerothQuestion: input.zerothQuestion }),
     };
     if (Object.keys(set).length > 0) {
       await tx.update(onlineExams).set(set).where(eq(onlineExams.id, w.examId));
-    }
-    if (input.zerothOptions !== undefined) {
-      await tx.delete(zerothOptions).where(eq(zerothOptions.examId, w.examId));
-      if (input.zerothOptions.length > 0) {
-        await tx.insert(zerothOptions).values(
-          input.zerothOptions.map((text, position) => ({
-            examId: w.examId,
-            position,
-            text,
-          }))
-        );
-      }
     }
     if (input.topicIds !== undefined) {
       const picked = [...new Set(input.topicIds)];

@@ -44,18 +44,6 @@ export interface UpdateOnlineExamDto {
      */
     instructions?: string | null;
     /**
-     * The preparer's question about the hadith.
-     * @type {string}
-     * @memberof UpdateOnlineExamDto
-     */
-    zerothQuestion?: string;
-    /**
-     * The zeroth question's options in their order; empty fields are not sent. Replaces them all.
-     * @type {Array<string>}
-     * @memberof UpdateOnlineExamDto
-     */
-    zerothOptions?: Array<string>;
-    /**
      * The course topics the exam picks, in order. Unpicking one takes it off the questions that carried it.
      * @type {Array<string>}
      * @memberof UpdateOnlineExamDto
@@ -85,8 +73,6 @@ export function UpdateOnlineExamDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'title': json['title'] == null ? undefined : json['title'],
         'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'instructions': json['instructions'] == null ? undefined : json['instructions'],
-        'zerothQuestion': json['zerothQuestion'] == null ? undefined : json['zerothQuestion'],
-        'zerothOptions': json['zerothOptions'] == null ? undefined : json['zerothOptions'],
         'topicIds': json['topicIds'] == null ? undefined : json['topicIds'],
     };
 }
@@ -106,8 +92,6 @@ export function UpdateOnlineExamDtoToJSONTyped(value?: UpdateOnlineExamDto | nul
         'title': value['title'],
         'durationMinutes': value['durationMinutes'],
         'instructions': value['instructions'],
-        'zerothQuestion': value['zerothQuestion'],
-        'zerothOptions': value['zerothOptions'],
         'topicIds': value['topicIds'],
     };
 }

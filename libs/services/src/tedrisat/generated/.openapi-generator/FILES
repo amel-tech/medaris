@@ -399,6 +399,8 @@ src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
+src/models/PublishOnlineExamDto.ts
+src/models/PublishProblemResponse.ts
 src/models/QuestionAnswerResponse.ts
 src/models/QuestionAnswererResponse.ts
 src/models/QuestionOptionDto.ts

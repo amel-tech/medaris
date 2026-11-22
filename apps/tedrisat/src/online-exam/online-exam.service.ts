@@ -1,17 +1,24 @@
 import { type AuthenticatedUser, ValidationError } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
+import { ExamFormat } from "../course/domain/exam";
 import {
   AnswerMode,
+  examStatus,
+  LATEST_START_DEFAULT_MINUTES,
   lacksOf,
   modeFits,
+  type PublishProblem,
   pointsFit,
   pointsFromText,
   pointsText,
+  publishProblems,
+  publishTimeProblem,
   type Scoring,
   sharePoints,
   shareText,
   TOPIC_WORDS_MAX,
+  toMinute,
   topicWordCount,
 } from "./domain/online-exam";
 import type {
@@ -24,6 +31,11 @@ import type {
   OnlineExamSummaryResponse,
 } from "./dto/online-exam.dto";
 import {
+  ExamLockedError,
+  ExamNotPublishedError,
+  ExamNotReadyError,
+  ExamStaleError,
+  ExamTimePassedError,
   OnlineExamNotFoundError,
   PointsOverTotalError,
   QuestionModeInvalidError,
@@ -34,12 +46,10 @@ import {
   type IOnlineExamDraft,
   OnlineExamRepository,
 } from "./online-exam.repository";
+import { ZerothQuestionRepository } from "./zeroth-question.repository";
 
-const statusOf = (exam: {
-  publishedAt: Date | null;
-  closedEarlyAt: Date | null;
-}): OnlineExamDraftResponse["status"] =>
-  exam.closedEarlyAt ? "CLOSED" : exam.publishedAt ? "OPEN" : "DRAFT";
+/** An online exam's celse is out of 100, as the results are (MDRS-299). */
+const ONLINE_EXAM_MAX_SCORE = 100;
 
 /**
  * Preparing a course's online multiple-choice exams (MDRS-299): the course's
@@ -56,7 +66,8 @@ export class OnlineExamService {
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly repo: OnlineExamRepository,
-    private readonly courses: CourseService
+    private readonly courses: CourseService,
+    private readonly zeroth: ZerothQuestionRepository
   ) {}
 
   /** The course as the caller may write to it: a hidden or draft course they may not see is not found. */
@@ -71,11 +82,13 @@ export class OnlineExamService {
   ): Promise<OnlineExamSummaryResponse[]> {
     await this.course(courseId, user);
     const exams = await this.repo.listExams(courseId);
+    const now = new Date();
     return exams.map((e) => ({
       id: e.id,
       title: e.title,
       questionCount: Number(e.questionCount),
-      status: statusOf({ publishedAt: e.publishedAt, closedEarlyAt: null }),
+      status: examStatus(e, now),
+      startsAt: e.startsAt,
       updatedAt: e.updatedAt,
     }));
   }
@@ -94,9 +107,10 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const courseId = await this.courseOf(examId, user);
-    const [draft, topics] = await Promise.all([
+    const [draft, topics, hasZeroth] = await Promise.all([
       this.repo.findDraft(courseId, examId),
       this.repo.listTopics(courseId),
+      this.zerothOfCourse(courseId).then((q) => q !== null),
     ]);
     if (!draft) throw new OnlineExamNotFoundError(examId);
     const shares = sharePoints(
@@ -107,6 +121,7 @@ export class OnlineExamService {
       for (const t of q.topicIds) carried.set(t, (carried.get(t) ?? 0) + 1);
     }
     const picked = new Set(draft.topicIds);
+    const pointsTotal = this.totalOf(shares);
     return {
       id: draft.id,
       courseId: draft.courseId,
@@ -124,10 +139,153 @@ export class OnlineExamService {
       questions: draft.questions.map((q, i) =>
         this.questionOf(q, i, shares.points.get(q.id))
       ),
-      pointsTotal: this.totalOf(shares),
-      status: statusOf(draft),
+      pointsTotal,
+      status: examStatus(draft, new Date()),
+      startsAt: draft.startsAt,
+      latestStartAt: draft.latestStartAt,
+      problems: draft.publishedAt
+        ? []
+        : this.problemsOf(draft, pointsTotal, hasZeroth),
       version: draft.version,
     };
+  }
+
+  /**
+   * "Yayınla": the exam opens at `startsAt` (now when it is left out), and a
+   * talebe may start it until `latestStartAt` (the start plus ten minutes
+   * when it is left out). Its celse is planned at that start, as long as the
+   * exam and the latest start together, with its exam row (MULTIPLE_CHOICE,
+   * out of 100), and the exam is linked to it, all in one transaction: an
+   * exam that is not ready, or that changed since the page read it, plans
+   * nothing.
+   */
+  async publish(
+    examId: string,
+    input: { version: number; startsAt?: Date; latestStartAt?: Date },
+    user: AuthenticatedUser
+  ): Promise<OnlineExamDraftResponse> {
+    const w = await this.writeOf(examId, input.version, user);
+    const now = new Date();
+    const startsAt = toMinute(input.startsAt ?? now);
+    const latestStartAt = toMinute(
+      input.latestStartAt ??
+        new Date(startsAt.getTime() + LATEST_START_DEFAULT_MINUTES * 60_000)
+    );
+    const timing = publishTimeProblem(startsAt, latestStartAt, now);
+    if (timing) throw new ExamTimePassedError(timing);
+    const draft = await this.repo.findDraft(w.courseId, examId);
+    if (!draft) throw new OnlineExamNotFoundError(examId);
+    if (draft.publishedAt) throw new ExamLockedError(examId);
+    // The write below checks the version again under the row's lock; the
+    // same version means what is checked here is what is published.
+    if (draft.version !== input.version) {
+      throw new ExamStaleError(examId, input.version);
+    }
+    const shares = sharePoints(
+      draft.questions.map((q) => ({ id: q.id, ownHundredths: q.ownPoints }))
+    );
+    const madrasahId = await this.repo.findCourseMadrasahId(w.courseId);
+    const asked = madrasahId
+      ? await this.zeroth.findForMadrasah(madrasahId)
+      : null;
+    const problems = this.problemsOf(
+      draft,
+      this.totalOf(shares),
+      asked !== null
+    );
+    if (problems.length > 0) throw new ExamNotReadyError(examId, problems);
+    const spread = Math.round(
+      (latestStartAt.getTime() - startsAt.getTime()) / 60_000
+    );
+    await this.courses.createExamSession(
+      w.courseId,
+      {
+        title: draft.title,
+        durationMinutes: draft.durationMinutes + spread,
+        scheduledAt: startsAt,
+        exam: {
+          format: ExamFormat.MULTIPLE_CHOICE,
+          maxScore: ONLINE_EXAM_MAX_SCORE,
+        },
+        within: async (tx, [lessonId]) => {
+          // Read again in the transaction: the question copied is the one
+          // the medrese asks as the exam is published.
+          const zeroth = madrasahId
+            ? await this.zeroth.findForMadrasah(madrasahId, tx)
+            : null;
+          if (!zeroth) {
+            throw new ExamNotReadyError(examId, [{ kind: "NO_ZEROTH" }]);
+          }
+          await this.repo.write(
+            w,
+            {
+              action: "online_exam.publish",
+              details: {
+                lessonId,
+                startsAt: startsAt.toISOString(),
+                latestStartAt: latestStartAt.toISOString(),
+              },
+            },
+            (t) =>
+              this.repo.publish(t, examId, {
+                lessonId,
+                latestStartAt,
+                zeroth: { text: zeroth.text, options: zeroth.options },
+              }),
+            { tx }
+          );
+        },
+      },
+      user.sub
+    );
+    return this.getDraft(examId, user);
+  }
+
+  /**
+   * "Taslağa al", until the exam opens: its celse is deleted and it is a
+   * draft again, with everything it had. Once it has opened it is
+   * EXAM_LOCKED.
+   */
+  async unpublish(
+    examId: string,
+    version: number,
+    user: AuthenticatedUser
+  ): Promise<OnlineExamDraftResponse> {
+    const w = await this.writeOf(examId, version, user);
+    const draft = await this.repo.findDraft(w.courseId, examId);
+    if (!draft) throw new OnlineExamNotFoundError(examId);
+    if (!draft.publishedAt || !draft.lessonId) {
+      throw new ExamNotPublishedError(examId);
+    }
+    const lessonId = draft.lessonId;
+    await this.courses.withdrawExamSession(lessonId, user.sub, async (tx) => {
+      await this.repo.write(
+        w,
+        { action: "online_exam.unpublish", details: { lessonId } },
+        (t) => this.repo.unpublish(t, examId),
+        { of: "published", tx }
+      );
+    });
+    return this.getDraft(examId, user);
+  }
+
+  /** What keeps the draft from being published; empty when it can be. */
+  private problemsOf(
+    draft: IOnlineExamDraft,
+    pointsTotal: string,
+    hasZeroth: boolean
+  ): PublishProblem[] {
+    return publishProblems({
+      questions: draft.questions,
+      pointsTotal,
+      hasZeroth,
+    });
+  }
+
+  /** The zeroth question of the course's medrese; null for a köşk's own course, or a medrese with none. */
+  private async zerothOfCourse(courseId: string) {
+    const madrasahId = await this.repo.findCourseMadrasahId(courseId);
+    return madrasahId ? this.zeroth.findForMadrasah(madrasahId) : null;
   }
 
   async updateExam(
@@ -137,8 +295,6 @@ export class OnlineExamService {
       title?: string;
       durationMinutes?: number;
       instructions?: string | null;
-      zerothQuestion?: string;
-      zerothOptions?: string[];
       topicIds?: string[];
     },
     user: AuthenticatedUser

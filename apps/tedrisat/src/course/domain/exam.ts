@@ -11,6 +11,12 @@ export enum ExamFormat {
   WRITTEN = "WRITTEN",
   /** "Şifahi" */
   ORAL = "ORAL",
+  /**
+   * "Çoktan seçmeli" (MDRS-299): an online exam the talebe take in tedris.
+   * Only publishing an online exam plans one; "Celse planla" offers the
+   * other two.
+   */
+  MULTIPLE_CHOICE = "MULTIPLE_CHOICE",
 }
 
 /** "Tam puan" when the müderris types none. */
