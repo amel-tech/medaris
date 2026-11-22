@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.14.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.13.0...tedris-web-v2.14.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, tedris-web, services, i18n:** MDRS-299 course zeroth, length, A−/A+ ([#421](https://github.com/amel-tech/medaris/issues/421)) ([9a60a80](https://github.com/amel-tech/medaris/commit/9a60a80e40c844d5efec26d4d842d9c3d7955c9c))
+
 ## [2.13.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.12.1...tedris-web-v2.13.0) (2026-11-22)
 
 
