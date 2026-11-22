@@ -23,6 +23,7 @@ import type { AuthorizedRequest } from "../course/interfaces/authorized-request.
 import {
   OnlineExamClosedResponse,
   OnlineExamResultsResponse,
+  TalebeAnswersResponse,
 } from "./dto/exam-results.dto";
 import { ExamResultsService } from "./exam-results.service";
 import { byOnlineExamCourse } from "./online-exam.controller";
@@ -58,6 +59,24 @@ export class ExamResultsController {
     @Param("examId", ParseUUIDPipe) examId: string
   ): Promise<OnlineExamResultsResponse> {
     return this.service.results(examId, request.user);
+  }
+
+  @ApiOperation({
+    summary: "One talebe's answers on an online exam",
+    description:
+      "Each question in the exam's order (not the talebe's), with its options, the correct marks, which ones the talebe chose, whether it was skipped, when it was saved, how the answer stands and the points it earned; over them, the talebe's name, how and when the attempt ended, the score, each switch with its time and the zeroth answer. The team reads it before the release too. A talebe not seated in the course, or with no attempt, is ATTEMPT_NOT_FOUND; a draft is EXAM_NOT_FOUND.",
+    operationId: "getOnlineExamTalebeAnswers",
+  })
+  @ApiOkResponse({ type: TalebeAnswersResponse })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND" })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @Get("online-exams/:examId/results/:userId")
+  talebeAnswers(
+    @Param("examId", ParseUUIDPipe) examId: string,
+    @Param("userId", ParseUUIDPipe) userId: string
+  ): Promise<TalebeAnswersResponse> {
+    return this.service.talebeAnswers(examId, userId);
   }
 
   @ApiOperation({

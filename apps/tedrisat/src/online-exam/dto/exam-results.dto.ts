@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { FinishedBy } from "../domain/exam-attempt";
 import { AnswerVerdict, TalebeExamState } from "../domain/exam-results";
-import { AnswerMode } from "../domain/online-exam";
+import { AnswerMode, Scoring } from "../domain/online-exam";
 
 export class ResultsExamResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
@@ -182,4 +182,86 @@ export class OnlineExamClosedResponse {
   @ApiProperty({ type: String, format: "date-time" }) closedEarlyAt!: Date;
   @ApiProperty({ description: "The attempts in progress the close finished." })
   finished!: number;
+}
+
+export class TalebeAnswerOptionResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() text!: string;
+  @ApiProperty() correct!: boolean;
+  @ApiProperty({ description: "The talebe chose it." }) chosen!: boolean;
+}
+
+export class TalebeAnswerQuestionResponse {
+  @ApiProperty({ format: "uuid" }) questionId!: string;
+  @ApiProperty({
+    description: "Its number in the exam's order, not the talebe's.",
+  })
+  number!: number;
+  @ApiProperty() text!: string;
+  @ApiProperty({ enum: AnswerMode, enumName: "AnswerMode" })
+  answerMode!: AnswerMode;
+  @ApiProperty({ enum: Scoring, enumName: "Scoring", nullable: true })
+  scoring!: Scoring | null;
+  @ApiProperty({ description: 'Its points, "2.00".' }) points!: string;
+  @ApiProperty({
+    description: 'The points this answer earned, two decimals, "1.00".',
+  })
+  earned!: string;
+  @ApiProperty({ enum: AnswerVerdict, enumName: "AnswerVerdict" })
+  verdict!: AnswerVerdict;
+  @ApiProperty({ description: 'The talebe skipped it ("Soruyu atla").' })
+  skipped!: boolean;
+  @ApiProperty({
+    type: String,
+    format: "date-time",
+    nullable: true,
+    description: "When the answer was last saved; null when never answered.",
+  })
+  savedAt!: Date | null;
+  @ApiProperty({ type: [TalebeAnswerOptionResponse] })
+  options!: TalebeAnswerOptionResponse[];
+}
+
+export class TalebeAnswersZerothResponse {
+  @ApiProperty() question!: string;
+  @ApiProperty({ type: String, format: "uuid", nullable: true })
+  optionId!: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "The text of the option the talebe chose.",
+  })
+  answer!: string | null;
+}
+
+export class TalebeAnswersExamResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() title!: string;
+}
+
+/** One talebe's answers on an online exam, question by question. */
+export class TalebeAnswersResponse {
+  @ApiProperty({ type: TalebeAnswersExamResponse })
+  exam!: TalebeAnswersExamResponse;
+  @ApiProperty({ format: "uuid" }) userId!: string;
+  @ApiProperty({ type: String, nullable: true }) name!: string | null;
+  @ApiProperty({ enum: TalebeExamState, enumName: "TalebeExamState" })
+  state!: TalebeExamState;
+  @ApiProperty({ type: String, format: "date-time" }) startedAt!: Date;
+  @ApiProperty({ type: String, format: "date-time", nullable: true })
+  finishedAt!: Date | null;
+  @ApiProperty({ enum: FinishedBy, enumName: "FinishedBy", nullable: true })
+  finishedBy!: FinishedBy | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Out of 100 with two decimals, "87.50"; null until finished.',
+  })
+  score!: string | null;
+  @ApiProperty({ type: [ResultsSwitchResponse] })
+  switches!: ResultsSwitchResponse[];
+  @ApiProperty({ type: TalebeAnswersZerothResponse })
+  zeroth!: TalebeAnswersZerothResponse;
+  @ApiProperty({ type: [TalebeAnswerQuestionResponse] })
+  questions!: TalebeAnswerQuestionResponse[];
 }

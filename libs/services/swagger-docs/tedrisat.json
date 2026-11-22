@@ -15941,6 +15941,57 @@
         ]
       }
     },
+    "/online-exams/{examId}/results/{userId}": {
+      "get": {
+        "description": "Each question in the exam's order (not the talebe's), with its options, the correct marks, which ones the talebe chose, whether it was skipped, when it was saved, how the answer stands and the points it earned; over them, the talebe's name, how and when the attempt ended, the score, each switch with its time and the zeroth answer. The team reads it before the release too. A talebe not seated in the course, or with no attempt, is ATTEMPT_NOT_FOUND; a draft is EXAM_NOT_FOUND.",
+        "operationId": "getOnlineExamTalebeAnswers",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalebeAnswersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One talebe's answers on an online exam",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
     "/online-exams/{examId}/close": {
       "post": {
         "description": "\"Sınavı erken bitir\": every attempt in progress ends now with the answers saved so far, is scored and stands in Değerlendirme, and no one starts the exam any more. Refused before it opens (it is taken back to a draft then) and once it has closed. Written to `audit_log` as `online_exam.close`.",
@@ -32171,6 +32222,226 @@
           "releasedAt",
           "mayRelease",
           "releasable"
+        ]
+      },
+      "TalebeAnswersExamResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "TalebeAnswersZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "optionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true,
+            "description": "The text of the option the talebe chose."
+          }
+        },
+        "required": [
+          "question",
+          "optionId",
+          "answer"
+        ]
+      },
+      "AnswerVerdict": {
+        "type": "string",
+        "enum": [
+          "RIGHT",
+          "WRONG",
+          "BLANK"
+        ]
+      },
+      "TalebeAnswerOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          },
+          "chosen": {
+            "type": "boolean",
+            "description": "The talebe chose it."
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct",
+          "chosen"
+        ]
+      },
+      "TalebeAnswerQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "Its number in the exam's order, not the talebe's."
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, \"2.00\"."
+          },
+          "earned": {
+            "type": "string",
+            "description": "The points this answer earned, two decimals, \"1.00\"."
+          },
+          "verdict": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerVerdict"
+              }
+            ]
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "The talebe skipped it (\"Soruyu atla\")."
+          },
+          "savedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the answer was last saved; null when never answered."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TalebeAnswerOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "questionId",
+          "number",
+          "text",
+          "answerMode",
+          "scoring",
+          "points",
+          "earned",
+          "verdict",
+          "skipped",
+          "savedAt",
+          "options"
+        ]
+      },
+      "TalebeAnswersResponse": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/TalebeAnswersExamResponse"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TalebeExamState"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Out of 100 with two decimals, \"87.50\"; null until finished."
+          },
+          "switches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsSwitchResponse"
+            }
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/TalebeAnswersZerothResponse"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TalebeAnswerQuestionResponse"
+            }
+          }
+        },
+        "required": [
+          "exam",
+          "userId",
+          "name",
+          "state",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "score",
+          "switches",
+          "zeroth",
+          "questions"
         ]
       },
       "OnlineExamClosedResponse": {

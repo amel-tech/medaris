@@ -142,3 +142,19 @@ export const mayCloseEarly = (
 /** A score in hundredths as Değerlendirme keeps it, a whole number, half up: 87.50 is 88. */
 export const wholeScore = (hundredths: number): number =>
   Math.floor((hundredths + 50) / 100);
+
+/**
+ * The points an answer earned, in hundredths: the question's exact points
+ * (its own, or its share, a fraction from `sharePoints`) times the part the
+ * answer earns (`earnedPart`), rounded half up once. A question with no
+ * points earns none.
+ */
+export const earnedHundredths = (
+  points: { numerator: number; denominator: number } | undefined,
+  part: { numerator: number; denominator: number }
+): number => {
+  if (!points || part.numerator === 0) return 0;
+  const num = BigInt(points.numerator) * BigInt(part.numerator);
+  const den = BigInt(points.denominator) * BigInt(part.denominator);
+  return Number((BigInt(2) * num + den) / (BigInt(2) * den));
+};
