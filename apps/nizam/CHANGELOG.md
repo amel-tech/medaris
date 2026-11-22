@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.10...nizam-web-v0.2.11) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, common, services:** MDRS-299 hocas prepare online exam questions ([#408](https://github.com/amel-tech/medaris/issues/408)) ([140084e](https://github.com/amel-tech/medaris/commit/140084e9119b06e991f1e49a5b55e90b0b8f2314))
+
 ## [0.2.10](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.9...nizam-web-v0.2.10) (2026-11-16)
 
 
