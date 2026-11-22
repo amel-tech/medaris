@@ -310,7 +310,7 @@
     "errorFailed": "Bir şeyler ters gitti. Biraz sonra yeniden dene.",
     "entryResult": "Sonucu gör",
     "toMyExams": "Sınavlarım",
-    "factColors": "Alttaki sorular listesinde cevaplamadığın sorular sarı, atladıkların turuncu, cevapladıkların düz (açık temada beyaz, koyu temada koyu) görünür.",
+    "factColors": "Alttaki sorular listesinde cevaplamadığın sorular düz, cevapladıkların mavi, atladıkların koyu sarı görünür.",
     "staleTitle": "Medaris güncellendi",
     "stale": "Devam etmek için sayfayı yenile. Süre durdu; seçimlerin bu sekmede saklandı ve yenileyince kaydedilecek.",
     "reload": "Sayfayı yenile"
