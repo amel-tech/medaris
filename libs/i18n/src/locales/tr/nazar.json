@@ -2437,7 +2437,7 @@
     "problemNoCorrect": "{n}. sorunun doğru şıkkı işaretli değil.",
     "problemNoTopic": "{n}. sorunun konusu yok.",
     "problemPoints": "Puanların toplamı 100 değil: {total}.",
-    "problemNoZeroth": "Medresenin sıfırıncı sorusu yazılmadı; Medrese ayarlarından yazılır.",
+    "problemNoZeroth": "Sıfırıncı soru yok: Sınavlar sayfasından bu ders için yazılabilir, ya da medresenin sorusu Medrese ayarlarından yazılır.",
     "holdingQuestion": "Açık soruyu kaydedin ya da vazgeçin; sonra yayınlayın.",
     "pickTime": "Tarih ve saat seçin.",
     "startPassed": "Bu saat geçti; ileri bir saat seçin.",
@@ -2484,6 +2484,30 @@
     "durationInvalid": "Süre sıfırdan büyük bir tam sayı olmalı.",
     "instructionsLabel": "Talimatlar",
     "instructionsHelp": "Talebe bunları sınava başlamadan önce, “Bilmeniz gerekenler”in altında okur.",
-    "saveSettings": "Ayarları kaydet"
+    "saveSettings": "Ayarları kaydet",
+    "zeroth": {
+      "title": "Sıfırıncı soru",
+      "intro": "Bu dersin her çevrimiçi sınavından önce sorulur. Varsayılan, medresenin sorusudur; bu derse özel bir soru yazılabilir. Değişiklik yalnız bundan sonra yayınlanan sınavlara geçer.",
+      "fromMadrasah": "Medresenin sorusu",
+      "own": "Bu derse özel",
+      "none": "Sıfırıncı soru yok. Yazılmadan bu dersin sınavı yayınlanamaz.",
+      "change": "Bu ders için değiştir",
+      "write": "Bu ders için yaz",
+      "edit": "Düzenle",
+      "backToMadrasah": "Medresenin sorusuna dön",
+      "remove": "Dersin sorusunu kaldır",
+      "removeTitle": "Bu derse özel soru kaldırılsın mı?",
+      "removeBody": "Bundan sonra yayınlanan sınavlarda medresenin sorusu sorulur. Yayınlanmış sınavlar kendi sorularını korur.",
+      "removeBodyNone": "Yeni bir soru yazılana kadar bu dersin sınavı yayınlanamaz. Yayınlanmış sınavlar kendi sorularını korur.",
+      "formLabel": "Bu derse özel sıfırıncı soru",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor…",
+      "cancel": "Vazgeç",
+      "saved": "Dersin sıfırıncı sorusu kaydedildi",
+      "notSaved": "Kaydedilemedi; yazdıklarınız duruyor.",
+      "saveFailed": "Sıfırıncı soru kaydedilemedi",
+      "removeFailed": "Derse özel soru kaldırılamadı",
+      "loadFailed": "Sıfırıncı soru okunamadı. Sayfayı yenileyip tekrar deneyin."
+    }
   }
 }

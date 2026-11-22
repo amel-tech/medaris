@@ -7,6 +7,7 @@ import {
 } from "@medaris/auth/server";
 import type {
   CourseTopicResponse,
+  CourseZerothQuestionResponse,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   OnlineExamDraftResponse,
@@ -225,4 +226,33 @@ export async function removeCourseTopic(
       ? { questions: questions as TopicCarrier[] }
       : {}),
   };
+}
+
+/**
+ * Gives the course a zeroth question of its own (MDRS-299), which its exams
+ * ask instead of the medrese's from the next one published.
+ */
+export async function saveCourseZerothQuestion(
+  courseId: string,
+  body: { text: string; options: string[] }
+): Promise<ActionOutcome<CourseZerothQuestionResponse>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.saveCourseZerothQuestion({
+        id: courseId,
+        saveZerothQuestionDto: body,
+      })
+    )
+  );
+}
+
+/** Takes the course's own zeroth question off: its exams ask the medrese's again. */
+export async function removeCourseZerothQuestion(
+  courseId: string
+): Promise<ActionOutcome<CourseZerothQuestionResponse>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.removeCourseZerothQuestion({ id: courseId })
+    )
+  );
 }

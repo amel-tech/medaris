@@ -2437,7 +2437,7 @@
     "problemNoCorrect": "Question {n} has no correct option marked.",
     "problemNoTopic": "Question {n} has no topic.",
     "problemPoints": "The points do not total 100: {total}.",
-    "problemNoZeroth": "The madrasah has no zeroth question; it is written in the madrasah settings.",
+    "problemNoZeroth": "There is no zeroth question: one can be written for this course on its Exams page, or the madrasah's in the madrasah settings.",
     "holdingQuestion": "Save or cancel the open question, then publish.",
     "pickTime": "Choose a date and a time.",
     "startPassed": "That time has passed; choose a later one.",
@@ -2484,6 +2484,30 @@
     "durationInvalid": "The length must be a whole number above zero.",
     "instructionsLabel": "Instructions",
     "instructionsHelp": "The talebe reads these before starting, under “What you need to know”.",
-    "saveSettings": "Save settings"
+    "saveSettings": "Save settings",
+    "zeroth": {
+      "title": "Zeroth question",
+      "intro": "Asked before every online exam of this course. By default it is the madrasah's question; a question of this course's own can be written. A change reaches only the exams published after it.",
+      "fromMadrasah": "The madrasah's question",
+      "own": "This course's own",
+      "none": "There is no zeroth question. No exam of this course can be published until one is written.",
+      "change": "Change for this course",
+      "write": "Write for this course",
+      "edit": "Edit",
+      "backToMadrasah": "Back to the madrasah's question",
+      "remove": "Remove the course's question",
+      "removeTitle": "Remove this course's own question?",
+      "removeBody": "Exams published from now on ask the madrasah's question. Published exams keep their own.",
+      "removeBodyNone": "No exam of this course can be published until a new question is written. Published exams keep their own.",
+      "formLabel": "This course's own zeroth question",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "saved": "The course's zeroth question was saved",
+      "notSaved": "Not saved; what you typed is kept.",
+      "saveFailed": "The zeroth question could not be saved",
+      "removeFailed": "The course's own question could not be removed",
+      "loadFailed": "The zeroth question could not be read. Refresh the page and try again."
+    }
   }
 }

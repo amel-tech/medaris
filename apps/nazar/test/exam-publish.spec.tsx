@@ -182,7 +182,9 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(root.textContent).toContain(
       "1. sorunun doğru şıkkı işaretli değil."
     );
-    expect(root.textContent).toContain("Medresenin sıfırıncı sorusu yazılmadı");
+    expect(root.textContent).toContain(
+      "Sıfırıncı soru yok: Sınavlar sayfasından bu ders için yazılabilir"
+    );
     expect(button(root, "Zamanla")).toBeUndefined();
   });
 
