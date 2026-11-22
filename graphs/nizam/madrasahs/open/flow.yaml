@@ -194,6 +194,9 @@ states:
         - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, if nobody is chosen yet; with a head chosen nothing is said (F-W2-open-1)" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.', if nobody is chosen yet" }
       CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "they close the form while the search runs; its answer is dropped" }
+      # The chosen başmüderris's remove button is live while a search runs; pressing it clears `searched`, so the search's answer is dropped
+      # (`if (searched.current !== wanted) return`, head-picker.tsx:59).
+      REMOVE_HEAD: { guard: "chosen == 'some'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen başmüderris while the search runs: the choice goes, and the search's answer is dropped" }
 
   opening:
     title: Make the medrese
