@@ -16,6 +16,10 @@ type Answer<T> =
 const state = {
   settings: { status: "failed" } as Answer<unknown>,
   courses: { status: "failed" } as Answer<unknown>,
+  zeroth: {
+    status: "ok",
+    data: { text: "", options: [], updatedAt: null },
+  } as Answer<unknown>,
   me: { timeZone: "Europe/Istanbul" } as { timeZone?: string } | null,
   tedris: "http://localhost:4000" as string | undefined,
 };
@@ -39,12 +43,19 @@ vi.mock("~/env", () => ({
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (what: string) =>
-    what.includes("settings") ? state.settings : state.courses,
+    what.includes("zeroth")
+      ? state.zeroth
+      : what.includes("settings")
+        ? state.settings
+        : state.courses,
 }));
 vi.mock("~/features/account/reads", () => ({
   getViewer: async () => state.me,
 }));
-vi.mock("~/features/settings/actions", () => ({ saveSettings: vi.fn() }));
+vi.mock("~/features/settings/actions", () => ({
+  saveSettings: vi.fn(),
+  saveZerothQuestion: vi.fn(),
+}));
 
 const settings = (over: Record<string, unknown> = {}) => ({
   name: "Süleymaniye Medresesi",
@@ -112,6 +123,10 @@ const render = async () => {
 beforeEach(() => {
   state.settings = { status: "ok", data: settings() };
   state.courses = { status: "ok", data: courses };
+  state.zeroth = {
+    status: "ok",
+    data: { text: "", options: [], updatedAt: null },
+  };
   state.me = { timeZone: "Europe/Istanbul" };
   state.tedris = "http://localhost:4000";
 });
@@ -261,5 +276,42 @@ describe("while the settings are read", () => {
     expect(markup).toContain('aria-busy="true"');
     expect(markup).toContain("mds-skeleton");
     expect(textOf(markup)).toBe("Yükleniyor");
+  });
+});
+
+describe("Medrese ayarları: the exams' zeroth question (MDRS-299)", () => {
+  it("shows the hadith fixed and the medrese's question with its options", async () => {
+    state.zeroth = {
+      status: "ok",
+      data: {
+        text: "Bu sınavda kopya çekmeyeceğine söz veriyor musun?",
+        options: ["Evet", "Hayır"],
+        updatedAt: new Date("2026-11-22T09:00:00Z"),
+      },
+    };
+    const markup = await render();
+    expect(markup).toMatch(
+      /<p class="mds-arabic-text" lang="ar" dir="rtl">مَنْ غَشَّنَا فَلَيْسَ مِنَّا<\/p>/
+    );
+    const text = textOf(markup);
+    expect(text).toContain("Sınavların sıfırıncı sorusu");
+    expect(text).toContain("Bizi aldatan bizden değildir.");
+    expect(text).toContain("Bu sınavda kopya çekmeyeceğine söz veriyor musun?");
+    expect(markup).toContain('value="Evet"');
+    expect(markup).toContain('value="Hayır"');
+    expect(text).toContain("Son kaydedilme: 22 Kasım 2026");
+  });
+
+  it("says when the medrese has none yet", async () => {
+    expect(textOf(await render())).toContain(
+      "Henüz sıfırıncı soru yok. Yazılmadan medresenin derslerinde sınav yayınlanamaz."
+    );
+  });
+
+  it("keeps the settings form when the question cannot be read", async () => {
+    state.zeroth = { status: "failed" };
+    const markup = await render();
+    expect(markup).toContain('value="Süleymaniye Medresesi"');
+    expect(textOf(markup)).toContain("Sıfırıncı soru okunamadı.");
   });
 });
