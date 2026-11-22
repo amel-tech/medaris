@@ -2430,6 +2430,15 @@
     "removeTopicTitle": "{number}. {name} silinsin mi?",
     "removeTopicBody": "Konu dersin listesinden silinir. Bir soru taşıyorsa silinmez.",
     "topicInUse": "Bu konu silinemez; şu sorular onu taşıyor: {questions}.",
-    "topicInUseItem": "{exam}, {number}. soru"
+    "topicInUseItem": "{exam}, {number}. soru",
+    "settingsTitle": "Ayarlar",
+    "examTitleLabel": "Sınavın adı",
+    "titleMissing": "Sınavın adı boş bırakılamaz.",
+    "durationLabel": "Süre (dakika)",
+    "durationHelp": "Varsayılan 60 dakika. Talebe sınava ne zaman başlarsa başlasın sürenin tamamını alır.",
+    "durationInvalid": "Süre sıfırdan büyük bir tam sayı olmalı.",
+    "instructionsLabel": "Talimatlar",
+    "instructionsHelp": "Talebe bunları sınava başlamadan önce, “Bilmeniz gerekenler”in altında okur.",
+    "saveSettings": "Ayarları kaydet"
   }
 }
