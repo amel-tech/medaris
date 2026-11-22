@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.15.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.14.0...tedris-web-v2.15.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 Sınavlarım, result, rank, list colors ([#418](https://github.com/amel-tech/medaris/issues/418)) ([472fc3c](https://github.com/amel-tech/medaris/commit/472fc3c69f57963790e29ad9ee516b20988a81de))
+
+
+### Bug Fixes
+
+* **tedris-web:** MDRS-299 going to another window counts as a switch, not only a tab ([#425](https://github.com/amel-tech/medaris/issues/425)) ([7f226b7](https://github.com/amel-tech/medaris/commit/7f226b7dd1d378fa5d482df5dd88f545e38524ba))
+
+## [2.14.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.13.0...tedris-web-v2.14.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, tedris-web, services, i18n:** MDRS-299 course zeroth, length, A−/A+ ([#421](https://github.com/amel-tech/medaris/issues/421)) ([9a60a80](https://github.com/amel-tech/medaris/commit/9a60a80e40c844d5efec26d4d842d9c3d7955c9c))
+
+## [2.13.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.12.1...tedris-web-v2.13.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 publish an online exam with its celse ([#415](https://github.com/amel-tech/medaris/issues/415)) ([aefea23](https://github.com/amel-tech/medaris/commit/aefea23e752caca52970fe25dddbed64ab447f3c))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 a talebe takes a published online exam ([#416](https://github.com/amel-tech/medaris/issues/416)) ([91c2bec](https://github.com/amel-tech/medaris/commit/91c2bec41be7fd24a2b17d2abf4bb062fbdebaa2))
+
+## [2.12.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.12.0...tedris-web-v2.12.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **deps, tedrisat, ci:** clear [#385](https://github.com/amel-tech/medaris/issues/385) and the 12 code scanning alerts that need a code change ([#397](https://github.com/amel-tech/medaris/issues/397)) ([311dcae](https://github.com/amel-tech/medaris/commit/311dcaedf54f28308082e39fd4ffaf821b1fda44))
+
 ## [2.12.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.11.0...tedris-web-v2.12.0) (2026-11-16)
 
 

@@ -240,7 +240,7 @@ describe("Permission admin (e2e)", () => {
         res.body.platform.map(
           (s: { permissions: string[] }) => s.permissions.length
         )
-      ).toEqual([5, 4, 3, 2, 5]);
+      ).toEqual([5, 4, 3, 2, 6]);
       // Platform management's course hide (MDRS-143) is one of the köşk section's.
       expect(res.body.platform[0].permissions).toContain(
         "platform.course_hide"
@@ -249,6 +249,8 @@ describe("Permission admin (e2e)", () => {
       expect(res.body.platform[4].permissions).toContain(
         "platform.partner_manage"
       );
+      // So can "Sıfırıncı soru cevapları" (MDRS-299).
+      expect(res.body.platform[4].permissions).toContain("exam.zeroth_read");
       expect(res.body.course).toContain("course.edit");
       expect(res.body.course).not.toContain("user.lookup");
     });

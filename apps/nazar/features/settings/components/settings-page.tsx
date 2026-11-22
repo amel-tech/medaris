@@ -22,7 +22,9 @@ import {
   POLICY_TIERS,
   snapshotOf,
 } from "../settings";
+import { zerothOf } from "../zeroth-question";
 import { SettingsForm } from "./settings-form";
+import { ZerothQuestionForm } from "./zeroth-question-form";
 
 function Card({
   id,
@@ -55,7 +57,7 @@ function Card({
  * they cannot be read, their card says so and the form stays.
  */
 export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
-  const [t, star, locale, me, settings, courses] = await Promise.all([
+  const [t, star, locale, me, settings, courses, zeroth] = await Promise.all([
     getMessages("nazar"),
     getMessages("common.imamStar"),
     getLocale(),
@@ -65,6 +67,9 @@ export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
     ),
     readOnce("the medrese's courses", (api) =>
       api.madrasahs.getMadrasahCourses({ id: madrasahId })
+    ),
+    readOnce("the medrese's zeroth question", (api) =>
+      api.onlineExams.getMadrasahZerothQuestion({ id: madrasahId })
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -106,11 +111,25 @@ export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
         />
       ) : (
         <div className="grid gap-grid md:grid-cols-[minmax(0,1fr)_var(--layout-aside)] md:items-start">
-          <SettingsForm
-            madrasahId={madrasahId}
-            initial={snapshotOf(settings.data)}
-            timeZone={timeZone}
-          />
+          <div className="flex min-inline-0 flex-col gap-section">
+            <SettingsForm
+              madrasahId={madrasahId}
+              initial={snapshotOf(settings.data)}
+              timeZone={timeZone}
+            />
+            {/* MDRS-299: a side read; if it fails, its place says so and the form stays. */}
+            {zeroth.status === "ok" ? (
+              <ZerothQuestionForm
+                madrasahId={madrasahId}
+                initial={zerothOf(zeroth.data)}
+                timeZone={timeZone}
+              />
+            ) : (
+              <Alert tone="error" title={t("Settings.zeroth.title")}>
+                <p>{t("Settings.zeroth.loadFailed")}</p>
+              </Alert>
+            )}
+          </div>
           <div className="flex min-inline-0 flex-col gap-grid">
             <Card id="tiers-heading" title={t("Settings.tiersTitle")}>
               <p>{t("Settings.tiersIntro")}</p>

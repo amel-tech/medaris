@@ -216,16 +216,18 @@ describe("Medrese permissions and groups (e2e)", () => {
     // one more of each from the owner's 1 October list: "request a non-medrese
     // course in a köşk" (medrese) and "propose a köşk deck" (course); the
     // twenty-second course permission is `question.answer` (MDRS-150) and the
-    // twenty-third `submission.read` (MDRS-290).
-    it("lists the eleven medrese and the twenty-three course permissions and what the caller may give", async () => {
+    // twenty-third `submission.read` (MDRS-290), the twenty-fourth
+    // `exam.prepare` (MDRS-299).
+    it("lists the eleven medrese and the twenty-four course permissions and what the caller may give", async () => {
       const res = await get(HEAD_ID, at("/permissions")).expect(200);
       expect(res.body.madrasah).toHaveLength(11);
       expect(res.body.madrasah[0]).toBe("madrasah.course_open");
       expect(res.body.madrasah).toContain("madrasah.offsite_course_request");
-      expect(res.body.course).toHaveLength(23);
+      expect(res.body.course).toHaveLength(24);
       expect(res.body.course).toContain("deck.propose_kosk");
       expect(res.body.course).toContain("question.answer");
       expect(res.body.course).toContain("submission.read");
+      expect(res.body.course).toContain("exam.prepare");
       expect(res.body.course[0]).toBe("course.edit");
       expect(res.body.givable).toEqual([
         ...res.body.madrasah,

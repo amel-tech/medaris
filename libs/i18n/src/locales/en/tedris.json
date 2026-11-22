@@ -651,7 +651,8 @@
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
     "rowRecording": "Recording available",
-    "download": " (downloads)"
+    "download": " (downloads)",
+    "examMultipleChoice": "Multiple choice"
   },
   "AccountPage": {
     "pageTitle": "Account",
@@ -731,7 +732,8 @@
       "deck_manage_course": "Create and edit the course's deck",
       "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
-      "permission_group_define": "Define a permission group"
+      "permission_group_define": "Define a permission group",
+      "exam_zeroth_read": "Read in aggregate how the zeroth question of the multiple-choice exams was answered"
     },
     "permissionNotes": {
       "course_manage_all": "Reads of the content are written to the audit log.",
@@ -814,7 +816,8 @@
     "accountLabel": "My account: {name}",
     "notifications": "Notifications",
     "homeLabel": "Medaris Tedris, home",
-    "liveIntro": "{course} is live now."
+    "liveIntro": "{course} is live now.",
+    "exams": "My exams"
   },
   "SchedulePage": {
     "pageTitle": "My schedule",

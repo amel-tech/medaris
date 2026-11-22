@@ -1,9 +1,9 @@
 {
-  "apps/tedrisat": "0.2.14",
+  "apps/tedrisat": "0.2.19",
   "apps/teskilat": "0.2.3",
-  "apps/tedris": "2.12.0",
-  "apps/nizam": "0.2.10",
-  "apps/nazar": "0.2.12",
+  "apps/tedris": "2.15.0",
+  "apps/nizam": "0.2.12",
+  "apps/nazar": "0.2.17",
   "apps/landing": "2.6.0",
   "apps/keycloak-theme": "2.4.0"
 }

@@ -61,11 +61,14 @@ export const SessionPage = async ({
   session,
   koskName,
   now,
+  examEntry,
 }: {
   course: CourseDetailResponse;
   session: SessionResponse;
   koskName: string | null;
   now: Date;
+  /** An online exam's "Sınava gir" (MDRS-299), drawn under the exam's card. */
+  examEntry?: ReactNode;
 }) => {
   const t = await getTranslations("tedris");
   const fileErrors = await getTranslations("tedrisLearn.FileDownload");
@@ -283,7 +286,9 @@ export const SessionPage = async ({
           format: t(
             session.exam.format === "ORAL"
               ? "SessionPage.examOral"
-              : "SessionPage.examWritten"
+              : session.exam.format === "MULTIPLE_CHOICE"
+                ? "SessionPage.examMultipleChoice"
+                : "SessionPage.examWritten"
           ),
           maxScore: t("SessionPage.examMaxScore", {
             max: session.exam.maxScore,
@@ -371,6 +376,8 @@ export const SessionPage = async ({
       {card}
 
       {exam}
+
+      {cancelled ? null : examEntry}
 
       {notes}
 

@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.2.17](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.16...nazar-web-v0.2.17) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+
+
+### Bug Fixes
+
+* **nazar-web, i18n:** MDRS-299 the exam page survives a new version, keeps what was typed ([#426](https://github.com/amel-tech/medaris/issues/426)) ([9201619](https://github.com/amel-tech/medaris/commit/92016196ddd6016846825dae2342816fd87c9ac0))
+* **nazar-web:** MDRS-299 a question being typed no longer vanishes when the session renews ([#428](https://github.com/amel-tech/medaris/issues/428)) ([837694c](https://github.com/amel-tech/medaris/commit/837694c963cd957729f9d95999797f474124195e))
+
+## [0.2.16](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.15...nazar-web-v0.2.16) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 online exam results and the early close ([#417](https://github.com/amel-tech/medaris/issues/417)) ([5467790](https://github.com/amel-tech/medaris/commit/54677903e818addc94f1cf3e843649f4f84d6154))
+* **tedrisat, nazar-web, tedris-web, services, i18n:** MDRS-299 course zeroth, length, A−/A+ ([#421](https://github.com/amel-tech/medaris/issues/421)) ([9a60a80](https://github.com/amel-tech/medaris/commit/9a60a80e40c844d5efec26d4d842d9c3d7955c9c))
+
+## [0.2.15](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.14...nazar-web-v0.2.15) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 exam settings, and [#412](https://github.com/amel-tech/medaris/issues/412)'s review fixes ([#413](https://github.com/amel-tech/medaris/issues/413)) ([5269910](https://github.com/amel-tech/medaris/commit/526991043b38ae9f1bc86ad4a1ccf8e2ead1f91e))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 publish an online exam with its celse ([#415](https://github.com/amel-tech/medaris/issues/415)) ([aefea23](https://github.com/amel-tech/medaris/commit/aefea23e752caca52970fe25dddbed64ab447f3c))
+
+## [0.2.14](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.13...nazar-web-v0.2.14) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 answer mode, own points, topic deletion ([#412](https://github.com/amel-tech/medaris/issues/412)) ([5e17fbe](https://github.com/amel-tech/medaris/commit/5e17fbe9ace86054917243555cfa7adfc31a3821))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 the medrese's zeroth question ([#411](https://github.com/amel-tech/medaris/issues/411)) ([a388d3a](https://github.com/amel-tech/medaris/commit/a388d3aaebac609efd91df2730fbd08e6e46941f))
+
+## [0.2.13](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.12...nazar-web-v0.2.13) (2026-11-22)
+
+
+### Features
+
+* **nazar-web:** MDRS-299 the exam page saves in the background, no waiting ([#409](https://github.com/amel-tech/medaris/issues/409)) ([fb9d75e](https://github.com/amel-tech/medaris/commit/fb9d75e00ba356cba88287e996b79447c527cdf4))
+* **tedrisat, nazar-web, common, services:** MDRS-299 hocas prepare online exam questions ([#408](https://github.com/amel-tech/medaris/issues/408)) ([140084e](https://github.com/amel-tech/medaris/commit/140084e9119b06e991f1e49a5b55e90b0b8f2314))
+
+
+### Bug Fixes
+
+* **deps, tedrisat, ci:** clear [#385](https://github.com/amel-tech/medaris/issues/385) and the 12 code scanning alerts that need a code change ([#397](https://github.com/amel-tech/medaris/issues/397)) ([311dcae](https://github.com/amel-tech/medaris/commit/311dcaedf54f28308082e39fd4ffaf821b1fda44))
+* **nazar-web:** MDRS-299 the exam page's queue reads ids when it runs; Sil opens ([#410](https://github.com/amel-tech/medaris/issues/410)) ([8ca82b6](https://github.com/amel-tech/medaris/commit/8ca82b62999cc14b86aaca61563bff1e1af12128))
+
 ## [0.2.12](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.11...nazar-web-v0.2.12) (2026-11-16)
 
 

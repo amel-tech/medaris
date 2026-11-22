@@ -72,6 +72,7 @@ export function DesktopBar({
           <>
             {item("courses", "/my-courses", t("courses"))}
             {item("schedule", "/schedule", t("schedule"))}
+            {item("exams", "/my-exams", t("exams"))}
             {item("decks", "/decks", t("decks"))}
           </>
         ) : null}
