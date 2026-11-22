@@ -264,6 +264,8 @@ states:
         - { guard: "answer == 'refused'", target: editing, effect: [refusedToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "an error toast 'İzinler kaydedilemedi' with the sentence of the code; the dialog stays open and the form is as it was" }
       FAIL.failed:
         - { guard: "answer == 'failed'", target: editing, effect: [failedToast], source: apps/nazar/features/course-nazirs/course-nazirs.ts:250, say: "an error toast with the generic sentence; the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:230, say: "Vazgeç or Esc: nothing happens, the save goes on" }
+      CLOSE: { target: saving, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:230, say: "the close icon: nothing happens, the save goes on" }
     source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:172
 
   postGone:
