@@ -17,6 +17,7 @@ import {
   MeApi,
   NizamApi,
   NotificationsApi,
+  OnlineExamAttemptsApi,
   OnlineExamsApi,
   ResourcesApi,
   SessionsApi,
@@ -39,11 +40,18 @@ export type {
   AskLessonQuestionDto,
   AssignmentKind,
   AssignmentResponse,
+  AttemptAnswerResponse,
+  AttemptOptionResponse,
+  AttemptQuestionResponse,
+  AttemptStatus,
   BanListResponse,
   BanPersonResponse,
   BanReasonDto,
   BanResponse,
   BanScope,
+  BriefingAttemptResponse,
+  BriefingZerothOptionResponse,
+  BriefingZerothResponse,
   CatalogSectionResponse,
   ChiefNazimResponse,
   CourseDetailResponse,
@@ -92,9 +100,15 @@ export type {
   EvaluationMarkResponse,
   EvaluationStatus,
   EvaluationTalebeResponse,
+  ExamAnswerSavedResponse,
+  ExamAttemptResponse,
+  ExamBriefingResponse,
+  ExamClockResponse,
   ExamOptionResponse,
   ExamQuestionResponse,
   ExamQuestionWriteResponse,
+  ExamWindow,
+  FinishedBy,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
   FlashcardDeckExploreResponse,
@@ -311,6 +325,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // Preparing online multiple-choice exams (MDRS-299): the course's
     // numbered topics, the drafts and their questions (`exam.prepare`).
     onlineExams: new OnlineExamsApi(configuration),
+    // A talebe's sitting of a published online exam (MDRS-299), by its celse.
+    onlineExamAttempts: new OnlineExamAttemptsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

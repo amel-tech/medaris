@@ -13,6 +13,12 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import {
+  examAnswers,
+  examAttempts,
+  examTabSwitches,
+  zerothAnswers,
+} from "../database/schema/exam-attempt.schema";
+import {
   assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
@@ -194,9 +200,10 @@ export async function purgeCourses(
 }
 
 /**
- * Deletes the online exams of the given courses (MDRS-299), uncounted: their
- * questions with options and topics, their zeroth options and picked topics,
- * then the courses' topic lists.
+ * Deletes the online exams of the given courses (MDRS-299), uncounted: the
+ * talebe's attempts with their answers and switches and their zeroth answers,
+ * the questions with options and topics, the zeroth options and picked
+ * topics, then the courses' topic lists.
  */
 export async function deleteCourseOnlineExams(
   tx: Tx,
@@ -210,6 +217,19 @@ export async function deleteCourseOnlineExams(
     .select({ id: examQuestions.id })
     .from(examQuestions)
     .where(inArray(examQuestions.examId, examIds));
+  // The talebe's sittings first: they hold keys to the questions and options.
+  const attemptIds = tx
+    .select({ id: examAttempts.id })
+    .from(examAttempts)
+    .where(inArray(examAttempts.examId, examIds));
+  await tx
+    .delete(examAnswers)
+    .where(inArray(examAnswers.attemptId, attemptIds));
+  await tx
+    .delete(examTabSwitches)
+    .where(inArray(examTabSwitches.attemptId, attemptIds));
+  await tx.delete(examAttempts).where(inArray(examAttempts.examId, examIds));
+  await tx.delete(zerothAnswers).where(inArray(zerothAnswers.examId, examIds));
   await tx
     .delete(examOptions)
     .where(inArray(examOptions.questionId, questionIds));

@@ -106,6 +106,7 @@ GET /lessons/:id/assignment/files/:fileId -> course.view_details on byLessonCour
 GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/evaluation -> course.view on byLessonCourse
 GET /lessons/:id/notes -> course.view on byLessonCourse
+GET /lessons/:id/online-exam -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
 GET /lessons/:id/submission -> course.view on byLessonCourse
 GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
@@ -244,6 +245,11 @@ POST /lessons/:id/assignment/files -> session.manage on byLessonCourse
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/exam-results/release -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/clock -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/finish -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/resume -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/switch -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /lessons/:id/recordings -> recording.manage on byLessonCourse
 POST /lessons/:id/recordings/uploads -> recording.upload on byLessonCourse
@@ -290,6 +296,8 @@ PUT /lessons/:id/assignment -> session.manage on byLessonCourse
 PUT /lessons/:id/evaluations/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/exam-results/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
+PUT /lessons/:id/online-exam/attempt/answers/:questionId -> course.view on byLessonCourse
+PUT /lessons/:id/online-exam/zeroth-answer -> course.view on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
