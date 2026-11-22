@@ -65,8 +65,8 @@ scope:
     - "a saved sample that is not a LIVE session: the list holds LIVE sessions only (`sampleOptions`) but `sampleOf` takes the first session marked as a preview of any type, so such a course would show a value the list does not hold; not seen, no stack course has one"
     - "the other options of the two lists: about 418 zones, and the other sessions of a longer course; two options of each are drawn"
     - "the way back of each press (untick 'Kapalı ders' or 'Celseler yüz yüze yapılır', choose İstanbul again, choose 'Örnek ders yok' after a saved sample): the same transitions the other way; only the two a world needs are drawn, the approval box unticked where a policy came on and 'Örnek ders yok' after a conflict showed the other person's sample"
-    - "a second round of edits after a save in the same visit (the way back of course-settings#2, a11-a17): the same transitions again from `readBack`; the graph keeps one record of what the form shows, so Vazgeç after a save would put back values it does not keep, and the round is not drawn"
-    - "a page opened with two boxes locked by a policy and then edited (the zone, in person or sample, which a policy does not lock): `readLocked` is drawn as a read; the states of an edit are the unlocked ones, with the two boxes drawn open"
+    - "a second round of edits after a save in the same visit (the way back of course-settings#2, a11-a17): the same transitions again from `readBack`; the graph keeps one record of what the form shows, so Vazgeç after a save would put back values it does not keep, and the round is not drawn: its first press ends the flow in `edit_not_drawn`"
+    - "a page opened with two boxes locked by a policy and then edited (the zone, in person or sample, which a policy does not lock): `readLocked` is drawn as a read, and its first press ends the flow in `edit_not_drawn`; the states of an edit are the unlocked ones, with the two boxes drawn open"
     - "leaving a changed form: nothing asks (no beforeunload or router guard in features/course-settings; the recording dialog has one), so a menu entry, a link or a reload drops the pressed controls; the same as SET-2 of nazar.settings.edit"
     - "the policies themselves and who sets them: nazar.settings.edit for the medrese's, the köşk's and the platform's elsewhere"
     - "the sidebar and its scope picker: nazar.shell.scopeAndMenu; only the sidebar's entry 'Ders ayarları', which the e2e reads for aria-current, is drawn"
@@ -208,6 +208,9 @@ states:
       whatever the course's own flag holds, `checked = locked || draft`). A shut box is never sent. The other three controls stay open and Kaydet
       and Vazgeç are off until one differs; editing them is not drawn here (outOfView). The page sets no focus (focus-not-set).
     on:
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:161
 
@@ -376,6 +379,11 @@ states:
       Each value is read back after a reload (e2e course-settings#2 a5-a10); a second round of edits is not drawn (outOfView).
     on:
       RELOAD: { target: reloading, effect: [clearToast], say: "they reload the page: it is read again with what the API now holds", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51 }
+      TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:208 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:136
 
@@ -400,6 +408,11 @@ states:
       Vazgeç are off again (e2e course-settings#2 a5-a9). The page sets no focus. The card's values were read from the API, not kept by the
       browser: the walk's effect check reads the course again through the API as well (a10).
     on:
+      TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:208 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76
 
@@ -413,6 +426,15 @@ states:
     on:
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nazar/features/course-settings/components/course-settings-page.tsx:60
+
+  edit_not_drawn:
+    title: They change the card, and the graph does not follow
+    type: final
+    description: >-
+      A box pressed or a list opened on a card saved in this visit (`saved`, `readBack`) or opened with two boxes locked by a policy
+      (`readLocked`): the control is open (course-settings-form.tsx:171-230 disable it only while a save runs or a code or a policy shuts it),
+      and Kaydet and Vazgeç come on once a value differs. What follows is a new round of this flow, which the graph does not draw (scope.outOfView:
+      a second round of edits, an edit of a locked page). The person stays on the page.
 
   left:
     title: They leave the page

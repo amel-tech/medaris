@@ -166,6 +166,7 @@ states:
       rows; the others are the first, the middle or the last page of a long list.
     always:
       - { guard: "roster == 'none' and narrowing == 'none'", target: empty }
+      - { guard: "roster == 'none'", target: nobody, say: "a medrese with no talebe and a filter on: the filtered-empty notice (`narrowed`, students-table.tsx:245)" }
       - { guard: "narrowing == 'nobody'", target: nobody }
       - { guard: "roster == 'small' or narrowing != 'none'", target: onePage }
       - { guard: "page == 'first'", target: firstPage }
@@ -256,6 +257,8 @@ states:
     by: human
     on:
       TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word and wait 350 ms: nobody matches", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      OPEN_STATUS: { target: choosingStatus, say: "they open the Durum list: it is drawn and open here too", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/students/components/students-table.tsx:259
 
@@ -270,6 +273,8 @@ states:
       CLEAR: { target: narrowing, effect: [unnarrowed], say: "they press Süzgeçleri temizle: the box is emptied and the plain list is read", source: apps/nazar/features/students/components/students-table.tsx:248 }
       ERASE: { guard: erasable, target: narrowing, effect: [unnarrowed], say: "they empty the box by hand", source: apps/nazar/features/students/components/students-table.tsx:69 }
       TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      OPEN_STATUS: { target: choosingStatus, say: "they open the Durum list: it is drawn and open here too", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/students/components/students-table.tsx:245
 
@@ -298,6 +303,7 @@ states:
     on:
       PICK_COMPLETED:
         - { guard: "narrowing == 'none'", target: narrowing, effect: [byState], say: "they choose Tamamladı: the address gains ?durum=tamamladi and loses ?sayfa=", source: apps/nazar/features/students/components/students-table.tsx:226 }
+        - { guard: "narrowing in ['course', 'nobody']", target: narrowing, say: "Tamamladı on top of a filter that finds nobody: the list is read again with both and still finds nobody", source: apps/nazar/features/students/components/students-table.tsx:226 }
         - { target: shown, say: "the option that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:226 }
       PICK_ALL_STATUS:
         - { guard: "narrowing == 'state'", target: narrowing, effect: [unnarrowed], say: "they choose Bütün durumlar: the address loses ?durum=", source: apps/nazar/features/students/components/students-table.tsx:226 }
@@ -317,6 +323,7 @@ states:
     on:
       PICK_COURSE:
         - { guard: "narrowing == 'none'", target: narrowing, effect: [byCourse], say: "they choose a course: the address gains ?ders=<id> and loses ?sayfa=", source: apps/nazar/features/students/components/students-table.tsx:214 }
+        - { guard: "narrowing in ['state', 'nobody']", target: narrowing, say: "a course on top of a filter that finds nobody: the list is read again with both and still finds nobody", source: apps/nazar/features/students/components/students-table.tsx:214 }
         - { target: shown, say: "the course that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:214 }
       PICK_ALL_COURSES:
         - { guard: "narrowing == 'course'", target: narrowing, effect: [unnarrowed], say: "they choose Bütün dersler: the address loses ?ders=", source: apps/nazar/features/students/components/students-table.tsx:214 }
@@ -385,8 +392,8 @@ assertions:
     say: The "no talebe yet" notice shows only for a medrese with none and no filter.
     source: apps/nazar/features/students/components/students-table.tsx:259
   - id: no-match-means-a-word
-    never: "state == 'nobody' and narrowing != 'nobody'"
-    say: The "nobody matches" notice shows only for a word that finds nobody.
+    never: "state == 'nobody' and narrowing == 'none'"
+    say: 'The "nobody matches" notice shows only while a filter is on (`narrowed`): a word that finds nobody, or any filter on a medrese with no talebe.'
     source: apps/nazar/features/students/components/students-table.tsx:245
   - id: no-list-without-a-read
     never: "state in ['firstPage', 'middlePage', 'lastPage', 'onePage', 'empty', 'nobody'] and roster in ['refused', 'down']"
