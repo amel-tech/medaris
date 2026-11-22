@@ -29,6 +29,15 @@ import {
   submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
 import {
+  courseExamTopics,
+  examOptions,
+  examQuestions,
+  examQuestionTopics,
+  onlineExams,
+  onlineExamTopics,
+  zerothOptions,
+} from "../database/schema/online-exam.schema";
+import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
 } from "../database/schema/partner-enrollment.schema";
@@ -77,6 +86,10 @@ export async function purgeCourses(
 ): Promise<IPurgeCounts> {
   const counts = emptyPurgeCounts();
   if (courseIds.length === 0) return counts;
+
+  // The courses' online exams (MDRS-299) with everything under them, and
+  // their topic lists; first, since a published exam points at its celse.
+  await deleteCourseOnlineExams(tx, courseIds);
 
   const weekIds = (
     await tx
@@ -178,6 +191,40 @@ export async function purgeCourses(
       .returning({ id: courses.id })
   ).length;
   return counts;
+}
+
+/**
+ * Deletes the online exams of the given courses (MDRS-299), uncounted: their
+ * questions with options and topics, their zeroth options and picked topics,
+ * then the courses' topic lists.
+ */
+export async function deleteCourseOnlineExams(
+  tx: Tx,
+  courseIds: string[]
+): Promise<void> {
+  const examIds = tx
+    .select({ id: onlineExams.id })
+    .from(onlineExams)
+    .where(inArray(onlineExams.courseId, courseIds));
+  const questionIds = tx
+    .select({ id: examQuestions.id })
+    .from(examQuestions)
+    .where(inArray(examQuestions.examId, examIds));
+  await tx
+    .delete(examOptions)
+    .where(inArray(examOptions.questionId, questionIds));
+  await tx
+    .delete(examQuestionTopics)
+    .where(inArray(examQuestionTopics.questionId, questionIds));
+  await tx.delete(examQuestions).where(inArray(examQuestions.examId, examIds));
+  await tx.delete(zerothOptions).where(inArray(zerothOptions.examId, examIds));
+  await tx
+    .delete(onlineExamTopics)
+    .where(inArray(onlineExamTopics.examId, examIds));
+  await tx.delete(onlineExams).where(inArray(onlineExams.courseId, courseIds));
+  await tx
+    .delete(courseExamTopics)
+    .where(inArray(courseExamTopics.courseId, courseIds));
 }
 
 /**

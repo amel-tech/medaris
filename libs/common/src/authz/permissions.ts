@@ -75,6 +75,8 @@ export const PERMISSIONS = {
   QUESTION_ANSWER: "question.answer",
   /** Read the homework the talebe hand in on the course's sessions, files included (MDRS-290). */
   SUBMISSION_READ: "submission.read",
+  /** Prepare the course's online multiple-choice exams: their settings, topics, questions and points (MDRS-299). */
+  EXAM_PREPARE: "exam.prepare",
   BAN_COURSE: "ban.course",
   BAN_LIFT_COURSE: "ban.lift_course",
   DECK_MANAGE_COURSE: "deck.manage_course",
@@ -246,6 +248,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.SESSION_VIEW_CONTENT]: listed([COURSE], { content: true }),
   [P.QUESTION_ANSWER]: listed([COURSE], { content: true }),
   [P.SUBMISSION_READ]: listed([COURSE], { content: true }),
+  [P.EXAM_PREPARE]: listed([COURSE], { content: true }),
   [P.BAN_COURSE]: listed([COURSE]),
   [P.BAN_LIFT_COURSE]: listed([COURSE]),
   [P.DECK_MANAGE_COURSE]: listed([COURSE]),

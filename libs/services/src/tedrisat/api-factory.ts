@@ -17,6 +17,7 @@ import {
   MeApi,
   NizamApi,
   NotificationsApi,
+  OnlineExamsApi,
   ResourcesApi,
   SessionsApi,
   SubmissionsApi,
@@ -27,6 +28,7 @@ import {
 // Re-export types that are used in other apps
 export type {
   AnswerLessonQuestionDto,
+  AnswerMode,
   AppointMedarisNazimDto,
   ArchiveImpactResponse,
   ArchiveItemResponse,
@@ -51,6 +53,7 @@ export type {
   CourseSubmissionSessionResponse,
   CourseSubmissionsResponse,
   CourseSummaryResponse,
+  CourseTopicResponse,
   CreateCourseDto,
   CreateFlashcardDeckDto,
   CreateFlashcardDeckLabelDto,
@@ -78,6 +81,7 @@ export type {
   DismissMadrasahNazirDecisionDto,
   DismissMadrasahNazirDto,
   DismissMedarisNazimDto,
+  DraftCourseTopicResponse,
   EffectivePermissionGroup,
   EnrolledCourseResponse,
   EnrollmentBanResponse,
@@ -88,6 +92,9 @@ export type {
   EvaluationMarkResponse,
   EvaluationStatus,
   EvaluationTalebeResponse,
+  ExamOptionResponse,
+  ExamQuestionResponse,
+  ExamQuestionWriteResponse,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
   FlashcardDeckExploreResponse,
@@ -157,6 +164,8 @@ export type {
   NotificationCountsResponse,
   NotificationResponse,
   OffsiteCourseRequestResponse,
+  OnlineExamDraftResponse,
+  OnlineExamSummaryResponse,
   OpenMadrasahCourseDto,
   OwnEvaluationResponse,
   OwnSubmissionResponse,
@@ -179,9 +188,11 @@ export type {
   ResourceResponse,
   RosterEnrollmentResponse,
   SaveEvaluationDto,
+  SaveExamQuestionDto,
   SaveLessonAssignmentDto,
   SaveSubmissionNoteDto,
   ScheduleSessionResponse,
+  Scoring,
   SendSubmissionReviewDto,
   SetEnrollmentStatusDto,
   SetMadrasahCourseMuderrisDto,
@@ -296,6 +307,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // "Değerlendirme": marks on memorisation homework (MDRS-248)
     evaluations: new EvaluationsApi(configuration),
     exams: new ExamsApi(configuration),
+    // Preparing online multiple-choice exams (MDRS-299): the course's
+    // numbered topics, the drafts and their questions (`exam.prepare`).
+    onlineExams: new OnlineExamsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

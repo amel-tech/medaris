@@ -39,6 +39,7 @@ import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { MadrasahPortalModule } from "./madrasah/portal/madrasah-portal.module";
 import { NizamDashboardModule } from "./nizam-dashboard/nizam-dashboard.module";
 import { NotificationModule } from "./notification/notification.module";
+import { OnlineExamModule } from "./online-exam/online-exam.module";
 import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
 import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
@@ -96,6 +97,8 @@ import { UserModule } from "./user/user.module";
     // Partner enrollments: `/integrations/*`, the course's partner codes and
     // nizam's "Ortak uygulamalar".
     IntegrationModule,
+    // Online multiple-choice exams (MDRS-299), last so their routes come last in the OpenAPI document.
+    OnlineExamModule,
   ],
   controllers: [AppController],
   providers: [AppService],

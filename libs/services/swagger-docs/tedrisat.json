@@ -14435,6 +14435,626 @@
           "nizam"
         ]
       }
+    },
+    "/courses/{id}/online-exams": {
+      "get": {
+        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.",
+        "operationId": "listOnlineExams",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnlineExamSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's online exams",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "post": {
+        "description": "\"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.",
+        "operationId": "createOnlineExam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a new online exam",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}": {
+      "get": {
+        "description": "The settings, the zeroth question with its options, the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
+        "operationId": "getOnlineExamDraft",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An online exam as its page reads it",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "patch": {
+        "description": "Only what is sent changes. `zerothOptions` and `topicIds` replace the lists they name; unpicking a topic takes it off the questions that carried it. Written to `audit_log` as `online_exam.update`.",
+        "operationId": "updateOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamVersionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_NOT_FOUND"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change an online exam's settings, zeroth question or topics",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions": {
+      "post": {
+        "description": "An empty question, last; the page shows five empty option fields. Written to `audit_log` as `exam_question.add`.",
+        "operationId": "addExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionWriteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions/{questionId}": {
+      "put": {
+        "description": "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
+        "operationId": "saveExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, QUESTION_MODE_INVALID, TOPIC_NOT_FOUND"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a question as the preparer writes it",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "delete": {
+        "description": "With its options and topics; its points, if it had its own, go back to the share. Written to `audit_log` as `exam_question.remove`.",
+        "operationId": "removeExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamVersionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions/{questionId}/points": {
+      "put": {
+        "description": "A number with at most two decimals from 0.01 to 100, or null. The points left (100 minus every question's own) are shared equally, kept exact, over the questions with none. Refused (409 POINTS_OVER_TOTAL, with `pointsLeft`) when the total would pass 100 or nothing would be left for the questions that share. Written to `audit_log` as `exam_question.points`.",
+        "operationId": "setExamQuestionPoints",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetQuestionPointsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamPointsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a question points of its own, or put it back into the share",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/courses/{id}/exam-topics": {
+      "get": {
+        "description": "Each with its number in the course and its name, by number. The team types a topic's number to pick it.",
+        "operationId": "listCourseTopics",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseTopicResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's exam topics",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "post": {
+        "description": "One to three words (otherwise 400 TOPIC_TOO_LONG), unique in the course whatever its case (409 TOPIC_EXISTS). Its number is the one given or the next free one; a number another topic holds is 409 TOPIC_NUMBER_TAKEN. Written to `audit_log` as `exam_topic.create`.",
+        "operationId": "createCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTopicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_TOO_LONG"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_EXISTS, TOPIC_NUMBER_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a topic to the course's list",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/courses/{id}/exam-topics/{topicId}": {
+      "patch": {
+        "description": "Every exam and question that carries it reads the new name and number. Written to `audit_log` as `exam_topic.rename`.",
+        "operationId": "updateCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTopicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_TOO_LONG"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, TOPIC_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_EXISTS, TOPIC_NUMBER_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename or renumber a topic, for the whole course",
+        "tags": [
+          "online-exams"
+        ]
+      }
     }
   },
   "info": {
@@ -28927,6 +29547,585 @@
         "required": [
           "koskIds"
         ]
+      },
+      "OnlineExamSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "OPEN",
+              "CLOSED"
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "questionCount",
+          "status",
+          "updatedAt"
+        ]
+      },
+      "CreateOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Ara sınav"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "OnlineExamCreatedResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "DraftCourseTopicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "picked": {
+            "type": "boolean",
+            "description": "Whether the exam has picked it."
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "How many of the exam's questions carry it."
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "name",
+          "picked",
+          "questionCount"
+        ]
+      },
+      "ExamOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct"
+        ]
+      },
+      "AnswerMode": {
+        "type": "string",
+        "enum": [
+          "SINGLE",
+          "MULTIPLE"
+        ]
+      },
+      "Scoring": {
+        "type": "string",
+        "enum": [
+          "ALL_OR_NOTHING",
+          "IN_SHARES"
+        ]
+      },
+      "ExamQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in the preparer's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamOptionResponse"
+            }
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "topicIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "ownPoints": {
+            "type": "string",
+            "nullable": true,
+            "description": "Its own points (\"12.50\"); null when it shares."
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points now, own or share, with two decimals (\"1.94\")."
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "lacks": {
+            "type": "array",
+            "description": "What it still lacks, in the form's order.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "text",
+                "option",
+                "correct",
+                "topic"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "options",
+          "answerMode",
+          "scoring",
+          "topicIds",
+          "ownPoints",
+          "points",
+          "complete",
+          "lacks"
+        ]
+      },
+      "OnlineExamDraftResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "zerothQuestion": {
+            "type": "string"
+          },
+          "zerothOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionResponse"
+            }
+          },
+          "courseTopics": {
+            "description": "The course's topics by number, each saying whether the exam picked it.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DraftCourseTopicResponse"
+            }
+          },
+          "topicIds": {
+            "description": "The topics the exam picked, in order.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamQuestionResponse"
+            }
+          },
+          "pointsTotal": {
+            "type": "string",
+            "description": "The points of every question together (\"100.00\")."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "OPEN",
+              "CLOSED"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "title",
+          "durationMinutes",
+          "instructions",
+          "zerothQuestion",
+          "zerothOptions",
+          "courseTopics",
+          "topicIds",
+          "questions",
+          "pointsTotal",
+          "status",
+          "version"
+        ]
+      },
+      "UpdateOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 1,
+            "description": "\"Süre (dakika)\"; no upper bound."
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 4000,
+            "description": "The team's own words for the briefing; blank is none."
+          },
+          "zerothQuestion": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "The preparer's question about the hadith."
+          },
+          "zerothOptions": {
+            "description": "The zeroth question's options in their order; empty fields are not sent. Replaces them all.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "topicIds": {
+            "description": "The course topics the exam picks, in order. Unpicking one takes it off the questions that carried it.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ExamVersionResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "VersionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ExamQuestionWriteResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "$ref": "#/components/schemas/ExamQuestionResponse"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "question",
+          "version"
+        ]
+      },
+      "QuestionOptionDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "correct"
+        ]
+      },
+      "SaveExamQuestionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "options": {
+            "description": "The options in order; empty fields are not sent.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionOptionDto"
+            }
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "description": "Only with MULTIPLE, where it is required.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "topicIds": {
+            "description": "Topics of the course; one the exam has not picked yet is picked with the question.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "text",
+          "options",
+          "answerMode",
+          "topicIds"
+        ]
+      },
+      "SetQuestionPointsDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "points": {
+            "type": "string",
+            "nullable": true,
+            "example": "12,5",
+            "description": "A number with at most two decimals, from 0.01 to 100 (a comma or a point); null shares again."
+          }
+        },
+        "required": [
+          "version",
+          "points"
+        ]
+      },
+      "QuestionPointsResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "points": {
+            "type": "string"
+          },
+          "own": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "points",
+          "own"
+        ]
+      },
+      "ExamPointsResponse": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionPointsResponse"
+            }
+          },
+          "total": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "questions",
+          "total",
+          "version"
+        ]
+      },
+      "CourseTopicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "name"
+        ]
+      },
+      "CreateCourseTopicDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "One to three words; unique in the course whatever its case."
+          },
+          "number": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999,
+            "description": "Its number in the course; left out, the next free one."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCourseTopicDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "number": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999
+          }
+        }
       }
     }
   }

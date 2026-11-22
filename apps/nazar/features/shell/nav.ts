@@ -119,6 +119,12 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
           requires: "submission.read",
         },
         {
+          id: "exams",
+          icon: "quiz",
+          to: page("sinavlar"),
+          requires: "exam.prepare",
+        },
+        {
           id: "evaluation",
           icon: "check",
           to: page("degerlendirme"),
