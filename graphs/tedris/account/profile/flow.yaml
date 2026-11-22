@@ -46,6 +46,7 @@ scope:
     - "a refusal of a save that is not an over-long name (a 404 for a federated id, a 5xx) and any refusal of the time zone or of the switch: the page has no way to send one, the same toasts are drawn, and the stack cannot make tedrisat answer one (from the code, not walked)"
     - "a person who arrives with the switch already off, or with a saved time zone outside the eight (the page then opens with 'Diğer…' chosen and the second list showing it): the same transitions, mirrored; the graph starts from the switch on and the list hidden"
     - "the second list's 400-odd zones, which are options of a list and not nodes (the e2e names none); and the toasts' own timers (a success toast closes by itself after six seconds, libs/ui/src/mds/toast.tsx:30, an error toast stays): the graph keeps a success toast only until the person's next step"
+    - "the moment between a press made while a save is out and the save's answer: each card keeps its own busy state, so Kaydet, the two time-zone lists, the switch and a toast's Kapat stay live during another card's save, act on the page at once, and what they ask of the API waits behind the save (Next runs one server action at a time); the graph draws the press where the save's answer leads (`duringStep`). Where the answer is a refusal, the Kapat pressed meanwhile closed the older error toast in the app, while the graph closes the new one; and two zone saves in flight are drawn one after the other (from the code, not verified in a browser)"
     - "what the new time zone does elsewhere: the cookie medaris-tz is set by the same action and the route is rendered again, so Programım and every date shift (tedris.learning.schedule); Hesap itself shows no date outside the roles table"
     - "the phone layout, the loading skeleton while GET /me runs (ACC-18) and the tab title 'Hesap', which has no site suffix (ACC-19)"
     - "Keycloak's pages: the profile form (realm.auth.profileUpdate), its e-mail verification if the address changes (realm.auth.register), the account console (Keycloak's own, no graph) and the sign-out confirmation (realm.auth.signOut)"
@@ -304,7 +305,10 @@ states:
       kaydedildi."; the name in the bar and in Ana sayfa's greeting does not change (ACC-07, decision D2). Any refusal but a refused
       token (400 for a name over 100 characters, ACC-21; 404; a 5xx) draws one error toast, "Adın ve soyadın kaydedilemedi." with
       "Sunucu isteği tamamlayamadı.", and keeps what is typed. The form never sends a null name, which the API would answer with a 500
-      (the domain's finding unreadable-input-500): validateName stops a blank one first.
+      (the domain's finding unreadable-input-500): validateName stops a blank one first. Only Kaydet is busy: each card keeps its own
+      `pending`, so the time-zone list, the switch and a toast's Kapat stay live, and what they start waits behind this call (Next runs
+      one server action at a time) while its answer is applied anyway; the graph handles their press where the answer leads
+      (`duringStep`). The four links leave at once.
     source: apps/tedris/features/account/profile-actions.ts:11
     invoke: { action: updateMe }
     on:
@@ -313,6 +317,13 @@ states:
         - { guard: "typed == 'tooLong'", target: account, effect: [alertNameFailed], say: "tedrisat answers 400 VALIDATION_ERROR (maxLength 100): one error toast and the boxes keep what is typed (ACC-21)", source: apps/tedris/features/account/components/account-settings.tsx:120 }
         - { target: account, effect: [alertNameFailed], say: "any other refusal (404 USER_NOT_FOUND, a 5xx): the same toast; the stack cannot make one", source: apps/tedris/features/account/components/account-settings.tsx:120 }
       FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:115 }
+      # The four links out are plain anchors (the kit's Button with an href), never busy: they leave at once while the name's save is out.
+      CHANGE_GENDER:
+        - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the name's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+        - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
 
   savingZone:
     title: Save the time zone
@@ -321,7 +332,8 @@ states:
       medaris-tz (one year, path /, lax) from the saved zone, which makes Next render the route again so that every date on the
       page switches zone without a reload. The card is aria-busy while the call is out; the list stays usable. A success draws the
       toast "Saat dilimin kaydedildi."; a refusal sets the saved zone and the first list back to what they held, brings the second
-      list back if it was drawn, and draws the error toast "Saat dilimin kaydedilemedi; önceki seçimin korundu.".
+      list back if it was drawn, and draws the error toast "Saat dilimin kaydedilemedi; önceki seçimin korundu.". Kaydet, the switch
+      and a toast's Kapat stay live as well, handled where the answer leads (`duringStep`), and the four links leave at once.
     source: apps/tedris/features/account/profile-actions.ts:35
     invoke: { action: updateMe }
     on:
@@ -330,6 +342,13 @@ states:
         - { guard: wasShown, target: account, effect: [boxOpened, alertZoneFailed], say: "the old choice, 'Diğer…', is put back with the second list", source: apps/tedris/features/account/components/account-settings.tsx:215 }
         - { target: account, effect: [boxClosed, alertZoneFailed], say: "the old preset is put back", source: apps/tedris/features/account/components/account-settings.tsx:215 }
       FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:209 }
+      # The four links out are plain anchors (the kit's Button with an href), never busy: they leave at once while the zone's save is out.
+      CHANGE_GENDER:
+        - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the zone's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+        - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
 
   savingInvitations:
     title: Save the invitation switch
@@ -338,7 +357,8 @@ states:
       takes the keyboard focus away from it (ACC-10, from the code). PATCH /me writes users.lesson_invitation_emails; off stops every
       further invitation, update and cancellation mail and the exam reminder. A success draws "Ders davetleri açıldı." or "Ders
       davetleri kapatıldı; artık davet e-postası gelmeyecek."; a refusal flips the switch back and draws the error toast "Ders davetleri
-      ayarı kaydedilemedi; önceki seçimin geçerli.".
+      ayarı kaydedilemedi; önceki seçimin geçerli.". Only the switch is disabled: Kaydet, the two time-zone lists and a toast's
+      Kapat stay live, handled where the answer leads (`duringStep`), and the four links leave at once.
     source: apps/tedris/features/account/profile-actions.ts:23
     invoke: { action: updateMe }
     on:
@@ -349,6 +369,13 @@ states:
         - { guard: switchOn, target: account, effect: [flipOff, alertInvitationsFailed], say: "the switch goes back to off", source: apps/tedris/features/account/components/account-settings.tsx:292 }
         - { guard: switchOff, target: account, effect: [flipOn, alertInvitationsFailed], say: "the switch goes back to on", source: apps/tedris/features/account/components/account-settings.tsx:292 }
       FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:284 }
+      # The four links out are plain anchors (the kit's Button with an href), never busy: they leave at once while the switch's save is out.
+      CHANGE_GENDER:
+        - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the switch's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+        - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
 
   handed_over.profile_update:
     type: final

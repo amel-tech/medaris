@@ -214,6 +214,7 @@ states:
       DONE: { target: issued, say: "the link, its webcal form and its date come back", source: apps/tedris/features/courses/components/calendar-subscription.tsx:132 }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/courses/components/calendar-subscription.tsx:126 }
       FAIL.refused: { target: noLink, effect: [failedNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:128 }
+      OPEN_ACCOUNT: { target: account_opened, say: "the breadcrumb's Hesap is a plain link and stays live while the call runs: the page is left at once", source: apps/tedris/app/account/calendar/page.tsx:26 }
 
   issued:
     title: The link, shown once
