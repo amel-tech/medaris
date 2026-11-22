@@ -371,6 +371,10 @@
     "resultNotFoundTitle": "No such exam",
     "resultNotFound": "This exam is not among the exams you took.",
     "resultFailedTitle": "The result could not be read",
-    "resultFailed": "Your exam's result could not be read. Try again in a moment."
+    "resultFailed": "Your exam's result could not be read. Try again in a moment.",
+    "standing": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
+    "standingTied": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same score as you.",
+    "topicStanding": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
+    "topicStandingTied": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same as you."
   }
 }

@@ -371,6 +371,10 @@
     "resultNotFoundTitle": "Böyle bir sınav yok",
     "resultNotFound": "Bu sınav, girdiğin sınavlar arasında değil.",
     "resultFailedTitle": "Sonuç okunamadı",
-    "resultFailed": "Sınavının sonucu okunamadı. Biraz sonra yeniden dene."
+    "resultFailed": "Sınavının sonucu okunamadı. Biraz sonra yeniden dene.",
+    "standing": "Sınava {taken} kişi girdi. Puanın {score}. {taken} kişi içinde {rank}. sıradasın.",
+    "standingTied": "Sınava {taken} kişi girdi. Puanın {score}. {taken} kişi içinde {rank}. sıradasın; {tiedWith} kişi seninle aynı puanı aldı.",
+    "topicStanding": "{taken} kişi içinde {rank}. sıradasın.",
+    "topicStandingTied": "{taken} kişi içinde {rank}. sıradasın; {tiedWith} kişi seninle aynı puanı aldı."
   }
 }

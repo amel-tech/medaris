@@ -193,3 +193,58 @@ export const courseTallies = (
   }
   return sum;
 };
+
+/** The exact sum of what every question's answer earned: the score, before it is rounded to be shown. */
+export const totalGot = (results: Iterable<QuestionResult>): Fraction => {
+  let sum = ZERO;
+  for (const r of results) sum = addFractions(sum, r.got);
+  return sum;
+};
+
+/** A topic's points got in one exam, or none when the exam did not ask about it. */
+export const gotIn = (
+  tallies: ReadonlyMap<string, TopicTally>,
+  topicId: string
+): Fraction => tallies.get(topicId)?.got ?? ZERO;
+
+const compare = (a: Fraction, b: Fraction): number => {
+  const left = a.n * b.d;
+  const right = b.n * a.d;
+  return left > right ? 1 : left < right ? -1 : 0;
+};
+
+/**
+ * Where one talebe stands among those who took the exam (the owner, 22 Nov
+ * 2026: "sınava şu kadar kişi girdi, senin puanın şu, bu kadar kişiden şu
+ * sıradasınız"; and for those with the same points, "şu kadar kişi sizinle
+ * aynı puanı aldı"). Standard competition ranking: one plus those with
+ * strictly more points, so a tie shares its rank (1, 2, 2, 4). Points are
+ * compared exactly, as they are kept, not as they are rounded to be shown.
+ * `all` holds every participant's points, the caller's own included; only
+ * these counts leave here, never another talebe's points.
+ */
+export interface Standing {
+  /** How many took the exam. */
+  taken: number;
+  rank: number;
+  /** How many others got exactly the same points. */
+  tiedWith: number;
+}
+
+export const standingOf = (
+  mine: Fraction,
+  all: readonly Fraction[]
+): Standing => {
+  let ahead = 0;
+  let same = 0;
+  for (const points of all) {
+    const c = compare(points, mine);
+    if (c > 0) ahead += 1;
+    else if (c === 0) same += 1;
+  }
+  return {
+    taken: all.length,
+    rank: ahead + 1,
+    tiedWith: Math.max(same - 1, 0),
+  };
+};

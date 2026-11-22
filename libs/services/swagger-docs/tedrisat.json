@@ -32169,6 +32169,31 @@
           "blank"
         ]
       },
+      "MyStandingResponse": {
+        "type": "object",
+        "properties": {
+          "taken": {
+            "type": "number",
+            "minimum": 1,
+            "description": "How many took the exam: finished, or with their time used up. One still in progress is not counted."
+          },
+          "rank": {
+            "type": "number",
+            "minimum": 1,
+            "description": "One plus those with strictly more points."
+          },
+          "tiedWith": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How many others got exactly the same points."
+          }
+        },
+        "required": [
+          "taken",
+          "rank",
+          "tiedWith"
+        ]
+      },
       "MyTopicStandingResponse": {
         "type": "object",
         "properties": {
@@ -32196,6 +32221,14 @@
           },
           "blank": {
             "type": "number"
+          },
+          "standing": {
+            "description": "Where the talebe stands in this topic among those who took the exam, by the topic's points got.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyStandingResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -32205,7 +32238,8 @@
           "percent",
           "right",
           "wrong",
-          "blank"
+          "blank",
+          "standing"
         ]
       },
       "MyCourseTopicStandingResponse": {
@@ -32382,6 +32416,16 @@
               }
             ]
           },
+          "standing": {
+            "nullable": true,
+            "description": "Only when released: where the talebe stands among those who took the exam.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyStandingResponse"
+              }
+            ]
+          },
           "topics": {
             "description": "Only when released, the weakest first; a question with two topics counts in both.",
             "type": "array",
@@ -32418,6 +32462,7 @@
           "closed",
           "score",
           "counts",
+          "standing",
           "topics",
           "courseTopics",
           "questions"

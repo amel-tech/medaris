@@ -12,11 +12,15 @@ import {
 import {
   countsOf,
   courseTallies,
+  type Fraction,
   fractionText,
+  gotIn,
   percentOf,
   questionResults,
+  standingOf,
   type TopicTally,
   tallyByTopic,
+  totalGot,
 } from "./domain/exam-result";
 import {
   closedForEveryone,
@@ -206,6 +210,7 @@ export class MyExamsService {
       closed,
       score: null,
       counts: null,
+      standing: null,
       topics: [],
       courseTopics: [],
       questions: null,
@@ -221,6 +226,16 @@ export class MyExamsService {
     const results = questionResults(questions.map(scored), chosen);
     const tallies = tallyByTopic(questions, results);
     const byId = new Map(questions.map((q) => [q.id, q]));
+    const others = await this.othersOf(
+      exam.examId,
+      exam.durationMinutes,
+      attempt.id,
+      questions
+    );
+    const everyone = [
+      { total: totalGot(results.values()), tallies },
+      ...others,
+    ];
     return {
       ...base,
       score:
@@ -228,6 +243,10 @@ export class MyExamsService {
           ? null
           : pointsText(attempt.scoreHundredths),
       counts: countsOf(results.values()),
+      standing: standingOf(
+        everyone[0].total,
+        everyone.map((p) => p.total)
+      ),
       topics: [...tallies]
         .flatMap(([topicId, t]): MyTopicStandingResponse[] => {
           const topic = topics.get(topicId);
@@ -241,6 +260,10 @@ export class MyExamsService {
                   right: t.right,
                   wrong: t.wrong,
                   blank: t.blank,
+                  standing: standingOf(
+                    t.got,
+                    everyone.map((p) => gotIn(p.tallies, topicId))
+                  ),
                 },
               ]
             : [];
@@ -280,6 +303,36 @@ export class MyExamsService {
           })
         : null,
     };
+  }
+
+  /**
+   * Everyone else who took the exam, each as their exact points and their
+   * points per topic, scored from their answers as the caller's are. Nothing
+   * else of theirs is read, and none of it leaves the server.
+   */
+  private async othersOf(
+    examId: string,
+    durationMinutes: number,
+    callerAttemptId: string,
+    questions: IDraftQuestion[]
+  ): Promise<Array<{ total: Fraction; tallies: Map<string, TopicTally> }>> {
+    const ids = (
+      await this.repo.participantsOf(examId, durationMinutes)
+    ).filter((id) => id !== callerAttemptId);
+    const answers = await this.repo.answersOfAttempts(ids);
+    const chosen = new Map<string, Map<string, string[]>>(
+      ids.map((id) => [id, new Map()])
+    );
+    for (const a of answers)
+      chosen.get(a.attemptId)?.set(a.questionId, a.optionIds);
+    const forScoring = questions.map(scored);
+    return ids.map((id) => {
+      const results = questionResults(forScoring, chosen.get(id) ?? new Map());
+      return {
+        total: totalGot(results.values()),
+        tallies: tallyByTopic(questions, results),
+      };
+    });
   }
 
   private async questionsOf(

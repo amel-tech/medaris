@@ -64,6 +64,29 @@ export class MyExamCountsResponse {
   @ApiProperty() blank!: number;
 }
 
+/**
+ * Where the talebe stands among those who took the exam: counts only, never
+ * another talebe's points. Ties share their rank (1, 2, 2, 4).
+ */
+export class MyStandingResponse {
+  @ApiProperty({
+    minimum: 1,
+    description:
+      "How many took the exam: finished, or with their time used up. One still in progress is not counted.",
+  })
+  taken!: number;
+  @ApiProperty({
+    minimum: 1,
+    description: "One plus those with strictly more points.",
+  })
+  rank!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: "How many others got exactly the same points.",
+  })
+  tiedWith!: number;
+}
+
 /** A topic of the exam, as the talebe stands in it. */
 export class MyTopicStandingResponse {
   @ApiProperty({ format: "uuid" }) topicId!: string;
@@ -79,6 +102,12 @@ export class MyTopicStandingResponse {
   @ApiProperty() right!: number;
   @ApiProperty() wrong!: number;
   @ApiProperty() blank!: number;
+  @ApiProperty({
+    type: MyStandingResponse,
+    description:
+      "Where the talebe stands in this topic among those who took the exam, by the topic's points got.",
+  })
+  standing!: MyStandingResponse;
 }
 
 /** A topic of the course, over every released exam of the caller's that asked about it. */
@@ -152,6 +181,13 @@ export class MyExamResultResponse {
   score!: string | null;
   @ApiProperty({ type: MyExamCountsResponse, nullable: true })
   counts!: MyExamCountsResponse | null;
+  @ApiProperty({
+    type: MyStandingResponse,
+    nullable: true,
+    description:
+      "Only when released: where the talebe stands among those who took the exam.",
+  })
+  standing!: MyStandingResponse | null;
   @ApiProperty({
     type: [MyTopicStandingResponse],
     description:

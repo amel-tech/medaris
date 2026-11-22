@@ -364,6 +364,7 @@ src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyPublicProfileResponse.ts
 src/models/MyRolesResponse.ts
+src/models/MyStandingResponse.ts
 src/models/MySubmissionSummaryResponse.ts
 src/models/MySubmissionsResponse.ts
 src/models/MyTopicStandingResponse.ts

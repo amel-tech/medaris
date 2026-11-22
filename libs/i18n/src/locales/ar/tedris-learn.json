@@ -371,6 +371,10 @@
     "resultNotFoundTitle": "لا يوجد امتحان كهذا",
     "resultNotFound": "هذا الامتحان ليس من الامتحانات التي دخلتها.",
     "resultFailedTitle": "تعذّرت قراءة النتيجة",
-    "resultFailed": "تعذّرت قراءة نتيجة امتحانك. حاول مرة أخرى بعد قليل."
+    "resultFailed": "تعذّرت قراءة نتيجة امتحانك. حاول مرة أخرى بعد قليل.",
+    "standing": "{taken, plural, one {دخل الاختبارَ شخص واحد} two {دخل الاختبارَ شخصان} few {دخل الاختبارَ # أشخاص} many {دخل الاختبارَ # شخصًا} other {دخل الاختبارَ # شخص}}. درجتك {score}. ترتيبك {rank} من {taken}.",
+    "standingTied": "{taken, plural, one {دخل الاختبارَ شخص واحد} two {دخل الاختبارَ شخصان} few {دخل الاختبارَ # أشخاص} many {دخل الاختبارَ # شخصًا} other {دخل الاختبارَ # شخص}}. درجتك {score}. ترتيبك {rank} من {taken}؛ {tiedWith, plural, one {وحصل شخص واحد} two {وحصل شخصان} few {وحصل # أشخاص} many {وحصل # شخصًا} other {وحصل # شخص}} على الدرجة نفسها.",
+    "topicStanding": "ترتيبك {rank} من {taken}.",
+    "topicStandingTied": "ترتيبك {rank} من {taken}؛ {tiedWith, plural, one {وحصل شخص واحد} two {وحصل شخصان} few {وحصل # أشخاص} many {وحصل # شخصًا} other {وحصل # شخص}} على النتيجة نفسها."
   }
 }

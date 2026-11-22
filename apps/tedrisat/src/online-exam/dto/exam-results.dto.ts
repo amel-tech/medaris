@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { FinishedBy } from "../domain/exam-attempt";
-import { AnswerVerdict, TalebeExamState } from "../domain/exam-results";
+import { TalebeExamState } from "../domain/exam-results";
 import { AnswerMode } from "../domain/online-exam";
 
 export class ResultsExamResponse {

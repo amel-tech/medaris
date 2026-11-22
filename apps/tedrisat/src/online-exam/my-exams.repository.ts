@@ -3,6 +3,7 @@ import {
   and,
   asc,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
@@ -20,7 +21,10 @@ import {
   courseWeeks,
   lessons,
 } from "../database/schema/course.schema";
-import { examAttempts } from "../database/schema/exam-attempt.schema";
+import {
+  examAnswers,
+  examAttempts,
+} from "../database/schema/exam-attempt.schema";
 import { kosks } from "../database/schema/kosk.schema";
 import {
   examResults,
@@ -196,6 +200,47 @@ export class MyExamsRepository {
       )
       .limit(1);
     return row !== undefined;
+  }
+
+  /**
+   * The attempts that took the exam: finished, or with their time used up
+   * (over, though only their next read writes so). An attempt still in
+   * progress, or never started, did not take it yet. Only ids leave here.
+   */
+  async participantsOf(
+    examId: string,
+    durationMinutes: number
+  ): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: examAttempts.id })
+      .from(examAttempts)
+      .where(
+        and(
+          eq(examAttempts.examId, examId),
+          or(
+            isNotNull(examAttempts.finishedAt),
+            gte(examAttempts.usedSeconds, durationMinutes * 60)
+          )
+        )
+      );
+    return rows.map((r) => r.id);
+  }
+
+  /** The chosen options of every answer of the given attempts; none for an empty list. */
+  async answersOfAttempts(
+    attemptIds: string[]
+  ): Promise<
+    Array<{ attemptId: string; questionId: string; optionIds: string[] }>
+  > {
+    if (attemptIds.length === 0) return [];
+    return this.db
+      .select({
+        attemptId: examAnswers.attemptId,
+        questionId: examAnswers.questionId,
+        optionIds: examAnswers.optionIds,
+      })
+      .from(examAnswers)
+      .where(inArray(examAnswers.attemptId, attemptIds));
   }
 
   /** The course's topics, by id. */

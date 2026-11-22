@@ -334,6 +334,7 @@ export * from './MyGrantsResponse';
 export * from './MyPermissionsResponse';
 export * from './MyPublicProfileResponse';
 export * from './MyRolesResponse';
+export * from './MyStandingResponse';
 export * from './MySubmissionSummaryResponse';
 export * from './MySubmissionsResponse';
 export * from './MyTopicStandingResponse';
