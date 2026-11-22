@@ -313,6 +313,7 @@ states:
         - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, if nobody is chosen" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field, if nobody is chosen" }
       CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "they close the window while the search runs; its answer is dropped" }
+      REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:84, say: "they remove the person chosen before, while the search for another runs: the button is not disabled for a search; the person goes, the search's answer is dropped (remove() clears `searched`, head-picker.tsx:59) and the address stays in the field" }
 
   saving:
     title: Send the assignment
