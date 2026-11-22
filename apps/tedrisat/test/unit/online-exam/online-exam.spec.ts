@@ -17,6 +17,7 @@ import {
   topicNameKey,
   topicWordCount,
 } from "../../../src/online-exam/domain/online-exam";
+import { TopicInUseError } from "../../../src/online-exam/errors/online-exam.errors";
 
 describe("online exam rules (MDRS-299)", () => {
   it("compares topic names in Turkish lower case", () => {
@@ -179,5 +180,17 @@ describe("online exam rules (MDRS-299)", () => {
     expect(examStatus(exam, at("2026-12-01T18:09:59Z"))).toBe("OPEN");
     expect(examStatus(exam, at("2026-12-01T18:10:00Z"))).toBe("CLOSED");
     expect(examStatus({ ...exam, closedEarlyAt: now }, now)).toBe("CLOSED");
+  });
+
+  it("refuses to delete a topic that questions carry, naming each by its exam and number", () => {
+    const error = new TopicInUseError("t1", [
+      { examId: "e1", examTitle: "Ara sınav", number: 3 },
+    ]);
+    expect(error.code).toBe("TOPIC_IN_USE");
+    expect(error.status).toBe(409);
+    expect(error.context).toEqual({
+      topicId: "t1",
+      questions: [{ examId: "e1", examTitle: "Ara sınav", number: 3 }],
+    });
   });
 });

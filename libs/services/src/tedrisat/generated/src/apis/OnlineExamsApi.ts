@@ -106,6 +106,11 @@ export interface PublishOnlineExamRequest {
     publishOnlineExamDto: PublishOnlineExamDto;
 }
 
+export interface RemoveCourseTopicRequest {
+    id: string;
+    topicId: string;
+}
+
 export interface RemoveExamQuestionRequest {
     examId: string;
     questionId: string;
@@ -540,6 +545,57 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     async publishOnlineExam(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
         const response = await this.publishOnlineExamRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.
+     * Delete a topic from the course\'s list
+     */
+    async removeCourseTopicRaw(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling removeCourseTopic().'
+            );
+        }
+
+        if (requestParameters['topicId'] == null) {
+            throw new runtime.RequiredError(
+                'topicId',
+                'Required parameter "topicId" was null or undefined when calling removeCourseTopic().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/exam-topics/{topicId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"topicId"}}`, encodeURIComponent(String(requestParameters['topicId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.
+     * Delete a topic from the course\'s list
+     */
+    async removeCourseTopic(requestParameters: RemoveCourseTopicRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.removeCourseTopicRaw(requestParameters, initOverrides);
     }
 
     /**

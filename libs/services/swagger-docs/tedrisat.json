@@ -15172,6 +15172,51 @@
         "tags": [
           "online-exams"
         ]
+      },
+      "delete": {
+        "description": "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.",
+        "operationId": "removeCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, TOPIC_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_IN_USE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a topic from the course's list",
+        "tags": [
+          "online-exams"
+        ]
       }
     },
     "/madrasahs/{id}/exam-zeroth-question": {

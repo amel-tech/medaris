@@ -279,6 +279,71 @@ describe("online exams, preparation (e2e)", () => {
     expect((await draft(examId)).pointsTotal).toBe("100.00");
   });
 
+  it("deletes a topic no question carries, and refuses one that questions carry, naming them", async () => {
+    const kiyas = await topic("Kıyas");
+    const icma = await topic("İcma");
+    const examId = await newExam();
+    const added = await http()
+      .post(`/online-exams/${examId}/questions`)
+      .set("Authorization", as(CAST.MUDERRIS))
+      .send({ version: 1 })
+      .expect(201);
+    await http()
+      .put(`/online-exams/${examId}/questions/${added.body.question.id}`)
+      .set("Authorization", as(CAST.MUDERRIS))
+      .send({
+        version: 2,
+        text: "Kıyasın rükünleri kaç tanedir?",
+        options: [
+          { text: "Üç", correct: false },
+          { text: "Dört", correct: true },
+        ],
+        answerMode: "SINGLE",
+        topicIds: [kiyas.id],
+      })
+      .expect(200);
+    // İcma is picked for the exam, but no question carries it.
+    await http()
+      .patch(`/online-exams/${examId}`)
+      .set("Authorization", as(CAST.MUDERRIS))
+      .send({ version: 3, topicIds: [kiyas.id, icma.id] })
+      .expect(200);
+    const remove = (topicId: string) =>
+      http()
+        .delete(`/courses/${ids.courseId}/exam-topics/${topicId}`)
+        .set("Authorization", as(CAST.MUDERRIS));
+
+    const inUse = await remove(kiyas.id).expect(409);
+    expect(inUse.body).toMatchObject({
+      code: "TOPIC_IN_USE",
+      context: {
+        topicId: kiyas.id,
+        questions: [{ examId, examTitle: "Ara sınav", number: 1 }],
+      },
+    });
+
+    await remove(icma.id).expect(204);
+    const after = await draft(examId);
+    expect(after.version).toBe(5);
+    expect(after.topicIds).toEqual([kiyas.id]);
+    expect(after.courseTopics.map((t: { id: string }) => t.id)).toEqual([
+      kiyas.id,
+    ]);
+    expect((await remove(icma.id).expect(404)).body.code).toBe(
+      "TOPIC_NOT_FOUND"
+    );
+    const audit = await db()
+      .select({ action: auditLog.action, details: auditLog.details })
+      .from(auditLog)
+      .where(eq(auditLog.entityId, icma.id));
+    expect(audit.map((a) => a.action).sort()).toEqual([
+      "exam_topic.create",
+      "exam_topic.remove",
+    ]);
+    // Only the course team removes a topic.
+    await remove(kiyas.id).set("Authorization", as(CAST.TALEBE)).expect(403);
+  });
+
   it("asks exam.prepare on the course: a hoca and a nazır given it, not session.manage or a talebe", async () => {
     const examId = await newExam();
     for (const who of [

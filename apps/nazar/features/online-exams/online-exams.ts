@@ -48,6 +48,10 @@ export function onlineExamErrorKey(code: string): string {
       return "OnlineExams.locked";
     case "EXAM_NOT_PUBLISHED":
       return "OnlineExams.notPublished";
+    case "QUESTION_MODE_INVALID":
+      return "OnlineExams.modeInvalid";
+    case "VALIDATION_ERROR":
+      return "OnlineExams.pointsInvalid";
     case "AUTHZ_FORBIDDEN":
       return "Problems.actionForbidden";
     default:
@@ -86,3 +90,66 @@ export const READS_AGAIN = new Set([
   "EXAM_LOCKED",
   "EXAM_NOT_PUBLISHED",
 ]);
+
+export type AnswerModeValue = "SINGLE" | "MULTIPLE";
+export type ScoringValue = "ALL_OR_NOTHING" | "IN_SHARES";
+
+/**
+ * As the API's `modeFits`: check boxes (MULTIPLE) only with two correct
+ * options or more, and a scoring only with check boxes, where it is required.
+ * Radio buttons fit any number of correct options.
+ */
+export const modeFits = (
+  mode: AnswerModeValue,
+  scoring: ScoringValue | null,
+  correctCount: number
+): boolean =>
+  mode === "MULTIPLE"
+    ? correctCount >= 2 && scoring !== null
+    : scoring === null;
+
+/** The points of an exam, in hundredths: 100 points. */
+export const TOTAL_HUNDREDTHS = 10_000;
+
+/**
+ * As the API's `pointsFromText`: "12", "12,5" or "12.50" in hundredths; null
+ * when it is not a number with at most two decimals from 0.01 to 100.
+ */
+export const pointsFromText = (text: string): number | null => {
+  const m = /^([0-9]{1,3})(?:[.,]([0-9]{1,2}))?$/.exec(text.trim());
+  if (!m) return null;
+  const hundredths =
+    Number(m[1]) * 100 + (m[2] ? Number(m[2].padEnd(2, "0")) : 0);
+  return hundredths >= 1 && hundredths <= TOTAL_HUNDREDTHS ? hundredths : null;
+};
+
+/** Hundredths as the API takes points: "12.50". */
+export const pointsText = (hundredths: number): string =>
+  `${Math.floor(hundredths / 100)}.${String(hundredths % 100).padStart(2, "0")}`;
+
+/** The API's own points ("12.50", or null) in hundredths. */
+export const ownHundredthsOf = (points: string | null): number | null =>
+  points === null ? null : pointsFromText(points);
+
+/**
+ * As the API's `sharePoints` and `shareText`: every question's points in
+ * hundredths, its own or an equal share of what the own points leave of
+ * 100, the share rounded half up to two decimals.
+ */
+export function sharesOf(
+  questions: ReadonlyArray<{ key: string; own: number | null }>
+): Map<string, { hundredths: number; own: boolean }> {
+  const own = questions.reduce((sum, q) => sum + (q.own ?? 0), 0);
+  const sharing = questions.filter((q) => q.own === null).length;
+  const left = Math.max(TOTAL_HUNDREDTHS - own, 0);
+  const denominator = Math.max(sharing, 1);
+  const share = Math.floor((2 * left + denominator) / (2 * denominator));
+  return new Map(
+    questions.map((q) => [
+      q.key,
+      q.own === null
+        ? { hundredths: share, own: false }
+        : { hundredths: q.own, own: true },
+    ])
+  );
+}

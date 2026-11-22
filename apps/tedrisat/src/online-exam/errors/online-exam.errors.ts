@@ -76,6 +76,24 @@ export class TopicNotFoundError extends NotFoundError {
   }
 }
 
+/**
+ * A topic that questions carry is not deleted: they would lose it. The
+ * refusal names them, each by its exam and its number there.
+ */
+export class TopicInUseError extends ConflictError {
+  static readonly code = "TOPIC_IN_USE";
+  constructor(
+    topicId: string,
+    questions: Array<{ examId: string; examTitle: string; number: number }>
+  ) {
+    super(
+      TopicInUseError.code,
+      `${questions.length} questions carry topic ${topicId}`,
+      { topicId, questions }
+    );
+  }
+}
+
 /** A topic named in a write that is not the course's. */
 export class TopicNotOfCourseError extends BadRequestError {
   static readonly code = "TOPIC_NOT_FOUND";

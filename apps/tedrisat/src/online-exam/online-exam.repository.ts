@@ -26,6 +26,7 @@ import {
   OnlineExamNotFoundError,
   QuestionNotFoundError,
   TopicExistsError,
+  TopicInUseError,
   TopicNotFoundError,
   TopicNotOfCourseError,
   TopicNumberTakenError,
@@ -381,6 +382,126 @@ export class OnlineExamRepository {
     } catch (error) {
       throw this.topicConflict(error, name, input.number);
     }
+  }
+
+  /**
+   * Deletes a topic from the course's list, unless questions carry it
+   * (TOPIC_IN_USE, naming them). The exams that had picked it lose the pick,
+   * and their version moves on, as any change to an exam's topics does.
+   */
+  async removeTopic(
+    courseId: string,
+    topicId: string,
+    actorId: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [topic] = await tx
+        .select()
+        .from(courseExamTopics)
+        .where(
+          and(
+            eq(courseExamTopics.id, topicId),
+            eq(courseExamTopics.courseId, courseId)
+          )
+        )
+        .for("update");
+      if (!topic) throw new TopicNotFoundError(topicId);
+      // A question saved with the topic meanwhile takes a key-share lock on
+      // it for its foreign key: it waits for this lock, or it went first and
+      // is seen here.
+      const carriers = await tx
+        .select({
+          examId: examQuestions.examId,
+          examTitle: onlineExams.title,
+          position: examQuestions.position,
+          questionId: examQuestions.id,
+        })
+        .from(examQuestionTopics)
+        .innerJoin(
+          examQuestions,
+          eq(examQuestions.id, examQuestionTopics.questionId)
+        )
+        .innerJoin(onlineExams, eq(onlineExams.id, examQuestions.examId))
+        .where(eq(examQuestionTopics.topicId, topicId));
+      if (carriers.length > 0) {
+        const numbers = await this.questionNumbers(tx, [
+          ...new Set(carriers.map((c) => c.examId)),
+        ]);
+        throw new TopicInUseError(
+          topicId,
+          carriers
+            .map((c) => ({
+              examId: c.examId,
+              examTitle: c.examTitle,
+              number: numbers.get(c.questionId) ?? c.position + 1,
+            }))
+            .sort(
+              (a, b) =>
+                a.examTitle.localeCompare(b.examTitle, "tr") ||
+                a.number - b.number
+            )
+        );
+      }
+      const picks = await tx
+        .select({ examId: onlineExamTopics.examId })
+        .from(onlineExamTopics)
+        .where(eq(onlineExamTopics.topicId, topicId));
+      if (picks.length > 0) {
+        await tx
+          .update(onlineExams)
+          .set({
+            version: sql`${onlineExams.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(
+            inArray(
+              onlineExams.id,
+              picks.map((p) => p.examId)
+            )
+          );
+        await tx
+          .delete(onlineExamTopics)
+          .where(eq(onlineExamTopics.topicId, topicId));
+      }
+      await tx.delete(courseExamTopics).where(eq(courseExamTopics.id, topicId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "exam_topic.remove",
+        entity: "exam_topic",
+        entityId: topicId,
+        details: {
+          courseId,
+          number: topic.number,
+          name: topic.name,
+          unpicked: picks.length,
+        },
+      });
+    });
+  }
+
+  /** Each question's number in its exam (1 up, by position), for the exams named. */
+  private async questionNumbers(
+    tx: Tx,
+    examIds: string[]
+  ): Promise<Map<string, number>> {
+    const rows = await tx
+      .select({
+        id: examQuestions.id,
+        examId: examQuestions.examId,
+        position: examQuestions.position,
+      })
+      .from(examQuestions)
+      .where(inArray(examQuestions.examId, examIds))
+      .orderBy(asc(examQuestions.examId), asc(examQuestions.position));
+    const numbers = new Map<string, number>();
+    let exam = "";
+    let n = 0;
+    for (const row of rows) {
+      n = row.examId === exam ? n + 1 : 1;
+      exam = row.examId;
+      numbers.set(row.id, n);
+    }
+    return numbers;
   }
 
   /** A unique index that two concurrent writes both passed, as the refusal it stands for. */
