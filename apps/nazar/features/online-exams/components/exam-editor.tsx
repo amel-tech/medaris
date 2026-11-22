@@ -32,6 +32,7 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
+import { textProps } from "../arabic";
 import {
   type AnswerModeValue,
   lacksOf,
@@ -495,12 +496,15 @@ export function ExamEditor({
   }));
   const view = { ...draft, courseTopics: topics };
 
-  // What the page knows keeps the exam from being published: the questions
-  // as they now stand, and what only the server knows (the points total
-  // and the medrese's zeroth question) as it was read.
+  // What the page knows keeps the exam from being published: its length and
+  // the questions as they now stand, and what only the server knows (the
+  // points total and the zeroth question) as it was read.
   const problems: PublishProblemResponse[] = !publish
     ? []
     : [
+        ...(settings.durationMinutes === null
+          ? [{ kind: "NO_DURATION" as const }]
+          : []),
         ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
         ...numbered
           .filter((q) => q.lacks.length > 0)
@@ -607,7 +611,7 @@ export function ExamEditor({
         <PublishSection
           problems={problems}
           questionCount={numbered.length}
-          durationMinutes={draft.durationMinutes}
+          durationMinutes={settings.durationMinutes}
           timeZone={publish.timeZone}
           holding={editing !== null}
           sending={sending}
@@ -635,12 +639,18 @@ function SettingsSection({
 }) {
   const t = useTranslations("nazar");
   const [title, setTitle] = useState(settings.title);
-  const [minutes, setMinutes] = useState(String(settings.durationMinutes));
+  // No default length: blank until the team types it, and blank is sent as
+  // none (the owner, 22 Nov 2026: "sınav süresinin varsayılanı olmasın").
+  const [minutes, setMinutes] = useState(
+    settings.durationMinutes === null ? "" : String(settings.durationMinutes)
+  );
   const [instructions, setInstructions] = useState(settings.instructions ?? "");
   const [problem, setProblem] = useState<"title" | "minutes" | null>(null);
+  const blankMinutes = minutes.trim() === "";
   const typed: ExamSettings | null = (() => {
-    const durationMinutes = minutesFromText(minutes);
-    if (title.trim() === "" || durationMinutes === null) return null;
+    const durationMinutes = blankMinutes ? null : minutesFromText(minutes);
+    if (title.trim() === "") return null;
+    if (!blankMinutes && durationMinutes === null) return null;
     return {
       title: title.trim(),
       durationMinutes,
@@ -655,7 +665,9 @@ function SettingsSection({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (title.trim() === "") return setProblem("title");
-    if (minutesFromText(minutes) === null) return setProblem("minutes");
+    if (!blankMinutes && minutesFromText(minutes) === null) {
+      return setProblem("minutes");
+    }
     setProblem(null);
     if (typed && !unchanged) onSave(typed);
   };
@@ -889,7 +901,9 @@ function QuestionRow({
           ? `${t("OnlineExams.modeMultiple")} · ${
               question.scoring === "IN_SHARES"
                 ? t("OnlineExams.scoringShares")
-                : t("OnlineExams.scoringAll")
+                : question.scoring === "ANY_CORRECT"
+                  ? t("OnlineExams.scoringAny")
+                  : t("OnlineExams.scoringAll")
             }`
           : t("OnlineExams.modeSingle")}
         {share
@@ -900,15 +914,26 @@ function QuestionRow({
             }`
           : ""}
       </p>
-      <p className="mds-body" dir="auto">
-        {question.text || t("OnlineExams.noText")}
-      </p>
+      {question.text ? (
+        <p className="mds-body" {...textProps(question.text)}>
+          {question.text}
+        </p>
+      ) : (
+        <p className="mds-body">{t("OnlineExams.noText")}</p>
+      )}
       {question.options.length > 0 ? (
+        // The list stays left to right with its letter on the left; each
+        // option's text is its own run, and "Doğru" is never inside it.
         <ol className="mds-body-sm flex flex-col gap-1" type="A">
           {question.options.map((o) => (
-            <li key={o.id} dir="auto">
-              {o.text}
-              {o.correct ? ` · ${t("OnlineExams.correct")}` : ""}
+            <li key={o.id}>
+              <span {...textProps(o.text)}>{o.text}</span>
+              {o.correct ? (
+                <>
+                  {" "}
+                  <Badge variant="success">{t("OnlineExams.correct")}</Badge>
+                </>
+              ) : null}
             </li>
           ))}
         </ol>
@@ -1030,7 +1055,7 @@ function QuestionForm({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
-          dir="auto"
+          {...textProps(text)}
           maxLength={4000}
         />
       </Field>
@@ -1042,7 +1067,7 @@ function QuestionForm({
               aria-label={t("OnlineExams.optionLabel", { n: i + 1 })}
               value={o.text}
               onChange={(e) => setOption(i, { text: e.target.value })}
-              dir="auto"
+              {...textProps(o.text)}
               maxLength={1000}
               className="min-inline-0 flex-1"
             />
@@ -1101,6 +1126,11 @@ function QuestionForm({
               value: "IN_SHARES",
               label: t("OnlineExams.scoringShares"),
               description: t("OnlineExams.scoringSharesHelp"),
+            },
+            {
+              value: "ANY_CORRECT",
+              label: t("OnlineExams.scoringAny"),
+              description: t("OnlineExams.scoringAnyHelp"),
             },
           ]}
         />

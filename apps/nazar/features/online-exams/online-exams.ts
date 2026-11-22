@@ -92,7 +92,7 @@ export const READS_AGAIN = new Set([
 ]);
 
 export type AnswerModeValue = "SINGLE" | "MULTIPLE";
-export type ScoringValue = "ALL_OR_NOTHING" | "IN_SHARES";
+export type ScoringValue = "ALL_OR_NOTHING" | "IN_SHARES" | "ANY_CORRECT";
 
 /**
  * As the API's `modeFits`: check boxes (MULTIPLE) only with two correct

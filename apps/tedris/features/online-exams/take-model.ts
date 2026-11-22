@@ -82,3 +82,32 @@ export const takeErrorKey = (code: string | undefined): TakeErrorKey => {
       return "errorFailed";
   }
 };
+
+/** The steps of A− / A+ on the questions' text: 100, 115, 130 and 150 %. */
+export const TEXT_SCALES = [1, 1.15, 1.3, 1.5] as const;
+
+const textScaleKey = (lessonId: string) => `exam-text-scale:${lessonId}`;
+
+/** The step this exam's text was left at in this tab, 0 when none. */
+export const readTextScale = (
+  lessonId: string,
+  storage: Pick<Storage, "getItem">
+): number => {
+  const step = Number(storage.getItem(textScaleKey(lessonId)));
+  return Number.isInteger(step) && step >= 0 && step < TEXT_SCALES.length
+    ? step
+    : 0;
+};
+
+/** Keeps the step for this exam, so a reload or a resume finds it. */
+export const writeTextScale = (
+  lessonId: string,
+  step: number,
+  storage: Pick<Storage, "setItem">
+): void => {
+  try {
+    storage.setItem(textScaleKey(lessonId), String(step));
+  } catch {
+    // A full or refused storage only loses the step on the next load.
+  }
+};

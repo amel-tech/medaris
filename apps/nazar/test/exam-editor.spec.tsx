@@ -407,6 +407,40 @@ describe("the exam editor (MDRS-299)", () => {
     expect(actions.setExamQuestionPoints).not.toHaveBeenCalled();
   });
 
+  it("offers check boxes where any correct one is enough, and sends it", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Hangileri kıyasın rüknüdür?");
+    await typeInto(option(root, 1), "Asıl");
+    await typeInto(option(root, 2), "Fer");
+    await typeInto(option(root, 3), "Rivayet");
+    await click(control(root, "checkbox", "Doğru", 0));
+    await click(control(root, "checkbox", "Doğru", 1));
+    await click(control(root, "radio", "Çoklu seçim"));
+    await click(control(root, "radio", "Doğrulardan biri yeterli"));
+    await typeInto(topicNumbers(root), "3");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({
+        answerMode: "MULTIPLE",
+        scoring: "ANY_CORRECT",
+      })
+    );
+    expect(root.textContent).toContain(
+      "Çoklu seçim · Doğrulardan biri yeterli"
+    );
+  });
+
   it("shows own points at once, and sets them after the save with the version the save gave", async () => {
     actions.addExamQuestion.mockReturnValue(
       later({ success: true, data: { version: 2, question: { id: "q1" } } })
@@ -446,6 +480,60 @@ describe("the exam editor (MDRS-299)", () => {
     await settle();
     expect(root.textContent).toContain("10 puan · kendi puanı");
     expect(root.textContent).not.toContain("Kaydediliyor…");
+  });
+
+  it("puts a question back into the equal share when its own points are cleared", async () => {
+    const withOwn = {
+      ...draft,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "Soru",
+          options: [
+            { id: "o1", text: "Bir", correct: true },
+            { id: "o2", text: "İki", correct: false },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: "5.00",
+          points: "5.00",
+          complete: true,
+          lacks: [],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => {
+      const saved = echo(id, body, 2);
+      saved.data.question.ownPoints = "5.00" as unknown as null;
+      return saved;
+    });
+    actions.setExamQuestionPoints.mockResolvedValue({
+      success: true,
+      data: {
+        questions: [{ questionId: "q1", points: "100.00", own: false }],
+        total: "100.00",
+        version: 3,
+      },
+    });
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={withOwn} />)
+    );
+    await click(button(root, "Düzenle"));
+    expect(field(root, "Kendi puanı").value).toBe("5");
+    await typeInto(field(root, "Kendi puanı"), "");
+    await click(button(root, "Kaydet"));
+    await settle();
+    await settle();
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      2,
+      null
+    );
+    expect(root.textContent).not.toContain("Kaydedilemedi");
+    expect(root.textContent).toContain("100 puan · eşit pay");
   });
 
   it("keeps the typed points when they do not fit, and says how many are left", async () => {
@@ -725,5 +813,78 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).toContain(
       "Süre sıfırdan büyük bir tam sayı olmalı."
     );
+  });
+
+  it("starts a new exam's length blank, and sends a cleared length as none", async () => {
+    let version = 1;
+    actions.saveExamSettings.mockImplementation(async () => ({
+      success: true,
+      data: { version: ++version },
+    }));
+    const fresh = {
+      ...draft,
+      durationMinutes: null,
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={fresh} />));
+    expect((settingsField("Süre (dakika)") as HTMLInputElement).value).toBe("");
+    await typeInto(settingsField("Süre (dakika)"), "40");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 40 })
+    );
+    await typeInto(settingsField("Süre (dakika)"), "");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: null })
+    );
+    expect(root.textContent).not.toContain(
+      "Süre sıfırdan büyük bir tam sayı olmalı."
+    );
+  });
+
+  it("draws an Arabic option as its own Arabic run, with Doğru beside it", async () => {
+    const arabic = {
+      ...draft,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "Aşağıdakilerden hangisinde haber şibh-i cümle gelmiştir?",
+          options: [
+            { id: "o1", text: "زَيْدٌ ذَهَبَ إِلَى الْبَيْتِ", correct: false },
+            { id: "o2", text: "زَيْدٌ فِي الدَّارِ", correct: true },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: null,
+          points: "100.00",
+          complete: true,
+          lacks: [],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={arabic} />)
+    );
+    const items = [...root.querySelectorAll("ol[type=A] > li")];
+    expect(items).toHaveLength(2);
+    const [, second] = items as HTMLElement[];
+    expect(second.getAttribute("dir")).toBeNull();
+    const run = second.querySelector("[lang=ar]") as HTMLElement;
+    expect(run.getAttribute("dir")).toBe("rtl");
+    expect(run.textContent).toBe("زَيْدٌ فِي الدَّارِ");
+    expect(run.textContent).not.toContain("Doğru");
+    expect(second.textContent).toContain("Doğru");
+    // The Latin question text is left to the browser.
+    const question = [...root.querySelectorAll("p")].find((p) =>
+      p.textContent?.startsWith("Aşağıdakilerden")
+    ) as HTMLElement;
+    expect(question.getAttribute("dir")).toBe("auto");
+    expect(question.getAttribute("lang")).toBeNull();
   });
 });

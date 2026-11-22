@@ -1,4 +1,5 @@
 import type { OnlineExamSummaryResponse } from "@medaris/services/tedrisat";
+import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
@@ -12,11 +13,15 @@ import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
+import { CourseZerothSection } from "./course-zeroth-section";
 import { NewExamForm } from "./new-exam-form";
 
-/** "Sınavlar" of a course (MDRS-299): its online exams, and "Yeni sınav". Opens with `exam.prepare`. */
+/**
+ * "Sınavlar" of a course (MDRS-299): its online exams, "Yeni sınav", and the
+ * zeroth question its exams ask. Opens with `exam.prepare`.
+ */
 export async function ExamsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, exams, permissions] = await Promise.all([
+  const [t, locale, me, exams, permissions, zeroth] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
@@ -24,6 +29,9 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
       api.onlineExams.listOnlineExams({ id: courseId })
     ),
     readCoursePermissions(courseId),
+    readOnce("the course's zeroth question", (api) =>
+      api.onlineExams.getCourseZerothQuestion({ id: courseId })
+    ),
   ]);
   const gate = pageGate([exams], permissions, PAGE_CODES.exams);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -103,6 +111,14 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
                 </li>
               ))}
             </ul>
+          )}
+          {/* A side read: if it fails, its place says so and the list stays. */}
+          {zeroth.status === "ok" ? (
+            <CourseZerothSection courseId={courseId} initial={zeroth.data} />
+          ) : (
+            <Alert tone="error" title={t("OnlineExams.zeroth.title")}>
+              <p>{t("OnlineExams.zeroth.loadFailed")}</p>
+            </Alert>
           )}
         </>
       )}

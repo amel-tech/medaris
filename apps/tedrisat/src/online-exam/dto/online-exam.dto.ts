@@ -68,16 +68,18 @@ export class UpdateOnlineExamDto extends VersionedDto {
   title?: string;
 
   @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
     minimum: 1,
     maximum: INTEGER_MAX,
     description:
-      '"Süre (dakika)"; no upper bound but the column\'s (the owner: "Sınır yok").',
+      '"Süre (dakika)"; null clears it. No default and no upper bound but the column\'s (the owner: "Sınır yok"); an exam without it is not published.',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(INTEGER_MAX)
-  durationMinutes?: number;
+  durationMinutes?: number | null;
 
   @ApiPropertyOptional({
     type: String,
@@ -315,11 +317,11 @@ export class ExamQuestionResponse {
 /** One thing that keeps the exam from being published. */
 export class PublishProblemResponse {
   @ApiProperty({
-    enum: ["NO_QUESTION", "QUESTION", "POINTS", "NO_ZEROTH"],
+    enum: ["NO_DURATION", "NO_QUESTION", "QUESTION", "POINTS", "NO_ZEROTH"],
     description:
-      "NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question.",
+      "NO_DURATION: its length is not typed; NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: neither the course nor its madrasah has a zeroth question.",
   })
-  kind!: "NO_QUESTION" | "QUESTION" | "POINTS" | "NO_ZEROTH";
+  kind!: "NO_DURATION" | "NO_QUESTION" | "QUESTION" | "POINTS" | "NO_ZEROTH";
   @ApiPropertyOptional() number?: number;
   @ApiPropertyOptional({
     type: [String],
@@ -333,7 +335,12 @@ export class OnlineExamDraftResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty({ format: "uuid" }) courseId!: string;
   @ApiProperty() title!: string;
-  @ApiProperty() durationMinutes!: number;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: '"Süre (dakika)"; null until the team types it.',
+  })
+  durationMinutes!: number | null;
   @ApiProperty({ type: String, nullable: true }) instructions!: string | null;
   @ApiProperty({
     description:

@@ -128,8 +128,9 @@ describe("online exams, preparation (e2e)", () => {
     ]);
 
     const first = await draft(examId);
+    // No default length: the team types it (22 Nov 2026).
     expect(first).toMatchObject({
-      durationMinutes: 60,
+      durationMinutes: null,
       questions: [],
       status: "DRAFT",
       version: 1,
@@ -237,6 +238,23 @@ describe("online exams, preparation (e2e)", () => {
     ).toBe("TOPIC_NOT_FOUND");
     // Nothing of the refused writes was kept.
     expect((await draft(examId)).version).toBe(2);
+
+    // Check boxes with two correct options, any one of them enough (the
+    // owner, 22 Nov 2026).
+    const any = await save({
+      version: 2,
+      options: [
+        { text: "A", correct: true },
+        { text: "B", correct: true },
+        { text: "C", correct: false },
+      ],
+      answerMode: "MULTIPLE",
+      scoring: "ANY_CORRECT",
+    }).expect(200);
+    expect(any.body.question).toMatchObject({
+      answerMode: "MULTIPLE",
+      scoring: "ANY_CORRECT",
+    });
   });
 
   it("shares the points left exactly, and refuses own points past 100", async () => {
@@ -270,6 +288,20 @@ describe("online exams, preparation (e2e)", () => {
       code: "POINTS_OVER_TOTAL",
       context: { pointsLeft: "60.00" },
     });
+    // Clearing a question's own points puts it back into the equal share.
+    const cleared = await points(questionIds[0], null).expect(200);
+    version = cleared.body.version;
+    expect(
+      cleared.body.questions.map((q: { points: string; own: boolean }) => [
+        q.points,
+        q.own,
+      ])
+    ).toEqual([
+      ["33.33", false],
+      ["33.33", false],
+      ["33.33", false],
+    ]);
+    version = (await points(questionIds[0], "40").expect(200)).body.version;
     const removed = await http()
       .delete(
         `/online-exams/${examId}/questions/${questionIds[0]}?version=${version}`

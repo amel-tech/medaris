@@ -130,7 +130,9 @@ export interface ScoredQuestion {
  * - MULTIPLE, all or nothing: all of it when exactly the correct options are
  *   marked;
  * - MULTIPLE, in shares: each correct mark an equal share, each wrong mark a
- *   share off, never below 0.
+ *   share off, never below 0;
+ * - MULTIPLE, any correct: all of it when at least one correct option is
+ *   marked and no wrong one; marking every box would otherwise always score.
  */
 export const earnedPart = (
   q: ScoredQuestion,
@@ -148,6 +150,9 @@ export const earnedPart = (
   }
   if (q.scoring === Scoring.IN_SHARES) {
     return { numerator: Math.max(0, right - wrong), denominator: correct.size };
+  }
+  if (q.scoring === Scoring.ANY_CORRECT) {
+    return { numerator: right >= 1 && wrong === 0 ? 1 : 0, denominator: 1 };
   }
   return {
     numerator: wrong === 0 && right === correct.size ? 1 : 0,

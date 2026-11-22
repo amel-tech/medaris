@@ -56,6 +56,8 @@ export const COURSE_TREE_TABLES = [
   "online_exam_topics",
   "online_exams",
   "course_exam_topics",
+  "course_zeroth_options",
+  "course_zeroth_questions",
   "partner_enrollment_links",
   "partner_course_codes",
   "enrollments",
