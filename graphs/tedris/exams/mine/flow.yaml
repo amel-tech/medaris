@@ -53,7 +53,7 @@ states:
   opening:
     title: Sınavlarım is opened
     description: >-
-      The action listMyExams, GET /me/exams, read twice: the open and coming exams (when=upcoming) and the past ones (when=past). Only
+      The action listMyExams, GET /me/exams, read once: the open and coming exams first, then the past ones (when=all, the default). Only
       the exams of courses where the talebe holds an ENROLLED or COMPLETED seat come back, of every format; a draft online exam is never
       among them, and a course the talebe left takes its exams with it.
     invoke: { action: listMyExams }

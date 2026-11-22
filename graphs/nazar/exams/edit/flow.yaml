@@ -8,7 +8,9 @@
 # plan's own words); it is not called "Çevrimiçi", which the plan already says of an exam's place (domain/planned-exams.yaml).
 # The page is proposed at /ders/<courseId>/sinav/<lessonId>, reached from Sınavlarım (nazar.exams.mine) and from the exam celse.
 # Every change is saved as it is made (updateOnlineExam, saveExamQuestion, setExamQuestionPoints ...), each write naming the version
-# it read, so two people editing the same exam never overwrite each other unseen (EXAM_STALE).
+# the page holds, so two people editing the same exam never overwrite each other unseen (EXAM_STALE). The page holds the version of
+# getOnlineExamDraft, then of each write's answer: every write answers the exam's new version, so the page's own writes follow on
+# without reading the exam again.
 #
 # The owner's rules this flow carries (21 Nov 2026, his words):
 #   - "çoktan seçmeli"

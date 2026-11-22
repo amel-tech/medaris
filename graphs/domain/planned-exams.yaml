@@ -82,7 +82,7 @@ entities:
       latestStartAt: { type: [string, "null"], format: date-time, note: "until when a talebe may start; set at publication, never before the earliest start" }
       publishedAt: { type: [string, "null"], format: date-time, note: "null while it is a draft" }
       closedEarlyAt: { type: [string, "null"], format: date-time }
-      version: { type: integer, minimum: 1, note: "bumped by every write of the exam, its questions and its points; a write that names an older version is refused (EXAM_STALE)" }
+      version: { type: integer, minimum: 1, note: "bumped by every write of the exam, its questions and its points; a write that names an older version is refused (EXAM_STALE). Every write's answer carries the new version, and the page names it in its next write" }
       createdBy: { type: string, format: uuid, note: "Keycloak sub" }
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
@@ -217,7 +217,7 @@ actions:
       type: object
       additionalProperties: false
       properties:
-        when: { enum: [upcoming, past], default: upcoming }
+        when: { enum: [all, upcoming, past], default: all, description: "all: upcoming first, then past, as the page shows them; upcoming or past for one of the two" }
         courseId: { type: string, format: uuid }
     result:
       status: 200
@@ -438,11 +438,19 @@ actions:
       when the option chosen is a correct one; a MULTIPLE question all or nothing, or in shares (each correct mark an equal share, each
       wrong mark a share off, never below 0). The score is rounded once to two decimals and written to the talebe's ExamResult, which
       no talebe reads before the release.
-    needs: the caller's own attempt in progress
+    needs: the caller's own attempt in progress, held by the calling page
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64, description: "so that a page the attempt has moved away from (resumeExamAttempt) cannot end it" }
     result: { status: 200, returns: ExamAttempt }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: another tab or device has opened the exam since; nothing ends, and this page says it is open elsewhere" }
       ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress (finished meanwhile by the time or by an early close: the page reads it as finished)" }
+      VALIDATION_ERROR: { status: 400, note: "holderId missing or out of bounds" }
     sideEffects:
       - "sets ExamAttempt FINISHED with finishedAt, finishedBy TALEBE and score"
       - "upserts the talebe's ExamResult with the score (Değerlendirme, Notlarım)"
@@ -506,7 +514,7 @@ actions:
       type: object
       additionalProperties: false
       properties:
-        when: { enum: [upcoming, past], default: upcoming }
+        when: { enum: [all, upcoming, past], default: all, description: "all: upcoming first, then past, as the page shows them; upcoming or past for one of the two" }
         status: { enum: [DRAFT, SCHEDULED, OPEN, CLOSED, RELEASED] }
         courseId: { type: string, format: uuid }
     result:
@@ -688,7 +696,13 @@ actions:
       required: [version]
       properties:
         version: { type: integer }
-    result: { status: 201, returns: ExamQuestion }
+    result:
+      status: 201
+      type: object
+      required: [question, version]
+      properties:
+        question: { type: object, description: "ExamQuestion with its five empty ExamOption rows" }
+        version: { type: integer, description: "OnlineExam.version after this write, which the next write names" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
@@ -696,7 +710,7 @@ actions:
       EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
       EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
     sideEffects:
-      - "creates an incomplete ExamQuestion; the points are shared again over the questions with none of their own"
+      - "creates an incomplete ExamQuestion; the points are shared again over the questions with none of their own; bumps the version"
 
   saveExamQuestion:
     planned: "MDRS-299: online exams, no code yet"
@@ -718,7 +732,13 @@ actions:
         answerMode: { enum: [SINGLE, MULTIPLE] }
         scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, null] }
         topicIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true }
-    result: { status: 200, returns: ExamQuestion }
+    result:
+      status: 200
+      type: object
+      required: [question, version]
+      properties:
+        question: { type: object, description: "ExamQuestion with its ExamOption rows, complete and lacks" }
+        version: { type: integer, description: "OnlineExam.version after this write, which the next write names" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
@@ -742,7 +762,12 @@ actions:
       required: [version]
       properties:
         version: { type: integer }
-    result: { status: 200, type: boolean, const: true }
+    result:
+      status: 200
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, description: "OnlineExam.version after this write, which the next write names" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
@@ -750,7 +775,7 @@ actions:
       EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
       QUESTION_NOT_FOUND: { status: 404, note: "proposed code: removed meanwhile" }
     sideEffects:
-      - "deletes the question and its options; its points, if it had its own, go back to the share; audit:exam_question.remove (proposed key)"
+      - "deletes the question and its options; its points, if it had its own, go back to the share; bumps the version; audit:exam_question.remove (proposed key)"
 
   setExamQuestionPoints:
     planned: "MDRS-299: online exams, no code yet"
@@ -768,7 +793,15 @@ actions:
       properties:
         version: { type: integer }
         points: { type: [string, "null"], pattern: "^[0-9]{1,3}([.,][0-9]{1,2})?$" }
-    result: { status: 200, type: object, description: "every question's points after the change: own or share, two decimals, and the total" }
+    result:
+      status: 200
+      type: object
+      required: [questions, total, version]
+      description: "every question's points after the change: own or share, two decimals, and the total"
+      properties:
+        questions: { type: array, items: { type: object, required: [questionId, points, own], properties: { questionId: { type: string, format: uuid }, points: { type: string }, own: { type: boolean } } } }
+        total: { type: string }
+        version: { type: integer, description: "OnlineExam.version after this write, which the next write names" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }

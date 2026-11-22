@@ -140,6 +140,12 @@ context:
     say:
       talebe: the talebe ended the exam with Bitir
       time: the time ran out, or the team closed the exam early
+  pending:
+    values: [none, choice]
+    initial: none
+    say:
+      none: every choice made on this page has reached the server, or was refused
+      choice: a choice was made while the connection was gone; the page keeps it and sends it when the connection is back
 guards:
   notYetOpen: "window == 'before'"
   isClosed: "window == 'closed' and attempt != 'inProgress'"
@@ -150,18 +156,21 @@ guards:
   lastWithSkipped: "position == 'last' and skipped == 'some'"
   notLastFive: "clock == 'running'"
   hasInstructions: "instructions == 'some'"
+  hasPending: "pending == 'choice'"
 effects:
   zerothAnswered: { set: { zeroth: answered, notice: none } }
   moveOn: { havoc: [position, mode], set: { notice: none } }
   markSkipped: { set: { skipped: some } }
   toFirstSkipped: { set: { position: inside, notice: skippedFollow } }
   lastFiveMinutes: { set: { clock: lastFive } }
-  startOver: { set: { skipped: none, position: inside, clock: running, notice: none } }
+  startOver: { set: { skipped: none, position: inside, clock: running, notice: none, pending: none } }
   resumedNotice: { set: { notice: resumed } }
   savedNotice: { set: { notice: saved } }
   notSavedNotice: { set: { notice: notSaved } }
   startFailedNotice: { set: { notice: startFailed } }
   byTime: { set: { endedBy: time } }
+  keepChoice: { set: { pending: choice } }
+  choiceSent: { set: { pending: none } }
 failures:
   reading:
     from: getExamBriefing
@@ -195,6 +204,7 @@ failures:
     offline: [network, timeout, 5xx]
   finishing:
     from: finishExamAttempt
+    elsewhere: [ATTEMPT_HELD_ELSEWHERE]
     ended: [ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
 # The main story: a talebe opens an open exam, answers the zeroth question, starts, answers a question, goes on, and finishes.
@@ -275,6 +285,7 @@ states:
       until the attempt starts. The options stay where they are while the call runs.
     invoke: { action: answerZerothQuestion }
     on:
+      ANSWER_ZEROTH: { target: savingZeroth, say: "they choose another option before the answer comes: the new choice is sent, and the last call wins" }
       DONE: { target: briefing, effect: [zerothAnswered], say: "the answer is saved and Sınava başla turns on" }
       FAIL.closed: { target: closed, say: "the latest start passed meanwhile" }
       FAIL.other: { target: briefing, effect: [notSavedNotice], say: "the answer could not be saved; the page says so and keeps the start off" }
@@ -296,10 +307,14 @@ states:
     description: >-
       The action resumeExamAttempt, POST /lessons/{id}/online-exam/attempt/resume: the same order of questions and options, every
       answer that was saved, the question the talebe was on, and the time that was left when the connection was lost. This page holds
-      the attempt from now on, and the place that held it before is told on its next call. The page says the exam was resumed.
+      the attempt from now on, and the place that held it before is told on its next call. The page says the exam was resumed. The
+      resume writes no answer: a choice the page kept while the connection was gone is sent next, with saveExamAnswer, and is shown
+      as saved only when the server has it.
     invoke: { action: resumeExamAttempt }
     on:
-      DONE: { target: question, effect: [resumedNotice], say: "the question they were on is shown, with the time left" }
+      DONE:
+        - { guard: hasPending, target: saving, effect: [resumedNotice], say: "the choice kept while the connection was gone is sent now" }
+        - { target: question, effect: [resumedNotice], say: "the question they were on is shown, with the time left" }
       FAIL.ended: { target: timeUp, say: "the attempt ended meanwhile, by the time or by an early close" }
       FAIL.gone: notFound
       FAIL.offline: { target: offline, say: "the connection is still gone" }
@@ -332,15 +347,17 @@ states:
     title: Save the answer
     description: >-
       The action saveExamAnswer, PUT /lessons/{id}/online-exam/attempt/answers/{questionId}, with the options chosen and the question
-      shown; the last call wins. The question stays on the screen and the talebe can go on choosing. Nothing is shown as saved before
-      the server answers.
+      shown; the last call wins. The question stays on the screen and the talebe can go on choosing: another choice is sent at once.
+      Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir wait for the answer (disabled while it runs), so the exam never moves on
+      or ends before the last choice is saved. Nothing is shown as saved before the server answers.
     invoke: { action: saveExamAnswer }
     on:
-      DONE: { target: question, effect: [savedNotice], say: "the question says its answer is saved" }
-      FAIL.elsewhere: { target: elsewhere, say: "another tab or device has opened the exam since" }
-      FAIL.ended: { target: timeUp, say: "the exam ended before the answer came: the answer is refused" }
-      FAIL.offline: { target: offline, say: "the connection is gone: the choice is kept and sent when it is back" }
-      FAIL.other: { target: question, effect: [notSavedNotice], say: "the answer was refused; the question says it is not saved" }
+      CHOOSE: { target: saving, say: "they choose again before the answer comes: the new choice is sent, and the last call wins" }
+      DONE: { target: question, effect: [savedNotice, choiceSent], say: "the question says its answer is saved" }
+      FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
+      FAIL.ended: { target: timeUp, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }
+      FAIL.offline: { target: offline, effect: [keepChoice], say: "the connection is gone: the choice is kept and sent when it is back" }
+      FAIL.other: { target: question, effect: [notSavedNotice, choiceSent], say: "the answer was refused; the question says it is not saved" }
   skippedTurn:
     title: The skipped questions come back
     description: >-
@@ -400,11 +417,13 @@ states:
   finishing:
     title: End the attempt
     description: >-
-      The action finishExamAttempt, POST /lessons/{id}/online-exam/attempt/finish: the attempt ends with the answers saved so far and
-      the server scores it; no talebe reads the score before the team releases the results. The button is busy while the call runs.
+      The action finishExamAttempt, POST /lessons/{id}/online-exam/attempt/finish, with this page's holderId: the attempt ends with the
+      answers saved so far and the server scores it; no talebe reads the score before the team releases the results. A page the
+      attempt has moved away from cannot end it. The button is busy while the call runs.
     invoke: { action: finishExamAttempt }
     on:
       DONE: { target: finished, say: "the exam is handed in" }
+      FAIL.elsewhere: { target: elsewhere, say: "another tab or device has opened the exam since: nothing ends from this page" }
       FAIL.ended: { target: timeUp, say: "it had ended meanwhile, by the time or by an early close" }
       FAIL.offline: { target: offline, say: "the connection is gone: the attempt is still in progress, and Bitir can be pressed again" }
   timeUp:

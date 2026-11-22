@@ -104,14 +104,14 @@ nodes:
   savingLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saving }, in: [saving] }
   savedLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saved }, in: [question], when: "notice == 'saved'" } # only once the server holds it
   notSavedLine: { type: alert, component: Text, role: alert, text: { key: planned.Exams.notSaved }, in: [question], when: "notice == 'notSaved'" }
-  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.previous }, in: [question, saving], emits: PREVIOUS }
-  skipButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.skip }, in: [question, saving], emits: SKIP }
-  nextButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.next }, in: [question, saving], emits: NEXT }
-  finishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.finish }, in: [question, saving], emits: FINISH } # apart from the three above, always there
+  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.previous }, in: [question, saving], disabledIn: [saving], emits: PREVIOUS }
+  skipButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.skip }, in: [question, saving], disabledIn: [saving], emits: SKIP }
+  nextButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.next }, in: [question, saving], disabledIn: [saving], emits: NEXT }
+  finishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.finish }, in: [question, saving], disabledIn: [saving], emits: FINISH } # apart from the three above, always there
 
   # --- Sorular, the question list --------------------------------------------------------------------------------------------------------
   questionList: { type: list, component: List, role: navigation, name: { key: planned.Exams.questionsTitle }, in: [question, saving] } # beside the question; behind a button on a phone (rule list-on-a-phone)
-  questionListItem: { type: action, component: Button, role: button, name: { key: planned.Exams.listItemLabel, params: { number: row.number, state: row.state } }, text: { key: composed.Exams.number, params: { number: row.number } }, in: [question, saving], repeat: attempt.questions, emits: JUMP } # the one shown has aria-current; its state is said in words, not by colour alone
+  questionListItem: { type: action, component: Button, role: button, name: { key: planned.Exams.listItemLabel, params: { number: row.number, state: row.state } }, text: { key: composed.Exams.number, params: { number: row.number } }, in: [question, saving], repeat: attempt.questions, disabledIn: [saving], emits: JUMP } # the one shown has aria-current; its state is said in words, not by colour alone
   questionListState: { type: text, component: Text, text: { oneOf: [planned.Exams.stateAnswered, planned.Exams.stateSkipped, planned.Exams.stateUnseen] }, in: [question, saving], repeat: attempt.questions }
 
   # --- the connection, another place, a switch -------------------------------------------------------------------------------------------
