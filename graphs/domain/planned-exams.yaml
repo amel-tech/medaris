@@ -58,16 +58,17 @@ entities:
   CourseTopic: # one topic of a course's exams: a short name, kept by the course and picked by its exams
     planned: "MDRS-299: online exams, no code yet"
     key: [id]
-    required: [id, courseId, name, createdAt, updatedAt]
+    required: [id, courseId, number, name, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
       courseId: { type: string, format: uuid, references: Course }
+      number: { type: integer, minimum: 1, maximum: 999, note: "the topic's number in the course, shown before its name (\"3. Kıyas\") and typed to pick it (the owner, 22 Nov 2026: \"Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin kolayca\"); unique in the course; a new topic takes the next free number unless the team gives one, such as its book's chapter, and the team may change it" }
       name: { type: string, minLength: 1, maxLength: 60, note: "one to three words; unique in the course without regard to case (Turkish casing); a rename is the course's, so every exam and question that carries it reads the new name" }
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
     lifecycle:
       - "none -> listed: the team types a topic not yet on the list while it picks an exam's topics (createCourseTopic)"
-      - "listed -> listed: the team renames it, for the whole course (renameCourseTopic)"
+      - "listed -> listed: the team renames or renumbers it, for the whole course (renameCourseTopic)"
 
   OnlineExam: # the online part of a LessonExam whose format is MULTIPLE_CHOICE: its settings, its zeroth question and where it stands
     planned: "MDRS-299: online exams, no code yet"
@@ -658,12 +659,14 @@ actions:
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 60 }
+        number: { type: integer, minimum: 1, maximum: 999, description: "left out, the next free number of the course" }
     result: { status: 201, returns: CourseTopic }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the course" }
       TOPIC_TOO_LONG: { status: 400, note: "proposed code: more than three words" }
       TOPIC_EXISTS: { status: 409, note: "proposed code: the course has a topic of that name, whatever its case" }
+      TOPIC_NUMBER_TAKEN: { status: 409, note: "proposed code: another topic of the course has that number" }
       VALIDATION_ERROR: { status: 400, note: "an empty name or an unknown property" }
     sideEffects:
       - "creates the CourseTopic; audit:exam_topic.create (proposed key)"
@@ -671,23 +674,25 @@ actions:
   renameCourseTopic:
     planned: "MDRS-299: online exams, no code yet"
     route: PATCH /courses/{id}/exam-topics/{topicId}
-    summary: Rename a topic, for the whole course
+    summary: Rename or renumber a topic, for the whole course
     needs: exam.prepare on the course
     body:
       type: object
       additionalProperties: false
-      required: [name]
+      minProperties: 1
       properties:
         name: { type: string, minLength: 1, maxLength: 60 }
+        number: { type: integer, minimum: 1, maximum: 999 }
     result: { status: 200, returns: CourseTopic }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the course" }
       TOPIC_TOO_LONG: { status: 400, note: "proposed code: more than three words" }
       TOPIC_EXISTS: { status: 409, note: "proposed code: another topic of the course has that name" }
+      TOPIC_NUMBER_TAKEN: { status: 409, note: "proposed code: another topic of the course has that number" }
       TOPIC_NOT_FOUND: { status: 404, note: "proposed code: no such topic in the course" }
     sideEffects:
-      - "renames it in every exam and question that carries it; audit:exam_topic.rename (proposed key)"
+      - "renames or renumbers it in every exam and question that carries it; audit:exam_topic.rename (proposed key)"
 
   addExamQuestion:
     planned: "MDRS-299: online exams, no code yet"
@@ -749,11 +754,11 @@ actions:
       EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
       EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
       QUESTION_MODE_INVALID: { status: 400, note: "proposed code: MULTIPLE with fewer than two correct options, or a scoring without MULTIPLE" }
-      TOPIC_NOT_FOUND: { status: 400, note: "proposed code: a topic the exam has not picked" }
+      TOPIC_NOT_FOUND: { status: 400, note: "proposed code: a topic that is not the course's" }
       QUESTION_NOT_FOUND: { status: 404, note: "proposed code: removed meanwhile" }
       VALIDATION_ERROR: { status: 400, note: "a malformed property" }
     sideEffects:
-      - "replaces the question's options; bumps the version; audit:exam_question.save (proposed key)"
+      - "replaces the question's options; a topic of the course that the exam has not picked yet is picked for it too (a number typed in the question form); bumps the version; audit:exam_question.save (proposed key)"
 
   removeExamQuestion:
     planned: "MDRS-299: online exams, no code yet"
