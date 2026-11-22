@@ -595,6 +595,7 @@ states:
       FAIL.already: { guard: "cancelAnswer == 'already'", target: confirmCancel, effect: [alreadyToast], source: apps/nizam/features/courses/components/sessions-view.tsx:271, say: "the error toast says the celse is cancelled already; the dialog stays open and the row still has its buttons" }
       FAIL.forbidden: { guard: "cancelAnswer == 'forbidden'", target: confirmCancel, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:271, say: "the error toast says they have no authority for this" }
       FAIL.failed: { guard: "cancelAnswer == 'failed'", target: confirmCancel, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:271, say: "the error toast says it could not be completed" }
+      CANCEL: { target: cancelling, source: apps/nizam/features/courses/components/sessions-view.tsx:703, say: "they press Vazgeç, the close icon or Esc while the cancel runs: nothing happens and nothing says so, the cancel goes on (F-C-course-a-26)" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:260
 
   cancelledShown:

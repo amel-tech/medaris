@@ -539,6 +539,8 @@ states:
     on:
       DONE: { guard: "not statusRefused", target: backToPage, effect: [drafted], say: "the API answered 200: the question closes, toast \"Ders taslağa çekildi\", the page is read again and the card says Taslak", source: apps/nizam/features/courses/components/course-settings-page.tsx:179 }
       FAIL.other: { guard: statusRefused, target: asking, effect: [toastGeneric], say: "the course is gone: the question stays open with 'Ayarlar kaydedilemedi' and the generic sentence", source: apps/nizam/features/courses/components/course-settings-page.tsx:175 }
+      CANCEL: { target: drafting, source: apps/nizam/features/courses/components/course-settings-page.tsx:426, say: "they press Vazgeç, or Esc, while the status is written: nothing happens, the change goes on (`if (!publishBusy)`, SETPUB-6)" }
+      CLOSE: { target: drafting, source: apps/nizam/features/courses/components/course-settings-page.tsx:426, say: "they press the close icon: nothing happens, the change goes on" }
     source: apps/nizam/features/courses/components/course-settings-page.tsx:170
 
   publishing:
@@ -591,6 +593,8 @@ states:
       DONE: { guard: "not hideRefused and not settledWorld", target: dersler_opened, say: "the course is hidden: toast 'Ders gizlendi', and the person goes to the list of courses", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:52 }
       FAIL.settled: { guard: settledWorld, target: dersler_opened, say: "409 COURSE_ALREADY_HIDDEN: the same as done: the same toast and the same list", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42 }
       FAIL.other: { guard: hideRefused, target: confirmingHide, effect: [toastHideFailed], say: "any other refusal: 'Ders gizlenemedi' and the question stays open", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46 }
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press Vazgeç, or Esc, while the hide runs: nothing happens, the hide goes on (onOpenChange is ignored while saving, SETPUB-6)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press the close icon: nothing happens, the hide goes on" }
     source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
 
   dersler_opened:

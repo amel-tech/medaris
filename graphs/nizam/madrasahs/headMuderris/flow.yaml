@@ -331,6 +331,7 @@ states:
       FAIL.gone: { guard: "answer == 'gone'", target: settle, effect: [goneToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bu medrese artık yok.'" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bunu yapma izniniz yok.'" }
       FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: saving, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:250, say: "they press Vazgeç, the close icon or Escape while the call is in flight: nothing happens, the head is still seated (onOpenChange is ignored while saving, HEAD-6)" }
 
   assigned:
     type: final

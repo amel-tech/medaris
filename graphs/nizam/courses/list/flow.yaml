@@ -435,6 +435,8 @@ states:
       DONE: afterHide
       FAIL.already: { target: afterHide, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42 }
       FAIL.other: { target: confirmHide, effect: [hideFailed], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46 }
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press Vazgeç, or Esc, while the hide runs: nothing happens, the hide goes on (onOpenChange is ignored while saving, NCL-1)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press the close icon: nothing happens, the hide goes on" }
     source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
 
   afterHide:

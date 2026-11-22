@@ -463,6 +463,7 @@ states:
       FAIL.moved: { target: formReady, effect: [removeMovedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "the seat has moved: an error toast over the dialog, which stays" }
       FAIL.forbidden: { target: formReady, effect: [removeRefusedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "'Bu işlem için yetkiniz yok.': the dialog stays with the reason" }
       FAIL.other: { target: formReady, effect: [removeFailedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "the API's own message: the dialog stays" }
+      CANCEL: { target: removing, source: apps/nizam/features/applications/components/remove-dialog.tsx:89, say: "they press Vazgeç, the close icon or Escape while the removal is sent: nothing happens, the removal goes on (NROS-5)" }
     source: apps/nizam/features/applications/components/remove-dialog.tsx:58
 
   removedList:

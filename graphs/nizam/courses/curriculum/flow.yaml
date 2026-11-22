@@ -766,6 +766,8 @@ states:
       FAIL.fileRefused: { target: uploadDialog, effect: [uploadFileRefused], say: "the file itself is refused: a sentence under the field", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.rejected: { guard: "files == 'refused'", target: uploadDialog, effect: [uploadRejected], say: "the call is refused: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.gone: { target: uploadDialog, effect: [uploadGone], say: "the course is not there: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
+      CANCEL: { target: uploadingCourse, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press Vazgeç, or Esc, while the course's file is on its way: nothing happens, the upload goes on (the dialog refuses to close while busy, NCURR-4)" }
+      CLOSE: { target: uploadingCourse, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press the close icon: nothing happens, the upload goes on" }
     source: apps/nizam/features/courses/components/resource-file-parts.tsx:152
 
   uploadingLesson:
@@ -784,6 +786,8 @@ states:
       FAIL.fileRefused: { target: uploadDialog, effect: [uploadFileRefused], say: "the file itself is refused: a sentence under the field", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.rejected: { guard: "files == 'refused'", target: uploadDialog, effect: [uploadRejected], say: "the call is refused: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.gone: { target: uploadDialog, effect: [uploadGone], say: "the celse or the course is not there: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
+      CANCEL: { target: uploadingLesson, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press Vazgeç, or Esc, while the celse's file is on its way: nothing happens, the upload goes on (the dialog refuses to close while busy, NCURR-4)" }
+      CLOSE: { target: uploadingLesson, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press the close icon: nothing happens, the upload goes on" }
     source: apps/nizam/features/courses/components/resource-file-parts.tsx:152
 
   downloading:

@@ -419,6 +419,7 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:119, say: "403: the dialog stays open with an error toast" }
       FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:119, say: "any other failure: the dialog stays open with an error toast" }
       FAIL.signedOut: sent_to_sign_in
+      CANCEL: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "she presses Vazgeç or Esc while the refusal is sent: nothing happens, the refusal goes on (onOpenChange is ignored while saving)" }
     source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:115
 
   rejectedHandOver:
