@@ -15174,7 +15174,7 @@
         ]
       },
       "delete": {
-        "description": "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on. Written to `audit_log` as `exam_topic.remove`.",
+        "description": "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on: the answer names each with its new version, so a page holding one of them writes on without EXAM_STALE. Written to `audit_log` as `exam_topic.remove`.",
         "operationId": "removeCourseTopic",
         "parameters": [
           {
@@ -15195,8 +15195,15 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": ""
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicRemovedResponse"
+                }
+              }
+            }
           },
           "403": {
             "description": "No `exam.prepare` on the course."
@@ -30909,6 +30916,38 @@
             "maximum": 999
           }
         }
+      },
+      "ExamVersionRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which its next write names."
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ]
+      },
+      "TopicRemovedResponse": {
+        "type": "object",
+        "properties": {
+          "exams": {
+            "description": "The exams that had picked the topic, each with the version the removal moved it to; empty when none had.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamVersionRefResponse"
+            }
+          }
+        },
+        "required": [
+          "exams"
+        ]
       },
       "MadrasahZerothQuestionResponse": {
         "type": "object",

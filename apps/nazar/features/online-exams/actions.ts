@@ -11,6 +11,7 @@ import type {
   ExamQuestionWriteResponse,
   OnlineExamDraftResponse,
   SaveExamQuestionDto,
+  TopicRemovedResponse,
 } from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
@@ -34,6 +35,28 @@ export async function createOnlineExam(
       api.onlineExams.createOnlineExam({
         id: courseId,
         createOnlineExamDto: { title },
+      })
+    )
+  );
+}
+
+/** The exam's settings: its title, its length in minutes and the team's instructions (blank is none). */
+export interface ExamSettings {
+  title: string;
+  durationMinutes: number;
+  instructions: string | null;
+}
+
+/** Saves the settings of a draft (`PATCH /online-exams/:examId`), naming the version the page holds. */
+export async function saveExamSettings(
+  examId: string,
+  settings: ExamSettings & { version: number }
+): Promise<ActionOutcome<{ version: number }>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.updateOnlineExam({
+        examId,
+        updateOnlineExamDto: settings,
       })
     )
   );
@@ -173,9 +196,12 @@ export interface TopicCarrier {
   number: number;
 }
 
-/** A topic removal's answer; TOPIC_IN_USE names the questions that carry it. */
+/**
+ * A topic removal's answer: the exams whose pick it took off, with their new
+ * versions; TOPIC_IN_USE names the questions that carry it.
+ */
 export type TopicRemovalOutcome =
-  | { success: true }
+  | { success: true; data: TopicRemovedResponse }
   | { success: false; code: string; questions?: TopicCarrier[] }
   | Unauthenticated;
 
@@ -189,7 +215,7 @@ export async function removeCourseTopic(
   );
   if (isUnauthenticated(result))
     return unauthenticated({ reauth: result.reauth });
-  if (result.success) return { success: true };
+  if (result.success) return { success: true, data: result.data };
   const questions = (result.errorBody as { context?: { questions?: unknown } })
     ?.context?.questions;
   return {

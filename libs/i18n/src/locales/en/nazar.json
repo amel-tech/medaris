@@ -2475,6 +2475,15 @@
     "removeTopicTitle": "Delete {number}. {name}?",
     "removeTopicBody": "The topic is deleted from the course's list. A topic a question carries is not deleted.",
     "topicInUse": "This topic cannot be deleted; these questions carry it: {questions}.",
-    "topicInUseItem": "{exam}, question {number}"
+    "topicInUseItem": "{exam}, question {number}",
+    "settingsTitle": "Settings",
+    "examTitleLabel": "Exam title",
+    "titleMissing": "The exam needs a title.",
+    "durationLabel": "Length (minutes)",
+    "durationHelp": "60 minutes by default. Whenever a talebe starts, they get the full length.",
+    "durationInvalid": "The length must be a whole number above zero.",
+    "instructionsLabel": "Instructions",
+    "instructionsHelp": "The talebe reads these before starting, under “What you need to know”.",
+    "saveSettings": "Save settings"
   }
 }
