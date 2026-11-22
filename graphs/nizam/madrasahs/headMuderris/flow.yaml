@@ -303,6 +303,9 @@ states:
         - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, while nobody is chosen" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
       CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "they close the dialog while the search runs; its answer is dropped" }
+      # The chosen person's remove button is live while a search runs; pressing it clears `searched`, so the search's answer is dropped
+      # (`if (searched.current !== wanted) return`, head-picker.tsx:59).
+      REMOVE_HEAD: { guard: "chosen != 'none'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person while the search runs: the choice goes, and the search's answer is dropped" }
 
   saving:
     title: Seat the new başmüderris

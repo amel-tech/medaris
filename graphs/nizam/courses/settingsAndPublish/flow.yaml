@@ -280,10 +280,24 @@ states:
     description: >-
       "Kayıt onayı gereksin" is ticked and shut and says "Köşk politikası gereği her kayıt onaya bağlıdır; bu derste değiştirilemez." (the köşk's
       `alwaysRequireApproval`, `fixed`; the box shows `effectiveApproval`, ticked whatever the course's own flag holds, and `disabled={saving ||
-      fixed}`). The other controls and both cards behave as in `clean`; only the first sight is drawn here (outOfView). The page does not read
+      fixed}`). The other controls and both cards behave as in `clean`, where a press leads; the box stays shut there too, for `fixed` is
+      read once (the page's `world`). The page does not read
       the PLATFORM policy of the same name: when that one is on the box is open and the save is refused (policyLate, SETPUB-2). The page sets no
       focus (focus-not-set).
     on:
+      # The controls are live here as in `clean`, and each press goes where it goes from there; this world draws none of the boxes' presses
+      # (`closeIt` and the others name the worlds that press them), so its walks open the lists, the Yayın card and the question only.
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:227 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:265 }
+      TOGGLE_POLICY: { guard: tickPolicy, target: dirty, effect: [policyOn], say: "they tick 'Ders kayıtları herkese açılamaz'", source: apps/nizam/features/courses/components/course-settings-page.tsx:299 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:269 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:349 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:356 }
+      HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle", source: apps/nizam/features/courses/components/course-settings-page.tsx:410 }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: readFixed, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a draft is not there for her (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
+        - { target: readFixed, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nizam/features/courses/components/course-settings-page.tsx:248
 
@@ -298,6 +312,18 @@ states:
       exactly this person (a nazım whose köşk list leaves the course off, `taughtElsewhere`); only a person who is nothing but a hoca never
       gets here, because the layout sends them to Nazar.
     on:
+      # The controls are live here as in `clean`, and each press goes where it goes from there; this world draws none of the boxes' presses
+      # (`closeIt` and the others name the worlds that press them), so its walks open the lists, the Yayın card and the question only.
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:227 }
+      TOGGLE_APPROVAL: { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nizam/features/courses/components/course-settings-page.tsx:255 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:265 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:269 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:349 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:356 }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: readLimited, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a draft is not there for her (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
+        - { target: readLimited, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nizam/features/courses/reads.ts:48
 

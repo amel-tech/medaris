@@ -50,6 +50,7 @@ scope:
     - "the screen for a course that is not there or not theirs, which is the same 'Bu bölüm için izniniz yok' as for a section the account may not open (nizam.shell.noAccessAndNotFound); this graph ends there"
     - "'Celse planla' and its page (nizam.courses.planSessions), the other pages of the course (nizam.courses.overview, .curriculum, .roster), and how the talebe meet a link, a stream, an in-person mark or a cancelled celse (tedris.celse.attend, tedris.celse.watchStream, tedris.celse.cancelled)"
     - "a second row: pressing the button of another row while a form is open swaps the form"
+    - "the form left open under a cancel: 'İptal et' pressed while a form is open keeps that form (sessions-view.tsx:446 sets only `cancelling`), and once the celse is cancelled it stays open under the table, for the cancelled celse, until it is closed; this graph draws the page after a cancel without it (the way back by 'Vazgeç' is drawn: `under`)"
 
 decisions:
   D1:
@@ -145,6 +146,15 @@ context:
       link: "'Toplantı bağlantısı https:// ile başlamalı…' under the link field"
       time: "'Tarihi ve saati girin.' under Tarih"
       stream: "one of the five stream problems under the stream field"
+  under:
+    values: [none, link, time, inPerson, stream]
+    initial: none
+    say:
+      none: "the confirmation of 'İptal et' was opened with no form open"
+      link: "it was opened over the link form, which stays open beneath it"
+      time: "it was opened over the time form, which stays open beneath it"
+      inPerson: "it was opened over the in-person form, which stays open beneath it"
+      stream: "it was opened over the stream form, which stays open beneath it"
   toast:
     values: [none, linkSaved, timeSaved, inPersonSaved, streamSaved, streamRemoved, cancelled, moved, forbidden, failed, already]
     initial: none
@@ -177,7 +187,12 @@ effects:
   openInPersonCourse: { set: { picked: course, said: none, toast: none } }
   openInPersonYes: { set: { picked: yes, said: none, toast: none } }
   openInPersonNo: { set: { picked: no, said: none, toast: none } }
-  openCancel: { set: { toast: none } }
+  openCancel: { set: { toast: none, under: none } }
+  # "İptal et" pressed while a form is open: setCancelling(row) leaves `editing` as it is, so the form stays beneath the confirmation
+  openCancelOverLink: { set: { toast: none, under: link } }
+  openCancelOverTime: { set: { toast: none, under: time } }
+  openCancelOverInPerson: { set: { toast: none, under: inPerson } }
+  openCancelOverStream: { set: { toast: none, under: stream } }
   # what is typed and chosen
   typedValid: { set: { entered: valid } }
   typedInvalid: { set: { entered: invalid } }
@@ -326,6 +341,22 @@ states:
         - { guard: "entered == 'valid'", target: savingLink, effect: [sends], source: apps/nizam/features/courses/components/sessions-view.tsx:218, say: "they press 'Kaydet' with an address the page accepts" }
         - { target: linkForm, effect: [saidLink], source: apps/nizam/features/courses/components/sessions-view.tsx:221, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nizam/features/courses/components/sessions-view.tsx:648, say: "they press 'Vazgeç': the form goes and the focus falls to the page" }
+      # The row's buttons stay live under an open form (sessions-view.tsx:396-449; the form is no dialog): each opens its own form in place
+      # of this one, starting it over (startLink, startStream, startTime, startInPerson replace `editing`), and 'İptal et' opens the
+      # confirmation over it, the form staying open beneath. 'Celse planla' leaves the page, the form with it.
+      OPEN_LINK:
+        - { guard: "link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantıyı güncelle' again: the form starts over with the link" }
+        - { target: linkForm, effect: [openLink], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantı ekle' again: the form starts over, empty" }
+      OPEN_TIME: { target: timeForm, effect: [openTime], source: apps/nizam/features/courses/components/sessions-view.tsx:152, say: "they press 'Tarihi değiştir' and the time form takes the place of this one" }
+      OPEN_IN_PERSON:
+        - { guard: "held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze' chosen" }
+        - { guard: "held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze değil' chosen" }
+        - { target: inPersonForm, effect: [openInPersonCourse], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayını güncelle' and the stream form takes the place of this one, holding the link" }
+        - { target: streamForm, effect: [openStream], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayın ekle' and the stream form takes the place of this one, empty" }
+      CANCEL_CELSE: { target: confirmCancel, effect: [openCancelOverLink], source: apps/nizam/features/courses/components/sessions-view.tsx:446, say: "they press 'İptal et': the confirmation opens over the page, this form still open beneath it" }
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla': the page goes, and the form with what was typed" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:597
 
   savingLink:
@@ -344,6 +375,9 @@ states:
       FAIL.moved: { guard: "changeAnswer == 'moved'", target: linkForm, effect: [movedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says the course was saved by someone else and asks them to reload; the form stays open and the page is NOT read again (NMSESS-1)" }
       FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: linkForm, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says they have no authority for this; the form stays open" }
       FAIL.failed: { guard: "changeAnswer == 'failed'", target: linkForm, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says it could not be completed; the form stays open and the page is NOT read again (NMSESS-1)" }
+      # The link, a plain <a>, stays live while the write runs: the browser leaves the page at once, and the write already sent is the
+      # server's to finish (not verified); no page is left to say how it went.
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla' while the write runs: the page goes at once" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:239
 
   timeForm:
@@ -362,6 +396,22 @@ states:
         - { guard: "entered == 'valid'", target: savingTime, effect: [sends], source: apps/nizam/features/courses/components/sessions-view.tsx:227, say: "they press 'Kaydet' with a date and a time" }
         - { target: timeForm, effect: [saidTime], source: apps/nizam/features/courses/components/sessions-view.tsx:232, say: "they press 'Kaydet' with the date or the time missing: the sentence appears under Tarih and nothing is sent" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nizam/features/courses/components/sessions-view.tsx:648, say: "they press 'Vazgeç'" }
+      # The row's buttons stay live under an open form (sessions-view.tsx:396-449; the form is no dialog): each opens its own form in place
+      # of this one, starting it over (startLink, startStream, startTime, startInPerson replace `editing`), and 'İptal et' opens the
+      # confirmation over it, the form staying open beneath. 'Celse planla' leaves the page, the form with it.
+      OPEN_LINK:
+        - { guard: "link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantıyı güncelle' and the link form takes the place of this one, holding the link" }
+        - { target: linkForm, effect: [openLink], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantı ekle' and the link form takes the place of this one, empty" }
+      OPEN_TIME: { target: timeForm, effect: [openTime], source: apps/nizam/features/courses/components/sessions-view.tsx:152, say: "they press 'Tarihi değiştir' again: the form starts over with the celse's time" }
+      OPEN_IN_PERSON:
+        - { guard: "held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze' chosen" }
+        - { guard: "held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze değil' chosen" }
+        - { target: inPersonForm, effect: [openInPersonCourse], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayını güncelle' and the stream form takes the place of this one, holding the link" }
+        - { target: streamForm, effect: [openStream], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayın ekle' and the stream form takes the place of this one, empty" }
+      CANCEL_CELSE: { target: confirmCancel, effect: [openCancelOverTime], source: apps/nizam/features/courses/components/sessions-view.tsx:446, say: "they press 'İptal et': the confirmation opens over the page, this form still open beneath it" }
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla': the page goes, and the form with what was typed" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:615
 
   savingTime:
@@ -378,6 +428,9 @@ states:
       FAIL.moved: { guard: "changeAnswer == 'moved'", target: timeForm, effect: [movedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says the course was saved by someone else; the form stays open (NMSESS-1)" }
       FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: timeForm, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says they have no authority for this" }
       FAIL.failed: { guard: "changeAnswer == 'failed'", target: timeForm, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says it could not be completed; no new read (NMSESS-1)" }
+      # The link, a plain <a>, stays live while the write runs: the browser leaves the page at once, and the write already sent is the
+      # server's to finish (not verified); no page is left to say how it went.
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla' while the write runs: the page goes at once" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:239
 
   inPersonForm:
@@ -395,6 +448,22 @@ states:
       CHOOSE_NO: { target: inPersonForm, effect: [pickNo], source: apps/nizam/features/courses/components/sessions-view.tsx:580, say: "they choose 'Yüz yüze değil'" }
       SAVE: { target: savingInPerson, effect: [sends], source: apps/nizam/features/courses/components/sessions-view.tsx:225, say: "they press 'Kaydet'" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nizam/features/courses/components/sessions-view.tsx:648, say: "they press 'Vazgeç'" }
+      # The row's buttons stay live under an open form (sessions-view.tsx:396-449; the form is no dialog): each opens its own form in place
+      # of this one, starting it over (startLink, startStream, startTime, startInPerson replace `editing`), and 'İptal et' opens the
+      # confirmation over it, the form staying open beneath. 'Celse planla' leaves the page, the form with it.
+      OPEN_LINK:
+        - { guard: "link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantıyı güncelle' and the link form takes the place of this one, holding the link" }
+        - { target: linkForm, effect: [openLink], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantı ekle' and the link form takes the place of this one, empty" }
+      OPEN_TIME: { target: timeForm, effect: [openTime], source: apps/nizam/features/courses/components/sessions-view.tsx:152, say: "they press 'Tarihi değiştir' and the time form takes the place of this one" }
+      OPEN_IN_PERSON:
+        - { guard: "held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' again: the form starts over, 'Yüz yüze' chosen" }
+        - { guard: "held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' again: the form starts over, 'Yüz yüze değil' chosen" }
+        - { target: inPersonForm, effect: [openInPersonCourse], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' again: the form starts over, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayını güncelle' and the stream form takes the place of this one, holding the link" }
+        - { target: streamForm, effect: [openStream], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayın ekle' and the stream form takes the place of this one, empty" }
+      CANCEL_CELSE: { target: confirmCancel, effect: [openCancelOverInPerson], source: apps/nizam/features/courses/components/sessions-view.tsx:446, say: "they press 'İptal et': the confirmation opens over the page, this form still open beneath it" }
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla': the page goes, and the form with what was typed" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:574
 
   savingInPerson:
@@ -412,6 +481,9 @@ states:
       FAIL.moved: { guard: "changeAnswer == 'moved'", target: inPersonForm, effect: [movedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says the course was saved by someone else; the form stays open (NMSESS-1)" }
       FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: inPersonForm, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says they have no authority for this" }
       FAIL.failed: { guard: "changeAnswer == 'failed'", target: inPersonForm, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:242, say: "the error toast says it could not be completed; no new read (NMSESS-1)" }
+      # The link, a plain <a>, stays live while the write runs: the browser leaves the page at once, and the write already sent is the
+      # server's to finish (not verified); no page is left to say how it went.
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla' while the write runs: the page goes at once" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:239
 
   streamForm:
@@ -431,6 +503,22 @@ states:
         - { target: streamForm, effect: [saidStream], source: apps/nizam/features/courses/components/sessions-view.tsx:206, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
       REMOVE_STREAM: { guard: "stream == 'set'", target: removingStream, effect: [sends], source: apps/nizam/features/courses/components/sessions-view.tsx:657, say: "they press 'Bağlantıyı kaldır': it clears the link at once, with no question" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nizam/features/courses/components/sessions-view.tsx:648, say: "they press 'Vazgeç'" }
+      # The row's buttons stay live under an open form (sessions-view.tsx:396-449; the form is no dialog): each opens its own form in place
+      # of this one, starting it over (startLink, startStream, startTime, startInPerson replace `editing`), and 'İptal et' opens the
+      # confirmation over it, the form staying open beneath. 'Celse planla' leaves the page, the form with it.
+      OPEN_LINK:
+        - { guard: "link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantıyı güncelle' and the link form takes the place of this one, holding the link" }
+        - { target: linkForm, effect: [openLink], source: apps/nizam/features/courses/components/sessions-view.tsx:144, say: "they press 'Bağlantı ekle' and the link form takes the place of this one, empty" }
+      OPEN_TIME: { target: timeForm, effect: [openTime], source: apps/nizam/features/courses/components/sessions-view.tsx:152, say: "they press 'Tarihi değiştir' and the time form takes the place of this one" }
+      OPEN_IN_PERSON:
+        - { guard: "held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze' chosen" }
+        - { guard: "held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Yüz yüze değil' chosen" }
+        - { target: inPersonForm, effect: [openInPersonCourse], source: apps/nizam/features/courses/components/sessions-view.tsx:159, say: "they press 'Yüz yüze ayarı' and the in-person form takes the place of this one, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayını güncelle' again: the form starts over with the stream link" }
+        - { target: streamForm, effect: [openStream], source: apps/nizam/features/courses/components/sessions-view.tsx:148, say: "they press 'Canlı yayın ekle' again: the form starts over, empty" }
+      CANCEL_CELSE: { target: confirmCancel, effect: [openCancelOverStream], source: apps/nizam/features/courses/components/sessions-view.tsx:446, say: "they press 'İptal et': the confirmation opens over the page, this form still open beneath it" }
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla': the page goes, and the form with what was typed" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:556
 
   savingStream:
@@ -449,6 +537,9 @@ states:
       FAIL.moved: { guard: "streamAnswer == 'moved'", target: streamForm, effect: [movedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says only a live celse takes a stream, or that the celse was cancelled; no new read (NMSESS-1)" }
       FAIL.forbidden: { guard: "streamAnswer == 'forbidden'", target: streamForm, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says they have no authority for this (session.live_link was taken away)" }
       FAIL.failed: { guard: "streamAnswer == 'failed'", target: streamForm, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says it could not be completed" }
+      # The link, a plain <a>, stays live while the write runs: the browser leaves the page at once, and the write already sent is the
+      # server's to finish (not verified); no page is left to say how it went.
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla' while the write runs: the page goes at once" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:169
 
   removingStream:
@@ -462,6 +553,9 @@ states:
       FAIL.moved: { guard: "streamAnswer == 'moved'", target: streamForm, effect: [movedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says the celse is not live or was cancelled" }
       FAIL.forbidden: { guard: "streamAnswer == 'forbidden'", target: streamForm, effect: [forbiddenToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says they have no authority for this" }
       FAIL.failed: { guard: "streamAnswer == 'failed'", target: streamForm, effect: [failedToast], source: apps/nizam/features/courses/components/sessions-view.tsx:179, say: "the error toast says it could not be completed" }
+      # The link, a plain <a>, stays live while the write runs: the browser leaves the page at once, and the write already sent is the
+      # server's to finish (not verified); no page is left to say how it went.
+      OPEN_PLAN: { target: plan_opened, source: apps/nizam/features/courses/components/sessions-view.tsx:494, say: "they follow 'Celse planla' while the write runs: the page goes at once" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:169
 
   confirmCancel:
@@ -477,7 +571,12 @@ states:
     by: human
     on:
       CONFIRM: { target: cancelling, effect: [sends], source: apps/nizam/features/courses/components/sessions-view.tsx:711, say: "they press 'Celseyi iptal et'" }
-      CANCEL: { target: listed, source: apps/nizam/features/courses/components/sessions-view.tsx:702, say: "Vazgeç, the close icon or Esc: the dialog closes and nothing is sent" }
+      CANCEL:
+        - { guard: "under == 'link'", target: linkForm, source: apps/nizam/features/courses/components/sessions-view.tsx:703, say: "Vazgeç, the close icon or Esc: the dialog closes, nothing is sent, and the link form it was opened over is there as it was" }
+        - { guard: "under == 'time'", target: timeForm, source: apps/nizam/features/courses/components/sessions-view.tsx:703, say: "Vazgeç, the close icon or Esc: the dialog closes, nothing is sent, and the time form it was opened over is there as it was" }
+        - { guard: "under == 'inPerson'", target: inPersonForm, source: apps/nizam/features/courses/components/sessions-view.tsx:703, say: "Vazgeç, the close icon or Esc: the dialog closes, nothing is sent, and the in-person form it was opened over is there as it was" }
+        - { guard: "under == 'stream'", target: streamForm, source: apps/nizam/features/courses/components/sessions-view.tsx:703, say: "Vazgeç, the close icon or Esc: the dialog closes, nothing is sent, and the stream form it was opened over is there as it was" }
+        - { target: listed, source: apps/nizam/features/courses/components/sessions-view.tsx:702, say: "Vazgeç, the close icon or Esc: the dialog closes and nothing is sent" }
     source: apps/nizam/features/courses/components/sessions-view.tsx:700
 
   cancelling:
