@@ -178,7 +178,8 @@
       "madrasah_appeal_open": "Köşk kararına itiraz aç",
       "madrasah_permanent_ban_request": "Kalıcı yasak talebi aç",
       "madrasah_settings_edit": "Medrese ayarlarını ve politikalarını değiştir",
-      "madrasah_nazir_appoint": "Medrese nazırı ata"
+      "madrasah_nazir_appoint": "Medrese nazırı ata",
+      "exam_zeroth_read": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevapları toplu oku"
     },
     "permissionNotes": {
       "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",

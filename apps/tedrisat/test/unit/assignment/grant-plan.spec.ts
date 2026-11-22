@@ -295,15 +295,18 @@ describe("earliestEnd", () => {
 });
 
 describe("the catalog", () => {
-  it("has the 19 platform codes the screens draw, each once", () => {
+  it("has the 20 platform codes the screens draw, each once", () => {
     const codes = PLATFORM_CATALOG.flatMap((s) => s.permissions);
     expect(PLATFORM_CATALOG.map((s) => s.permissions.length)).toEqual([
-      5, 4, 3, 2, 5,
+      5, 4, 3, 2, 6,
     ]);
     expect(new Set(codes).size).toBe(codes.length);
-    expect(PLATFORM_CODES.size).toBe(19);
+    expect(PLATFORM_CODES.size).toBe(20);
     // "Ortak uygulamalar" can be handed to a Medaris nazımı.
     expect(PLATFORM_CODES.has(PERMISSIONS.PLATFORM_PARTNER_MANAGE)).toBe(true);
+    // So can "Sıfırıncı soru cevapları" (MDRS-299), which a köşk nazımı
+    // holds in their köşk by role default.
+    expect(PLATFORM_CODES.has(PERMISSIONS.EXAM_ZEROTH_READ)).toBe(true);
     // Platform management's course hide (MDRS-143) can be handed to a Medaris nazımı.
     expect(PLATFORM_CODES.has(PERMISSIONS.PLATFORM_COURSE_HIDE)).toBe(true);
   });

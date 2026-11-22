@@ -128,6 +128,7 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
       "Köşk desteleri",
       "Yasaklamalar",
       "Arşiv",
+      "Sıfırıncı soru cevapları",
       "Yönetim",
       "İzinler",
       "Köşk ayarları",

@@ -149,6 +149,8 @@ GET /nizam/chief-nazim -> no AuthzGuard
 GET /nizam/dashboard -> no AuthzGuard
 GET /nizam/deck-publish-requests -> no AuthzGuard
 GET /nizam/deck-publish-requests/:id/cards -> no AuthzGuard
+GET /nizam/exam-zeroth-answers -> no AuthzGuard
+GET /nizam/exam-zeroth-answers/:questionKey -> no AuthzGuard
 GET /nizam/inactive-scopes -> no AuthzGuard
 GET /nizam/kosk-applications -> no AuthzGuard
 GET /nizam/kosk-applications/:id -> no AuthzGuard

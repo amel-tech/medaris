@@ -178,7 +178,8 @@
       "madrasah_appeal_open": "Open an appeal against a köşk decision",
       "madrasah_permanent_ban_request": "Request a permanent ban",
       "madrasah_settings_edit": "Change the medrese's settings and policies",
-      "madrasah_nazir_appoint": "Appoint a medrese nazır"
+      "madrasah_nazir_appoint": "Appoint a medrese nazır",
+      "exam_zeroth_read": "Read in aggregate how the zeroth question of the multiple-choice exams was answered"
     },
     "permissionNotes": {
       "course_manage_all": "Reads of the content are written to the audit log.",

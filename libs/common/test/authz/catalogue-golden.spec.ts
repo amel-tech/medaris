@@ -68,6 +68,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["platform.youtube_manage", "platform", "grantable"],
   ["platform.policy_edit", "platform", "grantable"],
   ["platform.partner_manage", "platform", "grantable"],
+  ["exam.zeroth_read", "platform+kosk", "grantable"],
   ["madrasah.course_open", "madrasah", "grantable"],
   ["madrasah.muderris_manage", "madrasah", "grantable"],
   ["madrasah.students_view", "madrasah", "grantable"],

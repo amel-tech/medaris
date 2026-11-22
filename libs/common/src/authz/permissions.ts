@@ -118,6 +118,14 @@ export const PERMISSIONS = {
    * it by default, so only the başnazım (bypass) has it unless it is granted.
    */
   PLATFORM_PARTNER_MANAGE: "platform.partner_manage",
+  /**
+   * Read how the zeroth question of the online exams was answered, in
+   * aggregate and never by talebe (MDRS-299, nizam's "Sıfırıncı soru
+   * cevapları"). Held in the platform scope by grant, so a Medaris nazımı reads
+   * every köşk; tagged for the köşk too, so a köşk nazımı holds it in their own
+   * köşk by role default and reads only its exams. The başnazım by bypass.
+   */
+  EXAM_ZEROTH_READ: "exam.zeroth_read",
 
   // --- medrese ---------------------------------------------------------------
   MADRASAH_COURSE_OPEN: "madrasah.course_open",
@@ -279,6 +287,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.PLATFORM_YOUTUBE_MANAGE]: listed([PLATFORM]),
   [P.PLATFORM_POLICY_EDIT]: listed([PLATFORM]),
   [P.PLATFORM_PARTNER_MANAGE]: listed([PLATFORM]),
+  [P.EXAM_ZEROTH_READ]: listed([PLATFORM, KOSK]),
 
   [P.MADRASAH_COURSE_OPEN]: listed([MADRASAH]),
   [P.MADRASAH_MUDERRIS_MANAGE]: listed([MADRASAH]),
