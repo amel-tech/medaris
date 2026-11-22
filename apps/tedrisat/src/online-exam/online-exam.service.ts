@@ -164,7 +164,12 @@ export class OnlineExamService {
    */
   async publish(
     examId: string,
-    input: { version: number; startsAt?: Date; latestStartAt?: Date },
+    input: {
+      version: number;
+      startsAt?: Date;
+      latestStartAt?: Date;
+      latestStartMinutes?: number;
+    },
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const w = await this.writeOf(examId, input.version, user);
@@ -172,7 +177,10 @@ export class OnlineExamService {
     const startsAt = toMinute(input.startsAt ?? now);
     const latestStartAt = toMinute(
       input.latestStartAt ??
-        new Date(startsAt.getTime() + LATEST_START_DEFAULT_MINUTES * 60_000)
+        new Date(
+          startsAt.getTime() +
+            (input.latestStartMinutes ?? LATEST_START_DEFAULT_MINUTES) * 60_000
+        )
     );
     const timing = publishTimeProblem(startsAt, latestStartAt, now);
     if (timing) throw new ExamTimePassedError(timing);

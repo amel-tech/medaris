@@ -2516,7 +2516,11 @@
     "staleTitle": "Medaris was updated",
     "staleBody": "Reload the page to save. Unsaved questions are kept in this browser and come back after the reload.",
     "reload": "Reload",
-    "restored": "{count, plural, one {# unsaved question was brought back; save it with \"Try again\".} other {# unsaved questions were brought back; save them with \"Try again\".}}"
+    "restored": "{count, plural, one {# unsaved question was brought back; save it with \"Try again\".} other {# unsaved questions were brought back; save them with \"Try again\".}}",
+    "lateMinutesLabel": "How many minutes late a talebe may still start",
+    "lateMinutesInvalid": "Enter a number of minutes from 1 to 10080.",
+    "lateMinutesHelp": "Talebe may start up to {minutes} minutes after it opens, until {time}. Every talebe gets the whole length.",
+    "lateMinutesHelpNow": "Talebe may start up to {minutes} minutes after you publish; until {time} if you publish now. Every talebe gets the whole length."
   },
   "ExamResults": {
     "title": "Results",
