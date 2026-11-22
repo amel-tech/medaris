@@ -38,6 +38,28 @@ export async function createOnlineExam(
   );
 }
 
+/** The exam's settings: its title, its length in minutes and the team's instructions (blank is none). */
+export interface ExamSettings {
+  title: string;
+  durationMinutes: number;
+  instructions: string | null;
+}
+
+/** Saves the settings of a draft (`PATCH /online-exams/:examId`), naming the version the page holds. */
+export async function saveExamSettings(
+  examId: string,
+  settings: ExamSettings & { version: number }
+): Promise<ActionOutcome<{ version: number }>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.onlineExams.updateOnlineExam({
+        examId,
+        updateOnlineExamDto: settings,
+      })
+    )
+  );
+}
+
 export async function createCourseTopic(
   courseId: string,
   name: string,

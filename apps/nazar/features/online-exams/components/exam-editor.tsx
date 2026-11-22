@@ -23,14 +23,17 @@ import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
   addExamQuestion,
   createCourseTopic,
+  type ExamSettings,
   removeCourseTopic,
   removeExamQuestion,
   saveExamQuestion,
+  saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
 import {
   type AnswerModeValue,
   lacksOf,
+  minutesFromText,
   modeFits,
   nextFreeNumber,
   numbersOf,
@@ -106,6 +109,14 @@ export function ExamEditor({
     draft.questions.map((q) => ({ ...q, key: q.id }))
   );
   const [editing, setEditing] = useState<string | null>(null);
+  const [settings, setSettings] = useState<ExamSettings>({
+    title: draft.title,
+    durationMinutes: draft.durationMinutes,
+    instructions: draft.instructions ?? null,
+  });
+  const [settingsState, setSettingsState] = useState<
+    "saved" | "pending" | "failed"
+  >("saved");
   const [inFlight, setInFlight] = useState(0);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -153,6 +164,7 @@ export function ExamEditor({
   const removed = useRef(new Set<string>());
   const topicIdOf = useRef(new Map<string, string>());
   const topicsRemoved = useRef(new Set<string>());
+  const settingsSaves = useRef(0);
   const idOf = (key: string) =>
     serverIdOf.current.get(key) ?? (key.startsWith("local-") ? "" : key);
 
@@ -262,6 +274,33 @@ export function ExamEditor({
             topicIds.includes(topic.id) ? { ...topic, picked: true } : topic
           )
         );
+      } catch {
+        threw();
+        failed();
+      }
+    });
+  };
+
+  // The settings are one more write in the same queue: it names the version
+  // the write before it gave, and only the latest save draws its answer. A
+  // failure keeps what was typed on the page and offers it again.
+  const saveSettings = (next: ExamSettings) => {
+    const save = ++settingsSaves.current;
+    const latest = () => settingsSaves.current === save;
+    const failed = () => {
+      if (latest()) setSettingsState("failed");
+    };
+    setSettings(next);
+    setSettingsState("pending");
+    enqueue(async () => {
+      try {
+        const saved = await saveExamSettings(draft.id, {
+          ...next,
+          version: version.current,
+        });
+        if (!went(saved) || !("data" in saved)) return failed();
+        version.current = saved.data.version;
+        if (latest()) setSettingsState("saved");
       } catch {
         threw();
         failed();
@@ -439,6 +478,12 @@ export function ExamEditor({
 
   return (
     <div className="flex flex-col gap-section">
+      <SettingsSection
+        settings={settings}
+        state={settingsState}
+        onSave={saveSettings}
+        onRetry={() => saveSettings(settings)}
+      />
       <TopicsSection topics={topics} onAdd={addTopic} onRemove={removeTopic} />
       <section
         className="flex flex-col gap-3"
@@ -500,6 +545,121 @@ export function ExamEditor({
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * "Ayarlar": the exam's title, its length and the team's instructions, saved
+ * together. The fields keep what was typed whatever the server answers.
+ */
+function SettingsSection({
+  settings,
+  state,
+  onSave,
+  onRetry,
+}: {
+  settings: ExamSettings;
+  state: "saved" | "pending" | "failed";
+  onSave: (settings: ExamSettings) => void;
+  onRetry: () => void;
+}) {
+  const t = useTranslations("nazar");
+  const [title, setTitle] = useState(settings.title);
+  const [minutes, setMinutes] = useState(String(settings.durationMinutes));
+  const [instructions, setInstructions] = useState(settings.instructions ?? "");
+  const [problem, setProblem] = useState<"title" | "minutes" | null>(null);
+  const typed: ExamSettings | null = (() => {
+    const durationMinutes = minutesFromText(minutes);
+    if (title.trim() === "" || durationMinutes === null) return null;
+    return {
+      title: title.trim(),
+      durationMinutes,
+      instructions: instructions.trim() === "" ? null : instructions.trim(),
+    };
+  })();
+  const unchanged =
+    typed !== null &&
+    typed.title === settings.title &&
+    typed.durationMinutes === settings.durationMinutes &&
+    typed.instructions === settings.instructions;
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (title.trim() === "") return setProblem("title");
+    if (minutesFromText(minutes) === null) return setProblem("minutes");
+    setProblem(null);
+    if (typed && !unchanged) onSave(typed);
+  };
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="settings-title">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 id="settings-title" className="mds-h2">
+          {t("OnlineExams.settingsTitle")}
+        </h2>
+        {state === "pending" ? (
+          <span className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.saving")}
+          </span>
+        ) : null}
+        {state === "failed" ? (
+          <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
+        ) : null}
+      </div>
+      <form
+        className="mds-card flex max-inline-measure flex-col gap-3 p-4"
+        onSubmit={submit}
+        noValidate
+        aria-labelledby="settings-title"
+      >
+        <Field
+          label={t("OnlineExams.examTitleLabel")}
+          error={
+            problem === "title" ? t("OnlineExams.titleMissing") : undefined
+          }
+        >
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+          />
+        </Field>
+        <Field
+          label={t("OnlineExams.durationLabel")}
+          help={t("OnlineExams.durationHelp")}
+          error={
+            problem === "minutes" ? t("OnlineExams.durationInvalid") : undefined
+          }
+        >
+          <Input
+            inputMode="numeric"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))}
+            className="w-24"
+          />
+        </Field>
+        <Field
+          label={t("OnlineExams.instructionsLabel")}
+          help={t("OnlineExams.instructionsHelp")}
+        >
+          <Textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={4}
+            dir="auto"
+            maxLength={4000}
+          />
+        </Field>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={unchanged}>
+            {t("OnlineExams.saveSettings")}
+          </Button>
+          {state === "failed" ? (
+            <Button variant="secondary" onClick={onRetry}>
+              {t("OnlineExams.retry")}
+            </Button>
+          ) : null}
+        </div>
+      </form>
+    </section>
   );
 }
 

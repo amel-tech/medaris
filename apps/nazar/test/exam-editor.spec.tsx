@@ -24,6 +24,7 @@ const actions = {
   createOnlineExam: vi.fn(),
   setExamQuestionPoints: vi.fn(),
   removeCourseTopic: vi.fn(),
+  saveExamSettings: vi.fn(),
 };
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
@@ -34,6 +35,7 @@ vi.mock("~/features/online-exams/actions", () => ({
   setExamQuestionPoints: (...a: unknown[]) =>
     actions.setExamQuestionPoints(...a),
   removeCourseTopic: (...a: unknown[]) => actions.removeCourseTopic(...a),
+  saveExamSettings: (...a: unknown[]) => actions.saveExamSettings(...a),
 }));
 
 const draft = {
@@ -73,6 +75,9 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+/** The question form's text: the settings above it have a text area of their own. */
+const QUESTION_TEXT = 'form[aria-label$=". soru"] textarea';
+
 const button = (root: HTMLElement, label: string) =>
   [...root.querySelectorAll("button")].find(
     (b) => b.textContent === label
@@ -111,7 +116,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Soru ekle"));
     // The form opens with no call to the server.
     expect(actions.addExamQuestion).not.toHaveBeenCalled();
-    const [text] = [...root.querySelectorAll("textarea")];
+    const [text] = [...root.querySelectorAll(QUESTION_TEXT)];
     await typeInto(text, "Kıyasın rükünleri kaç tanedir?");
     const inputs = [...root.querySelectorAll("input")];
     await typeInto(
@@ -160,7 +165,7 @@ describe("the exam editor (MDRS-299)", () => {
     const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
     await click(button(root, "Soru ekle"));
     await typeInto(
-      root.querySelector("textarea") as HTMLTextAreaElement,
+      root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement,
       "Bir soru"
     );
     await click(button(root, "Kaydet"));
@@ -218,7 +223,7 @@ describe("the exam editor (MDRS-299)", () => {
     },
   });
   const textOf = (root: HTMLElement) =>
-    root.querySelector("textarea") as HTMLTextAreaElement;
+    root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement;
 
   it("makes a question once when it is saved again before the server answers, and shows the latest text", async () => {
     let version = 1;
@@ -556,5 +561,111 @@ describe("the exam editor (MDRS-299)", () => {
     await settle(80);
     expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
     expect(chips()).toEqual(["3. Kıyas"]);
+  });
+
+  const settingsField = (label: string) => {
+    const field = [...document.querySelectorAll(".mds-field")].find(
+      (f) => f.querySelector(".mds-label")?.textContent === label
+    ) as HTMLElement;
+    return field.querySelector("input, textarea") as
+      | HTMLInputElement
+      | HTMLTextAreaElement;
+  };
+
+  it("queues the settings after a question save, with the version that save gave", async () => {
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later({
+        success: true,
+        data: {
+          version: 3,
+          question: {
+            id,
+            number: 1,
+            text: body.text,
+            options: [],
+            answerMode: "SINGLE",
+            scoring: null,
+            topicIds: [],
+            ownPoints: null,
+            points: "100.00",
+            complete: false,
+            lacks: [],
+          },
+        },
+      })
+    );
+    // Lazy: its answer is held only once the call is made, after the question's.
+    actions.saveExamSettings.mockImplementation(() =>
+      later({ success: true, data: { version: 4 } })
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(
+      root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement,
+      "Bir soru"
+    );
+    await click(button(root, "Kaydet"));
+    await typeInto(settingsField("Süre (dakika)"), "45");
+    await typeInto(settingsField("Talimatlar"), "Hesap makinesi yok.");
+    await click(button(root, "Ayarları kaydet"));
+    // Shown at once, saving, with nothing disabled.
+    expect(root.textContent).toContain("Kaydediliyor…");
+    expect(button(root, "Soru ekle").disabled).toBe(false);
+    expect(actions.saveExamSettings).not.toHaveBeenCalled();
+
+    held.shift()?.(); // the question is made
+    await settle();
+    held.shift()?.(); // and saved
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenCalledWith("e1", {
+      title: "Ara sınav",
+      durationMinutes: 45,
+      instructions: "Hesap makinesi yok.",
+      version: 3,
+    });
+    held.shift()?.(); // the settings answer
+    await settle();
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps the typed length when the settings save fails, and offers it again", async () => {
+    actions.saveExamSettings.mockResolvedValueOnce({
+      success: false,
+      code: "SOMETHING",
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(settingsField("Süre (dakika)"), "90");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect((settingsField("Süre (dakika)") as HTMLInputElement).value).toBe(
+      "90"
+    );
+    expect(root.textContent).toContain("Kaydedilemedi");
+    actions.saveExamSettings.mockResolvedValueOnce({
+      success: true,
+      data: { version: 2 },
+    });
+    await click(button(root, "Yeniden dene"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 90, version: 1 })
+    );
+    expect(root.textContent).not.toContain("Kaydedilemedi");
+  });
+
+  it("does not send a length of zero, and says why", async () => {
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(settingsField("Süre (dakika)"), "0");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).not.toHaveBeenCalled();
+    expect(root.textContent).toContain(
+      "Süre sıfırdan büyük bir tam sayı olmalı."
+    );
   });
 });
