@@ -294,7 +294,7 @@ states:
       The action approveInPersonRegistration, POST /lessons/{id}/in-person/registrations/{userId}/approve. The API counts the seat against
       the quota of THE ROW'S gender only, under a lock on the celse's seat row, so parallel approvals cannot go past it. A full quota
       refuses the approval of that gender and of nothing else: a row of the other gender, whose seats are not all given, is approved as
-      usual. Success sets the status, tells the talebe and counts the seat. The row's own button is busy while the call runs.
+      usual. Success sets the status, tells the talebe and counts the seat. The row's own button is busy while the call runs, and the form's "Kaydet" is off.
     invoke: { action: approveInPersonRegistration }
     on:
       DONE: { guard: seatFree, target: seat_given, say: "the seat is counted and the talebe is told" }
