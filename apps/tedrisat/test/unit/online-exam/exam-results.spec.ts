@@ -3,6 +3,7 @@ import {
   AnswerVerdict,
   averagePercent,
   closedForEveryone,
+  earnedHundredths,
   mayCloseEarly,
   percentOf,
   type ResultQuestion,
@@ -123,5 +124,19 @@ describe("an online exam's results (MDRS-299)", () => {
     expect(wholeScore(8749)).toBe(87);
     expect(wholeScore(10_000)).toBe(100);
     expect(wholeScore(0)).toBe(0);
+  });
+
+  it("gives an answer the part of its exact points it earned, rounded half up once", () => {
+    const third = { numerator: 10_000, denominator: 3 }; // 33.333… points
+    expect(earnedHundredths(third, { numerator: 1, denominator: 1 })).toBe(
+      3333
+    );
+    expect(earnedHundredths(third, { numerator: 1, denominator: 2 })).toBe(
+      1667
+    );
+    expect(earnedHundredths(third, { numerator: 0, denominator: 1 })).toBe(0);
+    expect(earnedHundredths(undefined, { numerator: 1, denominator: 1 })).toBe(
+      0
+    );
   });
 });

@@ -149,6 +149,41 @@ export class ExamResultsRepository {
       .where(eq(examAttempts.examId, examId));
   }
 
+  /** One talebe's attempt of the exam, if they started it. */
+  async findAttemptOf(
+    examId: string,
+    userId: string
+  ): Promise<IAttempt | null> {
+    const [row] = await this.db
+      .select()
+      .from(examAttempts)
+      .where(
+        and(eq(examAttempts.examId, examId), eq(examAttempts.userId, userId))
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
+  /** One attempt's answers, with whether each was skipped and when it was saved. */
+  answersOfAttempt(attemptId: string): Promise<
+    Array<{
+      questionId: string;
+      optionIds: string[];
+      skipped: boolean;
+      savedAt: Date;
+    }>
+  > {
+    return this.db
+      .select({
+        questionId: examAnswers.questionId,
+        optionIds: examAnswers.optionIds,
+        skipped: examAnswers.skipped,
+        savedAt: examAnswers.savedAt,
+      })
+      .from(examAnswers)
+      .where(eq(examAnswers.attemptId, attemptId));
+  }
+
   /** Every answer of the given attempts; none for an empty list. */
   async listAnswers(
     attemptIds: string[]

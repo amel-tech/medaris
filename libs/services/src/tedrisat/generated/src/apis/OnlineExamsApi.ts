@@ -32,6 +32,7 @@ import type {
   SaveExamQuestionDto,
   SaveZerothQuestionDto,
   SetQuestionPointsDto,
+  TalebeAnswersResponse,
   TopicRemovedResponse,
   UpdateCourseTopicDto,
   UpdateOnlineExamDto,
@@ -72,6 +73,8 @@ import {
     SaveZerothQuestionDtoToJSON,
     SetQuestionPointsDtoFromJSON,
     SetQuestionPointsDtoToJSON,
+    TalebeAnswersResponseFromJSON,
+    TalebeAnswersResponseToJSON,
     TopicRemovedResponseFromJSON,
     TopicRemovedResponseToJSON,
     UpdateCourseTopicDtoFromJSON,
@@ -115,6 +118,11 @@ export interface GetOnlineExamDraftRequest {
 
 export interface GetOnlineExamResultsRequest {
     examId: string;
+}
+
+export interface GetOnlineExamTalebeAnswersRequest {
+    examId: string;
+    userId: string;
 }
 
 export interface ListCourseTopicsRequest {
@@ -567,6 +575,58 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async getOnlineExamResults(requestParameters: GetOnlineExamResultsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamResultsResponse> {
         const response = await this.getOnlineExamResultsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Each question in the exam\'s order (not the talebe\'s), with its options, the correct marks, which ones the talebe chose, whether it was skipped, when it was saved, how the answer stands and the points it earned; over them, the talebe\'s name, how and when the attempt ended, the score, each switch with its time and the zeroth answer. The team reads it before the release too. A talebe not seated in the course, or with no attempt, is ATTEMPT_NOT_FOUND; a draft is EXAM_NOT_FOUND.
+     * One talebe\'s answers on an online exam
+     */
+    async getOnlineExamTalebeAnswersRaw(requestParameters: GetOnlineExamTalebeAnswersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TalebeAnswersResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling getOnlineExamTalebeAnswers().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling getOnlineExamTalebeAnswers().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/results/{userId}`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TalebeAnswersResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Each question in the exam\'s order (not the talebe\'s), with its options, the correct marks, which ones the talebe chose, whether it was skipped, when it was saved, how the answer stands and the points it earned; over them, the talebe\'s name, how and when the attempt ended, the score, each switch with its time and the zeroth answer. The team reads it before the release too. A talebe not seated in the course, or with no attempt, is ATTEMPT_NOT_FOUND; a draft is EXAM_NOT_FOUND.
+     * One talebe\'s answers on an online exam
+     */
+    async getOnlineExamTalebeAnswers(requestParameters: GetOnlineExamTalebeAnswersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TalebeAnswersResponse> {
+        const response = await this.getOnlineExamTalebeAnswersRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

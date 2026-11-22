@@ -2573,5 +2573,27 @@
     "zerothTitle": "Sıfırıncı soru",
     "zerothNoScore": "Bu sorunun doğru ya da yanlış cevabı yoktur; puana katılmaz.",
     "zerothOptionCount": "{option}: {count} talebe"
+  },
+  "ExamAnswers": {
+    "title": "Talebenin cevapları",
+    "heading": "{name}: cevapları",
+    "backToResults": "Sonuçlara dön",
+    "openLabel": "{name}: cevaplarını aç",
+    "loadFailedTitle": "Cevaplar okunamadı",
+    "loadFailed": "Talebenin cevapları şu an okunamadı. Sayfayı yenileyip yeniden deneyin.",
+    "summaryTitle": "Özet",
+    "score": "Puan: {score} / 100",
+    "noScore": "Puan, sınav bitince hesaplanır.",
+    "noSwitch": "Sekme değiştirmedi.",
+    "switches": "{count} kez sekme değiştirdi: {times}",
+    "zeroth": "Sıfırıncı soruya cevabı:",
+    "questionsTitle": "Sorular ve cevapları",
+    "noQuestions": "Sınavda soru yok.",
+    "verdictRight": "Doğru cevap verdi",
+    "verdictWrong": "Yanlış cevap verdi",
+    "verdictBlank": "Boş bıraktı",
+    "verdictSkipped": "Atladı, boş kaldı",
+    "earned": "{earned} / {points} puan aldı",
+    "chosen": "(seçtiği)"
   }
 }

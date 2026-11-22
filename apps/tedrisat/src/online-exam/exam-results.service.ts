@@ -6,6 +6,7 @@ import {
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import {
+  earnedPart,
   FinishedBy,
   latestStartOf,
   scoreHundredths,
@@ -15,19 +16,25 @@ import {
   type AttemptTally,
   averagePercent,
   closedForEveryone,
+  earnedHundredths,
   mayCloseEarly,
   percentOf,
   type ResultQuestion,
   TalebeExamState,
   tallyAttempt,
+  verdictOf,
 } from "./domain/exam-results";
 import { pointsText, sharePoints, shareText } from "./domain/online-exam";
 import type {
   OnlineExamClosedResponse,
   OnlineExamResultsResponse,
   ResultsTalebeResponse,
+  TalebeAnswersResponse,
 } from "./dto/exam-results.dto";
-import { ExamNotOpenError } from "./errors/exam-results.errors";
+import {
+  ExamNotOpenError,
+  TalebeAttemptNotFoundError,
+} from "./errors/exam-results.errors";
 import { OnlineExamNotFoundError } from "./errors/online-exam.errors";
 import { ExamResultsRepository } from "./exam-results.repository";
 import {
@@ -258,6 +265,96 @@ export class ExamResultsService {
       releasedAt: exam.resultsReleasedAt,
       mayRelease,
       releasable: exam.lessonExamId !== null,
+    };
+  }
+
+  /**
+   * One talebe's answers, question by question (the owner, 22 Nov 2026:
+   * "sınav sonuçlarında talebeye tıklayıp hangi soruya ne cevap verdiğini
+   * ayrıca görebilmek lazım"): each question in the exam's order, not the
+   * talebe's, with its options, the correct marks, what the talebe chose, and
+   * the points the answer earned. The team reads it before the release too,
+   * as it reads the results; like the results read, it writes no audit row.
+   * A talebe not seated in the course, or with no attempt, is
+   * ATTEMPT_NOT_FOUND.
+   */
+  async talebeAnswers(
+    examId: string,
+    userId: string
+  ): Promise<TalebeAnswersResponse> {
+    const exam = await this.repo.findExam(examId);
+    if (!exam) throw new OnlineExamNotFoundError(examId);
+    const [draft, seated, attempt] = await Promise.all([
+      this.exams.findDraft(exam.courseId, examId),
+      this.repo.listSeated(exam.courseId),
+      this.repo.findAttemptOf(examId, userId),
+    ]);
+    const person = seated.find((s) => s.userId === userId);
+    if (!person || !attempt) {
+      throw new TalebeAttemptNotFoundError(examId, userId);
+    }
+    const [answers, switches, zerothAnswers, zerothOptions] = await Promise.all(
+      [
+        this.repo.answersOfAttempt(attempt.id),
+        this.repo.listSwitches([attempt.id]),
+        this.repo.listZerothAnswers(examId),
+        this.repo.listZerothOptions(examId),
+      ]
+    );
+    const drafted = draft?.questions ?? [];
+    const scored = resultQuestionsOf(drafted);
+    const { points } = sharePoints(
+      scored.map((q) => ({ id: q.id, ownHundredths: q.ownHundredths }))
+    );
+    const byQuestion = new Map(answers.map((a) => [a.questionId, a]));
+    const zerothId =
+      zerothAnswers.find((z) => z.userId === userId)?.optionId ?? null;
+    return {
+      exam: { id: exam.examId, title: exam.title },
+      userId,
+      name: person.name,
+      state:
+        attempt.finishedAt === null
+          ? TalebeExamState.IN_PROGRESS
+          : TalebeExamState.FINISHED,
+      startedAt: attempt.startedAt,
+      finishedAt: attempt.finishedAt,
+      finishedBy: attempt.finishedBy,
+      score:
+        attempt.scoreHundredths === null
+          ? null
+          : pointsText(attempt.scoreHundredths),
+      switches: switches.map((s) => ({ at: s.at })),
+      zeroth: {
+        question: exam.zerothQuestion,
+        optionId: zerothId,
+        answer: zerothOptions.find((o) => o.id === zerothId)?.text ?? null,
+      },
+      questions: drafted.map((q, i) => {
+        const answer = byQuestion.get(q.id);
+        const chosen = answer?.optionIds ?? [];
+        const p = points.get(q.id);
+        return {
+          questionId: q.id,
+          number: i + 1,
+          text: q.text,
+          answerMode: q.answerMode,
+          scoring: q.scoring,
+          points: p ? shareText(p) : pointsText(0),
+          earned: pointsText(
+            earnedHundredths(p, earnedPart(scored[i], chosen))
+          ),
+          verdict: verdictOf(scored[i], chosen),
+          skipped: answer?.skipped ?? false,
+          savedAt: answer?.savedAt ?? null,
+          options: q.options.map((o) => ({
+            id: o.id,
+            text: o.text,
+            correct: o.correct,
+            chosen: chosen.includes(o.id),
+          })),
+        };
+      }),
     };
   }
 
