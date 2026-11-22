@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.13](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.12...nazar-web-v0.2.13) (2026-11-22)
+
+
+### Features
+
+* **nazar-web:** MDRS-299 the exam page saves in the background, no waiting ([#409](https://github.com/amel-tech/medaris/issues/409)) ([fb9d75e](https://github.com/amel-tech/medaris/commit/fb9d75e00ba356cba88287e996b79447c527cdf4))
+* **tedrisat, nazar-web, common, services:** MDRS-299 hocas prepare online exam questions ([#408](https://github.com/amel-tech/medaris/issues/408)) ([140084e](https://github.com/amel-tech/medaris/commit/140084e9119b06e991f1e49a5b55e90b0b8f2314))
+
+
+### Bug Fixes
+
+* **deps, tedrisat, ci:** clear [#385](https://github.com/amel-tech/medaris/issues/385) and the 12 code scanning alerts that need a code change ([#397](https://github.com/amel-tech/medaris/issues/397)) ([311dcae](https://github.com/amel-tech/medaris/commit/311dcaedf54f28308082e39fd4ffaf821b1fda44))
+* **nazar-web:** MDRS-299 the exam page's queue reads ids when it runs; Sil opens ([#410](https://github.com/amel-tech/medaris/issues/410)) ([8ca82b6](https://github.com/amel-tech/medaris/commit/8ca82b62999cc14b86aaca61563bff1e1af12128))
+
 ## [0.2.12](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.11...nazar-web-v0.2.12) (2026-11-16)
 
 
