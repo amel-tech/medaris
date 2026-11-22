@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -18,6 +19,7 @@ import {
   Scoring,
 } from "../../online-exam/domain/online-exam";
 import { courses, lessons } from "./course.schema";
+import { madrasahs } from "./madrasah.schema";
 
 export const examAnswerMode = pgEnum("exam_answer_mode", AnswerMode);
 export const examScoring = pgEnum("exam_scoring", Scoring);
@@ -212,4 +214,47 @@ export const examOptions = table(
     correct: boolean("correct").default(false).notNull(),
   },
   (t) => [index("exam_options_question_idx").on(t.questionId)]
+);
+
+/**
+ * A medrese's zeroth question (MDRS-299), asked before every exam of its
+ * courses: one per medrese, about the hadith the page shows fixed. The owner,
+ * 22 Nov 2026: the same question for every exam of a term, changed for the
+ * next. Publishing an exam copies it into the exam (`online_exams.
+ * zeroth_question`, `zeroth_options`), so a change reaches only the exams
+ * published after it. It goes with its medrese; `updated_by` is not a foreign
+ * key, like every user column here.
+ */
+export const madrasahZerothQuestions = table("madrasah_zeroth_questions", {
+  madrasahId: uuid("madrasah_id")
+    .primaryKey()
+    .references(() => madrasahs.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedBy: uuid("updated_by").notNull(),
+});
+
+/** One option of a medrese's zeroth question, in its order: none is correct, none carries points. */
+export const madrasahZerothOptions = table(
+  "madrasah_zeroth_options",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    madrasahId: uuid("madrasah_id").notNull(),
+    position: integer("position").notNull(),
+    text: text("text").notNull(),
+  },
+  (t) => [
+    // Named here: the generated name is longer than Postgres keeps (63).
+    foreignKey({
+      name: "madrasah_zeroth_options_question_fk",
+      columns: [t.madrasahId],
+      foreignColumns: [madrasahZerothQuestions.madrasahId],
+    }).onDelete("cascade"),
+    uniqueIndex("madrasah_zeroth_options_position_uq").on(
+      t.madrasahId,
+      t.position
+    ),
+  ]
 );

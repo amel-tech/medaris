@@ -319,6 +319,7 @@ src/models/MadrasahStatusFilter.ts
 src/models/MadrasahStudentCourseResponse.ts
 src/models/MadrasahStudentResponse.ts
 src/models/MadrasahStudentsResponse.ts
+src/models/MadrasahZerothQuestionResponse.ts
 src/models/ManagedKoskDeckResponse.ts
 src/models/ManagedKoskDecksResponse.ts
 src/models/ManagedKoskRef.ts
@@ -428,6 +429,7 @@ src/models/SaveExamQuestionDto.ts
 src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
 src/models/SaveSubmissionNoteDto.ts
+src/models/SaveZerothQuestionDto.ts
 src/models/ScheduleSessionResponse.ts
 src/models/ScopeRefResponse.ts
 src/models/ScopedPolicyListResponse.ts

@@ -5,11 +5,19 @@ import { DatabaseModule } from "../database/database.module";
 import { OnlineExamController } from "./online-exam.controller";
 import { OnlineExamRepository } from "./online-exam.repository";
 import { OnlineExamService } from "./online-exam.service";
+import { ZerothQuestionController } from "./zeroth-question.controller";
+import { ZerothQuestionRepository } from "./zeroth-question.repository";
+import { ZerothQuestionService } from "./zeroth-question.service";
 
-/** Preparing online multiple-choice exams (MDRS-299): topics, drafts and questions. */
+/** Online multiple-choice exams (MDRS-299): topics, drafts and questions, and each medrese's zeroth question. */
 @Module({
   imports: [AuthGuardModule, CourseModule, DatabaseModule],
-  controllers: [OnlineExamController],
-  providers: [OnlineExamService, OnlineExamRepository],
+  controllers: [OnlineExamController, ZerothQuestionController],
+  providers: [
+    OnlineExamService,
+    OnlineExamRepository,
+    ZerothQuestionService,
+    ZerothQuestionRepository,
+  ],
 })
 export class OnlineExamModule {}
