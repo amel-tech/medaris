@@ -815,6 +815,37 @@ describe("the exam editor (MDRS-299)", () => {
     );
   });
 
+  it("starts a new exam's length blank, and sends a cleared length as none", async () => {
+    let version = 1;
+    actions.saveExamSettings.mockImplementation(async () => ({
+      success: true,
+      data: { version: ++version },
+    }));
+    const fresh = {
+      ...draft,
+      durationMinutes: null,
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={fresh} />));
+    expect((settingsField("Süre (dakika)") as HTMLInputElement).value).toBe("");
+    await typeInto(settingsField("Süre (dakika)"), "40");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 40 })
+    );
+    await typeInto(settingsField("Süre (dakika)"), "");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: null })
+    );
+    expect(root.textContent).not.toContain(
+      "Süre sıfırdan büyük bir tam sayı olmalı."
+    );
+  });
+
   it("draws an Arabic option as its own Arabic run, with Doğru beside it", async () => {
     const arabic = {
       ...draft,

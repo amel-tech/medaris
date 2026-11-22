@@ -128,8 +128,9 @@ describe("online exams, preparation (e2e)", () => {
     ]);
 
     const first = await draft(examId);
+    // No default length: the team types it (22 Nov 2026).
     expect(first).toMatchObject({
-      durationMinutes: 60,
+      durationMinutes: null,
       questions: [],
       status: "DRAFT",
       version: 1,

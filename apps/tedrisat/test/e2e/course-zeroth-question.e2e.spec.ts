@@ -8,6 +8,7 @@ import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import {
   madrasahZerothOptions,
   madrasahZerothQuestions,
+  onlineExams,
 } from "../../src/database/schema/online-exam.schema";
 import {
   bearerOf,
@@ -60,6 +61,11 @@ describe("online exams, a course's own zeroth question (e2e)", () => {
         .send({ title: "Ara sınav" })
         .expect(201)
     ).body.id as string;
+    // Its length, typed without moving the version: a new exam has none.
+    await db()
+      .update(onlineExams)
+      .set({ durationMinutes: 60 })
+      .where(eq(onlineExams.id, examId));
     const topic = (
       await http()
         .post(`/courses/${ids.courseId}/exam-topics`)

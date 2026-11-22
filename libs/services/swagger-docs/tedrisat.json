@@ -30627,12 +30627,13 @@
           "kind": {
             "type": "string",
             "enum": [
+              "NO_DURATION",
               "NO_QUESTION",
               "QUESTION",
               "POINTS",
               "NO_ZEROTH"
             ],
-            "description": "NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question."
+            "description": "NO_DURATION: its length is not typed; NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: neither the course nor its madrasah has a zeroth question."
           },
           "number": {
             "type": "number"
@@ -30673,7 +30674,9 @@
             "type": "string"
           },
           "durationMinutes": {
-            "type": "number"
+            "type": "number",
+            "nullable": true,
+            "description": "\"Süre (dakika)\"; null until the team types it."
           },
           "instructions": {
             "type": "string",
@@ -30779,9 +30782,10 @@
           },
           "durationMinutes": {
             "type": "number",
+            "nullable": true,
             "minimum": 1,
             "maximum": 2147483647,
-            "description": "\"Süre (dakika)\"; no upper bound but the column's (the owner: \"Sınır yok\")."
+            "description": "\"Süre (dakika)\"; null clears it. No default and no upper bound but the column's (the owner: \"Sınır yok\"); an exam without it is not published."
           },
           "instructions": {
             "type": "string",

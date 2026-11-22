@@ -56,7 +56,8 @@ export interface IOnlineExamSummary {
   id: string;
   title: string;
   questionCount: number;
-  durationMinutes: number;
+  /** Null until the team types it; a published exam always has it. */
+  durationMinutes: number | null;
   publishedAt: Date | null;
   closedEarlyAt: Date | null;
   /** Its celse's start; null for a draft. */
@@ -69,7 +70,8 @@ export interface IOnlineExamDraft {
   id: string;
   courseId: string;
   title: string;
-  durationMinutes: number;
+  /** Null until the team types it; a published exam always has it. */
+  durationMinutes: number | null;
   instructions: string | null;
   zerothQuestion: string;
   zerothOptions: Array<{ id: string; text: string }>;
@@ -711,7 +713,7 @@ export class OnlineExamRepository {
     w: IExamWrite,
     input: {
       title?: string;
-      durationMinutes?: number;
+      durationMinutes?: number | null;
       instructions?: string | null;
       topicIds?: string[];
     }

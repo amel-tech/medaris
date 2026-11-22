@@ -41,10 +41,10 @@ export async function createOnlineExam(
   );
 }
 
-/** The exam's settings: its title, its length in minutes and the team's instructions (blank is none). */
+/** The exam's settings: its title, its length in minutes (null until typed) and the team's instructions (blank is none). */
 export interface ExamSettings {
   title: string;
-  durationMinutes: number;
+  durationMinutes: number | null;
   instructions: string | null;
 }
 

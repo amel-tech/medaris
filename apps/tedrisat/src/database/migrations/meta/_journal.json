@@ -512,6 +512,13 @@
       "when": 1795343947771,
       "tag": "0077_exam_scoring_any_correct",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795345300815,
+      "tag": "0078_exam_duration_optional",
+      "breakpoints": true
     }
   ]
 }

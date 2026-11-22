@@ -13,11 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import {
-  AnswerMode,
-  ONLINE_EXAM_DEFAULT_MINUTES,
-  Scoring,
-} from "../../online-exam/domain/online-exam";
+import { AnswerMode, Scoring } from "../../online-exam/domain/online-exam";
 import { courses, lessons } from "./course.schema";
 import { madrasahs } from "./madrasah.schema";
 
@@ -84,9 +80,10 @@ export const onlineExams = table(
       onDelete: "restrict",
     }),
     title: text("title").notNull(),
-    durationMinutes: integer("duration_minutes")
-      .default(ONLINE_EXAM_DEFAULT_MINUTES)
-      .notNull(),
+    // No default: the team types it, and an exam without it is not published
+    // (the owner, 22 Nov 2026: "sınav süresinin varsayılanı olmasın, zorunlu
+    // olsun ama boş kalsın o olmadan sınav yayına alınamasın").
+    durationMinutes: integer("duration_minutes"),
     instructions: text("instructions"),
     zerothQuestion: text("zeroth_question").default("").notNull(),
     latestStartAt: timestamp("latest_start_at", { withTimezone: true }),

@@ -12,6 +12,7 @@ import {
   pointsFit,
   pointsFromText,
   pointsText,
+  publishedMinutes,
   publishProblems,
   publishTimeProblem,
   type Scoring,
@@ -193,6 +194,7 @@ export class OnlineExamService {
       asked !== null
     );
     if (problems.length > 0) throw new ExamNotReadyError(examId, problems);
+    const minutes = publishedMinutes(draft.durationMinutes);
     const spread = Math.round(
       (latestStartAt.getTime() - startsAt.getTime()) / 60_000
     );
@@ -201,10 +203,7 @@ export class OnlineExamService {
       {
         title: draft.title,
         // Kept within the column: the length has no bound of its own.
-        durationMinutes: Math.min(
-          draft.durationMinutes + spread,
-          CELSE_MINUTES_MAX
-        ),
+        durationMinutes: Math.min(minutes + spread, CELSE_MINUTES_MAX),
         scheduledAt: startsAt,
         exam: {
           format: ExamFormat.MULTIPLE_CHOICE,
@@ -278,6 +277,7 @@ export class OnlineExamService {
     hasZeroth: boolean
   ): PublishProblem[] {
     return publishProblems({
+      durationMinutes: draft.durationMinutes,
       questions: draft.questions,
       pointsTotal,
       hasZeroth,
@@ -294,7 +294,7 @@ export class OnlineExamService {
     input: {
       version: number;
       title?: string;
-      durationMinutes?: number;
+      durationMinutes?: number | null;
       instructions?: string | null;
       topicIds?: string[];
     },

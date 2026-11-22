@@ -121,10 +121,20 @@ describe("online exam rules (MDRS-299)", () => {
       topicIds: ["t1"],
     };
     expect(
-      publishProblems({ questions: [], pointsTotal: "0.00", hasZeroth: false })
-    ).toEqual([{ kind: "NO_QUESTION" }, { kind: "NO_ZEROTH" }]);
+      publishProblems({
+        durationMinutes: null,
+        questions: [],
+        pointsTotal: "0.00",
+        hasZeroth: false,
+      })
+    ).toEqual([
+      { kind: "NO_DURATION" },
+      { kind: "NO_QUESTION" },
+      { kind: "NO_ZEROTH" },
+    ]);
     expect(
       publishProblems({
+        durationMinutes: 60,
         questions: [complete, { ...complete, topicIds: [], options: [] }],
         pointsTotal: "80.00",
         hasZeroth: true,
@@ -135,6 +145,7 @@ describe("online exam rules (MDRS-299)", () => {
     ]);
     expect(
       publishProblems({
+        durationMinutes: 60,
         questions: [complete],
         pointsTotal: "100.00",
         hasZeroth: true,

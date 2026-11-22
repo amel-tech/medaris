@@ -496,12 +496,15 @@ export function ExamEditor({
   }));
   const view = { ...draft, courseTopics: topics };
 
-  // What the page knows keeps the exam from being published: the questions
-  // as they now stand, and what only the server knows (the points total
-  // and the medrese's zeroth question) as it was read.
+  // What the page knows keeps the exam from being published: its length and
+  // the questions as they now stand, and what only the server knows (the
+  // points total and the zeroth question) as it was read.
   const problems: PublishProblemResponse[] = !publish
     ? []
     : [
+        ...(settings.durationMinutes === null
+          ? [{ kind: "NO_DURATION" as const }]
+          : []),
         ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
         ...numbered
           .filter((q) => q.lacks.length > 0)
@@ -608,7 +611,7 @@ export function ExamEditor({
         <PublishSection
           problems={problems}
           questionCount={numbered.length}
-          durationMinutes={draft.durationMinutes}
+          durationMinutes={settings.durationMinutes}
           timeZone={publish.timeZone}
           holding={editing !== null}
           sending={sending}
@@ -636,12 +639,18 @@ function SettingsSection({
 }) {
   const t = useTranslations("nazar");
   const [title, setTitle] = useState(settings.title);
-  const [minutes, setMinutes] = useState(String(settings.durationMinutes));
+  // No default length: blank until the team types it, and blank is sent as
+  // none (the owner, 22 Nov 2026: "sınav süresinin varsayılanı olmasın").
+  const [minutes, setMinutes] = useState(
+    settings.durationMinutes === null ? "" : String(settings.durationMinutes)
+  );
   const [instructions, setInstructions] = useState(settings.instructions ?? "");
   const [problem, setProblem] = useState<"title" | "minutes" | null>(null);
+  const blankMinutes = minutes.trim() === "";
   const typed: ExamSettings | null = (() => {
-    const durationMinutes = minutesFromText(minutes);
-    if (title.trim() === "" || durationMinutes === null) return null;
+    const durationMinutes = blankMinutes ? null : minutesFromText(minutes);
+    if (title.trim() === "") return null;
+    if (!blankMinutes && durationMinutes === null) return null;
     return {
       title: title.trim(),
       durationMinutes,
@@ -656,7 +665,9 @@ function SettingsSection({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (title.trim() === "") return setProblem("title");
-    if (minutesFromText(minutes) === null) return setProblem("minutes");
+    if (!blankMinutes && minutesFromText(minutes) === null) {
+      return setProblem("minutes");
+    }
     setProblem(null);
     if (typed && !unchanged) onSave(typed);
   };

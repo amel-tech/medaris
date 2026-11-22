@@ -175,9 +175,13 @@ describe("publishing an online exam (MDRS-299)", () => {
           lacks: ["option", "correct"],
         },
       ],
-      problems: [{ kind: "NO_ZEROTH" }],
+      durationMinutes: null,
+      problems: [{ kind: "NO_DURATION" }, { kind: "NO_ZEROTH" }],
     } as unknown as OnlineExamDraftResponse);
     expect(root.textContent).toContain("Sınav henüz yayınlanamaz");
+    expect(root.textContent).toContain(
+      'Sınavın süresi girilmedi: Ayarlar\'daki "Süre (dakika)" alanına yazılır.'
+    );
     expect(root.textContent).toContain("1. sorunun en az iki şıkkı olmalı.");
     expect(root.textContent).toContain(
       "1. sorunun doğru şıkkı işaretli değil."
