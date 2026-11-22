@@ -67,11 +67,11 @@ export interface OnlineExamDraftResponse {
      */
     title: string;
     /**
-     * 
+     * "Süre (dakika)"; null until the team types it.
      * @type {number}
      * @memberof OnlineExamDraftResponse
      */
-    durationMinutes: number;
+    durationMinutes: number | null;
     /**
      * 
      * @type {string}

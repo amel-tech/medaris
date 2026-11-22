@@ -19,7 +19,8 @@
  */
 export const Scoring = {
     AllOrNothing: 'ALL_OR_NOTHING',
-    InShares: 'IN_SHARES'
+    InShares: 'IN_SHARES',
+    AnyCorrect: 'ANY_CORRECT'
 } as const;
 export type Scoring = typeof Scoring[keyof typeof Scoring];
 

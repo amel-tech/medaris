@@ -70,3 +70,60 @@ export class MadrasahZerothQuestionResponse {
   })
   updatedAt!: string | null;
 }
+
+/** A zeroth question as it was last saved. */
+export class ZerothQuestionText {
+  @ApiProperty() text!: string;
+
+  @ApiProperty({ type: [String], description: "In their order." })
+  options!: string[];
+
+  @ApiProperty({ type: String, format: "date-time" })
+  updatedAt!: string;
+}
+
+/** Which question a course's exams ask. */
+export enum ZerothQuestionSource {
+  /** The course's own. */
+  COURSE = "COURSE",
+  /** The medrese's, the default. */
+  MADRASAH = "MADRASAH",
+  /** Neither: no exam of the course can be published. */
+  NONE = "NONE",
+}
+
+/**
+ * A course's zeroth question as its Sınavlar page reads it (MDRS-299): its own,
+ * its medrese's, and which one its exams ask. The owner, 22 Nov 2026:
+ * "ders özelinde sıfırıncı soru mümkün olsun, medreseninki default olur ders
+ * özelinde değişebilir".
+ */
+export class CourseZerothQuestionResponse {
+  @ApiProperty({
+    type: () => ZerothQuestionText,
+    nullable: true,
+    description: "The course's own question; null while it asks its medrese's.",
+  })
+  own!: ZerothQuestionText | null;
+
+  @ApiProperty({
+    type: () => ZerothQuestionText,
+    nullable: true,
+    description:
+      "The medrese's question, the default; null when the medrese has none, or the course belongs to a köşk alone.",
+  })
+  madrasah!: ZerothQuestionText | null;
+
+  @ApiProperty({
+    enum: ZerothQuestionSource,
+    enumName: "ZerothQuestionSource",
+    description: "Which one the course's exams ask as they are published.",
+  })
+  applies!: ZerothQuestionSource;
+
+  @ApiProperty({
+    description:
+      "False for a course of a köşk alone: it has no medrese's question to fall back on.",
+  })
+  inMadrasah!: boolean;
+}

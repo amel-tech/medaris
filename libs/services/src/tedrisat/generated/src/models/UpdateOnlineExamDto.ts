@@ -32,11 +32,11 @@ export interface UpdateOnlineExamDto {
      */
     title?: string;
     /**
-     * "Süre (dakika)"; no upper bound but the column's (the owner: "Sınır yok").
+     * "Süre (dakika)"; null clears it. No default and no upper bound but the column's (the owner: "Sınır yok"); an exam without it is not published.
      * @type {number}
      * @memberof UpdateOnlineExamDto
      */
-    durationMinutes?: number;
+    durationMinutes?: number | null;
     /**
      * The team's own words for the briefing; blank is none.
      * @type {string}

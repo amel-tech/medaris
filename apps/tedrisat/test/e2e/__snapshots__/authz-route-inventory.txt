@@ -5,6 +5,7 @@ DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
 DELETE /courses/:id/exam-topics/:topicId -> exam.prepare on course
+DELETE /courses/:id/exam-zeroth-question -> exam.prepare on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
@@ -50,6 +51,7 @@ GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/evaluations -> session.manage on byExistingCourse
 GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
 GET /courses/:id/exam-topics -> exam.prepare on course
+GET /courses/:id/exam-zeroth-question -> exam.prepare on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
@@ -288,6 +290,7 @@ POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse
 PUT /courses/:id -> course.edit on course
+PUT /courses/:id/exam-zeroth-question -> exam.prepare on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
 PUT /courses/:id/progress -> course.view_details on course

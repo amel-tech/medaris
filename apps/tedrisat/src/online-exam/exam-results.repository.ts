@@ -22,6 +22,7 @@ import {
 import { users } from "../database/schema/user.schema";
 import type { FinishedBy } from "./domain/exam-attempt";
 import { wholeScore } from "./domain/exam-results";
+import { publishedMinutes } from "./domain/online-exam";
 import type { IAttempt, Tx } from "./exam-attempt.repository";
 
 /** Who has a seat in the course and so a row in the results: ENROLLED or COMPLETED, as Değerlendirme has it. */
@@ -88,7 +89,13 @@ export class ExamResultsRepository {
       )
       .limit(1);
     if (!row || row.lessonId === null || row.startsAt === null) return null;
-    return { ...row, lessonId: row.lessonId, startsAt: row.startsAt };
+    return {
+      ...row,
+      lessonId: row.lessonId,
+      startsAt: row.startsAt,
+      // Read only of a published exam, which always has its length.
+      durationMinutes: publishedMinutes(row.durationMinutes),
+    };
   }
 
   /** The talebe seated in the course, by name; one with no name sorts last. */

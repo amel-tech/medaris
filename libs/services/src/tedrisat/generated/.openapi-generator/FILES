@@ -111,6 +111,7 @@ src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CourseTopicResponse.ts
+src/models/CourseZerothQuestionResponse.ts
 src/models/CreateAppealDto.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDeckDto.ts
@@ -543,6 +544,8 @@ src/models/WeeklyPatternDto.ts
 src/models/ZerothAnswerDto.ts
 src/models/ZerothAnswerResponse.ts
 src/models/ZerothOptionResponse.ts
+src/models/ZerothQuestionSource.ts
+src/models/ZerothQuestionText.ts
 src/models/index.ts
 src/runtime.ts
 tsconfig.esm.json

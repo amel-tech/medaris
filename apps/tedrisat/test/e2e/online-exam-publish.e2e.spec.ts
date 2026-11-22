@@ -55,6 +55,11 @@ describe("online exams, publishing (e2e)", () => {
         .send({ title: "Ara sınav" })
         .expect(201)
     ).body.id as string;
+    // Its length, typed without moving the version: a new exam has none.
+    await db()
+      .update(onlineExams)
+      .set({ durationMinutes: 60 })
+      .where(eq(onlineExams.id, examId));
     const topic = (
       await http()
         .post(`/courses/${ids.courseId}/exam-topics`)
@@ -237,10 +242,41 @@ describe("online exams, publishing (e2e)", () => {
       .get(`/online-exams/${empty}`)
       .set("Authorization", muderris)
       .expect(200);
-    expect(draft.body.problems).toEqual([{ kind: "NO_QUESTION" }]);
+    // A new exam has no length: it is typed, never defaulted (the owner,
+    // 22 Nov 2026: "sınav süresinin varsayılanı olmasın, zorunlu olsun ama
+    // boş kalsın o olmadan sınav yayına alınamasın").
+    expect(draft.body.durationMinutes).toBeNull();
+    expect(draft.body.problems).toEqual([
+      { kind: "NO_DURATION" },
+      { kind: "NO_QUESTION" },
+    ]);
     const refused = await publish(empty, { version: 1 }).expect(409);
     expect(refused.body.code).toBe("EXAM_NOT_READY");
-    expect(refused.body.context.problems).toEqual([{ kind: "NO_QUESTION" }]);
+    expect(refused.body.context.problems).toEqual([
+      { kind: "NO_DURATION" },
+      { kind: "NO_QUESTION" },
+    ]);
+    const lengthOf = async () =>
+      (
+        await http()
+          .get(`/online-exams/${empty}`)
+          .set("Authorization", muderris)
+          .expect(200)
+      ).body;
+    await http()
+      .patch(`/online-exams/${empty}`)
+      .set("Authorization", muderris)
+      .send({ version: 1, durationMinutes: 45 })
+      .expect(200);
+    expect((await lengthOf()).durationMinutes).toBe(45);
+    expect((await lengthOf()).problems).toEqual([{ kind: "NO_QUESTION" }]);
+    // And cleared again.
+    await http()
+      .patch(`/online-exams/${empty}`)
+      .set("Authorization", muderris)
+      .send({ version: 2, durationMinutes: null })
+      .expect(200);
+    expect((await lengthOf()).durationMinutes).toBeNull();
 
     // A medrese that asks no zeroth question publishes no exam.
     await db()
@@ -253,7 +289,11 @@ describe("online exams, publishing (e2e)", () => {
           .set("Authorization", muderris)
           .expect(200)
       ).body.problems
-    ).toEqual([{ kind: "NO_QUESTION" }, { kind: "NO_ZEROTH" }]);
+    ).toEqual([
+      { kind: "NO_DURATION" },
+      { kind: "NO_QUESTION" },
+      { kind: "NO_ZEROTH" },
+    ]);
     await askZeroth("Söz veriyor musun?", ["Evet", "Hayır"]);
 
     const examId = await readyExam();

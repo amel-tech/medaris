@@ -12,6 +12,7 @@ import {
   pointsFit,
   pointsFromText,
   pointsText,
+  publishedMinutes,
   publishProblems,
   publishTimeProblem,
   type Scoring,
@@ -186,16 +187,14 @@ export class OnlineExamService {
     const shares = sharePoints(
       draft.questions.map((q) => ({ id: q.id, ownHundredths: q.ownPoints }))
     );
-    const madrasahId = await this.repo.findCourseMadrasahId(w.courseId);
-    const asked = madrasahId
-      ? await this.zeroth.findForMadrasah(madrasahId)
-      : null;
+    const asked = await this.zeroth.findAsked(w.courseId);
     const problems = this.problemsOf(
       draft,
       this.totalOf(shares),
       asked !== null
     );
     if (problems.length > 0) throw new ExamNotReadyError(examId, problems);
+    const minutes = publishedMinutes(draft.durationMinutes);
     const spread = Math.round(
       (latestStartAt.getTime() - startsAt.getTime()) / 60_000
     );
@@ -204,10 +203,7 @@ export class OnlineExamService {
       {
         title: draft.title,
         // Kept within the column: the length has no bound of its own.
-        durationMinutes: Math.min(
-          draft.durationMinutes + spread,
-          CELSE_MINUTES_MAX
-        ),
+        durationMinutes: Math.min(minutes + spread, CELSE_MINUTES_MAX),
         scheduledAt: startsAt,
         exam: {
           format: ExamFormat.MULTIPLE_CHOICE,
@@ -215,10 +211,9 @@ export class OnlineExamService {
         },
         within: async (tx, [lessonId]) => {
           // Read again in the transaction: the question copied is the one
-          // the medrese asks as the exam is published.
-          const zeroth = madrasahId
-            ? await this.zeroth.findForMadrasah(madrasahId, tx)
-            : null;
+          // that applies as the exam is published, the course's own or else
+          // its medrese's.
+          const zeroth = await this.zeroth.findAsked(w.courseId, tx);
           if (!zeroth) {
             throw new ExamNotReadyError(examId, [{ kind: "NO_ZEROTH" }]);
           }
@@ -282,16 +277,16 @@ export class OnlineExamService {
     hasZeroth: boolean
   ): PublishProblem[] {
     return publishProblems({
+      durationMinutes: draft.durationMinutes,
       questions: draft.questions,
       pointsTotal,
       hasZeroth,
     });
   }
 
-  /** The zeroth question of the course's medrese; null for a köşk's own course, or a medrese with none. */
-  private async zerothOfCourse(courseId: string) {
-    const madrasahId = await this.repo.findCourseMadrasahId(courseId);
-    return madrasahId ? this.zeroth.findForMadrasah(madrasahId) : null;
+  /** The zeroth question the course's exams ask: its own, else its medrese's; null when there is neither. */
+  private zerothOfCourse(courseId: string) {
+    return this.zeroth.findAsked(courseId);
   }
 
   async updateExam(
@@ -299,7 +294,7 @@ export class OnlineExamService {
     input: {
       version: number;
       title?: string;
-      durationMinutes?: number;
+      durationMinutes?: number | null;
       instructions?: string | null;
       topicIds?: string[];
     },

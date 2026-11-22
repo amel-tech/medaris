@@ -15323,6 +15323,144 @@
         ]
       }
     },
+    "/courses/{id}/exam-zeroth-question": {
+      "get": {
+        "description": "The course's own question if it has one, its medrese's (the default), and which one its exams ask as they are published. A course of a köşk alone has no medrese's question; with no question of its own, its exams are not published.",
+        "operationId": "getCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A course's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "put": {
+        "description": "Replaces the course's own question and all its options; its exams ask it instead of the medrese's from the next one published. Written to `audit_log` as `course.zeroth_question.update`; a save that changes nothing writes nothing.",
+        "operationId": "saveCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveZerothQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give the course a zeroth question of its own",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "delete": {
+        "description": "Takes the course's own question off; its exams ask the medrese's again from the next one published. Written to `audit_log` as `course.zeroth_question.delete`; nothing is written when the course had none.",
+        "operationId": "removeCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Back to the medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
     "/lessons/{id}/online-exam": {
       "get": {
         "description": "\"Bilmeniz gerekenler\": the exam's title, course, length and question count, its earliest and latest start and whether it is open now, the team's instructions, the zeroth question with its options and the caller's answer, and where the caller's attempt stands. No question of the exam is sent. An attempt whose time ran out, or whose exam was closed early, is finished on this read.",
@@ -30557,7 +30695,8 @@
         "type": "string",
         "enum": [
           "ALL_OR_NOTHING",
-          "IN_SHARES"
+          "IN_SHARES",
+          "ANY_CORRECT"
         ]
       },
       "ExamQuestionResponse": {
@@ -30648,12 +30787,13 @@
           "kind": {
             "type": "string",
             "enum": [
+              "NO_DURATION",
               "NO_QUESTION",
               "QUESTION",
               "POINTS",
               "NO_ZEROTH"
             ],
-            "description": "NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question."
+            "description": "NO_DURATION: its length is not typed; NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: neither the course nor its madrasah has a zeroth question."
           },
           "number": {
             "type": "number"
@@ -30694,7 +30834,9 @@
             "type": "string"
           },
           "durationMinutes": {
-            "type": "number"
+            "type": "number",
+            "nullable": true,
+            "description": "\"Süre (dakika)\"; null until the team types it."
           },
           "instructions": {
             "type": "string",
@@ -30800,9 +30942,10 @@
           },
           "durationMinutes": {
             "type": "number",
+            "nullable": true,
             "minimum": 1,
             "maximum": 2147483647,
-            "description": "\"Süre (dakika)\"; no upper bound but the column's (the owner: \"Sınır yok\")."
+            "description": "\"Süre (dakika)\"; null clears it. No default and no upper bound but the column's (the owner: \"Sınır yok\"); an exam without it is not published."
           },
           "instructions": {
             "type": "string",
@@ -31158,6 +31301,82 @@
         "required": [
           "text",
           "options"
+        ]
+      },
+      "ZerothQuestionText": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "description": "In their order.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "text",
+          "options",
+          "updatedAt"
+        ]
+      },
+      "ZerothQuestionSource": {
+        "type": "string",
+        "enum": [
+          "COURSE",
+          "MADRASAH",
+          "NONE"
+        ],
+        "description": "Which one the course's exams ask as they are published."
+      },
+      "CourseZerothQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "own": {
+            "nullable": true,
+            "description": "The course's own question; null while it asks its medrese's.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionText"
+              }
+            ]
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese's question, the default; null when the medrese has none, or the course belongs to a köşk alone.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionText"
+              }
+            ]
+          },
+          "applies": {
+            "description": "Which one the course's exams ask as they are published.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionSource"
+              }
+            ]
+          },
+          "inMadrasah": {
+            "type": "boolean",
+            "description": "False for a course of a köşk alone: it has no medrese's question to fall back on."
+          }
+        },
+        "required": [
+          "own",
+          "madrasah",
+          "applies",
+          "inMadrasah"
         ]
       },
       "ExamWindow": {

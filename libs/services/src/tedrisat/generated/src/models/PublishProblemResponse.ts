@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface PublishProblemResponse {
     /**
-     * NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: the madrasah has no zeroth question.
+     * NO_DURATION: its length is not typed; NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: neither the course nor its madrasah has a zeroth question.
      * @type {string}
      * @memberof PublishProblemResponse
      */
@@ -50,6 +50,7 @@ export interface PublishProblemResponse {
  * @export
  */
 export const PublishProblemResponseKindEnum = {
+    NoDuration: 'NO_DURATION',
     NoQuestion: 'NO_QUESTION',
     Question: 'QUESTION',
     Points: 'POINTS',
