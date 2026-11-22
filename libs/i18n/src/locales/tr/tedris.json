@@ -817,7 +817,10 @@
     "notifications": "Bildirimler",
     "homeLabel": "Medaris Tedris, ana sayfa",
     "liveIntro": "{course} celsesi şu an canlı.",
-    "exams": "Sınavlarım"
+    "exams": "Sınavlarım",
+    "examOpenIntro": "{course} sınavı şu an açık.",
+    "examPage": "Sınav sayfası",
+    "examEnter": "Sınava gir"
   },
   "SchedulePage": {
     "pageTitle": "Programım",
@@ -848,7 +851,9 @@
     "loadErrorTitle": "Programın yüklenemedi",
     "loadError": "Celselerin şu an okunamadı.",
     "retry": "Yeniden dene",
-    "exam": "Sınav"
+    "exam": "Sınav",
+    "examOpen": "Sınav açık",
+    "examEnter": "Sınava gir"
   },
   "Decks": {
     "title": "Desteler",

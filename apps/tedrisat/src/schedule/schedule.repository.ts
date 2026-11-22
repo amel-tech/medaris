@@ -27,6 +27,7 @@ import {
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
 import { lessonExams } from "../database/schema/lesson-exam.schema";
+import { onlineExams } from "../database/schema/online-exam.schema";
 
 /** One scheduled live session of an enrolled course, as the schedule reads it. */
 export interface IScheduledSession {
@@ -49,6 +50,8 @@ export interface IScheduledSession {
   hasLiveStream: boolean;
   /** The celse is an exam (MDRS-248). */
   isExam: boolean;
+  /** The celse is a published online exam (MDRS-299): taken on its exam page, with no meeting. */
+  isOnlineExam: boolean;
 }
 
 @Injectable()
@@ -179,6 +182,7 @@ export class ScheduleRepository {
           liveStreamUrl: lessons.liveStreamUrl,
         }),
         isExam: sql<boolean>`exists (select 1 from ${lessonExams} where ${lessonExams.lessonId} = ${lessons.id})`,
+        isOnlineExam: sql<boolean>`exists (select 1 from ${onlineExams} where ${onlineExams.lessonId} = ${lessons.id})`,
       })
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
