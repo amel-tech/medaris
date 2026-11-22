@@ -60,6 +60,8 @@ scope:
     - "a visitor, who goes to sign in, and a token tedrisat refuses on the first read, which sends the person to sign in again with `reauth` and is not the error box (realm.auth.sessionEnded); a 404 of the first read is Next's not-found page"
     - "\"Daha fazla göster\" on a list with nothing unread, and a tab read or a \"more\" read that fails there: the button is drawn only from the list with unread rows, so the busy button and the sentences are drawn only there"
     - "a tab switch when nothing is unread or nothing is held: the read is made and answers empty; the graph draws the answer as already there, and the skeleton of that moment is not drawn"
+    - "\"Tümünü okundu say\" pressed on a tab whose read failed, or under a \"more\" read that failed: the panel's sentence and its button stay through the mark and after it, and the graph draws the mark as from the list"
+    - "presses made while a read or a mark is out: nothing on the page is disabled but \"Tümünü okundu say\" at 0 unread and the busy \"Daha fazla göster\", so the tabs, the rows, the button and the toast's close act at once while the call runs on; the graph lets them act once the call has answered (duringStep), and a tab chosen meanwhile drops the late answer of a tab or a \"more\" read"
     - "the loading skeleton of the route (loading.tsx: a hidden \"Yükleniyor\" and bars) while the server reads, and the ways it ends; the graph draws nothing for that moment"
     - "the phone's bar, where the bell is drawn: the bell's name is written as a node and not walked, because the walk's window is 1280 px wide"
     - "a mark or a read that never reaches Next (the network): the page catches it and treats it as a refusal"
@@ -341,6 +343,8 @@ states:
       DONE: { guard: asked, target: listed, say: "the rows of the tab replace the list", source: apps/nazar/features/notifications/components/notifications-list.tsx:75 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.failed: { guard: refused, target: tabFailed, effect: [failedRead], say: "the panel's rows are replaced by a sentence and a button", source: apps/nazar/features/notifications/components/notifications-list.tsx:74 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the other tab while this one is read: its own read starts and the late answer is dropped", source: apps/nazar/features/notifications/components/notifications-list.tsx:72 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the same, back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:72 }
 
   tabFailed:
     title: A tab could not be read
@@ -353,6 +357,8 @@ states:
       RETRY: { target: loadingTab, say: "\"Yeniden dene\" reads this tab again", source: apps/nazar/features/notifications/components/notifications-list.tsx:180 }
       OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
       OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      READ_ALL: { target: markingAll, say: "\"Tümünü okundu say\" is still on: every row is marked as from the list (the panel keeps its sentence and \"Yeniden dene\", which the graph does not draw)", source: apps/nazar/features/notifications/components/notifications-list.tsx:251 }
+      CLOSE_TOAST: { guard: toasted, target: tabFailed, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
       NAVIGATE: left
 
   markingOne:
@@ -371,6 +377,7 @@ states:
       DONE: { guard: asked, target: listed, say: "the page stays as it was drawn and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:122 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: refused, target: listed, effect: [rowToast], say: "the list is put back and the toast says the row stayed unread", source: apps/nazar/features/notifications/components/notifications-list.tsx:129 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
 
   markingLast:
     title: Mark the last unread row
@@ -385,6 +392,7 @@ states:
       DONE: { guard: asked, target: allRead, say: "nothing is unread and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:122 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: refused, target: listed, effect: [rowToast], say: "the row is unread again and the toast says so", source: apps/nazar/features/notifications/components/notifications-list.tsx:129 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
 
   markingLink:
     title: Open a link row
@@ -400,6 +408,7 @@ states:
       DONE: { guard: asked, target: tedris_opened, say: "the browser leaves for the row's page", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
       FAIL.signedOut: { target: tedris_opened, say: "handleUnauthenticated starts the sign-in redirect and the address overrides it (F-E-21)", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
       FAIL.refused: { guard: refused, target: tedris_opened, say: "the toast is added and the page leaves in the same tick (INBOX-1)", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
 
   markingAll:
     title: Mark every row read
@@ -416,6 +425,7 @@ states:
       DONE: { guard: asked, target: allRead, say: "nothing is unread and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:155 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: refused, target: listed, effect: [allToast], say: "the page is put back and the toast says none was marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:159 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
 
   loadingMore:
     title: The next twenty rows are read
@@ -431,6 +441,9 @@ states:
       DONE: { guard: asked, target: listed, effect: [moreRead], say: "the rows are added; the button stays if a further page exists", source: apps/nazar/features/notifications/components/notifications-list.tsx:101 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.failed: { guard: refused, target: moreFailed, effect: [failedRead], say: "a sentence says the read failed, above the button", source: apps/nazar/features/notifications/components/notifications-list.tsx:100 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the tab Okunmamış while the next rows are read: the tab's read starts and the late page is dropped", source: apps/nazar/features/notifications/components/notifications-list.tsx:98 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the same, back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:98 }
+      OPEN_LINK: { guard: byLink, target: markingLink, say: "an unread link row: it is marked read first, then the browser goes on to Tedris", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
 
   moreFailed:
     title: The next rows could not be read
@@ -441,6 +454,14 @@ states:
     source: apps/nazar/features/notifications/components/notifications-list.tsx:213
     on:
       LOAD_MORE: { guard: hasMore, target: loadingMore, say: "the button reads the same page again", source: apps/nazar/features/notifications/components/notifications-list.tsx:223 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the tab Okunmamış reads its first page; the sentence goes with the list", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the tab Tümü reads its first page again", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      PRESS_ROW:
+        - { guard: lastByButton, target: markingLast, say: "the last unread row with no address is pressed", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+        - { guard: manyByButton, target: markingOne, say: "an unread row with no address is pressed: it is marked read", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+      OPEN_LINK: { guard: byLink, target: markingLink, say: "an unread link row: it is marked read first, then the browser goes on to Tedris", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
+      READ_ALL: { target: markingAll, say: "\"Tümünü okundu say\" marks every row (the sentence and the button below stay, which the graph does not draw)", source: apps/nazar/features/notifications/components/notifications-list.tsx:251 }
+      CLOSE_TOAST: { guard: toasted, target: moreFailed, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
       NAVIGATE: left
 
   tedris_opened:
