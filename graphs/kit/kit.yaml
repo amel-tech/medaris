@@ -34,6 +34,7 @@ components:
       progressbar: '<div class="mds-progress" role="progressbar"{?named} aria-label="{name}"{/named}>{text}</div>'
       region: '<section class="mds-body-sm"{?named} aria-label="{name}"{/named}>{text}</section>'
       time: '<time class="mds-caption">{text}</time>'
+      timer: '<p class="mds-body-sm" role="timer"{?named} aria-label="{name}"{/named}>{text}</p>'
   Button:
     # {intent}: a confirming button is the primary one, a dismissing one the ghost, any other the secondary
     template: '<button type="button" class="mds-btn mds-btn--regular mds-btn--{intent}"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
@@ -76,7 +77,8 @@ components:
     roles:
       listitem: '<li class="mds-body-sm">{text}</li>'
       option: '<li class="mds-option" role="option"{?named} aria-label="{name}"{/named}>{text}</li>'
-      radio: '<li class="mds-choice" role="radio" aria-checked="{?checked}true{/checked}{!checked}false{/checked}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}><span class="mds-radio" aria-hidden="true"></span>{text}</li>'
+      # the dot is an input, hidden from the accessibility tree: the apps' CSS draws a checked radio on :checked, which a span never is
+      radio: '<li class="mds-choice" role="radio" aria-checked="{?checked}true{/checked}{!checked}false{/checked}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}><input class="mds-radio" type="radio" tabindex="-1" aria-hidden="true"{?checked} checked{/checked}{?disabled} disabled{/disabled}>{text}</li>'
       tab: '<li class="mds-tab" role="tab"{?named} aria-label="{name}"{/named}>{text}</li>'
   Status:
     # a status with no role is a badge; one with role status is the line a live region speaks
