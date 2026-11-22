@@ -278,7 +278,9 @@ states:
       are out of its reach; `INTERNAL_ERROR` stands in the failure class for any other 5xx, which gives the same toast. A Server Action is a POST to the page's own address and answers 200 whatever the API said: the page reads the answer from the
       action's result. Success: the face goes down, the index moves on and the bar moves. Any failure but a lost session: one error toast and the page
       is as it was. A lost session: the page sends the person to sign in and back to the same address (sendToSignIn). A call that rejects (the
-      network is down): the code has no catch, so the buttons stay disabled for good and no toast comes (DCK-02).
+      network is down): the code has no catch, so the buttons stay disabled for good and no toast comes (DCK-02). Only the three ratings are disabled:
+      "Çalışmayı bitir" is a plain link and leaves the page at once, the answer not awaited, and the toast's "Kapat" closes an earlier toast at once
+      while the write goes on (drawn `duringStep`: handled where the answer leads).
     source: apps/tedris/features/flashcards/components/study-session.tsx:86
     invoke: { action: saveCardProgress }
     on:
@@ -303,6 +305,7 @@ states:
         target: stuck
         say: "the call rejects: nothing catches it, so the buttons stay disabled and no toast comes (DCK-02)"
         source: apps/tedris/features/flashcards/components/study-session.tsx:94
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\" is a plain link and is not disabled while the rating is written: the page is left at once; whether the rating was written depends on how far the call got" }
 
   saved:
     title: The rating was written

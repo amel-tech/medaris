@@ -45,7 +45,7 @@ scope:
     - "the system bar above the page, the footer and the toast host's own region (tedris.shell.frame); the page draws its own <main>"
     - "a session that is over while the send runs: the page sends the person to sign in and back to this form (exit sent_to_sign_in, realm.auth.signIn); what was typed is lost"
     - "a refusal of any other kind (a 5xx, a 403, a network that drops, a call that rejects): the page draws the one toast whatever happened (`attempt()` makes a rejected call a refusal, attempt.ts:16); only the name of three emoji can be made to give it locally (DCKCREATE-1)"
-    - "pressing \"Vazgeç\" or the breadcrumb while the send runs: both are links and stay live, so the person can leave before the answer comes and the deck is made all the same; not drawn"
+    - "whether Desteler, opened by \"Vazgeç\" or the breadcrumb while the send runs, already lists the deck the send goes on making: a race between the two requests"
     - "a name or a tag with only spaces, a description of spaces (sent as no description), the title field's own limit of 100 and the description's of 1000, which the browser enforces by not taking more characters (maxLength); the preview's two fixed Arabic sentences"
 
 context:
@@ -178,13 +178,20 @@ states:
       new page has come. On any refusal the button is released and the toast "Deste oluşturulamadı" / "Bir sorun oluştu; yazdıkların
       korundu. Yeniden dene." is raised: tone error, so it stays until it is closed and is announced with priority high; the API's
       code and message are thrown away, so a refusal that retrying can never cure says "try again" (DCKCREATE-1). A session that is
-      over is not a refusal: the page goes to sign in and back, and the button stays busy until it leaves.
+      over is not a refusal: the page goes to sign in and back, and the button stays busy until it leaves. "Vazgeç" and the
+      breadcrumb are links and stay live: they leave the page at once, and the server action is not stopped, so the deck is made
+      all the same. The radios are not disabled either (the RadioGroup is given no `disabled`): a kind chosen now is checked and
+      previewed at once but is not the one sent, which the request already holds; the graph draws the choice where the answer
+      leads (`duringStep`): it goes with the form when the new deck's page opens, and stays in the form after a refusal.
     source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77
     invoke: { action: createDeck }
     on:
       DONE: { guard: "name == 'valid'", target: deck_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86, say: "the API answers 201 with the new deck: the page opens its own page" }
       FAIL.refused: { guard: "name == 'astral'", target: formAttempted, effect: [toastRefused], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89, say: "the API answers 400 for what the page let through: the button is released, the toast is raised and the form keeps its values" }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the page goes to sign in and back, and the form is lost" }
+      # no dropForm here: its binding checks that no deck was made, and this one is
+      CANCEL: { target: decks_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\" while the send runs: a plain link, so the page is left at once for /decks; the server action is not stopped and the deck is made all the same (from the code, not seen)" }
+      BREADCRUMB: { target: decks_opened, source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\" while the send runs: the same plain link, the same" }
 
   deck_opened:
     type: final
@@ -198,7 +205,9 @@ states:
     type: final
     title: Desteler opens
     description: >-
-      "Vazgeç" and the breadcrumb's "Desteler" are plain links to /decks. Nothing was made: the page sends nothing before "Oluştur".
+      "Vazgeç" and the breadcrumb's "Desteler" are plain links to /decks. From the form nothing was made: the page sends nothing before
+      "Oluştur". Pressed while the send runs (`creating`), they leave at once and the server action goes on, so the deck is made all the
+      same; whether the list that opens already shows it is a race (from the code, not seen).
 
   left:
     type: final
