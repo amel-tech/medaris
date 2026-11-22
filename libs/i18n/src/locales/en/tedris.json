@@ -814,7 +814,8 @@
     "accountLabel": "My account: {name}",
     "notifications": "Notifications",
     "homeLabel": "Medaris Tedris, home",
-    "liveIntro": "{course} is live now."
+    "liveIntro": "{course} is live now.",
+    "exams": "My exams"
   },
   "SchedulePage": {
     "pageTitle": "My schedule",

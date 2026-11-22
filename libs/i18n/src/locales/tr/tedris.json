@@ -814,7 +814,8 @@
     "accountLabel": "Hesabım: {name}",
     "notifications": "Bildirimler",
     "homeLabel": "Medaris Tedris, ana sayfa",
-    "liveIntro": "{course} celsesi şu an canlı."
+    "liveIntro": "{course} celsesi şu an canlı.",
+    "exams": "Sınavlarım"
   },
   "SchedulePage": {
     "pageTitle": "Programım",
