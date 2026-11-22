@@ -164,6 +164,35 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("publishes now with the latest start ten minutes after the press, not after the choice", async () => {
+    actions.publishOnlineExam.mockImplementation(async () => ({
+      success: true,
+      data: scheduled("2026-11-30T09:32:00.000Z", "2026-11-30T09:42:00.000Z"),
+    }));
+    const root = await page(ready);
+    const now = [...root.querySelectorAll("[role=radio]")].find(
+      (r) =>
+        r.closest("label")?.textContent?.includes("Şimdi yayınla") ||
+        document.getElementById(r.getAttribute("aria-labelledby") ?? "")
+          ?.textContent === "Şimdi yayınla"
+    ) as HTMLElement;
+    await click(now);
+    await settle(20);
+    const latest = fieldsUnder("En geç başlama");
+    // 12:20 in Istanbul, and ten minutes after it.
+    expect(latest.time.value).toBe("12:30");
+    // The hoca reads it over for twelve minutes before pressing.
+    vi.setSystemTime(new Date("2026-11-30T09:32:00Z"));
+    await click(button(root, "Yayınla"));
+    await settle(80);
+    await click(button(dialog(), "Yayınla"));
+    await settle(80);
+    // No start and no latest start: the server counts both from its own now.
+    expect(actions.publishOnlineExam).toHaveBeenCalledWith("e1", {
+      version: 3,
+    });
+  });
+
   it("lists what keeps it from being published, and offers no button", async () => {
     const root = await page({
       ...ready,

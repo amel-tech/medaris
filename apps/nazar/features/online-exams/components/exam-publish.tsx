@@ -14,7 +14,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
@@ -126,6 +126,24 @@ export function PublishSection({
     setEarliest(next);
     followLatest(instantOf(next.date, next.time, timeZone));
   };
+  // "Şimdi yayınla" opens the exam when the button is pressed, not when the
+  // choice was made: while its latest start is untouched it keeps following
+  // the clock, and it is left to the server, which counts the ten minutes
+  // from the moment it publishes.
+  useEffect(() => {
+    if (mode !== "now" || latestTouched) return;
+    const follow = () =>
+      setLatest(
+        fieldsOf(
+          later(minuteOf(new Date()), LATEST_START_DEFAULT_MINUTES),
+          timeZone
+        )
+      );
+    follow();
+    const timer = window.setInterval(follow, 15_000);
+    return () => window.clearInterval(timer);
+  }, [mode, latestTouched, timeZone]);
+
   const changeMode = (next: string) => {
     const now = next === "now";
     setMode(now ? "now" : "later");
@@ -168,7 +186,10 @@ export function PublishSection({
       ...(mode === "later" && startAt
         ? { startsAt: startAt.toISOString() }
         : {}),
-      latestStartAt: latestAt.toISOString(),
+      // Now and untouched: the server's start plus ten minutes.
+      ...(mode === "later" || latestTouched
+        ? { latestStartAt: latestAt.toISOString() }
+        : {}),
     });
   };
 
