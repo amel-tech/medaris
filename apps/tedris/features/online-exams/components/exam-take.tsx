@@ -11,7 +11,13 @@ import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   answerZerothQuestion,
@@ -30,6 +36,7 @@ import {
   LAST_FIVE_SECONDS,
   type LocalAnswer,
   nextIndex,
+  type QuestionState,
   readTextScale,
   stateOf,
   TEXT_SCALES,
@@ -65,6 +72,38 @@ const lostConnection = (result: unknown) => {
  * opens the exam takes the attempt; this one says so and can take it back.
  * Coming back from another tab is counted for the team.
  */
+/**
+ * The question list's colours (the owner, 22 Nov 2026: "cevaplanmamışsa sarı
+ * olsun, atlanmışsa turuncu olsun, cevaplanmışsa beyaz/dark olsun"), set
+ * inline so no stylesheet order can undo them. Unanswered is the warning
+ * pair; skipped is the warning's bold fill, the closest the system has to
+ * orange (it has no orange token); answered is the sheet itself, white by
+ * day and dark by night. The current question carries a brand ring on top.
+ * Each button's name says its state too, so colour is never the only cue.
+ */
+const INDICATOR: Record<QuestionState, CSSProperties> = {
+  unseen: {
+    background: "var(--background-warning-subtle)",
+    borderColor: "var(--border-warning-default)",
+    color: "var(--text-warning-default)",
+  },
+  skipped: {
+    background: "var(--background-warning-bold)",
+    borderColor: "var(--border-warning-default)",
+    color: "var(--text-neutral-on-bold)",
+  },
+  answered: {
+    background: "var(--background-neutral-surface)",
+    borderColor: "var(--border-neutral-strong)",
+    color: "var(--text-neutral-default)",
+  },
+};
+
+const CURRENT: CSSProperties = {
+  boxShadow:
+    "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
+};
+
 export function ExamTake({
   lessonId,
   sessionHref,
@@ -580,13 +619,12 @@ export function ExamTake({
                 <li key={it.id}>
                   <Button
                     size="small"
-                    variant={
-                      i === index
-                        ? "primary"
-                        : state === "answered"
-                          ? "secondary"
-                          : "outline"
-                    }
+                    variant="outline"
+                    data-state={state}
+                    style={{
+                      ...INDICATOR[state],
+                      ...(i === index ? CURRENT : null),
+                    }}
                     aria-current={i === index ? "step" : undefined}
                     aria-label={t("listItemLabel", {
                       number: String(i + 1),
@@ -670,6 +708,7 @@ export function ExamTake({
           <li>{t("factConnection")}</li>
           <li>{t("factSwitch")}</li>
           <li>{t("factSkip")}</li>
+          <li>{t("factColors")}</li>
           <li>
             {t("factTextSize")}{" "}
             {/* What the two buttons look like; the sentence says what they do. */}
@@ -770,7 +809,8 @@ function ExamEnded({
       </h1>
       <p className="mds-body">{line}</p>
       <p className="mds-body-sm text-neutral-muted">{t("resultWhere")}</p>
-      <div>
+      <div className="flex flex-wrap gap-2">
+        <Button href={`/my-exams`}>{t("toMyExams")}</Button>
         <Button variant="secondary" href={sessionHref}>
           {t("backToSession")}
         </Button>

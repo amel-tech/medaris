@@ -17,6 +17,7 @@ export * from './LessonAssignmentsApi';
 export * from './LessonsApi';
 export * from './MadrasahsApi';
 export * from './MeApi';
+export * from './MyExamsApi';
 export * from './NizamApi';
 export * from './NotificationsApi';
 export * from './OnlineExamAttemptsApi';
