@@ -177,10 +177,15 @@ states:
       The kit's Select (Base UI) opened on "Alan": a listbox with the eleven fields, in the design's order, from "Arapça dil
       ilimleri" to "Diğer" (e2e profile#5 counts eleven; measured). The page behind is not inert (measured: the main is
       neither inert nor aria-hidden), so it stays drawn. Choosing a field closes the list, writes it in the box and clears
-      the field's error; Esc closes it and changes nothing. Either way the focus is on the box again (measured).
+      the field's error; Esc closes it and changes nothing. Either way the focus is on the box again (measured). The kit's
+      Select is modal (Base UI's default): while the list is open a transparent backdrop covers the page but the box, so a
+      pointer press anywhere else only closes the list (from the code, not seen).
     on:
       CHOOSE_FIELD: { target: form, effect: [picked], source: apps/tedris/features/kosk-application/model.ts:45, say: "they choose a field: the list closes, the box says it, \"Bir alan seç.\" goes" }
       DISMISS: { target: form, say: "Esc: the list closes and nothing is chosen" }
+      OPEN_FIELD: { target: form, source: libs/ui/src/mds/select.tsx:61, say: "they press the box again: the list closes and nothing is chosen" }
+      # a screen reader's own click reaches the button through the backdrop and would run the check instead (not drawn, not seen)
+      SUBMIT: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "a press on \"Başvuruyu gönder\" lands on the open list's backdrop: the list closes, and nothing is checked or sent" }
       NAVIGATE: left
 
   sending:
@@ -192,7 +197,10 @@ states:
       through a hidden status) and aria-disabled, and keeps the focus. The fields are not disabled. The API files a
       KoskApplication as PENDING for the caller; it sends nobody a message (the nazım sees it in the counts of nizam's
       dashboard). A 401 sends the person to sign in. Every other refusal gives one toast (DSC-08): a 400 for what the page's
-      check let through, such as an address with a one-letter last part (APPLYKOSK-1).
+      check let through, such as an address with a one-letter last part (APPLYKOSK-1). The list of fields stays live too (the
+      Select is given no `disabled`): opened now, it is drawn where the answer leads (`duringStep`): the card replaces the form,
+      list and all, after a 201, and the list is open over the kept form and its toast after a refusal; a field chosen now is
+      not the one sent.
     invoke: { action: createKoskApplication }
     on:
       DONE: { guard: "contact == 'valid'", target: reachesNizam, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69, say: "the API answers 201 and PENDING" }
