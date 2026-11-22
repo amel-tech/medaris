@@ -295,6 +295,7 @@ states:
       TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       TAB_REMOVED: { target: removedList, say: "they open Erişimi kaldırılanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_APPLICATIONS: { target: applications, say: "they press Başvurular, the tab already open: nothing changes", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
       NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
     source: apps/nizam/features/applications/components/students-tabs.tsx:121
@@ -330,6 +331,7 @@ states:
       COMPLETE: { guard: mayComplete, target: completing, effect: [clearNote], say: "they press Tamamladı say on a row", source: apps/nizam/features/applications/components/roster-table.tsx:231 }
       REMOVE: { guard: "search == 'none'", target: form, effect: [openedDialog], say: "they press Dersten çıkar on a row: the dialog opens", source: apps/nizam/features/applications/components/roster-table.tsx:132 }
       BAN: { guard: "search == 'none'", target: handed_over.ban, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasakla on a row: the ban dialog opens for that talebe (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:134 }
+      TAB_ENROLLED: { target: enrolled, say: "they press Kayıtlı, the tab already open: nothing changes", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
       NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
     source: apps/nizam/features/applications/components/roster-table.tsx:249
@@ -354,6 +356,8 @@ states:
       FAIL.moved: { target: enrolled, effect: [movedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
       FAIL.forbidden: { target: enrolled, effect: [refusedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
       FAIL.other: { target: enrolled, effect: [failedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      # "Derse dön" is a link that stays live while the call runs: it leaves at once, and Next drops the action's answer for the navigation.
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön while the call runs: the Müfredat page opens, and the change already sent is made unseen", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
     source: apps/nizam/features/applications/components/roster-table.tsx:93
 
   completed:
@@ -373,6 +377,7 @@ states:
       REOPEN: { guard: mayReopen, target: reopening, effect: [clearNote], say: "they press Yeniden aç on the row", source: apps/nizam/features/applications/components/roster-table.tsx:231 }
       BAN: { guard: mayBanCompleted, target: handed_over.ban, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasakla on the completed talebe's row: the ban dialog opens (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:134 }
       LIFT: { guard: "held == 'barred'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { read: "'ok'" } }, say: "they press Yasağı kaldır on the barred talebe's row: the lift dialog opens. It is the LiftDialog that nizam.moderation.decideBan draws on Yasaklamalar; decideBan begins at that list, so the hand-over is approximate and the roster-row lift itself is drawn by no flow", source: apps/nizam/features/applications/components/roster-table.tsx:141 }
+      TAB_COMPLETED: { target: completed, say: "they press Tamamlayanlar, the tab already open: nothing changes", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
       NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
     source: apps/nizam/features/applications/components/roster-table.tsx:249
@@ -391,6 +396,8 @@ states:
       FAIL.forbidden: { target: completed, effect: [refusedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
       FAIL.barred: { guard: "held == 'barred'", target: completed, effect: [barredToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
       FAIL.other: { target: completed, effect: [failedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      # "Derse dön" is a link that stays live while the call runs: it leaves at once, and Next drops the action's answer for the navigation.
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön while the call runs: the Müfredat page opens, and the change already sent is made unseen", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
     source: apps/nizam/features/applications/components/roster-table.tsx:93
 
   settle:
@@ -472,6 +479,7 @@ states:
       TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_REMOVED: { target: removedList, say: "they press Erişimi kaldırılanlar, the tab already open: nothing changes", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
       NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
     source: apps/nizam/features/applications/components/removed-table.tsx:85
