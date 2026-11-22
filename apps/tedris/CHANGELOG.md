@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.15.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.15.0...tedris-web-v2.15.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **tedris-web, i18n:** MDRS-299 an exam in progress survives a new version of Medaris ([#429](https://github.com/amel-tech/medaris/issues/429)) ([1fdb867](https://github.com/amel-tech/medaris/commit/1fdb86788f6c8134a15ff110dfe676488fd8f809))
+
 ## [2.15.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.14.0...tedris-web-v2.15.0) (2026-11-22)
 
 
