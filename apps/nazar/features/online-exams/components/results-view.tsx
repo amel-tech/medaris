@@ -197,7 +197,22 @@ export function ResultsView({ initial }: { initial: Results }) {
       key: "name",
       header: t("ExamResults.colTalebe"),
       rowHeader: true,
-      render: (row) => row.name ?? t("ExamResults.unnamed"),
+      // A talebe who started opens their answers (the owner, 22 Nov 2026:
+      // "talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek").
+      render: (row) =>
+        row.state === "IN_PROGRESS" || row.state === "FINISHED" ? (
+          <a
+            className="mds-link"
+            href={`/ders/${results.exam.courseId}/sinavlar/${results.exam.id}/sonuclar/${row.userId}`}
+            aria-label={t("ExamAnswers.openLabel", {
+              name: row.name ?? t("ExamResults.unnamed"),
+            })}
+          >
+            {row.name ?? t("ExamResults.unnamed")}
+          </a>
+        ) : (
+          (row.name ?? t("ExamResults.unnamed"))
+        ),
     },
     {
       key: "state",

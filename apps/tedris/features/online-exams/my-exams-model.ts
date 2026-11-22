@@ -38,13 +38,21 @@ export const gradesHref = (courseId: string) =>
 
 /** Where a listed exam leads, if anywhere. */
 export type MyExamAction =
-  | { kind: "enter" | "continue"; href: string }
+  | { kind: "enter" | "continue" | "view"; href: string }
   | { kind: "result"; href: string }
   | { kind: "grades"; href: string }
   | null;
 
+/**
+ * Straight to the exam (the owner, 22 Nov 2026: "yaklaşan ve devam eden sınav
+ * varsa tıklayınca direk sınav ekranına gitsin talebe ders ve celse
+ * sayfalarını atlayıp kolayca"): an online exam to come, open or in progress
+ * leads to its own page, never through the course or the celse.
+ */
 export const actionOf = (exam: MyExamResponse): MyExamAction => {
   if (exam.format === "MULTIPLE_CHOICE") {
+    if (exam.state === "UPCOMING")
+      return { kind: "view", href: takeHref(exam) };
     if (exam.state === "OPEN") return { kind: "enter", href: takeHref(exam) };
     if (exam.state === "IN_PROGRESS")
       return { kind: "continue", href: takeHref(exam) };

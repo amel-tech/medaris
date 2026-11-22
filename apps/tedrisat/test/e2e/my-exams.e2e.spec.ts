@@ -6,6 +6,10 @@ import { ExamFormat } from "../../src/course/domain/exam";
 import { DatabaseService } from "../../src/database/database.service";
 import { enrollments } from "../../src/database/schema/course.schema";
 import {
+  examAnswers,
+  examAttempts,
+} from "../../src/database/schema/exam-attempt.schema";
+import {
   examResults,
   lessonExams,
 } from "../../src/database/schema/lesson-exam.schema";
@@ -17,6 +21,7 @@ import {
   onlineExams,
   zerothOptions,
 } from "../../src/database/schema/online-exam.schema";
+import { FinishedBy } from "../../src/online-exam/domain/exam-attempt";
 import { AnswerMode } from "../../src/online-exam/domain/online-exam";
 import {
   bearerOf,
@@ -332,6 +337,7 @@ describe("online exams, a talebe's own exams and results (e2e)", () => {
       closed: false,
       score: "50.00",
       counts: { right: 1, wrong: 1, blank: 0 },
+      standing: { taken: 1, rank: 1, tiedWith: 0 },
       questions: null,
     });
     // Topic 2 asked only the wrong question; topic 1 both: the weakest first.
@@ -344,6 +350,7 @@ describe("online exams, a talebe's own exams and results (e2e)", () => {
         right: 0,
         wrong: 1,
         blank: 0,
+        standing: { taken: 1, rank: 1, tiedWith: 0 },
       },
       {
         topicId: exam.topics[0],
@@ -353,6 +360,7 @@ describe("online exams, a talebe's own exams and results (e2e)", () => {
         right: 1,
         wrong: 1,
         blank: 0,
+        standing: { taken: 1, rank: 1, tiedWith: 0 },
       },
     ]);
     expect(released.courseTopics).toEqual([
@@ -397,6 +405,80 @@ describe("online exams, a talebe's own exams and results (e2e)", () => {
         }),
       ])
     );
+  });
+
+  /** Another talebe's finished attempt, written as finishing writes it, choosing one option per question. */
+  const another = async (
+    exam: IPublished,
+    userId: string,
+    chosen: Array<"correct" | "wrong">
+  ) => {
+    const [attempt] = await db()
+      .insert(examAttempts)
+      .values({
+        examId: exam.examId,
+        userId,
+        questionOrder: exam.questions.map((q) => q.id),
+        optionOrder: Object.fromEntries(
+          exam.questions.map((q) => [q.id, [q.correct, q.wrong]])
+        ),
+        countedAt: new Date(),
+        holderId: "page-other-1111",
+        finishedAt: new Date(),
+        finishedBy: FinishedBy.TALEBE,
+      })
+      .returning();
+    await db()
+      .insert(examAnswers)
+      .values(
+        exam.questions.map((q, i) => ({
+          attemptId: attempt.id,
+          questionId: q.id,
+          optionIds: [chosen[i] === "correct" ? q.correct : q.wrong],
+        }))
+      );
+  };
+
+  it("says how many took the exam and where the talebe stands, ties shared, in the exam and in each topic", async () => {
+    const exam = await publish();
+    await take(exam); // the first right, the second wrong: 50
+    await another(exam, "00000000-0000-4000-8000-0000000000a1", [
+      "correct",
+      "correct",
+    ]); // 100
+    await another(exam, "00000000-0000-4000-8000-0000000000a2", [
+      "correct",
+      "wrong",
+    ]); // 50, a tie
+    // Started and still in progress: not counted.
+    await db()
+      .insert(examAttempts)
+      .values({
+        examId: exam.examId,
+        userId: "00000000-0000-4000-8000-0000000000a3",
+        questionOrder: exam.questions.map((q) => q.id),
+        optionOrder: {},
+        countedAt: new Date(),
+        holderId: "page-other-2222",
+      });
+
+    // Nothing of it before the release.
+    expect((await result(exam).expect(200)).body.standing).toBeNull();
+
+    await release(exam);
+    const body = (await result(exam).expect(200)).body;
+    expect(body.standing).toEqual({ taken: 3, rank: 2, tiedWith: 1 });
+    const topic = (n: number) =>
+      (body.topics as Array<{ number: number; standing: object }>).find(
+        (t) => t.number === n
+      )?.standing;
+    // Kıyas: 50 of 100 beside 100 and 50; İcma: 0 of 50 beside 50 and 0.
+    expect(topic(1)).toEqual({ taken: 3, rank: 2, tiedWith: 1 });
+    expect(topic(2)).toEqual({ taken: 3, rank: 2, tiedWith: 1 });
+    // Counts only: no other talebe's id or points.
+    const text = JSON.stringify(body);
+    expect(text).not.toContain("0000000000a1");
+    expect(text).not.toContain("100.00");
   });
 
   it("adds the standing up across the course's released exams", async () => {

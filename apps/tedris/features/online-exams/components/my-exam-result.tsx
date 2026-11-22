@@ -149,6 +149,16 @@ function Result({
                 blank: result.counts.blank,
               })}
             </p>
+            {result.standing ? (
+              <p className="mds-body" data-testid="my-result-standing">
+                {t(result.standing.tiedWith > 0 ? "standingTied" : "standing", {
+                  taken: result.standing.taken,
+                  score: scoreText(result.score, locale),
+                  rank: result.standing.rank,
+                  tiedWith: result.standing.tiedWith,
+                })}
+              </p>
+            ) : null}
           </>
         ) : (
           <>
@@ -195,6 +205,18 @@ function Result({
                       wrong: topic.wrong,
                       blank: topic.blank,
                     })}
+                  </span>
+                  <span className="mds-body-sm text-neutral-muted">
+                    {t(
+                      topic.standing.tiedWith > 0
+                        ? "topicStandingTied"
+                        : "topicStanding",
+                      {
+                        taken: topic.standing.taken,
+                        rank: topic.standing.rank,
+                        tiedWith: topic.standing.tiedWith,
+                      }
+                    )}
                   </span>
                 </li>
               );

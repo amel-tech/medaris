@@ -7,7 +7,9 @@ import {
   percentOf,
   QuestionOutcome,
   questionResults,
+  standingOf,
   tallyByTopic,
+  totalGot,
 } from "../../../src/online-exam/domain/exam-result";
 import {
   closedForEveryone,
@@ -138,6 +140,82 @@ describe("a talebe's result (MDRS-299)", () => {
 
   it("gives 0 percent to a topic that carries nothing", () => {
     expect(percentOf(NONE, NONE)).toBe(0);
+  });
+});
+
+describe("where a talebe stands among those who took the exam (MDRS-299)", () => {
+  const pts = (n: number, d = 1) => ({ n: BigInt(n), d: BigInt(d) });
+
+  it("ranks ties together, and counts the others with the same points", () => {
+    const all = [pts(80), pts(50), pts(50), pts(30)];
+    expect(standingOf(pts(80), all)).toEqual({
+      taken: 4,
+      rank: 1,
+      tiedWith: 0,
+    });
+    expect(standingOf(pts(50), all)).toEqual({
+      taken: 4,
+      rank: 2,
+      tiedWith: 1,
+    });
+    expect(standingOf(pts(30), all)).toEqual({
+      taken: 4,
+      rank: 4,
+      tiedWith: 0,
+    });
+  });
+
+  it("is first of one when only the talebe took it", () => {
+    expect(standingOf(pts(0), [pts(0)])).toEqual({
+      taken: 1,
+      rank: 1,
+      tiedWith: 0,
+    });
+  });
+
+  it("puts everyone first when everyone got the same", () => {
+    const all = [pts(100, 3), pts(200, 6), pts(100, 3)];
+    expect(standingOf(pts(100, 3), all)).toEqual({
+      taken: 3,
+      rank: 1,
+      tiedWith: 2,
+    });
+  });
+
+  it("compares exact points, not rounded ones, and puts the lowest last", () => {
+    // In hundredths: 3333.33… (33.33 points shown) and 3334 (33.34) are not a tie.
+    const all = [pts(10000, 3), pts(3334), pts(10, 1)];
+    expect(standingOf(pts(10000, 3), all)).toEqual({
+      taken: 3,
+      rank: 2,
+      tiedWith: 0,
+    });
+    expect(standingOf(pts(10, 1), all)).toEqual({
+      taken: 3,
+      rank: 3,
+      tiedWith: 0,
+    });
+  });
+
+  it("adds a talebe's points up exactly from their answers", () => {
+    const qs = [
+      question("q1", ["a"], ["a", "b"]),
+      question("q2", ["c"], ["c", "d"]),
+      question("q3", ["e"], ["e", "f"]),
+    ];
+    const results = questionResults(
+      qs,
+      new Map([
+        ["q1", ["a"]],
+        ["q2", ["c"]],
+      ])
+    );
+    // 100 / 3 each: two right make 200 / 3 points, exactly.
+    expect(standingOf(totalGot(results.values()), [pts(20000, 3)])).toEqual({
+      taken: 1,
+      rank: 1,
+      tiedWith: 0,
+    });
   });
 });
 

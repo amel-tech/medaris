@@ -61,6 +61,9 @@ describe("online exam rules (MDRS-299)", () => {
     );
     expect(modeFits(AnswerMode.MULTIPLE, null, 2)).toBe(false);
     expect(modeFits(AnswerMode.MULTIPLE, Scoring.IN_SHARES, 2)).toBe(true);
+    expect(modeFits(AnswerMode.MULTIPLE, Scoring.ANY_CORRECT, 2)).toBe(true);
+    expect(modeFits(AnswerMode.MULTIPLE, Scoring.ANY_CORRECT, 1)).toBe(false);
+    expect(modeFits(AnswerMode.SINGLE, Scoring.ANY_CORRECT, 2)).toBe(false);
   });
 
   it("reads points with a comma or a point, two decimals at most", () => {
@@ -118,10 +121,20 @@ describe("online exam rules (MDRS-299)", () => {
       topicIds: ["t1"],
     };
     expect(
-      publishProblems({ questions: [], pointsTotal: "0.00", hasZeroth: false })
-    ).toEqual([{ kind: "NO_QUESTION" }, { kind: "NO_ZEROTH" }]);
+      publishProblems({
+        durationMinutes: null,
+        questions: [],
+        pointsTotal: "0.00",
+        hasZeroth: false,
+      })
+    ).toEqual([
+      { kind: "NO_DURATION" },
+      { kind: "NO_QUESTION" },
+      { kind: "NO_ZEROTH" },
+    ]);
     expect(
       publishProblems({
+        durationMinutes: 60,
         questions: [complete, { ...complete, topicIds: [], options: [] }],
         pointsTotal: "80.00",
         hasZeroth: true,
@@ -132,6 +145,7 @@ describe("online exam rules (MDRS-299)", () => {
     ]);
     expect(
       publishProblems({
+        durationMinutes: 60,
         questions: [complete],
         pointsTotal: "100.00",
         hasZeroth: true,

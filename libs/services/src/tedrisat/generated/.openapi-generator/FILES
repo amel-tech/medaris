@@ -38,6 +38,7 @@ src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
 src/models/AnswerLessonQuestionDto.ts
 src/models/AnswerMode.ts
+src/models/AnswerVerdict.ts
 src/models/AppealCreatedResponse.ts
 src/models/AppealListResponse.ts
 src/models/AppealPersonResponse.ts
@@ -111,6 +112,7 @@ src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CourseTopicResponse.ts
+src/models/CourseZerothQuestionResponse.ts
 src/models/CreateAppealDto.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDeckDto.ts
@@ -364,6 +366,7 @@ src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyPublicProfileResponse.ts
 src/models/MyRolesResponse.ts
+src/models/MyStandingResponse.ts
 src/models/MySubmissionSummaryResponse.ts
 src/models/MySubmissionsResponse.ts
 src/models/MyTopicStandingResponse.ts
@@ -507,6 +510,11 @@ src/models/SubmissionReviewResponse.ts
 src/models/SubmissionReviewerResponse.ts
 src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
+src/models/TalebeAnswerOptionResponse.ts
+src/models/TalebeAnswerQuestionResponse.ts
+src/models/TalebeAnswersExamResponse.ts
+src/models/TalebeAnswersResponse.ts
+src/models/TalebeAnswersZerothResponse.ts
 src/models/TalebeExamState.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
@@ -550,6 +558,8 @@ src/models/ZerothOptionCountResponse.ts
 src/models/ZerothOptionResponse.ts
 src/models/ZerothQuestionCountsResponse.ts
 src/models/ZerothQuestionExamsResponse.ts
+src/models/ZerothQuestionSource.ts
+src/models/ZerothQuestionText.ts
 src/models/index.ts
 src/runtime.ts
 tsconfig.esm.json

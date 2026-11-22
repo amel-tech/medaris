@@ -43,6 +43,8 @@ function ProblemLines({ problems }: { problems: PublishProblemResponse[] }) {
   const t = useTranslations("nazar");
   const lines: string[] = [];
   for (const p of problems) {
+    if (p.kind === "NO_DURATION")
+      lines.push(t("OnlineExams.problemNoDuration"));
     if (p.kind === "NO_QUESTION")
       lines.push(t("OnlineExams.problemNoQuestion"));
     if (p.kind === "POINTS") {
@@ -92,7 +94,8 @@ export function PublishSection({
 }: {
   problems: PublishProblemResponse[];
   questionCount: number;
-  durationMinutes: number;
+  /** Null until the team types it; the exam is not published without it. */
+  durationMinutes: number | null;
   timeZone: string;
   /** A question's form is open: publishing would leave it out. */
   holding: boolean;
@@ -285,7 +288,7 @@ export function PublishSection({
             onConfirm={confirm}
           >
             {t("OnlineExams.publishSummary", {
-              duration: durationMinutes,
+              duration: durationMinutes ?? "—",
               count: questionCount,
             })}
           </AlertDialog>

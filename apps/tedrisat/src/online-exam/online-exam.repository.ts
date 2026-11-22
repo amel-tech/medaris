@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
-import { courses, lessons } from "../database/schema/course.schema";
+import { lessons } from "../database/schema/course.schema";
 import {
   courseExamTopics,
   examOptions,
@@ -56,7 +56,8 @@ export interface IOnlineExamSummary {
   id: string;
   title: string;
   questionCount: number;
-  durationMinutes: number;
+  /** Null until the team types it; a published exam always has it. */
+  durationMinutes: number | null;
   publishedAt: Date | null;
   closedEarlyAt: Date | null;
   /** Its celse's start; null for a draft. */
@@ -69,7 +70,8 @@ export interface IOnlineExamDraft {
   id: string;
   courseId: string;
   title: string;
-  durationMinutes: number;
+  /** Null until the team types it; a published exam always has it. */
+  durationMinutes: number | null;
   instructions: string | null;
   zerothQuestion: string;
   zerothOptions: Array<{ id: string; text: string }>;
@@ -697,16 +699,6 @@ export class OnlineExamRepository {
     );
   }
 
-  /** The medrese of the exam's course; null for a köşk's own course. */
-  async findCourseMadrasahId(courseId: string): Promise<string | null> {
-    const [course] = await this.db
-      .select({ madrasahId: courses.madrasahId })
-      .from(courses)
-      .where(eq(courses.id, courseId))
-      .limit(1);
-    return course?.madrasahId ?? null;
-  }
-
   /** Makes the exam a draft again, its celse's key cleared before the celse goes. */
   async unpublish(tx: Tx, examId: string): Promise<void> {
     await tx
@@ -721,7 +713,7 @@ export class OnlineExamRepository {
     w: IExamWrite,
     input: {
       title?: string;
-      durationMinutes?: number;
+      durationMinutes?: number | null;
       instructions?: string | null;
       topicIds?: string[];
     }

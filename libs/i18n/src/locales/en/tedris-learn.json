@@ -257,6 +257,7 @@
     "factConnection": "If your connection drops or the page closes, the exam goes on where you left it; the time does not run meanwhile.",
     "factSwitch": "If you switch to another tab or window, it is counted, and the course team sees each switch with its time.",
     "factSkip": "You can skip a question; after the last one the skipped questions come back. The list of questions takes you to any of them.",
+    "factTextSize": "You can make the questions’ text bigger or smaller: the A− and A+ buttons at the top of the question card do this.",
     "factFinish": "“Finish exam” ends the exam whenever you like. When the time is up, the exam ends by itself with the answers saved.",
     "instructionsTitle": "A note from the preparer",
     "zerothTitle": "Question zero",
@@ -272,6 +273,8 @@
     "lastFive": "Last 5 minutes",
     "counter": "Question {number}/{count}",
     "questionPoints": "{points} points",
+    "textSmaller": "Smaller text",
+    "textBigger": "Bigger text",
     "optionsLegend": "Options",
     "resumed": "The exam goes on where you left it.",
     "skippedFollow": "You reached the last question. The {skipped} you skipped come now, in order.",
@@ -306,7 +309,8 @@
     "errorZerothLocked": "The exam has started; the answer to question zero no longer changes.",
     "errorFailed": "Something went wrong. Try again in a moment.",
     "entryResult": "See the result",
-    "toMyExams": "My exams"
+    "toMyExams": "My exams",
+    "factColors": "In the list of questions below, the ones you have not answered are yellow, the ones you skipped are orange, and the ones you answered are plain (white on the light theme, dark on the dark theme)."
   },
   "MyExams": {
     "pageTitle": "My exams",
@@ -371,6 +375,12 @@
     "resultNotFoundTitle": "No such exam",
     "resultNotFound": "This exam is not among the exams you took.",
     "resultFailedTitle": "The result could not be read",
-    "resultFailed": "Your exam's result could not be read. Try again in a moment."
+    "resultFailed": "Your exam's result could not be read. Try again in a moment.",
+    "standing": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
+    "standingTied": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same score as you.",
+    "topicStanding": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
+    "topicStandingTied": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same as you.",
+    "view": "Exam page",
+    "viewLabel": "Exam page: {course}, {title}"
   }
 }

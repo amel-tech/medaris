@@ -17,6 +17,7 @@ import {
   zerothOptions,
 } from "../database/schema/online-exam.schema";
 import type { FinishedBy } from "./domain/exam-attempt";
+import { publishedMinutes } from "./domain/online-exam";
 
 type Db = DatabaseService["db"];
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -88,8 +89,18 @@ export class ExamAttemptRepository {
       .limit(1);
     if (!row || row.startsAt === null) return null;
     if (row.cancelledAt !== null || row.archivedAt !== null) return null;
-    const { cancelledAt: _c, archivedAt: _a, startsAt, ...rest } = row;
-    return { ...rest, startsAt };
+    const {
+      cancelledAt: _c,
+      archivedAt: _a,
+      startsAt,
+      durationMinutes,
+      ...rest
+    } = row;
+    return {
+      ...rest,
+      startsAt,
+      durationMinutes: publishedMinutes(durationMinutes),
+    };
   }
 
   /** The exam's zeroth options, in the preparer's order. */

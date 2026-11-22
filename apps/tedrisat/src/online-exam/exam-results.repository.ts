@@ -22,6 +22,7 @@ import {
 import { users } from "../database/schema/user.schema";
 import type { FinishedBy } from "./domain/exam-attempt";
 import { wholeScore } from "./domain/exam-results";
+import { publishedMinutes } from "./domain/online-exam";
 import type { IAttempt, Tx } from "./exam-attempt.repository";
 
 /** Who has a seat in the course and so a row in the results: ENROLLED or COMPLETED, as Değerlendirme has it. */
@@ -88,7 +89,13 @@ export class ExamResultsRepository {
       )
       .limit(1);
     if (!row || row.lessonId === null || row.startsAt === null) return null;
-    return { ...row, lessonId: row.lessonId, startsAt: row.startsAt };
+    return {
+      ...row,
+      lessonId: row.lessonId,
+      startsAt: row.startsAt,
+      // Read only of a published exam, which always has its length.
+      durationMinutes: publishedMinutes(row.durationMinutes),
+    };
   }
 
   /** The talebe seated in the course, by name; one with no name sorts last. */
@@ -140,6 +147,41 @@ export class ExamResultsRepository {
       .select()
       .from(examAttempts)
       .where(eq(examAttempts.examId, examId));
+  }
+
+  /** One talebe's attempt of the exam, if they started it. */
+  async findAttemptOf(
+    examId: string,
+    userId: string
+  ): Promise<IAttempt | null> {
+    const [row] = await this.db
+      .select()
+      .from(examAttempts)
+      .where(
+        and(eq(examAttempts.examId, examId), eq(examAttempts.userId, userId))
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
+  /** One attempt's answers, with whether each was skipped and when it was saved. */
+  answersOfAttempt(attemptId: string): Promise<
+    Array<{
+      questionId: string;
+      optionIds: string[];
+      skipped: boolean;
+      savedAt: Date;
+    }>
+  > {
+    return this.db
+      .select({
+        questionId: examAnswers.questionId,
+        optionIds: examAnswers.optionIds,
+        skipped: examAnswers.skipped,
+        savedAt: examAnswers.savedAt,
+      })
+      .from(examAnswers)
+      .where(eq(examAnswers.attemptId, attemptId));
   }
 
   /** Every answer of the given attempts; none for an empty list. */

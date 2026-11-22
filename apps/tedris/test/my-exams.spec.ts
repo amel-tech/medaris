@@ -74,6 +74,7 @@ const released: MyExamResultResponse = {
   closed: false,
   score: "62.50",
   counts: { right: 5, wrong: 2, blank: 1 },
+  standing: { taken: 12, rank: 3, tiedWith: 0 },
   topics: [
     {
       topicId: "t2",
@@ -83,6 +84,7 @@ const released: MyExamResultResponse = {
       right: 1,
       wrong: 2,
       blank: 1,
+      standing: { taken: 12, rank: 7, tiedWith: 2 },
     },
     {
       topicId: "t1",
@@ -92,6 +94,7 @@ const released: MyExamResultResponse = {
       right: 4,
       wrong: 1,
       blank: 0,
+      standing: { taken: 12, rank: 1, tiedWith: 0 },
     },
   ],
   courseTopics: [
@@ -128,7 +131,17 @@ describe("Sınavlarım (MDRS-299)", () => {
       kind: "continue",
       href: "/courses/c1/lessons/a/sinav",
     });
-    expect(actionOf(listed[1])).toBeNull();
+    // To come, open or in progress: straight to the exam's own page.
+    expect(actionOf(listed[1])).toEqual({
+      kind: "view",
+      href: "/courses/c1/lessons/b/sinav",
+    });
+    expect(actionOf(exam({ lessonId: "o", state: "OPEN" }))).toEqual({
+      kind: "enter",
+      href: "/courses/c1/lessons/o/sinav",
+    });
+    // A written exam to come has no page of its own to go to.
+    expect(actionOf(exam({ format: "WRITTEN", state: "UPCOMING" }))).toBeNull();
     expect(actionOf(listed[2])).toEqual({
       kind: "result",
       href: "/my-exams/c",
@@ -189,10 +202,12 @@ describe("a talebe's screen of a past exam (MDRS-299)", () => {
       released: false,
       score: null,
       counts: null,
+      standing: null,
       topics: [],
       courseTopics: [],
     });
     expect(html).toContain("teslim ettin");
+    expect(html).not.toContain("sıradasın");
     expect(html).toContain("Sonuç henüz açıklanmadı");
     expect(html).not.toContain("100 üzerinden");
     expect(html).not.toContain("Cevaplarım");
@@ -208,6 +223,25 @@ describe("a talebe's screen of a past exam (MDRS-299)", () => {
     expect(html).toContain("Yüzde 30 · 2 sınavdan");
     // The answers wait for the exam to close for everyone.
     expect(html).toContain("sınav herkes için bitince");
+  });
+
+  it("says how many took the exam and where the talebe stands, and who shares the rank, in the exam and each topic", async () => {
+    const html = await renderResult(released);
+    expect(html).toContain(
+      "Sınava 12 kişi girdi. Puanın 62,50. 12 kişi içinde 3. sıradasın."
+    );
+    // İcma: a tie; Kıyas: first, alone.
+    expect(html).toContain(
+      "12 kişi içinde 7. sıradasın; 2 kişi seninle aynı puanı aldı."
+    );
+    expect(html).toContain("12 kişi içinde 1. sıradasın.");
+    const tied = await renderResult({
+      ...released,
+      standing: { taken: 12, rank: 3, tiedWith: 1 },
+    } as MyExamResultResponse);
+    expect(tied).toContain(
+      "12 kişi içinde 3. sıradasın; 1 kişi seninle aynı puanı aldı."
+    );
   });
 
   it("once closed for everyone opens the answers with the correct options", async () => {

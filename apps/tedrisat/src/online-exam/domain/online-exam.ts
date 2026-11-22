@@ -12,14 +12,18 @@ export enum AnswerMode {
   MULTIPLE = "MULTIPLE",
 }
 
-/** How a MULTIPLE question is scored: "Hepsi ya da hiç" or "Kesirli, yanlış düşer". */
+/**
+ * How a MULTIPLE question is scored: "Hepsi ya da hiç", "Kesirli, yanlış
+ * düşer", or "Doğrulardan biri yeterli" (the owner, 22 Nov 2026: "çoklu
+ * seçimde çoklu doğru cevap işaretlendi diyelim, doğru cevaplardan herhangi
+ * birini işaretlemesi de yeterli olsun puanı tam alması için").
+ */
 export enum Scoring {
   ALL_OR_NOTHING = "ALL_OR_NOTHING",
   IN_SHARES = "IN_SHARES",
+  ANY_CORRECT = "ANY_CORRECT",
 }
 
-/** A new draft's length, "Süre (dakika)"; there is no upper bound (the owner: "Sınır yok"). */
-export const ONLINE_EXAM_DEFAULT_MINUTES = 60;
 /** The longest title, instructions, zeroth question and its options, question text and option, in characters. */
 export const ONLINE_EXAM_TITLE_MAX = 200;
 export const ONLINE_EXAM_INSTRUCTIONS_MAX = 4000;
@@ -185,19 +189,25 @@ export type PublishProblem =
   | { kind: "NO_QUESTION" }
   | { kind: "QUESTION"; number: number; lacks: QuestionLack[] }
   | { kind: "POINTS"; total: string }
-  | { kind: "NO_ZEROTH" };
+  | { kind: "NO_ZEROTH" }
+  | { kind: "NO_DURATION" };
 
 /**
- * An exam is published with one question at least, every question complete,
- * points that total 100 and its madrasah's zeroth question. `pointsTotal` is
- * the total as the draft reads it ("100.00").
+ * An exam is published with its length typed, one question at least, every
+ * question complete, points that total 100 and a zeroth question.
+ * `pointsTotal` is the total as the draft reads it ("100.00"). The length
+ * has no default and no upper bound (the owner: "Sınır yok"; 22 Nov 2026:
+ * "sınav süresinin varsayılanı olmasın, zorunlu olsun ama boş kalsın o
+ * olmadan sınav yayına alınamasın").
  */
 export const publishProblems = (exam: {
+  durationMinutes: number | null;
   questions: ReadonlyArray<QuestionShape>;
   pointsTotal: string;
   hasZeroth: boolean;
 }): PublishProblem[] => {
   const problems: PublishProblem[] = [];
+  if (exam.durationMinutes === null) problems.push({ kind: "NO_DURATION" });
   if (exam.questions.length === 0) problems.push({ kind: "NO_QUESTION" });
   exam.questions.forEach((q, i) => {
     const lacks = lacksOf(q);
@@ -213,6 +223,18 @@ export const publishProblems = (exam: {
   }
   if (!exam.hasZeroth) problems.push({ kind: "NO_ZEROTH" });
   return problems;
+};
+
+/**
+ * A published exam's length. Publishing refuses an exam without one
+ * (NO_DURATION), so a published exam always has it; a null here is a broken
+ * row, not a length to make up.
+ */
+export const publishedMinutes = (minutes: number | null): number => {
+  if (minutes === null) {
+    throw new Error("A published online exam has no length");
+  }
+  return minutes;
 };
 
 /** The minute an instant falls in: the celse's time has no seconds. */
@@ -251,7 +273,7 @@ export const examStatus = (
     closedEarlyAt: Date | null;
     startsAt: Date | null;
     latestStartAt: Date | null;
-    durationMinutes: number;
+    durationMinutes: number | null;
   },
   now: Date
 ): OnlineExamStatus => {
@@ -260,6 +282,6 @@ export const examStatus = (
   if (now.getTime() < exam.startsAt.getTime()) return "SCHEDULED";
   const lastEnd =
     (exam.latestStartAt ?? exam.startsAt).getTime() +
-    exam.durationMinutes * 60_000;
+    publishedMinutes(exam.durationMinutes) * 60_000;
   return now.getTime() < lastEnd ? "OPEN" : "CLOSED";
 };

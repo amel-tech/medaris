@@ -1,9 +1,14 @@
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
-import { examAttempts } from "../../src/database/schema/exam-attempt.schema";
+import { enrollments } from "../../src/database/schema/course.schema";
+import {
+  examAnswers,
+  examAttempts,
+} from "../../src/database/schema/exam-attempt.schema";
 import {
   examResults,
   lessonExams,
@@ -138,6 +143,10 @@ describe("online exams, the team's results (e2e)", () => {
   const results = (exam: IPublished, who = muderris) =>
     http()
       .get(`/online-exams/${exam.examId}/results`)
+      .set("Authorization", who);
+  const answersOf = (exam: IPublished, userId: string, who = muderris) =>
+    http()
+      .get(`/online-exams/${exam.examId}/results/${userId}`)
       .set("Authorization", who);
   const close = (exam: IPublished, who = muderris) =>
     http().post(`/online-exams/${exam.examId}/close`).set("Authorization", who);
@@ -312,5 +321,121 @@ describe("online exams, the team's results (e2e)", () => {
       state: "NOT_STARTED",
       score: null,
     });
+  });
+
+  it("opens one talebe's answers: the exam's order, the correct marks, the choices and the points, and only that talebe's", async () => {
+    const exam = await publish();
+    await sit(exam, [exam.questions[0].correct, exam.questions[1].wrong]);
+    await http()
+      .post(take(exam, "/attempt/finish"))
+      .set("Authorization", talebe)
+      .send({ holderId: HOLDER })
+      .expect(200);
+    // A second talebe of the course, seated, who answered the other way round.
+    const second = "e2470000-0000-4000-8000-0000000000f1";
+    await db().insert(enrollments).values({
+      userId: second,
+      courseId: ids.courseId,
+      status: EnrollmentStatus.ENROLLED,
+      studentName: "İkinci Talebe",
+    });
+    const [attempt] = await db()
+      .insert(examAttempts)
+      .values({
+        examId: exam.examId,
+        userId: second,
+        // Their own order: the exam's order is what the team reads.
+        questionOrder: [exam.questions[1].id, exam.questions[0].id],
+        optionOrder: {},
+        countedAt: new Date(),
+        holderId: "page-bbbb-2222",
+      })
+      .returning();
+    await db()
+      .insert(examAnswers)
+      .values({
+        attemptId: attempt.id,
+        questionId: exam.questions[1].id,
+        optionIds: [exam.questions[1].correct],
+      });
+
+    const res = await answersOf(exam, CAST.TALEBE).expect(200);
+    expect(res.body).toMatchObject({
+      exam: { id: exam.examId, title: "Ara sınav" },
+      userId: CAST.TALEBE,
+      state: "FINISHED",
+      finishedBy: "TALEBE",
+      score: "50.00",
+      switches: [],
+      zeroth: { optionId: exam.zeroth[1], answer: "Daha önce" },
+    });
+    expect(
+      res.body.questions.map(
+        (q: {
+          number: number;
+          text: string;
+          verdict: string;
+          earned: string;
+        }) => [q.number, q.text, q.verdict, q.earned]
+      )
+    ).toEqual([
+      [1, "Soru 1", "RIGHT", "50.00"],
+      [2, "Soru 2", "WRONG", "0.00"],
+    ]);
+    expect(res.body.questions[1]).toMatchObject({
+      points: "50.00",
+      skipped: false,
+      options: [
+        expect.objectContaining({
+          text: "Doğru",
+          correct: true,
+          chosen: false,
+        }),
+        expect.objectContaining({
+          text: "Yanlış",
+          correct: false,
+          chosen: true,
+        }),
+      ],
+    });
+
+    const theirs = await answersOf(exam, second).expect(200);
+    expect(theirs.body).toMatchObject({
+      name: "İkinci Talebe",
+      state: "IN_PROGRESS",
+      score: null,
+      zeroth: { optionId: null, answer: null },
+    });
+    expect(
+      theirs.body.questions.map(
+        (q: { verdict: string; savedAt: string | null }) => [
+          q.verdict,
+          q.savedAt === null,
+        ]
+      )
+    ).toEqual([
+      ["BLANK", true],
+      ["RIGHT", false],
+    ]);
+  });
+
+  it("finds no answers for a talebe with no attempt or no seat, and is read only by those who prepare the exam", async () => {
+    const exam = await publish();
+    const other = await publish();
+    await sit(exam, [exam.questions[0].correct]);
+    // Their attempt of one exam is not an answer sheet of another.
+    expect((await answersOf(other, CAST.TALEBE).expect(404)).body.code).toBe(
+      "ATTEMPT_NOT_FOUND"
+    );
+    expect((await answersOf(exam, CAST.STRANGER).expect(404)).body.code).toBe(
+      "ATTEMPT_NOT_FOUND"
+    );
+    for (const who of [CAST.SESSION, CAST.TALEBE, CAST.STRANGER]) {
+      await answersOf(exam, CAST.TALEBE, bearerOf(who)).expect(403);
+    }
+    const draft = await publish({ published: false });
+    expect((await answersOf(draft, CAST.TALEBE).expect(404)).body.code).toBe(
+      "EXAM_NOT_FOUND"
+    );
   });
 });

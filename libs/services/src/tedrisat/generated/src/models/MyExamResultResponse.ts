@@ -41,6 +41,13 @@ import {
     MyTopicStandingResponseToJSON,
     MyTopicStandingResponseToJSONTyped,
 } from './MyTopicStandingResponse';
+import type { MyStandingResponse } from './MyStandingResponse';
+import {
+    MyStandingResponseFromJSON,
+    MyStandingResponseFromJSONTyped,
+    MyStandingResponseToJSON,
+    MyStandingResponseToJSONTyped,
+} from './MyStandingResponse';
 import type { MyCourseTopicStandingResponse } from './MyCourseTopicStandingResponse';
 import {
     MyCourseTopicStandingResponseFromJSON,
@@ -135,6 +142,12 @@ export interface MyExamResultResponse {
      */
     counts: MyExamCountsResponse | null;
     /**
+     * Only when released: where the talebe stands among those who took the exam.
+     * @type {MyStandingResponse}
+     * @memberof MyExamResultResponse
+     */
+    standing: MyStandingResponse | null;
+    /**
      * Only when released, the weakest first; a question with two topics counts in both.
      * @type {Array<MyTopicStandingResponse>}
      * @memberof MyExamResultResponse
@@ -172,6 +185,7 @@ export function instanceOfMyExamResultResponse(value: object): value is MyExamRe
     if (!('closed' in value) || value['closed'] === undefined) return false;
     if (!('score' in value) || value['score'] === undefined) return false;
     if (!('counts' in value) || value['counts'] === undefined) return false;
+    if (!('standing' in value) || value['standing'] === undefined) return false;
     if (!('topics' in value) || value['topics'] === undefined) return false;
     if (!('courseTopics' in value) || value['courseTopics'] === undefined) return false;
     if (!('questions' in value) || value['questions'] === undefined) return false;
@@ -200,6 +214,7 @@ export function MyExamResultResponseFromJSONTyped(json: any, ignoreDiscriminator
         'closed': json['closed'],
         'score': json['score'],
         'counts': MyExamCountsResponseFromJSON(json['counts']),
+        'standing': MyStandingResponseFromJSON(json['standing']),
         'topics': ((json['topics'] as Array<any>).map(MyTopicStandingResponseFromJSON)),
         'courseTopics': ((json['courseTopics'] as Array<any>).map(MyCourseTopicStandingResponseFromJSON)),
         'questions': (json['questions'] == null ? null : (json['questions'] as Array<any>).map(MyAnsweredQuestionResponseFromJSON)),
@@ -229,6 +244,7 @@ export function MyExamResultResponseToJSONTyped(value?: MyExamResultResponse | n
         'closed': value['closed'],
         'score': value['score'],
         'counts': MyExamCountsResponseToJSON(value['counts']),
+        'standing': MyStandingResponseToJSON(value['standing']),
         'topics': ((value['topics'] as Array<any>).map(MyTopicStandingResponseToJSON)),
         'courseTopics': ((value['courseTopics'] as Array<any>).map(MyCourseTopicStandingResponseToJSON)),
         'questions': (value['questions'] == null ? null : (value['questions'] as Array<any>).map(MyAnsweredQuestionResponseToJSON)),

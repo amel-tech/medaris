@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MyStandingResponse } from './MyStandingResponse';
+import {
+    MyStandingResponseFromJSON,
+    MyStandingResponseFromJSONTyped,
+    MyStandingResponseToJSON,
+    MyStandingResponseToJSONTyped,
+} from './MyStandingResponse';
+
 /**
  * 
  * @export
@@ -61,6 +69,12 @@ export interface MyTopicStandingResponse {
      * @memberof MyTopicStandingResponse
      */
     blank: number;
+    /**
+     * Where the talebe stands in this topic among those who took the exam, by the topic's points got.
+     * @type {MyStandingResponse}
+     * @memberof MyTopicStandingResponse
+     */
+    standing: MyStandingResponse;
 }
 
 /**
@@ -74,6 +88,7 @@ export function instanceOfMyTopicStandingResponse(value: object): value is MyTop
     if (!('right' in value) || value['right'] === undefined) return false;
     if (!('wrong' in value) || value['wrong'] === undefined) return false;
     if (!('blank' in value) || value['blank'] === undefined) return false;
+    if (!('standing' in value) || value['standing'] === undefined) return false;
     return true;
 }
 
@@ -94,6 +109,7 @@ export function MyTopicStandingResponseFromJSONTyped(json: any, ignoreDiscrimina
         'right': json['right'],
         'wrong': json['wrong'],
         'blank': json['blank'],
+        'standing': MyStandingResponseFromJSON(json['standing']),
     };
 }
 
@@ -115,6 +131,7 @@ export function MyTopicStandingResponseToJSONTyped(value?: MyTopicStandingRespon
         'right': value['right'],
         'wrong': value['wrong'],
         'blank': value['blank'],
+        'standing': MyStandingResponseToJSON(value['standing']),
     };
 }
 
