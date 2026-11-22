@@ -323,7 +323,7 @@ states:
       round) and the line "Kaydedilmemiş değişiklikler var" is up (an output, so it is announced); "Vazgeç" and "Kaydet" are on. A new
       row is empty and its name and address are asked for with an asterisk that is not read (F-C-course-a-07); no field is marked
       required for the browser (the form is noValidate). Nothing is stored. The upload panel and the other changes of the form are not
-      drawn from here (see `scope.outOfView`). A toast of a refused save (`last`) may be up: an error toast stays until it is closed.
+      followed from here: a press of one leads to the exit several_changes (see `scope.outOfView`). A toast of a refused save (`last`) may be up: an error toast stays until it is closed.
       The save is disabled while a file uploads, which cannot be drawn here, and gives no reason (F-C-course-a-30).
     by: human
     on:
@@ -343,6 +343,21 @@ states:
         - { guard: "form == 'lessonGone' and lessonRows == 'one'", target: listed, effect: [undoLessonGoneOne], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:251, say: "they press 'Vazgeç': the celse's second link is back" }
         - { guard: "form == 'moved'", target: listed, effect: [undoMoved], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:251, say: "they press 'Vazgeç': the rows are as they were" }
       NAVIGATE: { target: left, say: "they follow a link or the menu: the unsaved change is lost, with no question (F-C-course-a-13)" }
+      OPEN_DETAILS: { guard: "details == 'folded'", target: drafting, effect: [detailsOpened], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they open a celse's details: nothing else changes" }
+      HIDE_DETAILS: { guard: "details == 'open'", target: drafting, effect: [detailsFolded], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they fold the celse's details: they are only hidden (`hidden`, :775), so what is in them stays as it is" }
+      # Every other control of the page stays live (only saving or reading the page again locks them: curriculum-editor.tsx:223). A press here
+      # changes the form beside the change already open, which this graph does not follow past (scope.outOfView): the exit several_changes says what follows.
+      ADD_COURSE_LINK: { guard: mayCourse, target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:235, say: "they press 'Bağlantı ekle' under Bağlı kaynaklar: a new row joins the form beside the change already open" }
+      REMOVE_COURSE:
+        - { guard: "mayCourse and (form == 'courseBlank' or form == 'courseReady')", target: listed, effect: [undoCourseAdd], source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they take the new link out again: the form is as it was stored" }
+        - { guard: "mayCourse and courseRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they press 'Kaynağı çıkar' on the course's row (a file asks first)" }
+      ADD_LESSON_LINK: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:254, say: "they press 'Bağlantı ekle' under Celsenin kaynakları: a new row joins the form beside the change already open" }
+      REMOVE_LESSON:
+        - { guard: "lessonOpen and (form == 'lessonBlank' or form == 'lessonReady') and lessonRows == 'one'", target: listed, effect: [undoLessonAddOne], source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take the celse's new link out again: the form is as it was stored" }
+        - { guard: "lessonOpen and lessonRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take a row out of the celse's list" }
+      ADD_SESSION: { guard: mayLesson, target: several_changes, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:932, say: "they press 'Celse ekle': a celse with no id joins the form beside the change already open" }
+      OPEN_COURSE_UPLOAD: { guard: mayCourse, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Bağlı kaynaklar: its panel opens beside the change already open" }
+      OPEN_LESSON_UPLOAD: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Celsenin kaynakları: its panel opens beside the change already open" }
     source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:1002
 
   refused:
@@ -363,6 +378,21 @@ states:
         - { guard: "form == 'lessonBlank' and lessonRows == 'one'", target: listed, effect: [undoLessonAddOne], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:251, say: "they press 'Vazgeç': the celse's new link is gone" }
         - { guard: "form == 'lessonBlank' and lessonRows == 'two'", target: listed, effect: [undoLessonAddTwo], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:251, say: "they press 'Vazgeç': the celse's second link is gone" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      OPEN_DETAILS: { guard: "details == 'folded'", target: refused, effect: [detailsOpened], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they open a celse's details: nothing else changes" }
+      HIDE_DETAILS: { guard: "details == 'open'", target: refused, effect: [detailsFolded], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they fold the celse's details: they are only hidden (`hidden`, :775), so what is in them stays as it is" }
+      # Every other control of the page stays live (only saving or reading the page again locks them: curriculum-editor.tsx:223). A press here
+      # changes the form beside the change already open, which this graph does not follow past (scope.outOfView): the exit several_changes says what follows.
+      ADD_COURSE_LINK: { guard: mayCourse, target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:235, say: "they press 'Bağlantı ekle' under Bağlı kaynaklar: a new row joins the form beside the change already open" }
+      REMOVE_COURSE:
+        - { guard: "mayCourse and (form == 'courseBlank' or form == 'courseReady')", target: listed, effect: [undoCourseAdd], source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they take the new link out again: the form is as it was stored" }
+        - { guard: "mayCourse and courseRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they press 'Kaynağı çıkar' on the course's row (a file asks first)" }
+      ADD_LESSON_LINK: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:254, say: "they press 'Bağlantı ekle' under Celsenin kaynakları: a new row joins the form beside the change already open" }
+      REMOVE_LESSON:
+        - { guard: "lessonOpen and (form == 'lessonBlank' or form == 'lessonReady') and lessonRows == 'one'", target: listed, effect: [undoLessonAddOne], source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take the celse's new link out again: the form is as it was stored" }
+        - { guard: "lessonOpen and lessonRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take a row out of the celse's list" }
+      ADD_SESSION: { guard: mayLesson, target: several_changes, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:932, say: "they press 'Celse ekle': a celse with no id joins the form beside the change already open" }
+      OPEN_COURSE_UPLOAD: { guard: mayCourse, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Bağlı kaynaklar: its panel opens beside the change already open" }
+      OPEN_LESSON_UPLOAD: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Celsenin kaynakları: its panel opens beside the change already open" }
     source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281
 
   saving:
@@ -415,7 +445,7 @@ states:
       says "Bir dosya seçin."; a file the page refuses before sending (empty, over 25 MB) is a Field error under the field. These are
       not announced (F-C-course-a-01). Enter in a text field of the panel sends instead of saving the form. A file refused by the
       server leaves an alert "Dosya yüklenemedi" in the panel (role alert). The rest of the page stays live while the panel is open;
-      the graph draws only the panel's own steps. The replay cannot set a file input, so CHOOSE is not walked, and on this stack the
+      the graph draws only the panel's own steps, and a change made meanwhile leads to the exit several_changes. The replay cannot set a file input, so CHOOSE is not walked, and on this stack the
       store answers 503 (`store: storage`).
     by: human
     on:
@@ -430,6 +460,17 @@ states:
         - { guard: "pick == 'empty' or pick == 'tooLarge'", target: uploadPanel, source: apps/nazar/features/files/components/file-upload.tsx:106, say: "they press 'Yükle' with a file the page refuses: nothing is sent" }
       CANCEL_UPLOAD: { target: listed, effect: [panelClosed], source: apps/nazar/features/files/components/file-upload.tsx:85, say: "they press 'Vazgeç' in the panel: it closes and what was chosen is forgotten" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      OPEN_DETAILS: { guard: "details == 'folded'", target: uploadPanel, effect: [detailsOpened], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they open a celse's details: nothing else changes" }
+      HIDE_DETAILS: { guard: "details == 'open'", target: uploadPanel, effect: [detailsFolded], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they fold the celse's details: they are only hidden (`hidden`, :775), so what is in them stays as it is" }
+      # Every other control of the page stays live (only saving or reading the page again locks them: curriculum-editor.tsx:223). A press here
+      # changes the form beside the open panel, which this graph does not follow past (scope.outOfView): the exit several_changes says what follows.
+      ADD_COURSE_LINK: { guard: mayCourse, target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:235, say: "they press 'Bağlantı ekle' under Bağlı kaynaklar: a new row joins the form beside the open panel" }
+      REMOVE_COURSE: { guard: "mayCourse and courseRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they press 'Kaynağı çıkar' on the course's row (a file asks first)" }
+      ADD_LESSON_LINK: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:254, say: "they press 'Bağlantı ekle' under Celsenin kaynakları: a new row joins the form beside the open panel" }
+      REMOVE_LESSON: { guard: "lessonOpen and lessonRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take a row out of the celse's list" }
+      ADD_SESSION: { guard: mayLesson, target: several_changes, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:932, say: "they press 'Celse ekle': a celse with no id joins the form beside the open panel" }
+      OPEN_COURSE_UPLOAD: { guard: "mayCourse and panel == 'lesson'", target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Bağlı kaynaklar: a second panel opens beside the celse's" }
+      OPEN_LESSON_UPLOAD: { guard: "lessonOpen and panel == 'course'", target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Celsenin kaynakları: a second panel opens beside the course's" }
     source: apps/nazar/features/files/components/file-upload.tsx:170
 
   uploadingCourse:
@@ -469,12 +510,25 @@ states:
       "Celse ekle" appended a celse to the week; it is open, empty and unsaved, and the form is unsaved ("Kaydedilmemiş değişiklikler
       var"). Its list "Celsenin kaynakları" says it has no resource and offers "Bağlantı ekle" and a "Dosya yükle" that is off, with the
       sentence "Yeni celseye dosya yüklemek için önce müfredatı kaydedin." linked to it by aria-describedby: the upload needs the
-      celse's id, which only a save gives. Filling the celse and saving it is nazar.curriculum.edit's; here the only ways out are
-      "Vazgeç", which drops the celse, and leaving.
+      celse's id, which only a save gives. Filling the celse and saving it is nazar.curriculum.edit's: "Kaydet" pressed while it is
+      empty sends nothing and says its title is missing. Here the ways out are "Vazgeç", which drops the celse, another change of the
+      form (several_changes), and leaving.
     by: human
     on:
       VAZGEC: { target: listed, effect: [sessionDiscarded], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:251, say: "they press 'Vazgeç': the new celse is gone" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      OPEN_DETAILS: { guard: "details == 'folded'", target: freshSession, effect: [detailsOpened], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they open a celse's details: nothing else changes" }
+      HIDE_DETAILS: { guard: "details == 'open'", target: freshSession, effect: [detailsFolded], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:757, say: "they fold the celse's details: they are only hidden (`hidden`, :775), so what is in them stays as it is" }
+      # Every other control of the page stays live (only saving or reading the page again locks them: curriculum-editor.tsx:223). A press here
+      # changes the form beside the new celse, which this graph does not follow past (scope.outOfView): the exit several_changes says what follows.
+      ADD_COURSE_LINK: { guard: mayCourse, target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:235, say: "they press 'Bağlantı ekle' under Bağlı kaynaklar: a new row joins the form beside the new celse" }
+      REMOVE_COURSE: { guard: "mayCourse and courseRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/resources-editor.tsx:153, say: "they press 'Kaynağı çıkar' on the course's row (a file asks first)" }
+      ADD_LESSON_LINK: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:254, say: "they press 'Bağlantı ekle' under Celsenin kaynakları: a new row joins the form beside the new celse" }
+      REMOVE_LESSON: { guard: "lessonOpen and lessonRows != 'none'", target: several_changes, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:165, say: "they take a row out of the celse's list" }
+      ADD_SESSION: { guard: mayLesson, target: several_changes, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:932, say: "they press 'Celse ekle': a celse with no id joins the form beside the new celse" }
+      OPEN_COURSE_UPLOAD: { guard: mayCourse, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Bağlı kaynaklar: its panel opens beside the new celse" }
+      OPEN_LESSON_UPLOAD: { guard: lessonOpen, target: several_changes, source: apps/nazar/features/files/components/file-upload.tsx:157, say: "they press 'Dosya yükle' under Celsenin kaynakları: its panel opens beside the new celse" }
+      SAVE: { target: freshSession, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281, say: "they press 'Kaydet': the new celse has no title yet, so nothing is sent and its title field says so (drawn by nazar.curriculum.edit)" }
     source: apps/nazar/features/files/components/file-upload.tsx:147
 
   not_found:
@@ -482,6 +536,17 @@ states:
     description: "A 404 of the course read, or a course the person may not open, is Next's not-found page."
     type: final
     leavesPage: true
+
+  several_changes:
+    title: The form changes again while a change is open
+    description: >-
+      The page takes the press as it takes the first one: another row joins a list or leaves it (a file after its question), a celse
+      with no id joins a week, or an upload panel opens beside an unsaved change or beside the other panel. The form then holds more
+      than the one change this graph follows (scope.outOfView), or a change beside an open panel; when the press took out the very row
+      just added, it is as stored again, which the graph does not tell apart. Each change behaves as it does alone: "Kaydet" sends them
+      all in one PUT /courses/:id, "Vazgeç" takes back every change that is not stored, and an upload stores its own row at once
+      whatever else is unsaved (curriculum-editor.tsx:228-244, 251-258).
+    type: final
 
   handed_over.conflict:
     title: Someone else saved the course

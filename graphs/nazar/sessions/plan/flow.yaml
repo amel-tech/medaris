@@ -270,6 +270,16 @@ states:
     on:
       DONE: { guard: "previewed == 'lines'", target: formReady, source: apps/nazar/features/sessions/components/plan-form.tsx:143, say: "the celses are listed, with their dates and weeks" }
       FAIL.refused: { guard: "previewed == 'refused'", target: previewFailed, source: apps/nazar/features/sessions/components/plan-form.tsx:146, say: "the answer is a refusal of any kind: the preview is cleared and the alert says so" }
+      # Every control of the form stays live while the preview is asked (plan-form.tsx:131-155). A change of the kind, the mode or the end
+      # changes the pattern: the effect's cleanup drops the answer on its way (`live = false`, :152) and settle asks again or clears it.
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:600, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:600, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:409, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:409, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:385, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:385, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:671, say: "'Vazgeç' while the preview is asked: back to Celseler with nothing made; the answer is not waited for" }
+      BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:367, say: "the breadcrumb's 'Celseler' while the preview is asked: the same link" }
       NAVIGATE: { target: left, say: "they follow the menu" }
     source: apps/nazar/features/sessions/actions.ts:111
 
@@ -286,6 +296,19 @@ states:
     on: 
       LINKS_FIRST: { guard: "links == 'empty' and kind != 'exam'", target: previewFailed, effect: [linksFirst], source: apps/nazar/features/sessions/components/plan-form.tsx:321, say: "they choose 'Yalnız ilk celseye ekle': a link field opens; only the first celse gets it" }
       LINKS_EMPTY: { guard: "links == 'first' and kind != 'exam'", target: previewFailed, effect: [linksEmpty], source: apps/nazar/features/sessions/components/plan-form.tsx:321, say: "they go back to 'Boş bırak'" }
+      # The toggles act here as they do in form (the description above says so): a change of the kind, the mode or the end changes the
+      # pattern and settle asks again; the fold and the place change only what the page shows.
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:600, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:600, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:409, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:409, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:385, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:385, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      DETAILS:
+        - { guard: "kind == 'exam' and said == 'none'", target: previewFailed, effect: [openDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:472, say: "they open 'Sınav ayrıntıları': the format, score, length, topics, make-up, title, zone and links" }
+        - { guard: "kind == 'examOpen' and said == 'none'", target: previewFailed, effect: [closeDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:472, say: "they fold it again (not drawn once a field has been refused: the page opens the folded section by itself then, plan-form.tsx:181-197)" }
+      PLACE_IN_PERSON: { guard: "place == 'online' and examKind", target: previewFailed, effect: [placeInPerson], source: apps/nazar/features/sessions/components/plan-form.tsx:438, say: "they choose 'Yüz yüze' for the exam: 'Yer adı' opens" }
+      PLACE_ONLINE: { guard: "place == 'inPerson' and examKind", target: previewFailed, effect: [placeOnline], source: apps/nazar/features/sessions/components/plan-form.tsx:438, say: "they go back to 'Çevrimiçi'" }
       CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:671, say: "'Vazgeç': back to Celseler with nothing made; no guard for what was typed (F-C-course-a-13)" }
       BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:367, say: "the breadcrumb's 'Celseler': the same link" }
       NAVIGATE: { target: left, source: apps/nazar/features/sessions/components/plan-form.tsx:357, say: "they follow the menu" }

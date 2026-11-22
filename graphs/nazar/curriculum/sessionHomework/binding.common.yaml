@@ -16,7 +16,7 @@ data:
   made: { json: ../.local/made/sess-homework.json }
 
 events:
-  # the switch is pressed to turn it off as it is to turn it on; the node sends TURN_ON where it is off, so the other direction is bound here
+  # the switch is pressed to turn it off as it is to turn it on: ui.yaml draws it on as homeworkSwitchOn (TURN_OFF), and the click is bound here
   TURN_OFF:
     - click: { role: switch, name: Bu celsenin ödevi var }
   # a field the person types in has no node that sends an event: the binding fills it in

@@ -178,6 +178,18 @@ context:
     say:
       blank: "the dialog's \"Talebeye not\" is empty (or holds only spaces)"
       words: "the dialog's note holds text"
+  panel:
+    values: [closed, open]
+    initial: closed
+    say:
+      closed: "the dialog shows \"Dosya yükle\""
+      open: "the upload panel is open in the dialog, beside the rest of it"
+  said:
+    values: [none, empty]
+    initial: none
+    say:
+      none: "the note field shows its help line"
+      empty: "the submit was pressed with nothing to send: \"Bir not yazın ya da en az bir dosya ekleyin.\" stands under the note field until something is typed or a file is uploaded"
   pick:
     values: [none, chosen, missing]
     initial: none
@@ -242,6 +254,11 @@ effects:
   filesNone: { set: { files: none } }
   filesOne: { set: { files: one } }
   filesMany: { set: { files: many } }
+  dialogOpened: { set: { panel: closed, said: none } } # the dialog mounts anew each time it opens (review-dialog.tsx:98)
+  panelOpened: { set: { panel: open } }
+  panelShut: { set: { panel: closed } }
+  saidEmpty: { set: { said: empty } }
+  saidNone: { set: { said: none } }
   pickNone: { set: { pick: none, fault: none } }
   pickChosen: { set: { pick: chosen, fault: none } }
   pickMissing: { set: { pick: missing } }
@@ -377,8 +394,8 @@ states:
       OPEN_FILTER: { target: choosing, effect: [toastNone], source: "apps/nazar/features/homework/components/homework-list.tsx:172" }
       DOWNLOAD: { target: downloading, effect: [toastNone], source: "apps/nazar/features/files/components/file-link.tsx:34", say: "they follow the link of a file a talebe handed in" }
       OPEN_REVIEW:
-        - { guard: "note == 'kept'", target: reviewing, effect: [typedWords, pickNone, toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
-        - { target: reviewing, effect: [typedBlank, pickNone, toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
+        - { guard: "note == 'kept'", target: reviewing, effect: [typedWords, pickNone, toastNone, dialogOpened], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
+        - { target: reviewing, effect: [typedBlank, pickNone, toastNone, dialogOpened], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/homework/components/homework-list.tsx:169
 
@@ -406,8 +423,8 @@ states:
       OPEN_FILTER: { target: choosing, effect: [toastNone], source: "apps/nazar/features/homework/components/homework-list.tsx:172" }
       DOWNLOAD: { target: downloading, effect: [toastNone], source: "apps/nazar/features/files/components/file-link.tsx:34" }
       OPEN_REVIEW:
-        - { guard: "note == 'kept'", target: reviewing, effect: [typedWords, pickNone, toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
-        - { target: reviewing, effect: [typedBlank, pickNone, toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
+        - { guard: "note == 'kept'", target: reviewing, effect: [typedWords, pickNone, toastNone, dialogOpened], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
+        - { target: reviewing, effect: [typedBlank, pickNone, toastNone, dialogOpened], source: "apps/nazar/features/homework/components/review-dialog.tsx:89" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/homework/homework.ts:202
 
@@ -482,9 +499,9 @@ states:
       TYPE_NOTE: { target: reviewing, effect: [typedWords, toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:271" }
       CLEAR_NOTE: { guard: "typed == 'words'", target: reviewing, effect: [typedBlank], source: "apps/nazar/features/homework/components/review-dialog.tsx:271" }
       SEND:
-        - { guard: nothingToSend, target: reviewingEmpty, source: "apps/nazar/features/homework/components/review-dialog.tsx:156", say: "no note and no file: the page asks nothing of tedrisat" }
+        - { guard: nothingToSend, target: reviewingEmpty, effect: [saidEmpty], source: "apps/nazar/features/homework/components/review-dialog.tsx:156", say: "no note and no file: the page asks nothing of tedrisat" }
         - { target: sending, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:160" }
-      OPEN_PANEL: { target: uploadPanel, effect: [pickNone, toastNone], source: "apps/nazar/features/files/components/file-upload.tsx:157", say: "\"Dosya yükle\" unmounts itself and opens the panel; the focus is not moved (F-D1-10, F-C-course-a-14)" }
+      OPEN_PANEL: { target: uploadPanel, effect: [pickNone, toastNone, panelOpened], source: "apps/nazar/features/files/components/file-upload.tsx:157", say: "\"Dosya yükle\" unmounts itself and opens the panel; the focus is not moved (F-D1-10, F-C-course-a-14)" }
       REMOVE_FILE: { guard: hasFiles, target: removing, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:304" }
       DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file in the dialog" }
       DOWNLOAD_REVIEW_FILE: { guard: hasFiles, target: dialogReviewDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:292", say: "they follow the link of a file of the review" }
@@ -504,9 +521,12 @@ states:
     by: human
     description: >-
       Pressing the submit with no note and no file sets an error under the note field and sends nothing: "Bir not yazın ya da en az bir dosya ekleyin." It
-      replaces the field's help line, is a Field.Error with no role=alert, and the focus stays on the submit (F-D1-10). Typing clears it.
+      replaces the field's help line, is a Field.Error with no role=alert, and the focus stays on the submit (F-D1-10). Typing clears it. So does a file
+      uploaded; opening the panel or following a file's link leaves it standing.
     on:
-      TYPE_NOTE: { target: reviewing, effect: [typedWords], source: "apps/nazar/features/homework/components/review-dialog.tsx:273" }
+      TYPE_NOTE: { target: reviewing, effect: [typedWords, saidNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:273" }
+      OPEN_PANEL: { target: uploadPanel, effect: [pickNone, toastNone, panelOpened], source: "apps/nazar/features/files/components/file-upload.tsx:157", say: "\"Dosya yükle\" opens the panel; the line under the note stays until a file is uploaded" }
+      DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file; the line under the note stays" }
       SEND: { target: reviewingEmpty, source: "apps/nazar/features/homework/components/review-dialog.tsx:157", say: "pressed again, the same line" }
       CLOSE:
         - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:97" }
@@ -527,14 +547,25 @@ states:
       görür." (wrong for a review that was already sent, NHWREV-2), the file field "Dosya" with its help, "Yükle" and "Vazgeç". The focus is not moved to the field
       (F-D1-10). Choosing a file shows "Seçilen dosya: <ad> · <boyut>" and checks it against the page's own two limits (empty, over 25 MB: out of view);
       "Yükle" with no file says "Bir dosya seçin." in place of the help. After a refused upload the panel stays with a "Dosya yüklenemedi" alert (role=alert) and
-      the chosen file, and a new "Yükle" tries again. The replay cannot set a file input, so `PICK_FILE` is not walked, and the upload that needs a chosen file is
+      the chosen file, and a new "Yükle" tries again. The rest of the dialog stays live beside the panel: a file's link, its trash
+      and the submit act as they do without it, and the panel stays open through what they do (dialogBack). The replay cannot set a file input, so `PICK_FILE` is not walked, and the upload that needs a chosen file is
       read from the code.
     on:
       PICK_FILE: { target: uploadPanel, effect: [pickChosen], source: "apps/nazar/features/files/components/file-upload.tsx:200", say: "they choose a file in the native picker" }
       UPLOAD:
         - { guard: "pick == 'chosen'", target: uploading, source: "apps/nazar/features/files/components/file-upload.tsx:111" }
         - { target: uploadPanel, effect: [pickMissing], source: "apps/nazar/features/files/components/file-upload.tsx:103", say: "no file: \"Bir dosya seçin.\", nothing is sent" }
-      CANCEL_PANEL: { target: reviewing, effect: [pickNone], source: "apps/nazar/features/files/components/file-upload.tsx:85", say: "\"Vazgeç\": the panel folds, \"Dosya yükle\" is back, the focus is not returned (F-D1-10)" }
+      CANCEL_PANEL:
+        - { guard: "said == 'empty'", target: reviewingEmpty, effect: [pickNone, panelShut], source: "apps/nazar/features/files/components/file-upload.tsx:85", say: "\"Vazgeç\": the panel folds and the line under the note is still there" }
+        - { target: reviewing, effect: [pickNone, panelShut], source: "apps/nazar/features/files/components/file-upload.tsx:85", say: "\"Vazgeç\": the panel folds, \"Dosya yükle\" is back, the focus is not returned (F-D1-10)" }
+      # The rest of the dialog stays live while the panel is open (`busy` takes no open panel: review-dialog.tsx:137), and the panel stays
+      # open beside what it does; dialogBack brings the flow back to it.
+      SEND:
+        - { guard: nothingToSend, target: uploadPanel, effect: [saidEmpty], source: "apps/nazar/features/homework/components/review-dialog.tsx:156", say: "no note and no file: the line appears under the note field beside the open panel, and nothing is sent" }
+        - { target: sending, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:160", say: "they send the review with the panel open" }
+      REMOVE_FILE: { guard: hasFiles, target: removing, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:304", say: "they press a review file's trash with the panel open" }
+      DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file with the panel open" }
+      DOWNLOAD_REVIEW_FILE: { guard: hasFiles, target: dialogReviewDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:292", say: "they follow the link of a file of the review with the panel open" }
       CLOSE:
         - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:97" }
         - { target: listed, source: "libs/ui/src/mds/dialog.tsx:97" }
@@ -559,16 +590,20 @@ states:
     invoke: { action: webAddSubmissionReviewFile }
     on:
       DONE:
-        - { guard: "upload == 'stored' and files == 'none' and row == 'none'", target: reviewing, effect: [filesOne, rowToDraft, pickNone, toastUploaded], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
-        - { guard: "upload == 'stored' and files == 'none'", target: reviewing, effect: [filesOne, pickNone, toastUploaded], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
-        - { guard: "upload == 'stored' and files == 'one'", target: reviewing, effect: [filesMany, pickNone, toastUploaded], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
-        - { guard: "upload == 'stored'", target: reviewing, effect: [pickNone, toastUploaded], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
+        - { guard: "upload == 'stored' and files == 'none' and row == 'none'", target: reviewing, effect: [filesOne, rowToDraft, pickNone, toastUploaded, panelShut, saidNone], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
+        - { guard: "upload == 'stored' and files == 'none'", target: reviewing, effect: [filesOne, pickNone, toastUploaded, panelShut, saidNone], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
+        - { guard: "upload == 'stored' and files == 'one'", target: reviewing, effect: [filesMany, pickNone, toastUploaded, panelShut, saidNone], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
+        - { guard: "upload == 'stored'", target: reviewing, effect: [pickNone, toastUploaded, panelShut, saidNone], source: "apps/nazar/features/files/components/file-upload.tsx:123" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.noStorage: { guard: "upload == 'noStorage'", target: uploadPanel, effect: [faultNoStorage], source: "apps/nazar/features/files/components/file-upload.tsx:119" }
       FAIL.limit: { guard: "upload == 'limit'", target: uploadPanel, effect: [faultLimit], source: "apps/nazar/features/files/files.ts:146", say: "SUBMISSION_REVIEW_FILE_LIMIT is not in fileErrorKey: the generic sentence (NHWREV-4)" }
       FAIL.wrongType: { guard: "upload == 'wrongType'", target: uploadPanel, effect: [faultWrongType], source: "apps/nazar/features/files/components/file-upload.tsx:119" }
       FAIL.refused: { guard: "upload == 'refused'", target: uploadPanel, effect: [faultRefused], source: "apps/nazar/features/files/components/file-upload.tsx:119" }
       FAIL.failed: { guard: "upload == 'failed'", target: uploadPanel, effect: [faultFailed], source: "apps/nazar/features/files/components/file-upload.tsx:119" }
+      # The dialog drops every way of closing while `busy` (review-dialog.tsx:203): the press changes nothing and the upload runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CLOSE: { target: uploading, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the X while the upload runs: nothing happens (NHWREV-5)" }
+      CANCEL: { target: uploading, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the footer's \"Kapat\" while the upload runs: nothing happens (NHWREV-5)" }
     source: apps/nazar/features/files/components/file-upload.tsx:111
 
   removing:
@@ -584,13 +619,17 @@ states:
     invoke: { action: deleteSubmissionReviewFile }
     on:
       DONE:
-        - { guard: "answer == 'saved' and files == 'one'", target: reviewing, effect: [filesNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:185" }
-        - { guard: "answer == 'saved'", target: reviewing, effect: [filesOne], source: "apps/nazar/features/homework/components/review-dialog.tsx:185" }
+        - { guard: "answer == 'saved' and files == 'one'", target: dialogBack, effect: [filesNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:185" }
+        - { guard: "answer == 'saved'", target: dialogBack, effect: [filesOne], source: "apps/nazar/features/homework/components/review-dialog.tsx:185" }
       FAIL.gone:
-        - { guard: "files == 'one'", target: reviewing, effect: [filesNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:181", say: "the file was already gone: the same as done" }
-        - { target: reviewing, effect: [filesOne], source: "apps/nazar/features/homework/components/review-dialog.tsx:181" }
-      FAIL.refused: { guard: "answer == 'refused'", target: reviewing, effect: [toastSaveRefused], source: "apps/nazar/features/homework/components/review-dialog.tsx:182" }
-      FAIL.failed: { guard: "answer == 'failed'", target: reviewing, effect: [toastSaveFailed], source: "apps/nazar/features/homework/components/review-dialog.tsx:182" }
+        - { guard: "files == 'one'", target: dialogBack, effect: [filesNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:181", say: "the file was already gone: the same as done" }
+        - { target: dialogBack, effect: [filesOne], source: "apps/nazar/features/homework/components/review-dialog.tsx:181" }
+      FAIL.refused: { guard: "answer == 'refused'", target: dialogBack, effect: [toastSaveRefused], source: "apps/nazar/features/homework/components/review-dialog.tsx:182" }
+      FAIL.failed: { guard: "answer == 'failed'", target: dialogBack, effect: [toastSaveFailed], source: "apps/nazar/features/homework/components/review-dialog.tsx:182" }
+      # The dialog drops every way of closing while `busy` (review-dialog.tsx:203): the press changes nothing and the removal runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CLOSE: { target: removing, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the X while the removal runs: nothing happens (NHWREV-5)" }
+      CANCEL: { target: removing, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the footer's \"Kapat\" while the removal runs: nothing happens (NHWREV-5)" }
     source: apps/nazar/features/homework/components/review-dialog.tsx:176
 
   sending:
@@ -609,9 +648,13 @@ states:
       DONE:
         - { guard: "answer == 'saved' and typed == 'words'", target: sentToTalebe, effect: [rowToSent, noteKept, toastSent], source: "apps/nazar/features/homework/components/review-dialog.tsx:167" }
         - { guard: "answer == 'saved'", target: sentToTalebe, effect: [rowToSent, noteNone, toastSent], source: "apps/nazar/features/homework/components/review-dialog.tsx:167" }
-      FAIL.empty: { guard: "answer == 'empty'", target: reviewing, effect: [toastSaveEmpty], source: "apps/nazar/features/homework/components/review-dialog.tsx:145" }
-      FAIL.refused: { guard: "answer == 'refused'", target: reviewing, effect: [toastSaveRefused], source: "apps/nazar/features/homework/components/review-dialog.tsx:149" }
-      FAIL.failed: { guard: "answer == 'failed'", target: reviewing, effect: [toastSaveFailed], source: "apps/nazar/features/homework/components/review-dialog.tsx:149" }
+      FAIL.empty: { guard: "answer == 'empty'", target: dialogBack, effect: [toastSaveEmpty], source: "apps/nazar/features/homework/components/review-dialog.tsx:145" }
+      FAIL.refused: { guard: "answer == 'refused'", target: dialogBack, effect: [toastSaveRefused], source: "apps/nazar/features/homework/components/review-dialog.tsx:149" }
+      FAIL.failed: { guard: "answer == 'failed'", target: dialogBack, effect: [toastSaveFailed], source: "apps/nazar/features/homework/components/review-dialog.tsx:149" }
+      # The dialog drops every way of closing while `busy` (review-dialog.tsx:203): the press changes nothing and the send runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CLOSE: { target: sending, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the X while the send runs: nothing happens (NHWREV-5)" }
+      CANCEL: { target: sending, source: "apps/nazar/features/homework/components/review-dialog.tsx:203", say: "the footer's \"Kapat\" while the send runs: nothing happens (NHWREV-5)" }
     source: apps/nazar/features/homework/components/review-dialog.tsx:160
 
   sentToTalebe:
@@ -624,6 +667,18 @@ states:
       - { target: listed, starts: { flow: tedris.learn.homeworkReview, given: { reviewed: "true" } }, source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:416", say: "the talebe reads the review on their own page" }
     source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:416
 
+  dialogBack:
+    title: The dialog is as it was
+    description: >-
+      Not a screen: after a download that was served, a file removed or a send that was refused, the dialog is the one the person left, with
+      the upload panel still open if it was, or the line under the note if it stood there. The panel and the line are state of their own
+      (file-upload.tsx:77, review-dialog.tsx:132), which none of these steps touches.
+    always:
+      - { guard: "panel == 'open'", target: uploadPanel, source: "apps/nazar/features/files/components/file-upload.tsx:77" }
+      - { guard: "said == 'empty'", target: reviewingEmpty, source: "apps/nazar/features/homework/components/review-dialog.tsx:132" }
+      - { target: reviewing, source: "apps/nazar/features/homework/components/review-dialog.tsx:200" }
+    source: apps/nazar/features/homework/components/review-dialog.tsx:200
+
   dialogHandInDownload:
     title: The talebe's file is asked for from the dialog
     by: human
@@ -632,7 +687,7 @@ states:
       refusal loads the whole page again: the dialog is gone with what was typed, the filter is reset and a toast says why (NHWREV-1). The local stack answers 503.
     invoke: { action: webDownloadCourseSubmissionFile }
     on:
-      DONE: { guard: "download == 'served'", target: reviewing, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the dialog does not change" }
+      DONE: { guard: "download == 'served'", target: dialogBack, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the dialog does not change" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.forbidden: { guard: "download == 'forbidden'", target: reloading, effect: [showAll, toastFileForbidden], source: "libs/services/src/file-proxy/file-proxy.ts:351" }
       FAIL.notFound: { guard: "download == 'notFound'", target: reloading, effect: [showAll, toastFileNotFound], source: "libs/services/src/file-proxy/file-proxy.ts:351" }
@@ -648,7 +703,7 @@ states:
       (any homework of the course, sent or not; audited before it is sent). The same outcomes as the hand-in's file, and the same reload on a refusal (NHWREV-1).
     invoke: { action: webDownloadCourseSubmissionReviewFile }
     on:
-      DONE: { guard: "download == 'served'", target: reviewing, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the dialog does not change" }
+      DONE: { guard: "download == 'served'", target: dialogBack, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the dialog does not change" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.forbidden: { guard: "download == 'forbidden'", target: reloading, effect: [showAll, toastFileForbidden], source: "libs/services/src/file-proxy/file-proxy.ts:351" }
       FAIL.notFound: { guard: "download == 'notFound'", target: reloading, effect: [showAll, toastFileNotFound], source: "libs/services/src/file-proxy/file-proxy.ts:351" }
