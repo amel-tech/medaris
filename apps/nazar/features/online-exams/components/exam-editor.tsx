@@ -3,6 +3,7 @@
 import type {
   ExamQuestionResponse,
   OnlineExamDraftResponse,
+  PublishProblemResponse,
 } from "@medaris/services/tedrisat";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -20,6 +21,7 @@ import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
   addExamQuestion,
   createCourseTopic,
+  publishOnlineExam,
   removeExamQuestion,
   saveExamQuestion,
 } from "../actions";
@@ -29,8 +31,10 @@ import {
   numbersOf,
   OPTION_FIELDS,
   onlineExamErrorKey,
+  READS_AGAIN,
   topicsByNumbers,
 } from "../online-exams";
+import { PublishSection } from "./exam-publish";
 
 type Outcome =
   | { success: true; data: unknown }
@@ -66,9 +70,15 @@ const localKey = () => `local-${++localKeys}`;
 export function ExamEditor({
   courseId,
   draft,
+  publish,
 }: {
   courseId: string;
   draft: OnlineExamDraftResponse;
+  /** "Yayınla" under the questions; left out, the editor has none. */
+  publish?: {
+    timeZone: string;
+    onPublished: (next: OnlineExamDraftResponse) => void;
+  };
 }) {
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
@@ -100,7 +110,7 @@ export function ExamEditor({
         title: t("OnlineExams.failed"),
         description: words(onlineExamErrorKey(result.code)),
       });
-      if (result.code === "EXAM_STALE") router.refresh();
+      if (READS_AGAIN.has(result.code)) router.refresh();
       return false;
     }
     return true;
@@ -296,6 +306,46 @@ export function ExamEditor({
   const numbered = questions.map((q, i) => ({ ...q, number: i + 1 }));
   const view = { ...draft, courseTopics: topics };
 
+  // What the page knows keeps the exam from being published: the questions
+  // as they now stand, and what only the server knows (the points total
+  // and the medrese's zeroth question) as it was read.
+  const problems: PublishProblemResponse[] = !publish
+    ? []
+    : [
+        ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
+        ...numbered
+          .filter((q) => q.lacks.length > 0)
+          .map((q) => ({
+            kind: "QUESTION" as const,
+            number: q.number,
+            lacks: q.lacks,
+          })),
+        ...draft.problems.filter(
+          (p) => p.kind === "POINTS" || p.kind === "NO_ZEROTH"
+        ),
+      ];
+  const [sending, setSending] = useState(false);
+  /** Publishing runs after every write queued before it, naming the version they leave. */
+  const publishNow = (times: { startsAt?: string; latestStartAt?: string }) => {
+    if (!publish) return;
+    setSending(true);
+    enqueue(async () => {
+      try {
+        const result = await publishOnlineExam(draft.id, {
+          ...times,
+          version: version.current,
+        });
+        if (!went(result) || !("data" in result)) return;
+        version.current = result.data.version;
+        publish.onPublished(result.data);
+      } catch {
+        threw();
+      } finally {
+        setSending(false);
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col gap-section">
       <TopicsSection topics={topics} onAdd={addTopic} />
@@ -355,6 +405,17 @@ export function ExamEditor({
           <Button onClick={addQuestion}>{t("OnlineExams.addQuestion")}</Button>
         </div>
       </section>
+      {publish ? (
+        <PublishSection
+          problems={problems}
+          questionCount={numbered.length}
+          durationMinutes={draft.durationMinutes}
+          timeZone={publish.timeZone}
+          holding={editing !== null}
+          sending={sending}
+          onPublish={publishNow}
+        />
+      ) : null}
     </div>
   );
 }
