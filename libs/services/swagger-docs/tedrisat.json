@@ -15897,6 +15897,95 @@
           "online-exam-attempts"
         ]
       }
+    },
+    "/online-exams/{examId}/results": {
+      "get": {
+        "description": "Every talebe seated in the course: not started, in progress, finished (when, how, the score, right, wrong and blank) or missed once it has closed; each switch to another tab or window with its time; the answer to the zeroth question; the standing in each topic. Over them all: the counts and the average, each topic's and each question's standing, how often each option and each zeroth option was chosen, whether the results are released, and whether the caller may release them (`session.manage`, which `releaseExamResults` asks). A draft has no results (EXAM_NOT_FOUND).",
+        "operationId": "getOnlineExamResults",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamResultsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An online exam's results, talebe by talebe",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/close": {
+      "post": {
+        "description": "\"Sınavı erken bitir\": every attempt in progress ends now with the answers saved so far, is scored and stands in Değerlendirme, and no one starts the exam any more. Refused before it opens (it is taken back to a draft then) and once it has closed. Written to `audit_log` as `online_exam.close`.",
+        "operationId": "closeOnlineExamEarly",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamClosedResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close an open online exam early",
+        "tags": [
+          "online-exams"
+        ]
+      }
     }
   },
   "info": {
@@ -31659,6 +31748,451 @@
         "required": [
           "secondsLeft",
           "status"
+        ]
+      },
+      "ResultsExamResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The exam's celse; `releaseExamResults` takes it to release the results."
+          },
+          "title": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedEarlyAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "Closed early, or past its latest start with no attempt in progress: the page stops reading again."
+          },
+          "mayClose": {
+            "type": "boolean",
+            "description": "The team may close it early: it has opened, and someone may still start it or is still in it."
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "lessonId",
+          "title",
+          "durationMinutes",
+          "startsAt",
+          "latestStartAt",
+          "closedEarlyAt",
+          "closed",
+          "mayClose"
+        ]
+      },
+      "TalebeExamState": {
+        "type": "string",
+        "enum": [
+          "NOT_STARTED",
+          "IN_PROGRESS",
+          "FINISHED",
+          "MISSED"
+        ]
+      },
+      "ResultsSwitchResponse": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "at"
+        ]
+      },
+      "ResultsTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "topicId",
+          "percent"
+        ]
+      },
+      "ResultsTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TalebeExamState"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Out of 100 with two decimals, \"87.50\"; null until finished."
+          },
+          "right": {
+            "type": "number",
+            "nullable": true
+          },
+          "wrong": {
+            "type": "number",
+            "nullable": true
+          },
+          "blank": {
+            "type": "number",
+            "nullable": true
+          },
+          "switches": {
+            "description": "Each switch to another tab or window, oldest first; nothing was erased by any.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsSwitchResponse"
+            }
+          },
+          "zerothOptionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "topics": {
+            "description": "The talebe's standing in each topic, once finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTopicStandingResponse"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "state",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "score",
+          "right",
+          "wrong",
+          "blank",
+          "switches",
+          "zerothOptionId",
+          "topics"
+        ]
+      },
+      "ResultsCountsResponse": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "number"
+          },
+          "started": {
+            "type": "number"
+          },
+          "inProgress": {
+            "type": "number"
+          },
+          "finished": {
+            "type": "number"
+          },
+          "missed": {
+            "type": "number",
+            "description": "Seated talebe who never started, once it has closed."
+          },
+          "average": {
+            "type": "string",
+            "nullable": true,
+            "description": "The average of the finished scores, two decimals; null when none finished."
+          }
+        },
+        "required": [
+          "seats",
+          "started",
+          "inProgress",
+          "finished",
+          "missed",
+          "average"
+        ]
+      },
+      "ResultsTopicResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true,
+            "description": "The average of the finished talebe's standing in it."
+          },
+          "questionCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "questionCount"
+        ]
+      },
+      "ResultsOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          },
+          "chosen": {
+            "type": "number",
+            "description": "How many finished talebe chose it."
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct",
+          "chosen"
+        ]
+      },
+      "ResultsQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, \"2.00\"."
+          },
+          "rightPercent": {
+            "type": "number",
+            "nullable": true,
+            "description": "The share of finished talebe who earned all of its points."
+          },
+          "blank": {
+            "type": "number",
+            "description": "How many finished talebe left it blank."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "questionId",
+          "number",
+          "text",
+          "answerMode",
+          "points",
+          "rightPercent",
+          "blank",
+          "options"
+        ]
+      },
+      "ResultsZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "count"
+        ]
+      },
+      "ResultsZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsZerothOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "question",
+          "options"
+        ]
+      },
+      "OnlineExamResultsResponse": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/ResultsExamResponse"
+          },
+          "talebe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTalebeResponse"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ResultsCountsResponse"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTopicResponse"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsQuestionResponse"
+            }
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/ResultsZerothResponse"
+          },
+          "released": {
+            "type": "boolean",
+            "description": "The results are released, by this page or by Değerlendirme."
+          },
+          "releasedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "mayRelease": {
+            "type": "boolean",
+            "description": "The caller holds `session.manage` on the course, which `releaseExamResults` asks."
+          },
+          "releasable": {
+            "type": "boolean",
+            "description": "The celse has its Değerlendirme exam row, so its scores stand there and can be released."
+          }
+        },
+        "required": [
+          "exam",
+          "talebe",
+          "counts",
+          "topics",
+          "questions",
+          "zeroth",
+          "released",
+          "releasedAt",
+          "mayRelease",
+          "releasable"
+        ]
+      },
+      "OnlineExamClosedResponse": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "closedEarlyAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished": {
+            "type": "number",
+            "description": "The attempts in progress the close finished."
+          }
+        },
+        "required": [
+          "examId",
+          "closedEarlyAt",
+          "finished"
         ]
       }
     }

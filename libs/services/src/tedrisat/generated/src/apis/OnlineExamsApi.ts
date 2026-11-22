@@ -23,8 +23,10 @@ import type {
   ExamQuestionWriteResponse,
   ExamVersionResponse,
   MadrasahZerothQuestionResponse,
+  OnlineExamClosedResponse,
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
+  OnlineExamResultsResponse,
   OnlineExamSummaryResponse,
   PublishOnlineExamDto,
   SaveExamQuestionDto,
@@ -52,10 +54,14 @@ import {
     ExamVersionResponseToJSON,
     MadrasahZerothQuestionResponseFromJSON,
     MadrasahZerothQuestionResponseToJSON,
+    OnlineExamClosedResponseFromJSON,
+    OnlineExamClosedResponseToJSON,
     OnlineExamCreatedResponseFromJSON,
     OnlineExamCreatedResponseToJSON,
     OnlineExamDraftResponseFromJSON,
     OnlineExamDraftResponseToJSON,
+    OnlineExamResultsResponseFromJSON,
+    OnlineExamResultsResponseToJSON,
     OnlineExamSummaryResponseFromJSON,
     OnlineExamSummaryResponseToJSON,
     PublishOnlineExamDtoFromJSON,
@@ -81,6 +87,10 @@ export interface AddExamQuestionRequest {
     versionDto: VersionDto;
 }
 
+export interface CloseOnlineExamEarlyRequest {
+    examId: string;
+}
+
 export interface CreateCourseTopicRequest {
     id: string;
     createCourseTopicDto: CreateCourseTopicDto;
@@ -100,6 +110,10 @@ export interface GetMadrasahZerothQuestionRequest {
 }
 
 export interface GetOnlineExamDraftRequest {
+    examId: string;
+}
+
+export interface GetOnlineExamResultsRequest {
     examId: string;
 }
 
@@ -225,6 +239,50 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async addExamQuestion(requestParameters: AddExamQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamQuestionWriteResponse> {
         const response = await this.addExamQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * \"Sınavı erken bitir\": every attempt in progress ends now with the answers saved so far, is scored and stands in Değerlendirme, and no one starts the exam any more. Refused before it opens (it is taken back to a draft then) and once it has closed. Written to `audit_log` as `online_exam.close`.
+     * Close an open online exam early
+     */
+    async closeOnlineExamEarlyRaw(requestParameters: CloseOnlineExamEarlyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamClosedResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling closeOnlineExamEarly().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/close`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OnlineExamClosedResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * \"Sınavı erken bitir\": every attempt in progress ends now with the answers saved so far, is scored and stands in Değerlendirme, and no one starts the exam any more. Refused before it opens (it is taken back to a draft then) and once it has closed. Written to `audit_log` as `online_exam.close`.
+     * Close an open online exam early
+     */
+    async closeOnlineExamEarly(requestParameters: CloseOnlineExamEarlyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamClosedResponse> {
+        const response = await this.closeOnlineExamEarlyRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -465,6 +523,50 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async getOnlineExamDraft(requestParameters: GetOnlineExamDraftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
         const response = await this.getOnlineExamDraftRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Every talebe seated in the course: not started, in progress, finished (when, how, the score, right, wrong and blank) or missed once it has closed; each switch to another tab or window with its time; the answer to the zeroth question; the standing in each topic. Over them all: the counts and the average, each topic\'s and each question\'s standing, how often each option and each zeroth option was chosen, whether the results are released, and whether the caller may release them (`session.manage`, which `releaseExamResults` asks). A draft has no results (EXAM_NOT_FOUND).
+     * An online exam\'s results, talebe by talebe
+     */
+    async getOnlineExamResultsRaw(requestParameters: GetOnlineExamResultsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamResultsResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling getOnlineExamResults().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/results`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OnlineExamResultsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every talebe seated in the course: not started, in progress, finished (when, how, the score, right, wrong and blank) or missed once it has closed; each switch to another tab or window with its time; the answer to the zeroth question; the standing in each topic. Over them all: the counts and the average, each topic\'s and each question\'s standing, how often each option and each zeroth option was chosen, whether the results are released, and whether the caller may release them (`session.manage`, which `releaseExamResults` asks). A draft has no results (EXAM_NOT_FOUND).
+     * An online exam\'s results, talebe by talebe
+     */
+    async getOnlineExamResults(requestParameters: GetOnlineExamResultsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamResultsResponse> {
+        const response = await this.getOnlineExamResultsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
