@@ -44,7 +44,7 @@ scope:
     - "who gets no panel (not enrolled, pending, removed, a passive scope, a cancelled celse), and the refused API calls of others (another talebe's review file is 403, an unsent one 404): tedris.learn.writingGating"
     - "writing the review, attaching files to it and sending it: the other person's flow, nazar.homework.review; here the send is only an event that someone else causes"
     - "the notification the talebe gets when a review is sent (SUBMISSION_REVIEWED): tedris.account.notifications"
-    - "the same press on a file while a note is being typed (the download that succeeds leaves the text alone; a refusal throws it away, WRT-10 and WRT-13), and a reviewer whose name tedrisat does not have (the by-line then says \"Hoca\")"
+    - "a reviewer whose name tedrisat does not have (the by-line then says \"Hoca\")"
     - "a page opened when the homework already changed after the review: the same screen as after the talebe's own change and a reload"
     - "the file's bytes: what the browser does with an attachment is not the page's"
     - "a review sent again with a new note or more files: the block reads differently on the next load and the talebe is notified again; the same screen"
@@ -96,6 +96,12 @@ context:
     say:
       none: "no line says that a note was saved"
       saved: "\"Not kaydedildi.\" is under the note form"
+  typed:
+    values: [none, unsaved]
+    initial: none
+    say:
+      none: "the note form holds the saved note"
+      unsaved: "the note form holds text the talebe typed and has not saved"
   toast:
     values: [none, forbidden, notFound, unavailable, failed]
     initial: none
@@ -115,9 +121,9 @@ guards:
 
 effects:
   sentNow: { set: { sentSince: "yes" } }
-  homeworkChanged: { set: { homework: changed, said: saved } }
-  readAgain: { set: { said: none } }
-  typedAgain: { set: { said: none } }
+  homeworkChanged: { set: { homework: changed, said: saved, typed: none } }
+  readAgain: { set: { said: none, typed: none } }
+  typedAgain: { set: { said: none, typed: unsaved } }
   toastNone: { set: { toast: none } }
   toastForbidden: { set: { toast: forbidden } }
   toastNotFound: { set: { toast: notFound } }
@@ -221,11 +227,14 @@ states:
     source: apps/tedris/features/courses/components/session-homework.tsx:1058
     description: >-
       "Notu kaydet" is on while the text differs from the saved note (a trimmed comparison). The review above is as it was. A
-      reload throws the typed text away (WRT-13). Pressing a returned file's link from here has the same outcome as from the review
-      shown, and a refusal also loads the page anew and throws the text away (WRT-10); that is not drawn twice.
+      reload throws the typed text away (WRT-13). A returned file's link works from here as from the review shown: a file that is
+      served leaves the text alone, and a refusal loads the page anew and throws the text away (WRT-10). A toast left by an earlier
+      refusal can be closed here too.
     on:
       TYPE_NOTE: { target: drafting, effect: [typedAgain], say: "they go on typing" }
       SAVE: { target: saving, source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      OPEN_FILE: { guard: hasFiles, target: downloading, source: "apps/tedris/features/courses/components/session-homework.tsx:759", say: "they press a returned file's link while the note is typed" }
+      CLOSE_TOAST: { guard: toasting, target: drafting, effect: [toastNone], source: "libs/ui/src/components/sonner.tsx:75", say: "\"Kapat\" removes the toast; the typed text stays" }
       RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
       NAVIGATE: left
 
@@ -235,7 +244,9 @@ states:
     source: apps/tedris/features/courses/components/session-homework.tsx:1010
     description: >-
       The server action saveMySubmissionNote, PUT /lessons/:id/submission with the note as typed (a blank one clears it). "Notu
-      kaydet" is busy (aria-disabled, aria-busy) and a hidden status says "Kaydediliyor". Success: the submission the API answers
+      kaydet" is busy (aria-disabled, aria-busy) and a hidden status says "Kaydediliyor"; a returned file's link and the toast's
+      "Kapat" stay live, and a press on one is drawn where the call ends (duringStep: a served file leaves the page as it is, and a
+      refused one loads it anew, which then reads what tedrisat holds). Success: the submission the API answers
       replaces the page's, and its updatedAt is now later than the review's reviewedAt, so the notice appears at once; the field
       holds the stored note and "Not kaydedildi." shows under it. A refusal (403, 400 or any other) leaves the review as it is and
       the note form says why (tedris.learn.homeworkHandIn draws its three messages). A session that is over sends the person to sign
@@ -261,7 +272,9 @@ states:
       every file answers 503 STORAGE_NOT_CONFIGURED and the toast says "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.".
     invoke: { action: webDownloadMySubmissionReviewFile }
     on:
-      DONE: { guard: "download == 'served'", target: reviewShown, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the page does not change" }
+      DONE:
+        - { guard: "download == 'served' and typed == 'unsaved'", target: drafting, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the page does not change, and the typed note stays" }
+        - { guard: "download == 'served'", target: reviewShown, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the page does not change" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.forbidden: { guard: "download == 'forbidden'", target: reading, effect: [toastForbidden], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=forbidden" }
       FAIL.notFound: { guard: "download == 'notFound'", target: reading, effect: [toastNotFound], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=notFound" }

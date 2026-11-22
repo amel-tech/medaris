@@ -143,6 +143,7 @@ states:
     source: apps/tedris/features/courses/components/course-page.tsx:394
     on:
       OPEN_RECORDINGS: { target: panel, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   panel:
@@ -179,6 +180,7 @@ states:
         say: "a ready row is a link to its celse's watch page; the page is left"
         source: apps/tedris/features/courses/components/recordings-tab.tsx:277
       OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_RECORDINGS: { target: listForSeat, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   listForOutsider:
@@ -199,6 +201,7 @@ states:
     on:
       OPEN_HOST: { target: listForOutsider, say: "the host opens in a new tab; this page stays where it is", source: apps/tedris/features/courses/components/recordings-tab.tsx:290 }
       OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_RECORDINGS: { target: listForOutsider, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   recordingsEmpty:
@@ -211,6 +214,7 @@ states:
     source: apps/tedris/features/courses/components/recordings-tab.tsx:102
     on:
       OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_RECORDINGS: { target: recordingsEmpty, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   recordingsFailed:
@@ -223,6 +227,7 @@ states:
     on:
       RETRY: { target: retrying, effect: [again], say: "\"Yeniden dene\" asks the server to render the page again", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
       OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_RECORDINGS: { target: recordingsFailed, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   retrying:
@@ -239,6 +244,7 @@ states:
     on:
       DONE: { guard: "read == 'ok'", target: panel, source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
       FAIL.unreadable: { guard: "read == 'failed'", target: panel, say: "the box is drawn again, and nothing says it tried", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
+      OPEN_PROGRAMME: { target: programmeTab, say: "Müfredat stays live while the page is rendered again: the tab changes at once, and the refresh, when it ends, draws its answer under a tab that is no longer shown", source: apps/tedris/features/courses/components/course-page.tsx:394 }
 
   watch_opened: { type: final, title: The watch page of the celse opens, leavesPage: true }
   left: { type: final, title: The person leaves the course page, leavesPage: true }

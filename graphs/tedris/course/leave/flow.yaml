@@ -173,11 +173,14 @@ states:
     by: human
     source: apps/tedris/features/courses/components/course-actions-menu.tsx:67
     description: >-
-      The same menu, named "Diğer işlemler: <course>". The page behind is not inert; the focus is on the popup.
+      The same menu, named "Diğer işlemler: <course>". The page behind is not inert; the focus is on the popup. The menu is modal all the
+      same (Base UI's default): an invisible backdrop covers the page but the trigger, so a press elsewhere, on the row's button too,
+      only closes the menu (read from the code, not measured).
     on:
       CHOOSE_LEAVE: confirm
       OPEN_MENU: { target: listed, say: "the button toggles: pressing it again closes the menu" }
       CLOSE_MENU: listed
+      WITHDRAW: { target: listed, say: "the press lands on the menu's backdrop: the menu closes and the application is not taken back", source: libs/ui/src/mds/menu.tsx:48 }
 
   confirm:
     title: The window "Dersten ayrıl"
@@ -208,7 +211,8 @@ states:
     description: >-
       The server action leaveCourse, DELETE /courses/:id/enrollment, which deletes the caller's own ENROLLED or PENDING row, and
       with it the progress (LEAVE-3). "Dersten ayrıl" is busy and disabled with a hidden status "Yükleniyor"; "Vazgeç" and
-      the close button stay live and closing the window does not stop the call. A session that is over sends the person to
+      the close button stay live and closing the window does not stop the call (they are `duringStep`: their press is drawn where the
+      call's outcome leads, none of which shows the window; the moment between, the window closed while the call runs, is not drawn). A session that is over sends the person to
       sign in and back, and draws no toast. Otherwise the window closes first and the toast follows. Success: "Dersten
       ayrıldınız." and the page is read again. A 404 or a 409 (the row went, or is COMPLETED or REVOKED now): "Kaydının durumu
       değişmiş. Sayfa yenilendi, güncel hâline bak." and the page is read again, which draws what the enrolment is now. Any
@@ -238,7 +242,8 @@ states:
       The row's button calls the server action leaveCourse, DELETE /courses/:id/enrollment (DSC-03), not withdrawEnrollment.
       The code sets the row gone at once and restores it if the call fails, but that update is inside a transition, so the
       row stays, its button disabled and a hidden status "Yükleniyor" beside it, until the answer arrives (LEAVE-1). Success:
-      the page is read again and the row is gone, with no toast (DSC-04). Because the call is the leave call, it also deletes
+      the page is read again and the row is gone, with no toast (DSC-04). The card's "···", when the talebe holds a seat too, stays live:
+      its menu opens at once over the busy row (drawn as `duringStep`, where the call leads). Because the call is the leave call, it also deletes
       an application the team approved meanwhile: the seat and its progress go, with no window and no word, and the card of
       that seat never appeared on this page. Any refusal (404, 409, a ban) draws "Başvuru geri çekilemedi. Biraz sonra
       yeniden dene." and the row stays; a 404 is not read as "settled elsewhere" and nothing refreshes the page, where the

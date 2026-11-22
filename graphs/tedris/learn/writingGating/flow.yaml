@@ -289,6 +289,10 @@ states:
         target: drafting
         say: "they type a note"
         source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+      SUBMIT:
+        target: celsePanels
+        say: "\"Notu ekle\" with nothing typed: the panel says \"Not boş olamaz.\" and sends nothing, whatever the seat is (that line is tedris.learn.notes', not drawn here)"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:324
       SEAT_REMOVED:
         target: celsePanels
         effect: [lostRemoved]
@@ -375,6 +379,10 @@ states:
       stale as before: the person learns the seat is gone only from this line, and sees the lock card only after they read the page again.
     source: apps/tedris/features/courses/components/lesson-notes.tsx:424
     on:
+      SUBMIT:
+        target: adding
+        say: "\"Notu ekle\" again: the typed note is sent again, and the API refuses it again (the line is replaced by the same one)"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:325
       RELOAD:
         target: opened
         say: "the page is read again, and the seat is what the API now says"
@@ -392,6 +400,10 @@ states:
       appears in each (CourseQuestions.forbidden for a question). Nothing moves the focus.
     source: apps/tedris/features/courses/components/watch-view.tsx:245
     on:
+      SUBMIT:
+        target: watchPanels
+        say: "\"Notu ekle\" with nothing typed: the panel says \"Not boş olamaz.\" and sends nothing (that line is tedris.learn.notes', not drawn here)"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:324
       RELOAD:
         target: opened
         say: "the page is read again"

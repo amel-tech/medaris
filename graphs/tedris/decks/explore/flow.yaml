@@ -212,12 +212,19 @@ states:
       decks_users row and answers 201, also when the row was there. The answer is silent: the page is read again (router.refresh) and the control stays as
       it is, with no toast and no status (DCK-08). A refusal, or a request that never reached the server, flips the control back and raises the error
       toast "Deste eklenemedi" (EXPL-2). A session that is over sends the person to sign in and back, and the control stays busy until the browser leaves.
+      Only this deck's control is busy (`busy` is per deck): the rest of the page does not wait. The breadcrumb and the decks' links are plain <a>s and
+      leave the page at once, the answer not awaited. A chip's router.push and the toast's "Kapat" act at once too, and the write goes on (Next runs a
+      navigation before a pending server action and still hands the action its result); the graph draws them `duringStep`, handled in `explored` once
+      the answer is in, which is where the page ends: the new read, with this deck's control as the answer left it.
     source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:80
     invoke: { action: collectDeck }
     on:
       DONE: { target: explored, say: "the control stays flipped; nothing is said", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:88 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { target: explored, effect: [flipOff, toastAddFailed], say: "the flip is undone and the toast stays", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:92 }
+      OPEN_DECK: { guard: somethingListed, target: deck_opened, starts: { flow: tedris.decks.readAndCopy }, say: "a card's link is a plain <a> and is not disabled while the write is out: the page is left at once, the answer not awaited", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
+      OPEN_OWN_DECK: { guard: ownListed, target: own_deck_opened, starts: { flow: tedris.decks.publish }, say: "the person's own deck's link, the same: the page is left at once", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
+      OPEN_DECKS: { target: decks_opened, starts: { flow: tedris.decks.browse }, say: "the breadcrumb's \"Desteler\" is a plain link and stays live while the write is out: the page is left at once", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 }
 
   removing:
     title: Take the deck out of the collection
@@ -225,13 +232,16 @@ states:
       The control has already flipped back to "Koleksiyona ekle", `loading` while removeDeckFromCollection, DELETE /flashcard/decks/:id/collections, is out. The
       route is exempt from the permission check on purpose, so that leaving does not depend on still being allowed to read the deck; it deletes the person's
       own row and answers 200, also when there was none. Success is silent. A refusal flips the control back to the badge and "Çıkar" and raises the toast
-      "Deste çıkarılamadı". The deck stays in the section either way; only its control changes.
+      "Deste çıkarılamadı". The deck stays in the section either way; only its control changes. The rest of the page stays live, as in `adding`.
     source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:80
     invoke: { action: uncollectDeck }
     on:
       DONE: { target: explored, say: "the control stays flipped; nothing is said", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:88 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { target: explored, effect: [flipOn, toastRemoveFailed], say: "the flip is undone and the toast stays", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:92 }
+      OPEN_DECK: { guard: somethingListed, target: deck_opened, starts: { flow: tedris.decks.readAndCopy }, say: "a card's link is a plain <a> and is not disabled while the write is out: the page is left at once, the answer not awaited", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
+      OPEN_OWN_DECK: { guard: ownListed, target: own_deck_opened, starts: { flow: tedris.decks.publish }, say: "the person's own deck's link, the same: the page is left at once", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
+      OPEN_DECKS: { target: decks_opened, starts: { flow: tedris.decks.browse }, say: "the breadcrumb's \"Desteler\" is a plain link and stays live while the write is out: the page is left at once", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 }
 
   readFailed:
     title: The decks could not be read
