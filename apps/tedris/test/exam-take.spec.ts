@@ -275,4 +275,61 @@ describe("the exam page (MDRS-299)", () => {
       list.querySelector("[aria-label='1. soru, Cevaplandı']")
     ).toBeTruthy();
   });
+
+  it("colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed", async () => {
+    const three = attempt();
+    three.questions = [
+      ...three.questions,
+      {
+        id: "q3",
+        number: 3,
+        text: "Üçüncü soru",
+        answerMode: "SINGLE",
+        points: "33.33",
+        options: [
+          { id: "e", text: "Ra" },
+          { id: "f", text: "Ze" },
+        ],
+      },
+    ] as typeof three.questions;
+    mocks.resumeExamAttempt.mockResolvedValue(
+      ok({
+        ...three,
+        currentQuestionId: "q2",
+        answers: [
+          { questionId: "q1", optionIds: ["b"], skipped: false },
+          { questionId: "q2", optionIds: [], skipped: true },
+        ],
+      })
+    );
+    const host = await mount(
+      briefing({
+        questionCount: 3,
+        attempt: { status: "IN_PROGRESS", finishedAt: null, finishedBy: null },
+      } as Partial<ExamBriefingResponse>)
+    );
+    await settle();
+    const list = host.querySelector("nav") as HTMLElement;
+    const item = (name: string) =>
+      list.querySelector(`[aria-label='${name}']`) as HTMLElement;
+    const answered = item("1. soru, Cevaplandı");
+    const skipped = item("2. soru, Atlandı");
+    const unanswered = item("3. soru, Cevaplanmadı");
+    expect(answered.style.background).toBe("var(--background-neutral-surface)");
+    expect(skipped.style.background).toBe("var(--background-warning-bold)");
+    expect(unanswered.style.background).toBe(
+      "var(--background-warning-subtle)"
+    );
+    // The current question keeps its colour, with a ring on top.
+    expect(skipped.getAttribute("aria-current")).toBe("step");
+    expect(skipped.style.boxShadow).toContain("var(--border-brand-default)");
+    expect(answered.style.boxShadow).toBe("");
+  });
+
+  it("names the list's colours among what to know before the start", async () => {
+    const host = await mount(briefing());
+    expect(host.textContent).toContain(
+      "cevaplamadığın sorular sarı, atladıkların turuncu"
+    );
+  });
 });

@@ -131,7 +131,17 @@ describe("Sınavlarım (MDRS-299)", () => {
       kind: "continue",
       href: "/courses/c1/lessons/a/sinav",
     });
-    expect(actionOf(listed[1])).toBeNull();
+    // To come, open or in progress: straight to the exam's own page.
+    expect(actionOf(listed[1])).toEqual({
+      kind: "view",
+      href: "/courses/c1/lessons/b/sinav",
+    });
+    expect(actionOf(exam({ lessonId: "o", state: "OPEN" }))).toEqual({
+      kind: "enter",
+      href: "/courses/c1/lessons/o/sinav",
+    });
+    // A written exam to come has no page of its own to go to.
+    expect(actionOf(exam({ format: "WRITTEN", state: "UPCOMING" }))).toBeNull();
     expect(actionOf(listed[2])).toEqual({
       kind: "result",
       href: "/my-exams/c",

@@ -306,7 +306,8 @@
     "errorZerothLocked": "The exam has started; the answer to question zero no longer changes.",
     "errorFailed": "Something went wrong. Try again in a moment.",
     "entryResult": "See the result",
-    "toMyExams": "My exams"
+    "toMyExams": "My exams",
+    "factColors": "In the list of questions below, the ones you have not answered are yellow, the ones you skipped are orange, and the ones you answered are plain (white on the light theme, dark on the dark theme)."
   },
   "MyExams": {
     "pageTitle": "My exams",
@@ -375,6 +376,8 @@
     "standing": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
     "standingTied": "{taken, plural, one {# person} other {# people}} took the exam. Your score is {score}. You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same score as you.",
     "topicStanding": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}.",
-    "topicStandingTied": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same as you."
+    "topicStandingTied": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same as you.",
+    "view": "Exam page",
+    "viewLabel": "Exam page: {course}, {title}"
   }
 }
