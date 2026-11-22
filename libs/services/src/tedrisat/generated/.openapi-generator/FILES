@@ -20,6 +20,7 @@ src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
 src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
+src/apis/OnlineExamAttemptsApi.ts
 src/apis/OnlineExamsApi.ts
 src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
@@ -56,6 +57,10 @@ src/models/AssignInactiveScopeDto.ts
 src/models/AssignedCourseInfo.ts
 src/models/AssignmentKind.ts
 src/models/AssignmentResponse.ts
+src/models/AttemptAnswerResponse.ts
+src/models/AttemptOptionResponse.ts
+src/models/AttemptQuestionResponse.ts
+src/models/AttemptStatus.ts
 src/models/AuditActorResponse.ts
 src/models/AuditEntryResponse.ts
 src/models/AuditPageResponse.ts
@@ -67,6 +72,9 @@ src/models/BanPersonResponse.ts
 src/models/BanReasonDto.ts
 src/models/BanResponse.ts
 src/models/BanScope.ts
+src/models/BriefingAttemptResponse.ts
+src/models/BriefingZerothOptionResponse.ts
+src/models/BriefingZerothResponse.ts
 src/models/BulkEnrollDto.ts
 src/models/BulkEnrollmentResponse.ts
 src/models/BulkEnrollmentSkipResponse.ts
@@ -180,7 +188,12 @@ src/models/EvaluationExamColumnResponse.ts
 src/models/EvaluationMarkResponse.ts
 src/models/EvaluationStatus.ts
 src/models/EvaluationTalebeResponse.ts
+src/models/ExamAnswerSavedResponse.ts
+src/models/ExamAttemptResponse.ts
+src/models/ExamBriefingResponse.ts
+src/models/ExamClockResponse.ts
 src/models/ExamFormat.ts
+src/models/ExamHolderDto.ts
 src/models/ExamOptionResponse.ts
 src/models/ExamPointsResponse.ts
 src/models/ExamQuestionResponse.ts
@@ -188,9 +201,11 @@ src/models/ExamQuestionWriteResponse.ts
 src/models/ExamReleaseResponse.ts
 src/models/ExamResultResponse.ts
 src/models/ExamVersionResponse.ts
+src/models/ExamWindow.ts
 src/models/ExtendBanDto.ts
 src/models/ExtendBanScope.ts
 src/models/FieldError.ts
+src/models/FinishedBy.ts
 src/models/FlashcardCreateLabelResponse.ts
 src/models/FlashcardDeckCreateLabelResponse.ts
 src/models/FlashcardDeckExploreResponse.ts
@@ -424,6 +439,7 @@ src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
 src/models/SaveEvaluationDto.ts
+src/models/SaveExamAnswerDto.ts
 src/models/SaveExamQuestionDto.ts
 src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
@@ -493,6 +509,8 @@ src/models/VersionDto.ts
 src/models/WeekHideResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts
+src/models/ZerothAnswerDto.ts
+src/models/ZerothAnswerResponse.ts
 src/models/ZerothOptionResponse.ts
 src/models/index.ts
 src/runtime.ts

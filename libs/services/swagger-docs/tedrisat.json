@@ -15055,6 +15055,443 @@
           "online-exams"
         ]
       }
+    },
+    "/lessons/{id}/online-exam": {
+      "get": {
+        "description": "\"Bilmeniz gerekenler\": the exam's title, course, length and question count, its earliest and latest start and whether it is open now, the team's instructions, the zeroth question with its options and the caller's answer, and where the caller's attempt stands. No question of the exam is sent. An attempt whose time ran out, or whose exam was closed early, is finished on this read.",
+        "operationId": "getExamBriefing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamBriefingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the talebe reads before the exam",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/zeroth-answer": {
+      "put": {
+        "description": "The caller's choice among the zeroth question's options, none correct and none scored; a second call replaces it until the attempt starts, and it stays after.",
+        "operationId": "answerZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZerothAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ZEROTH_OPTION_NOT_FOUND, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN, ZEROTH_ANSWER_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer the zeroth question",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt": {
+      "post": {
+        "description": "Starts the caller's attempt and its clock, between the earliest and the latest start, with the zeroth question answered. The questions, and each question's options, are put in an order of the caller's own; the answer carries them (never which are correct), each question's points and the time left. An attempt in progress is taken over by this page, as resume does.",
+        "operationId": "startExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN, ZEROTH_UNANSWERED, EXAM_ALREADY_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınava başla",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/resume": {
+      "post": {
+        "description": "The same order, every saved answer, the question the talebe was on and the time left. The calling page holds the attempt from now on: the one that held it is told, on its next call, that the exam is open elsewhere (409 ATTEMPT_HELD_ELSEWHERE). Called when the page is opened again and when the connection comes back; the time away is not counted.",
+        "operationId": "resumeExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Go on with an attempt in progress, here",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/answers/{questionId}": {
+      "put": {
+        "description": "The options chosen for one question, or that it was skipped, and the question the talebe is on. The last save wins by the page's own count: a save whose seq is not above the stored one writes nothing and is answered with what the server holds (`written: false`).",
+        "operationId": "saveExamAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAnswerSavedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ANSWER_INVALID, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, QUESTION_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE, ATTEMPT_ENDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save one answer the moment it is chosen",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/clock": {
+      "post": {
+        "description": "The holding page calls it every few seconds; the time since its last call, capped, is added to the time used, so the clock stops while the connection is lost. When nothing is left the attempt finishes by the time, with the answers saved so far, and the answer says FINISHED.",
+        "operationId": "tickExamClock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamClockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Count the time while the page is connected",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/switch": {
+      "post": {
+        "description": "Called by the page when the talebe comes back from another tab or window. The switch is kept with its time for the team; nothing is erased and the attempt goes on where it was.",
+        "operationId": "recordTabSwitch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE, ATTEMPT_ENDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Count a deliberate switch to another tab or window",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/finish": {
+      "post": {
+        "description": "Ends the caller's attempt with the answers saved so far and scores it from the exact points. Only the holding page may end it. An attempt finished meanwhile, by the time or an early close, is answered as it ended.",
+        "operationId": "finishExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınavı bitir",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
     }
   },
   "info": {
@@ -30126,6 +30563,448 @@
             "maximum": 999
           }
         }
+      },
+      "ExamWindow": {
+        "type": "string",
+        "enum": [
+          "BEFORE",
+          "OPEN",
+          "CLOSED"
+        ]
+      },
+      "BriefingZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "BriefingZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question about the hadith; empty when the exam has none."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingZerothOptionResponse"
+            }
+          },
+          "answeredOptionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "question",
+          "options",
+          "answeredOptionId"
+        ]
+      },
+      "AttemptStatus": {
+        "type": "string",
+        "enum": [
+          "IN_PROGRESS",
+          "FINISHED"
+        ]
+      },
+      "FinishedBy": {
+        "type": "string",
+        "enum": [
+          "TALEBE",
+          "TIME",
+          "CLOSED_EARLY"
+        ]
+      },
+      "BriefingAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "finishedAt",
+          "finishedBy"
+        ]
+      },
+      "ExamBriefingResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "window": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamWindow"
+              }
+            ]
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/BriefingZerothResponse"
+          },
+          "attempt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BriefingAttemptResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "title",
+          "courseTitle",
+          "durationMinutes",
+          "questionCount",
+          "startsAt",
+          "latestStartAt",
+          "instructions",
+          "window",
+          "zeroth",
+          "attempt"
+        ]
+      },
+      "ZerothAnswerDto": {
+        "type": "object",
+        "properties": {
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "optionId"
+        ]
+      },
+      "ZerothAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "optionId"
+        ]
+      },
+      "ExamHolderDto": {
+        "type": "object",
+        "properties": {
+          "holderId": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 64,
+            "description": "An id the page draws for itself, so that a second tab or device can take the attempt over."
+          }
+        },
+        "required": [
+          "holderId"
+        ]
+      },
+      "AttemptOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "AttemptQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in this talebe's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, with two decimals (\"33.33\")."
+          },
+          "options": {
+            "description": "In this talebe's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "answerMode",
+          "points",
+          "options"
+        ]
+      },
+      "AttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "skipped"
+        ]
+      },
+      "ExamAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "secondsLeft": {
+            "type": "number",
+            "description": "What is left of the exam's length."
+          },
+          "switches": {
+            "type": "number",
+            "description": "How many times the talebe switched away."
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "questions": {
+            "description": "Empty once it is finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptQuestionResponse"
+            }
+          },
+          "answers": {
+            "description": "Every answer saved; empty once it is finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptAnswerResponse"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "secondsLeft",
+          "switches",
+          "currentQuestionId",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "questions",
+          "answers"
+        ]
+      },
+      "SaveExamAnswerDto": {
+        "type": "object",
+        "properties": {
+          "holderId": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 64,
+            "description": "An id the page draws for itself, so that a second tab or device can take the attempt over."
+          },
+          "seq": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The page's count of its saves, one up on each; a save at or under the one stored writes nothing."
+          },
+          "optionIds": {
+            "description": "The options chosen; none when the question is skipped or cleared.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "\"Soruyu atla\": it comes back after the last."
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The question the talebe is on now, where a resumed attempt goes on."
+          }
+        },
+        "required": [
+          "holderId",
+          "seq",
+          "optionIds",
+          "skipped"
+        ]
+      },
+      "ExamAnswerSavedResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "written": {
+            "type": "boolean",
+            "description": "False when the save's seq was not above the stored one: nothing was written, and this is what the server holds."
+          },
+          "secondsLeft": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "skipped",
+          "written",
+          "secondsLeft"
+        ]
+      },
+      "ExamClockResponse": {
+        "type": "object",
+        "properties": {
+          "secondsLeft": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "secondsLeft",
+          "status"
+        ]
       }
     }
   }
