@@ -45,6 +45,7 @@ import {
   type IPublishedExam,
   type Tx,
 } from "./exam-attempt.repository";
+import { ExamResultsRepository } from "./exam-results.repository";
 import {
   type IDraftQuestion,
   OnlineExamRepository,
@@ -76,6 +77,7 @@ export class ExamAttemptService {
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly repo: ExamAttemptRepository,
+    private readonly results: ExamResultsRepository,
     private readonly exams: OnlineExamRepository,
     private readonly courses: CourseService,
     private readonly courseRepo: CourseRepository
@@ -150,13 +152,20 @@ export class ExamAttemptService {
       })),
       new Map(answers.map((a) => [a.questionId, a.optionIds]))
     );
-    return this.repo.updateAttempt(tx, attempt.id, {
+    const finished = await this.repo.updateAttempt(tx, attempt.id, {
       finishedAt: at,
       finishedBy: by,
       scoreHundredths: score,
       usedSeconds,
       countedAt: at,
     });
+    // The score stands in Değerlendirme as the talebe's result on the celse.
+    await this.results.writeExamResult(tx, {
+      examId: attempt.examId,
+      userId: attempt.userId,
+      scoreHundredths: score,
+    });
+    return finished;
   }
 
   /** The clock after a call of the holding page: the time since the last count, capped, never past the length. */

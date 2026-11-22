@@ -651,7 +651,8 @@
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
     "rowRecording": "Recording available",
-    "download": " (downloads)"
+    "download": " (downloads)",
+    "examMultipleChoice": "Multiple choice"
   },
   "AccountPage": {
     "pageTitle": "Account",
@@ -815,7 +816,8 @@
     "accountLabel": "My account: {name}",
     "notifications": "Notifications",
     "homeLabel": "Medaris Tedris, home",
-    "liveIntro": "{course} is live now."
+    "liveIntro": "{course} is live now.",
+    "exams": "My exams"
   },
   "SchedulePage": {
     "pageTitle": "My schedule",

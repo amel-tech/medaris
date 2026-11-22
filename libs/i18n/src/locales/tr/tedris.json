@@ -651,7 +651,8 @@
     "resourcesOwn": "Bu celse",
     "resourcesCourse": "Ders geneli",
     "rowRecording": "Kayıt var",
-    "download": " (indirilir)"
+    "download": " (indirilir)",
+    "examMultipleChoice": "Çoktan seçmeli"
   },
   "AccountPage": {
     "pageTitle": "Hesap",
@@ -815,7 +816,8 @@
     "accountLabel": "Hesabım: {name}",
     "notifications": "Bildirimler",
     "homeLabel": "Medaris Tedris, ana sayfa",
-    "liveIntro": "{course} celsesi şu an canlı."
+    "liveIntro": "{course} celsesi şu an canlı.",
+    "exams": "Sınavlarım"
   },
   "SchedulePage": {
     "pageTitle": "Programım",

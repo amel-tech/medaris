@@ -54,17 +54,23 @@ export default async function Page({
       timeStyle: "short",
       timeZone: await getTimeZone(),
     });
+    // A finished one leads to the talebe's own screen of it (Sınavlarım).
+    const taken = online.briefing.attempt?.status === "FINISHED";
     examEntry = (
       <ExamEntry
         briefing={online.briefing}
-        href={`/courses/${course.id}/lessons/${session.id}/sinav`}
+        href={
+          taken
+            ? `/my-exams/${session.id}`
+            : `/courses/${course.id}/lessons/${session.id}/sinav`
+        }
         labels={{
           title: t("entryTitle"),
           when: t("entryWhen", {
             opens: words.format(online.briefing.startsAt),
             latest: words.format(online.briefing.latestStartAt),
           }),
-          action: t("entryAction"),
+          action: t(taken ? "entryResult" : "entryAction"),
           taken: t("entryTaken"),
         }}
       />

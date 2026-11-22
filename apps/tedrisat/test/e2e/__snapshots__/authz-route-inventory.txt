@@ -4,6 +4,7 @@ DELETE /courses/:id/decks/:deckId -> deck.manage_course on course
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
+DELETE /courses/:id/exam-topics/:topicId -> exam.prepare on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
@@ -106,6 +107,7 @@ GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/evaluation -> course.view on byLessonCourse
 GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /lessons/:id/online-exam -> course.view on byLessonCourse
+GET /lessons/:id/online-exam/my-result -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
 GET /lessons/:id/submission -> course.view on byLessonCourse
 GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
@@ -138,6 +140,7 @@ GET /me -> no AuthzGuard
 GET /me/assignments -> no AuthzGuard
 GET /me/calendar-feed -> no AuthzGuard
 GET /me/effective-permissions -> no AuthzGuard
+GET /me/exams -> no AuthzGuard
 GET /me/grants -> no AuthzGuard
 GET /me/permissions -> no AuthzGuard
 GET /me/public-profile -> no AuthzGuard
@@ -165,6 +168,7 @@ GET /nizam/scoped-policies -> no AuthzGuard
 GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
 GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
+GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -281,7 +285,10 @@ POST /nizam/partner-applications -> no AuthzGuard
 POST /nizam/permission-groups -> no AuthzGuard
 POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
+POST /online-exams/:examId/close -> exam.prepare on byOnlineExamCourse
+POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
+POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse
 PUT /courses/:id -> course.edit on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course

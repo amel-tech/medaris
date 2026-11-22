@@ -709,7 +709,8 @@ function ExamEnded({
       </h1>
       <p className="mds-body">{line}</p>
       <p className="mds-body-sm text-neutral-muted">{t("resultWhere")}</p>
-      <div>
+      <div className="flex flex-wrap gap-2">
+        <Button href={`/my-exams`}>{t("toMyExams")}</Button>
         <Button variant="secondary" href={sessionHref}>
           {t("backToSession")}
         </Button>

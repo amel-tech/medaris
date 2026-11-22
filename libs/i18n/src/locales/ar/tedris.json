@@ -651,7 +651,8 @@
     "resourcesOwn": "هذه الحلقة",
     "resourcesCourse": "الدرس كله",
     "rowRecording": "يوجد تسجيل",
-    "download": " (يُنزَّل)"
+    "download": " (يُنزَّل)",
+    "examMultipleChoice": "اختيار من متعدد"
   },
   "AccountPage": {
     "pageTitle": "الحساب",
@@ -815,7 +816,8 @@
     "accountLabel": "حسابي: {name}",
     "notifications": "الإشعارات",
     "homeLabel": "مدارس تدريس، الصفحة الرئيسية",
-    "liveIntro": "درس {course} مباشر الآن."
+    "liveIntro": "درس {course} مباشر الآن.",
+    "exams": "امتحاناتي"
   },
   "SchedulePage": {
     "pageTitle": "جدولي",

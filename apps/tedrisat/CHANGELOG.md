@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.16](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.15...tedrisat-v0.2.16) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 answer mode, own points, topic deletion ([#412](https://github.com/amel-tech/medaris/issues/412)) ([5e17fbe](https://github.com/amel-tech/medaris/commit/5e17fbe9ace86054917243555cfa7adfc31a3821))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 the medrese's zeroth question ([#411](https://github.com/amel-tech/medaris/issues/411)) ([a388d3a](https://github.com/amel-tech/medaris/commit/a388d3aaebac609efd91df2730fbd08e6e46941f))
+
 ## [0.2.15](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.14...tedrisat-v0.2.15) (2026-11-22)
 
 

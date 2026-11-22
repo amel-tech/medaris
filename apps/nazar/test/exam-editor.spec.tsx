@@ -22,6 +22,9 @@ const actions = {
   removeExamQuestion: vi.fn(),
   createCourseTopic: vi.fn(),
   createOnlineExam: vi.fn(),
+  setExamQuestionPoints: vi.fn(),
+  removeCourseTopic: vi.fn(),
+  saveExamSettings: vi.fn(),
 };
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
@@ -29,6 +32,10 @@ vi.mock("~/features/online-exams/actions", () => ({
   removeExamQuestion: (...a: unknown[]) => actions.removeExamQuestion(...a),
   createCourseTopic: (...a: unknown[]) => actions.createCourseTopic(...a),
   createOnlineExam: (...a: unknown[]) => actions.createOnlineExam(...a),
+  setExamQuestionPoints: (...a: unknown[]) =>
+    actions.setExamQuestionPoints(...a),
+  removeCourseTopic: (...a: unknown[]) => actions.removeCourseTopic(...a),
+  saveExamSettings: (...a: unknown[]) => actions.saveExamSettings(...a),
 }));
 
 const draft = {
@@ -68,6 +75,9 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+/** The question form's text: the settings above it have a text area of their own. */
+const QUESTION_TEXT = 'form[aria-label$=". soru"] textarea';
+
 const button = (root: HTMLElement, label: string) =>
   [...root.querySelectorAll("button")].find(
     (b) => b.textContent === label
@@ -106,7 +116,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Soru ekle"));
     // The form opens with no call to the server.
     expect(actions.addExamQuestion).not.toHaveBeenCalled();
-    const [text] = [...root.querySelectorAll("textarea")];
+    const [text] = [...root.querySelectorAll(QUESTION_TEXT)];
     await typeInto(text, "Kıyasın rükünleri kaç tanedir?");
     const inputs = [...root.querySelectorAll("input")];
     await typeInto(
@@ -155,7 +165,7 @@ describe("the exam editor (MDRS-299)", () => {
     const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
     await click(button(root, "Soru ekle"));
     await typeInto(
-      root.querySelector("textarea") as HTMLTextAreaElement,
+      root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement,
       "Bir soru"
     );
     await click(button(root, "Kaydet"));
@@ -185,7 +195,13 @@ describe("the exam editor (MDRS-299)", () => {
 
   const echo = (
     id: string,
-    body: { text: string; options: object[]; topicIds: string[] },
+    body: {
+      text: string;
+      options: object[];
+      topicIds: string[];
+      answerMode?: string;
+      scoring?: string | null;
+    },
     version: number
   ) => ({
     success: true,
@@ -196,8 +212,8 @@ describe("the exam editor (MDRS-299)", () => {
         number: 1,
         text: body.text,
         options: body.options.map((o, i) => ({ id: `o${i}`, ...o })),
-        answerMode: "SINGLE",
-        scoring: null,
+        answerMode: body.answerMode ?? "SINGLE",
+        scoring: body.scoring ?? null,
         topicIds: body.topicIds,
         ownPoints: null,
         points: "100.00",
@@ -207,7 +223,7 @@ describe("the exam editor (MDRS-299)", () => {
     },
   });
   const textOf = (root: HTMLElement) =>
-    root.querySelector("textarea") as HTMLTextAreaElement;
+    root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement;
 
   it("makes a question once when it is saved again before the server answers, and shows the latest text", async () => {
     let version = 1;
@@ -314,6 +330,400 @@ describe("the exam editor (MDRS-299)", () => {
       "e1",
       "q1",
       expect.objectContaining({ topicIds: ["t7"] })
+    );
+  });
+
+  /**
+   * The kit's controls by what they say: a check box or a radio is labelled by
+   * the text beside it. A check box is pressed by its label: happy-dom does not
+   * forward a click on the box to its input, as the browser does.
+   */
+  const control = (
+    root: HTMLElement,
+    role: "checkbox" | "radio",
+    label: string,
+    nth = 0
+  ) => {
+    const found = [...root.querySelectorAll(`[role=${role}]`)].filter((c) => {
+      const id = c.getAttribute("aria-labelledby");
+      return id !== null && document.getElementById(id)?.textContent === label;
+    })[nth] as HTMLElement;
+    return role === "checkbox"
+      ? (found.closest("label") as HTMLElement)
+      : found;
+  };
+  const field = (root: HTMLElement, label: string) => {
+    const l = [...root.querySelectorAll("label")].find((it) =>
+      it.textContent?.startsWith(label)
+    ) as HTMLLabelElement;
+    return (document.getElementById(l.htmlFor) ??
+      l.querySelector("input")) as HTMLInputElement;
+  };
+  const option = (root: HTMLElement, n: number) =>
+    [...root.querySelectorAll("input")].find(
+      (i) => i.getAttribute("aria-label") === `${n}. şık`
+    ) as HTMLInputElement;
+  const topicNumbers = (root: HTMLElement) =>
+    [...root.querySelectorAll("input")].find(
+      (i) => i.getAttribute("placeholder") === "3, 7"
+    ) as HTMLInputElement;
+
+  it("asks how a question with two correct options is answered and scored, and sends it", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Hangileri kıyasın rüknüdür?");
+    await typeInto(option(root, 1), "Asıl");
+    await typeInto(option(root, 2), "Fer");
+    await typeInto(option(root, 3), "Rivayet");
+    // One correct option: radio buttons, nothing asked.
+    await click(control(root, "checkbox", "Doğru", 0));
+    expect(root.textContent).not.toContain("Cevaplama");
+    await click(control(root, "checkbox", "Doğru", 1));
+    expect(root.textContent).toContain("Cevaplama");
+    expect(root.textContent).not.toContain("Puanlama");
+    await click(control(root, "radio", "Çoklu seçim"));
+    await click(control(root, "radio", "Kesirli, yanlış düşer"));
+    await typeInto(topicNumbers(root), "3");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({
+        answerMode: "MULTIPLE",
+        scoring: "IN_SHARES",
+        version: 2,
+      })
+    );
+    expect(root.textContent).toContain("Çoklu seçim · Kesirli, yanlış düşer");
+    // No own points typed: no points write.
+    expect(actions.setExamQuestionPoints).not.toHaveBeenCalled();
+  });
+
+  it("shows own points at once, and sets them after the save with the version the save gave", async () => {
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later(echo(id, body, 3))
+    );
+    // Held from when it is called, so the answers come in the order of the calls.
+    actions.setExamQuestionPoints.mockImplementation(() =>
+      later({
+        success: true,
+        data: {
+          questions: [{ questionId: "q1", points: "10.00", own: true }],
+          total: "10.00",
+          version: 4,
+        },
+      })
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Soru");
+    await typeInto(field(root, "Kendi puanı"), "10");
+    await click(button(root, "Kaydet"));
+    expect(root.textContent).toContain("10 puan · kendi puanı");
+    held.shift()?.(); // made
+    await settle();
+    held.shift()?.(); // saved
+    await settle();
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      3,
+      "10.00"
+    );
+    expect(root.textContent).toContain("Kaydediliyor…");
+    held.shift()?.(); // points set
+    await settle();
+    expect(root.textContent).toContain("10 puan · kendi puanı");
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+  });
+
+  it("keeps the typed points when they do not fit, and says how many are left", async () => {
+    const two = {
+      ...draft,
+      questions: [
+        {
+          ...echo("q1", { text: "Birinci", options: [], topicIds: [] }, 1).data
+            .question,
+          ownPoints: "50.00",
+          points: "50.00",
+        },
+        {
+          ...echo("q2", { text: "İkinci", options: [], topicIds: [] }, 1).data
+            .question,
+          number: 2,
+          points: "50.00",
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => ({
+      ...echo(id, body, 2),
+      data: {
+        ...echo(id, body, 2).data,
+        question: { ...echo(id, body, 2).data.question, number: 2 },
+      },
+    }));
+    actions.setExamQuestionPoints.mockResolvedValue({
+      success: false,
+      code: "POINTS_OVER_TOTAL",
+      pointsLeft: "50.00",
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={two} />));
+    expect(root.textContent).toContain("50 puan · kendi puanı");
+    expect(root.textContent).toContain("50 puan · eşit pay");
+    await click(
+      [...root.querySelectorAll("button")].filter(
+        (b) => b.textContent === "Düzenle"
+      )[1] as HTMLButtonElement
+    );
+    await typeInto(field(root, "Kendi puanı"), "60");
+    await click(button(root, "Kaydet"));
+    await settle(80);
+    expect(actions.setExamQuestionPoints).toHaveBeenCalledWith(
+      "e1",
+      "q2",
+      2,
+      "60.00"
+    );
+    expect(document.body.textContent).toContain(
+      "verilebilecek en çok 50 puan kaldı"
+    );
+    expect(root.textContent).toContain("Kaydedilemedi");
+    // The shares stay as the server has them; the typed points wait in the form.
+    expect(root.textContent).toContain("50 puan · eşit pay");
+    await click(
+      [...root.querySelectorAll("button")].filter(
+        (b) => b.textContent === "Düzenle"
+      )[1] as HTMLButtonElement
+    );
+    expect(field(root, "Kendi puanı").value).toBe("60");
+  });
+
+  const removeChip = async (label: string) => {
+    await click(
+      root().querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement
+    );
+    await settle(80);
+    await click(
+      button(document.querySelector("[role=alertdialog]") as HTMLElement, "Sil")
+    );
+    await settle(80);
+  };
+  const root = () => document.body;
+  const chips = () =>
+    [...document.querySelectorAll("#topics-title ~ ul li")].map((li) =>
+      li.textContent?.trim()
+    );
+
+  it("takes a topic off at once, and puts it back naming the questions that carry it", async () => {
+    actions.removeCourseTopic.mockImplementation(() =>
+      later({
+        success: false,
+        code: "TOPIC_IN_USE",
+        questions: [{ examId: "e2", examTitle: "Ara sınav", number: 2 }],
+      })
+    );
+    await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    expect(chips()).toEqual(["3. Kıyas"]);
+    await removeChip("3. Kıyas konusunu sil");
+    expect(chips()).toEqual([]);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t3");
+    held.shift()?.();
+    await settle(80);
+    expect(chips()).toEqual(["3. Kıyas"]);
+    expect(document.body.textContent).toContain(
+      "şu sorular onu taşıyor: Ara sınav, 2. soru"
+    );
+  });
+
+  it("deletes a new topic taken off while it was being made, by the id the server gave", async () => {
+    actions.createCourseTopic.mockImplementation(() =>
+      later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
+    );
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [] },
+    });
+    const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(page, "Konu ekle"));
+    expect(chips()).toEqual(["1. İcma", "3. Kıyas"]);
+    await removeChip("1. İcma konusunu sil");
+    expect(chips()).toEqual(["3. Kıyas"]);
+    held.shift()?.(); // the topic is made
+    await settle(80);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
+    expect(chips()).toEqual(["3. Kıyas"]);
+  });
+
+  it("deletes a new topic whose create answered while its confirmation was open", async () => {
+    actions.createCourseTopic.mockImplementation(() =>
+      later({ success: true, data: { id: "t1", number: 1, name: "İcma" } })
+    );
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [] },
+    });
+    const page = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(field(page, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(page, "Konu ekle"));
+    // The confirmation opens on the topic while it still has its local id.
+    await click(
+      root().querySelector(
+        'button[aria-label="1. İcma konusunu sil"]'
+      ) as HTMLButtonElement
+    );
+    await settle(80);
+    held.shift()?.(); // the create answers, with the server's id
+    await settle(80);
+    await click(
+      button(document.querySelector("[role=alertdialog]") as HTMLElement, "Sil")
+    );
+    await settle(80);
+    expect(chips()).toEqual(["3. Kıyas"]);
+    expect(actions.removeCourseTopic).toHaveBeenCalledWith("c1", "t1");
+  });
+
+  it("takes the exam's version from a topic removal's answer", async () => {
+    const picked = {
+      ...draft,
+      courseTopics: [
+        { id: "t3", number: 3, name: "Kıyas", picked: true, questionCount: 0 },
+      ],
+      topicIds: ["t3"],
+    } as unknown as OnlineExamDraftResponse;
+    actions.removeCourseTopic.mockResolvedValue({
+      success: true,
+      data: { exams: [{ id: "e1", version: 7 }] },
+    });
+    actions.saveExamSettings.mockResolvedValue({
+      success: true,
+      data: { version: 8 },
+    });
+    await render(wrap(<ExamEditor courseId="c1" draft={picked} />));
+    await removeChip("3. Kıyas konusunu sil");
+    await typeInto(settingsField("Süre (dakika)"), "30");
+    await click(button(root(), "Ayarları kaydet"));
+    await settle(80);
+    expect(actions.saveExamSettings).toHaveBeenCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 30, version: 7 })
+    );
+  });
+
+  const settingsField = (label: string) => {
+    const field = [...document.querySelectorAll(".mds-field")].find(
+      (f) => f.querySelector(".mds-label")?.textContent === label
+    ) as HTMLElement;
+    return field.querySelector("input, textarea") as
+      | HTMLInputElement
+      | HTMLTextAreaElement;
+  };
+
+  it("queues the settings after a question save, with the version that save gave", async () => {
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later({
+        success: true,
+        data: {
+          version: 3,
+          question: {
+            id,
+            number: 1,
+            text: body.text,
+            options: [],
+            answerMode: "SINGLE",
+            scoring: null,
+            topicIds: [],
+            ownPoints: null,
+            points: "100.00",
+            complete: false,
+            lacks: [],
+          },
+        },
+      })
+    );
+    // Lazy: its answer is held only once the call is made, after the question's.
+    actions.saveExamSettings.mockImplementation(() =>
+      later({ success: true, data: { version: 4 } })
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(
+      root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement,
+      "Bir soru"
+    );
+    await click(button(root, "Kaydet"));
+    await typeInto(settingsField("Süre (dakika)"), "45");
+    await typeInto(settingsField("Talimatlar"), "Hesap makinesi yok.");
+    await click(button(root, "Ayarları kaydet"));
+    // Shown at once, saving, with nothing disabled.
+    expect(root.textContent).toContain("Kaydediliyor…");
+    expect(button(root, "Soru ekle").disabled).toBe(false);
+    expect(actions.saveExamSettings).not.toHaveBeenCalled();
+
+    held.shift()?.(); // the question is made
+    await settle();
+    held.shift()?.(); // and saved
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenCalledWith("e1", {
+      title: "Ara sınav",
+      durationMinutes: 45,
+      instructions: "Hesap makinesi yok.",
+      version: 3,
+    });
+    held.shift()?.(); // the settings answer
+    await settle();
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps the typed length when the settings save fails, and offers it again", async () => {
+    actions.saveExamSettings.mockResolvedValueOnce({
+      success: false,
+      code: "SOMETHING",
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(settingsField("Süre (dakika)"), "90");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect((settingsField("Süre (dakika)") as HTMLInputElement).value).toBe(
+      "90"
+    );
+    expect(root.textContent).toContain("Kaydedilemedi");
+    actions.saveExamSettings.mockResolvedValueOnce({
+      success: true,
+      data: { version: 2 },
+    });
+    await click(button(root, "Yeniden dene"));
+    await settle();
+    expect(actions.saveExamSettings).toHaveBeenLastCalledWith(
+      "e1",
+      expect.objectContaining({ durationMinutes: 90, version: 1 })
+    );
+    expect(root.textContent).not.toContain("Kaydedilemedi");
+  });
+
+  it("does not send a length of zero, and says why", async () => {
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await typeInto(settingsField("Süre (dakika)"), "0");
+    await click(button(root, "Ayarları kaydet"));
+    await settle();
+    expect(actions.saveExamSettings).not.toHaveBeenCalled();
+    expect(root.textContent).toContain(
+      "Süre sıfırdan büyük bir tam sayı olmalı."
     );
   });
 });
