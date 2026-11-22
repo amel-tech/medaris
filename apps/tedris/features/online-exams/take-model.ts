@@ -111,3 +111,38 @@ export const writeTextScale = (
     // A full or refused storage only loses the step on the next load.
   }
 };
+
+const unsentKey = (lessonId: string) => `exam-unsent:${lessonId}`;
+
+/**
+ * The choices the server has not taken yet, kept in this tab so a reload (a
+ * new version of Medaris while the exam is open) sends them after the resume
+ * instead of losing them.
+ */
+export function readUnsent(
+  lessonId: string,
+  storage: Pick<Storage, "getItem"> | undefined
+): Map<string, LocalAnswer> {
+  try {
+    const raw = storage?.getItem(unsentKey(lessonId));
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return new Map(
+      Array.isArray(parsed) ? (parsed as Array<[string, LocalAnswer]>) : []
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+export function writeUnsent(
+  lessonId: string,
+  unsent: ReadonlyMap<string, LocalAnswer>,
+  storage: Pick<Storage, "setItem" | "removeItem"> | undefined
+): void {
+  try {
+    if (unsent.size === 0) storage?.removeItem(unsentKey(lessonId));
+    else storage?.setItem(unsentKey(lessonId), JSON.stringify([...unsent]));
+  } catch {
+    // A full or blocked storage leaves the choices in memory only.
+  }
+}

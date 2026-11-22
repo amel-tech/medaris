@@ -10,6 +10,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
+import { unstable_isUnrecognizedActionError as isStaleAction } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   type CSSProperties,
@@ -38,11 +39,13 @@ import {
   nextIndex,
   type QuestionState,
   readTextScale,
+  readUnsent,
   stateOf,
   TEXT_SCALES,
   TICK_MS,
   takeErrorKey,
   writeTextScale,
+  writeUnsent,
 } from "../take-model";
 
 type Phase = "briefing" | "running" | "elsewhere" | "ended";
@@ -140,6 +143,16 @@ export function ExamTake({
   const [index, setIndex] = useState(0);
   const [left, setLeft] = useState(0);
   const [offline, setOffline] = useState(false);
+  // The page belongs to the previous version of Medaris: only a reload saves.
+  const [stale, setStale] = useState(false);
+  const staleNotice = () =>
+    notify({
+      id: "exam-stale-deploy",
+      tone: "warning",
+      title: t("staleTitle"),
+      description: t("stale"),
+      action: { label: t("reload"), onClick: () => window.location.reload() },
+    });
   const [pending, setPending] = useState(0);
   const [starting, setStarting] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -218,13 +231,19 @@ export function ExamTake({
         });
         if (result.success) {
           unsent.current.delete(questionId);
+          writeUnsent(lessonId, unsent.current, window.sessionStorage);
           if (result.data.written) setLeft(result.data.secondsLeft);
           return;
         }
-        if (lostConnection(result)) unsent.current.set(questionId, answer);
+        if (lostConnection(result)) {
+          unsent.current.set(questionId, answer);
+          writeUnsent(lessonId, unsent.current, window.sessionStorage);
+        }
         refused(result);
-      } catch {
+      } catch (error) {
         unsent.current.set(questionId, answer);
+        writeUnsent(lessonId, unsent.current, window.sessionStorage);
+        if (isStaleAction(error)) setStale(true);
         setOffline(true);
       } finally {
         setPending((n) => n - 1);
@@ -237,6 +256,8 @@ export function ExamTake({
   const enter = useCallback(
     (a: ExamAttemptResponse, resumed: boolean) => {
       if (a.status === "FINISHED") {
+        unsent.current.clear();
+        writeUnsent(lessonId, unsent.current, window.sessionStorage);
         void reread();
         setPhase("ended");
         return;
@@ -260,7 +281,7 @@ export function ExamTake({
       if (resumed) setNotice(t("resumed"));
       for (const [id, answer] of [...unsent.current]) void send(id, answer);
     },
-    [reread, send, t]
+    [lessonId, reread, send, t]
   );
 
   const resume = useCallback(async () => {
@@ -268,13 +289,18 @@ export function ExamTake({
       const result = await resumeExamAttempt(lessonId, holderId());
       if (result.success) enter(result.data, true);
       else refused(result);
-    } catch {
+    } catch (error) {
+      if (isStaleAction(error)) setStale(true);
       setOffline(true);
     }
   }, [enter, lessonId, refused]);
 
   // An attempt in progress goes on here when the page opens.
+  // Choices kept from before a reload are sent after the resume.
   useEffect(() => {
+    for (const [id, answer] of readUnsent(lessonId, window.sessionStorage)) {
+      unsent.current.set(id, answer);
+    }
     if (initial.attempt?.status === "IN_PROGRESS") void resume();
   }, []);
 
@@ -295,7 +321,8 @@ export function ExamTake({
         } else {
           setLeft(result.data.secondsLeft);
         }
-      } catch {
+      } catch (error) {
+        if (isStaleAction(error)) setStale(true);
         setOffline(true);
       }
     }, TICK_MS);
@@ -320,7 +347,8 @@ export function ExamTake({
         } else {
           refused(result);
         }
-      } catch {
+      } catch (error) {
+        if (isStaleAction(error)) setStale(true);
         setOffline(true);
       }
     })();
@@ -352,7 +380,8 @@ export function ExamTake({
         } else {
           refused(result);
         }
-      } catch {
+      } catch (error) {
+        if (isStaleAction(error)) setStale(true);
         setOffline(true);
       }
     };
@@ -392,9 +421,10 @@ export function ExamTake({
       if (!lostConnection(result)) {
         notify({ tone: "error", title: t(takeErrorKey(failure(result).code)) });
       }
-    } catch {
+    } catch (error) {
       setZeroth(before);
       setZerothFailed(true);
+      if (isStaleAction(error)) staleNotice();
     }
   };
 
@@ -414,8 +444,9 @@ export function ExamTake({
         });
         if (failure(result).code === "EXAM_ALREADY_TAKEN") await reread();
       }
-    } catch {
-      notify({ tone: "error", title: t("startFailed") });
+    } catch (error) {
+      if (isStaleAction(error)) staleNotice();
+      else notify({ tone: "error", title: t("startFailed") });
     } finally {
       setStarting(false);
     }
@@ -431,7 +462,8 @@ export function ExamTake({
       } else {
         refused(result);
       }
-    } catch {
+    } catch (error) {
+      if (isStaleAction(error)) setStale(true);
       setOffline(true);
     }
   };
@@ -527,7 +559,16 @@ export function ExamTake({
           </p>
         </section>
 
-        {offline ? (
+        {offline && stale ? (
+          <Alert tone="warning" title={t("staleTitle")}>
+            <p>{t("stale")}</p>
+            <p>
+              <Button onClick={() => window.location.reload()}>
+                {t("reload")}
+              </Button>
+            </p>
+          </Alert>
+        ) : offline ? (
           <Alert tone="warning" title={t("offlineTitle")}>
             <p>{t("offline")}</p>
           </Alert>
