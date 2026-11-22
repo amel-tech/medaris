@@ -194,7 +194,9 @@ states:
       "Takvime ekle" on the celse page) with three rows, "Google Takvim (yeni sekmede açılır)", "Apple Takvim (.ics)" and,
       after a rule, "Tüm derslerime abone ol", and under them a note, "Takvim kaydı bu celse sayfasına bağlanır; toplantı
       bağlantısı takvime yazılmaz." (a <p> inside the menu: DSC-18). The page behind is not inert and the focus is on the
-      popup, not on its first row (menu-focus-on-popup, measured). Esc closes it and the focus goes back to the button.
+      popup, not on its first row (menu-focus-on-popup, measured). Esc closes it and the focus goes back to the button. The menu
+      is modal: a backdrop over the page takes a press outside it and closes it, but the toast of an earlier failed download
+      lies above that backdrop, so its "Kapat" closes the toast and leaves the menu open (read from the code, not measured).
     on:
       CHOOSE_GOOGLE: google_opened
       CHOOSE_ICS: downloading
@@ -205,6 +207,7 @@ states:
       OPEN_MENU:
         - { guard: onSchedule, target: row, say: "the button toggles: pressing it again closes the menu" }
         - { target: celseCard, say: "the button toggles: pressing it again closes the menu" }
+      CLOSE_TOAST: { guard: toasted, target: menu, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97, say: "the toast lies above the menu's backdrop (z-index 100): \"Kapat\" closes it, and Floating UI takes the press for one on an element outside the menu's layers, so the menu stays open (read from the code, not measured)" }
 
   courseMenu:
     title: The menu of the course card
@@ -226,7 +229,8 @@ states:
     description: >-
       The menu has closed and the focus is on its button. The browser fetches /api/lessons/<id>/calendar?locale=tr with the
       page's own cookie (credentials same-origin); the route (route.ts:23) asks tedrisat for GET /lessons/<id>/calendar.ics
-      with the session's token and hands the file on, with no screen busy meanwhile. Success: a download of
+      with the session's token and hands the file on, with no screen busy meanwhile: the menu's button and an earlier toast's
+      "Kapat" stay live, and a press on one is drawn where the fetch ends (duringStep). Success: a download of
       medaris-<id>.ics is started (a blob and a temporary link) and nothing else is said (ADDCAL-3); the file holds one
       VEVENT with UID lesson-<id>@medaris.app, the course's title and the celse's as the summary, and the celse page's address
       as URL and LOCATION, never the meeting link. A redirect (the session is over) sends the browser to sign in. Any other
@@ -246,7 +250,8 @@ states:
     title: Follow the file link of the course card
     source: apps/tedris/features/courses/components/add-to-calendar.tsx:96
     description: >-
-      The link is a plain navigation to the same route, so the browser asks it itself. The route answers an attachment, which
+      The link is a plain navigation to the same route, so the browser asks it itself; the card's button stays live while it
+      does, and a press on it is drawn where the answer leads (duringStep). The route answers an attachment, which
       the browser saves while the course page stays; the focus is on the button again (measured). A refusal replaces the page
       with the route's JSON body, such as {"error":"LESSON_NOT_FOUND"} (CRS-09): the person leaves the app's page for a
       document with no way back but the browser's. A session that is over is sent to sign in.
