@@ -330,7 +330,34 @@
       "DRAFT": "Taslak"
     },
     "loadFailedTitle": "Medrese ayarları okunamadı",
-    "loadFailed": "Medrese ayarları şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+    "loadFailed": "Medrese ayarları şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "zeroth": {
+      "title": "Sınavların sıfırıncı sorusu",
+      "intro": "Medresenin bütün derslerinde, her çevrimiçi sınavdan önce sorulur; cevaplanmadan sınava başlanmaz. Doğru cevabı ve puanı yoktur. Değişiklik yalnız bundan sonra yayınlanan sınavlara geçer.",
+      "hadithMeaning": "Bizi aldatan bizden değildir.",
+      "question": "Soru",
+      "questionHelp": "Hadisle ilgili sorunuz.",
+      "options": "Seçenekler",
+      "optionsHelp": "En az {min}, en çok {max} seçenek; her biri farklı olmalı.",
+      "option": "{number}. seçenek",
+      "removeOption": "{number}. seçeneği kaldır",
+      "addOption": "Seçenek ekle",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor…",
+      "saved": "Sıfırıncı soru kaydedildi",
+      "notSaved": "Kaydedilemedi; yazdıklarınız duruyor.",
+      "savedAt": "Son kaydedilme: {date}",
+      "none": "Henüz sıfırıncı soru yok. Yazılmadan medresenin derslerinde sınav yayınlanamaz.",
+      "saveFailedTitle": "Sıfırıncı soru kaydedilemedi",
+      "loadFailed": "Sıfırıncı soru okunamadı. Sayfayı yenileyip tekrar deneyin.",
+      "problems": {
+        "text": "Soruyu yazın.",
+        "textLong": "Soru en çok {max} karakter olabilir.",
+        "options": "En az {min} seçenek yazın.",
+        "optionLong": "Bir seçenek en çok {max} karakter olabilir.",
+        "same": "İki seçenek aynı olamaz."
+      }
+    }
   },
   "Nazirs": {
     "title": "Medrese nazırları",

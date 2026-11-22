@@ -1,6 +1,6 @@
 {
-  "id": "05982514-37e7-45dc-8bab-1dbbadb5fae4",
-  "prevId": "4be785ab-0914-4722-b55b-718507995f98",
+  "id": "369e3c79-8c1d-41c7-9d3b-71fe2e8e3567",
+  "prevId": "38e35ab4-b578-4495-9496-3473cdc437d3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -5759,6 +5759,132 @@
           "value": "(\"exam_questions\".\"answer_mode\" = 'MULTIPLE') = (\"exam_questions\".\"scoring\" is not null)"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.madrasah_zeroth_options": {
+      "name": "madrasah_zeroth_options",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "madrasah_id": {
+          "name": "madrasah_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "madrasah_zeroth_options_position_uq": {
+          "name": "madrasah_zeroth_options_position_uq",
+          "columns": [
+            {
+              "expression": "madrasah_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "madrasah_zeroth_options_question_fk": {
+          "name": "madrasah_zeroth_options_question_fk",
+          "tableFrom": "madrasah_zeroth_options",
+          "tableTo": "madrasah_zeroth_questions",
+          "columnsFrom": [
+            "madrasah_id"
+          ],
+          "columnsTo": [
+            "madrasah_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.madrasah_zeroth_questions": {
+      "name": "madrasah_zeroth_questions",
+      "schema": "",
+      "columns": {
+        "madrasah_id": {
+          "name": "madrasah_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "madrasah_zeroth_questions_madrasah_id_madrasahs_id_fk": {
+          "name": "madrasah_zeroth_questions_madrasah_id_madrasahs_id_fk",
+          "tableFrom": "madrasah_zeroth_questions",
+          "tableTo": "madrasahs",
+          "columnsFrom": [
+            "madrasah_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.online_exam_topics": {
