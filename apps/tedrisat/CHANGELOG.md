@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.19](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.18...tedrisat-v0.2.19) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 Sınavlarım, result, rank, list colors ([#418](https://github.com/amel-tech/medaris/issues/418)) ([472fc3c](https://github.com/amel-tech/medaris/commit/472fc3c69f57963790e29ad9ee516b20988a81de))
+
+
+### Bug Fixes
+
+* **tedrisat, nizam-web, services, i18n:** MDRS-299 zeroth answers show exact counts ([#427](https://github.com/amel-tech/medaris/issues/427)) ([f0905f5](https://github.com/amel-tech/medaris/commit/f0905f57e4b0715bb3162c30af7f4eb25ff37818))
+
 ## [0.2.18](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.17...tedrisat-v0.2.18) (2026-11-22)
 
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.12](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.11...nizam-web-v0.2.12) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+
+
+### Bug Fixes
+
+* **tedrisat, nizam-web, services, i18n:** MDRS-299 zeroth answers show exact counts ([#427](https://github.com/amel-tech/medaris/issues/427)) ([f0905f5](https://github.com/amel-tech/medaris/commit/f0905f57e4b0715bb3162c30af7f4eb25ff37818))
+
 ## [0.2.11](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.10...nizam-web-v0.2.11) (2026-11-22)
 
 

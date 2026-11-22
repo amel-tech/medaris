@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.17](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.16...nazar-web-v0.2.17) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+
+
+### Bug Fixes
+
+* **nazar-web, i18n:** MDRS-299 the exam page survives a new version, keeps what was typed ([#426](https://github.com/amel-tech/medaris/issues/426)) ([9201619](https://github.com/amel-tech/medaris/commit/92016196ddd6016846825dae2342816fd87c9ac0))
+* **nazar-web:** MDRS-299 a question being typed no longer vanishes when the session renews ([#428](https://github.com/amel-tech/medaris/issues/428)) ([837694c](https://github.com/amel-tech/medaris/commit/837694c963cd957729f9d95999797f474124195e))
+
 ## [0.2.16](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.15...nazar-web-v0.2.16) (2026-11-22)
 
 
