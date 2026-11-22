@@ -2573,5 +2573,27 @@
     "zerothTitle": "السؤال الصفري",
     "zerothNoScore": "ليس لهذا السؤال إجابة صحيحة أو خاطئة؛ ولا يُحتسب في الدرجة.",
     "zerothOptionCount": "{option}: {count} طالبًا"
+  },
+  "ExamAnswers": {
+    "title": "إجابات الطالب",
+    "heading": "{name}: الإجابات",
+    "backToResults": "العودة إلى النتائج",
+    "openLabel": "افتح إجابات {name}",
+    "loadFailedTitle": "تعذّرت قراءة الإجابات",
+    "loadFailed": "تعذّرت قراءة إجابات الطالب الآن. أعد تحميل الصفحة وحاول مرة أخرى.",
+    "summaryTitle": "ملخص",
+    "score": "الدرجة: {score} / 100",
+    "noScore": "تُحسب الدرجة عند انتهاء الامتحان.",
+    "noSwitch": "لم يبدّل علامة التبويب.",
+    "switches": "بدّل علامة التبويب {count} مرات: {times}",
+    "zeroth": "إجابته عن السؤال الصفري:",
+    "questionsTitle": "الأسئلة والإجابات",
+    "noQuestions": "لا أسئلة في الامتحان.",
+    "verdictRight": "أجاب إجابة صحيحة",
+    "verdictWrong": "أجاب إجابة خاطئة",
+    "verdictBlank": "تركه فارغًا",
+    "verdictSkipped": "تخطّاه وبقي فارغًا",
+    "earned": "حصل على {earned} من {points} درجة",
+    "chosen": "(اختياره)"
   }
 }

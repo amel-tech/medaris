@@ -38,6 +38,7 @@ src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
 src/models/AnswerLessonQuestionDto.ts
 src/models/AnswerMode.ts
+src/models/AnswerVerdict.ts
 src/models/AppealCreatedResponse.ts
 src/models/AppealListResponse.ts
 src/models/AppealPersonResponse.ts
@@ -509,6 +510,11 @@ src/models/SubmissionReviewResponse.ts
 src/models/SubmissionReviewerResponse.ts
 src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
+src/models/TalebeAnswerOptionResponse.ts
+src/models/TalebeAnswerQuestionResponse.ts
+src/models/TalebeAnswersExamResponse.ts
+src/models/TalebeAnswersResponse.ts
+src/models/TalebeAnswersZerothResponse.ts
 src/models/TalebeExamState.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts

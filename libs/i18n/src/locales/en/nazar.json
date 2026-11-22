@@ -2573,5 +2573,27 @@
     "zerothTitle": "Zeroth question",
     "zerothNoScore": "This question has no right or wrong answer; it is not scored.",
     "zerothOptionCount": "{option}: {count} talebe"
+  },
+  "ExamAnswers": {
+    "title": "A talebe's answers",
+    "heading": "{name}: answers",
+    "backToResults": "Back to the results",
+    "openLabel": "Open {name}'s answers",
+    "loadFailedTitle": "The answers could not be read",
+    "loadFailed": "The talebe's answers could not be read just now. Reload the page and try again.",
+    "summaryTitle": "Summary",
+    "score": "Score: {score} / 100",
+    "noScore": "The score is worked out when the exam ends.",
+    "noSwitch": "Did not switch tabs.",
+    "switches": "Switched tabs {count} times: {times}",
+    "zeroth": "Answer to the zeroth question:",
+    "questionsTitle": "Questions and answers",
+    "noQuestions": "The exam has no questions.",
+    "verdictRight": "Answered right",
+    "verdictWrong": "Answered wrong",
+    "verdictBlank": "Left blank",
+    "verdictSkipped": "Skipped, left blank",
+    "earned": "Earned {earned} of {points} points",
+    "chosen": "(chosen)"
   }
 }

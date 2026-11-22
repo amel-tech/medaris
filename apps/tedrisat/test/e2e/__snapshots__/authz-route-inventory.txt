@@ -169,6 +169,7 @@ GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
 GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
+GET /online-exams/:examId/results/:userId -> exam.prepare on byOnlineExamCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
