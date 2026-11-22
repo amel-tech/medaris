@@ -1,7 +1,7 @@
 # Medaris graphs
 
 Medaris's [delurio](https://delur.io) graphs: what every screen and every flow of the four web apps, the Keycloak realm and the
-API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.13.0 checks it). They are meant to be
+API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.14.0 checks it). They are meant to be
 checked in CI, walked on a local stack with delurio's replay, and later to take over the web e2e tests they can carry, and to be
 the source of tutorials.
 
@@ -119,7 +119,7 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) were walked in full. A `scenario` in a
   `needs.yaml` names a scenario that exists in a binding of the flow (`check` resolves it); it does not say that the scenario has
   passed. The output of a replay is not kept in this tree.
-- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.13.0 the whole tree (187 graphs: the 183 flows and the 4 navigation graphs) checks with 7 errors and 7 warnings in a checkout where `pnpm install` has run (run on 21 November 2026), all of them in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
+- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.14.0 the whole tree (187 graphs: the 183 flows and the 4 navigation graphs) checks with 7 errors and 12 warnings in a checkout where `pnpm install` has run (run on 22 November 2026). The 7 errors are in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. 7 warnings are the navigation graphs' own notes, and 5 are `kit-font-unembedded` (new in 0.14.0): the kit carries no fonts, so the five families its CSS draws in first are drawn only where the machine has them. 0.14.0's `event-unhandled` (a control shown enabled in a state that does not handle its event) found 1517 errors in 113 graphs on main before they were fixed (run on 22 November 2026); each was fixed in its graph, read from the code, and none is in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
   walks nothing; nothing else in the tree has been verified against the running apps.
 
 ## Commands
@@ -127,24 +127,24 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 The format checker is `@delurio/cli`, pinned to an exact version (the Graphs workflow, `.github/workflows/graphs.yaml`, installs the same one):
 
 ```bash
-# every graph, as CI does (about 50 seconds and 380 MB for the whole tree); run it at the repository root, which the
+# every graph, as CI does (about 65 seconds and 400 MB for the whole tree); run it at the repository root, which the
 # anchors and the evidence of needs.yaml are relative to
-npx @delurio/cli@0.13.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
+npx @delurio/cli@0.14.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
 
 # the page of one flow (written to <flow>/viz by default, git-ignored)
-npx @delurio/cli@0.13.0 page graphs/tedris/course/apply --out viz
+npx @delurio/cli@0.14.0 page graphs/tedris/course/apply --out viz
 
 # what a change does to a flow, as markdown
-npx @delurio/cli@0.13.0 diff graphs/tedris/course/apply --base origin/main
+npx @delurio/cli@0.14.0 diff graphs/tedris/course/apply --base origin/main
 
 # which graphs a change touches, each with why (its own files, a `source:` anchor, a binding it extends or enters through, a
 # shared catalog); a changed file of graphs/ that belongs to no graph, such as this README, touches every graph. CI does not use it
-npx @delurio/cli@0.13.0 affected --base origin/main
+npx @delurio/cli@0.14.0 affected --base origin/main
 ```
 
 Since 0.11.0 the CLI is a native program. Its npm package asks for Node 26 or later (`engines`), where the repository's `.nvmrc`
-says 24, so CI runs it on 26. On Node 24 npm warns, and one flow checked there on 21 November 2026 gave the same output as on 26;
-that is all that was tried. The same command is also a single binary, `delurio-v0.13.0-<platform>` on the GitHub release `v0.13.0`
+says 24, so CI runs it on 26. On Node 24 npm warns, and one flow checked there with 0.13.0 on 21 November 2026 gave the same output as on 26;
+that is all that was tried. The same command is also a single binary, `delurio-v0.14.0-<platform>` on the GitHub release `v0.14.0`
 of `delurio-labs/delurio`, with `SHA256SUMS`, which needs no Node.
 
 To check one flow quickly, copy `graphs/domain`, the flow's folder and the folders of every flow it `starts` into a scratch folder
@@ -155,10 +155,10 @@ The baseline holds the findings `check` already knew when it was written. They s
 new since then fails the run. It is renewed on purpose, never to make a run green:
 
 ```bash
-npx @delurio/cli@0.13.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
+npx @delurio/cli@0.14.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
 ```
 
-Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.13.0: they belong to delurio's engine, a separate checkout of
+Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.14.0: they belong to delurio's engine, a separate checkout of
 delurio's own repository (`apps/engine`), run from there as `node src/cli.ts <command>`. The replay walks a flow with its binding
 on the local stack, and it writes data (it applies to courses, makes köşks, sends e-mail), so run one at a time:
 
