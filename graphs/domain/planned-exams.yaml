@@ -166,6 +166,7 @@ entities:
       optionOrder: { type: object, note: "for each question, its option ids in this talebe's order" }
       currentQuestionId: { type: [string, "null"], format: uuid, note: "where a resumed attempt goes on" }
       usedSeconds: { type: integer, minimum: 0, note: "counted only while the page holding the attempt is connected (decision 1); the time left is durationMinutes·60 − usedSeconds" }
+      lastSeq: { type: integer, minimum: 0, note: "the highest seq of saveExamAnswer the holding page has sent; a call at or under it writes nothing. Set to 0 when another page takes the attempt over (resumeExamAttempt)" }
       holderId: { type: [string, "null"], note: "the tab or device that holds the attempt now; the last one to open the exam holds it, and the other is told it is open elsewhere" }
       restarts: { type: integer, minimum: 0, note: "how many times a switch started it again" }
       startedAt: { type: string, format: date-time, note: "the first start; a restart does not move it" }
@@ -344,7 +345,7 @@ actions:
       ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: the caller has no attempt in progress (finished meanwhile, by the time or by an early close)" }
       EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
     sideEffects:
-      - "sets ExamAttempt.holderId; the clock goes on from the time left"
+      - "sets ExamAttempt.holderId and lastSeq 0, since the new page counts its calls from 1; the clock goes on from the time left"
 
   saveExamAnswer:
     planned: "MDRS-299: online exams, no code yet"
@@ -352,15 +353,18 @@ actions:
     summary: Save one answer the moment it is chosen
     description: >-
       Saves the options the talebe chose for one question, or that they skipped it, and the question they are on, so that a resumed
-      attempt goes on there. Called on every choice and on Önceki, Sonraki, Soruyu atla and a pick in the list; the last call wins.
+      attempt goes on there. Called on every choice and on Önceki, Sonraki, Soruyu atla and a pick in the list. The last call wins by
+      the page's own count, seq, not by the order the calls arrive in: a call whose seq is not above the one stored for the attempt
+      writes nothing and is answered with what the server holds, so an earlier call that arrives late never replaces a later choice.
       Nothing is sent at the end: every answer the server holds is the talebe's answer.
     needs: the caller's own attempt in progress, held by the calling page, with time left
     body:
       type: object
       additionalProperties: false
-      required: [holderId, optionIds, skipped]
+      required: [holderId, seq, optionIds, skipped]
       properties:
         holderId: { type: string, minLength: 8, maxLength: 64 }
+        seq: { type: integer, minimum: 1, description: "the page's count of its calls, one up on each, kept with the attempt's holderId" }
         optionIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true }
         skipped: { type: boolean }
         currentQuestionId: { type: string, format: uuid }
@@ -373,7 +377,7 @@ actions:
       ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress" }
       VALIDATION_ERROR: { status: 400, note: "a missing or malformed property" }
     sideEffects:
-      - "upserts the ExamAnswer and moves ExamAttempt.currentQuestionId"
+      - "upserts the ExamAnswer and moves ExamAttempt.currentQuestionId, only for a seq above the stored one (ExamAttempt.lastSeq)"
 
   tickExamClock:
     planned: "MDRS-299: online exams, no code yet"
@@ -890,11 +894,11 @@ actions:
       description: "One read draws every screen of nazar.exams.results: the overview, and the screens of a talebe, a topic and a question"
       required: [exam, talebe, counts, topics, questions, zeroth, released, release, mayRelease]
       properties:
-        exam: { type: object, description: "{ title, course, when, zerothQuestion }" }
+        exam: { type: object, description: "{ title, course, when, zerothQuestion, closed }, closed once the latest start has passed and no attempt is in progress, which ends the page's reading again" }
         talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, right, wrong, blank, restarts, switches: [{ at, erased }], zerothOptionId, answers: [{ questionId, number, textStart, optionIds, correctOptionIds, points, got }] in the talebe's own order }" } }
         counts: { type: object, description: "{ seats, started, inProgress, finished, missed, average }" }
         topics: { type: array, items: { type: object, description: "{ topicId, name, percent, questionIds, talebe: [{ userId, name, percent }] from the weakest in the topic to the strongest }" } }
-        questions: { type: array, items: { type: object, description: "{ questionId, number, textStart, points, rightPercent, blank, options: [{ id, text, correct, chosen }] }" } }
+        questions: { type: array, items: { type: object, description: "{ questionId, number, text, textStart, points, rightPercent, blank, options: [{ id, text, correct, chosen }] }" } }
         zeroth: { type: object, description: "{ question, options: [{ id, text, count, percent }] }" }
         released: { type: boolean, description: "the results are released, by this page or by Değerlendirme" }
         release: { type: [object, "null"], description: "{ releasedAt, releasedBy } once released" }
@@ -916,8 +920,8 @@ actions:
     description: >-
       The zeroth questions of the online exams in the span and the place chosen, those asked in the same words with the same options
       counted together, each with how many exams asked it, how many talebe answered and how many chose each option. A count under five
-      is not sent: it is sent as fewerThanFive. An option's count from which a hidden one could be worked out is not sent either: it is
-      sent as hidden, which says nothing of its size, never as fewerThanFive. No name, no user id, no single
+      is not sent: it is sent as fewerThanFive. An option's count from which a hidden one could be worked out (from the question's total
+      and the other options) is not sent either: it is sent as hidden, which says nothing of its size, never as fewerThanFive. No name, no user id, no single
       answer. A köşk nazımı gets the exams of their own köşk only.
     needs: exam.zeroth_read in the platform scope, or in the köşk asked for (a köşk nazımı holds it in their köşk)
     query:
@@ -959,7 +963,7 @@ actions:
     result:
       status: 200
       type: object
-      description: "{ question, options, total: counts, exams: [{ lessonId, courseTitle, koskName, startsAt, counts }] }, every count under five sent as fewerThanFive, and an option's count that would give one away as hidden"
+      description: "{ question, options, total: counts, exams: [{ lessonId, courseTitle, koskName, startsAt, counts }] }: a table whose rows are the exams and whose columns are the options, with the combined counts (each option over the exams, and the total) as its sums. Every count under five, in a row or in the sums, is sent as fewerThanFive. Hiding then goes on over the whole table until no hidden count can be worked out from those shown: every row and every column whose sum is shown holds no hidden count or at least two, a combined count included, and each count hidden only for that is sent as hidden. Which counts are hidden first is the server's, the smallest ones first"
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, note: "as listZerothAnswerCounts" }

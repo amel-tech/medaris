@@ -357,13 +357,15 @@ states:
     title: Save the answer
     description: >-
       The action saveExamAnswer, PUT /lessons/{id}/online-exam/attempt/answers/{questionId}, with the options chosen and the question
-      shown; the last call wins. The question stays on the screen and the talebe can go on choosing: another choice is sent at once.
+      shown, and the page's own count of its calls (seq); the last call wins by that count, so a late answer to an earlier call never
+      replaces a later choice. The question stays on the screen and the talebe can go on choosing: another choice is sent at once, and
+      only the answer to the page's latest call says it is saved.
       Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir wait for the answer (disabled while it runs), so the exam never moves on
       or ends before the last choice is saved. Nothing is shown as saved before the server answers.
     invoke: { action: saveExamAnswer }
     on:
       CHOOSE: { target: saving, say: "they choose again before the answer comes: the new choice is sent, and the last call wins" }
-      DONE: { target: question, effect: [savedNotice, choiceSent], say: "the question says its answer is saved" }
+      DONE: { target: question, effect: [savedNotice, choiceSent], say: "the answer to the latest call comes: the question says its answer is saved" }
       FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
       FAIL.ended: { target: timeUp, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }
       FAIL.offline: { target: offline, effect: [keepChoice], say: "the connection is gone: the choice is kept and sent when it is back" }
