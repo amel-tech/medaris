@@ -65,7 +65,7 @@ export async function ExamPage({
         ) : null}
       </header>
       <ExamWorkspace
-        key={draft.data.version}
+        key={draft.data.id}
         courseId={courseId}
         draft={draft.data}
         timeZone={resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE)}

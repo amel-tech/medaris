@@ -5,7 +5,14 @@ import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExamEditor } from "~/features/online-exams/components/exam-editor";
-import { cleanup, click, render, settle, type as typeInto } from "./dom";
+import {
+  cleanup,
+  click,
+  render,
+  rerender,
+  settle,
+  type as typeInto,
+} from "./dom";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -236,6 +243,88 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).toContain("Kaydedilemedi");
     expect(button(root, "Yeniden dene")).toBeTruthy();
     window.localStorage.clear();
+  });
+
+  it("keeps a question being saved when the page is drawn again with a newer read", async () => {
+    // The router draws the page again after a save that renewed the session:
+    // the editor must not start over from the read, or what was typed is gone.
+    actions.addExamQuestion.mockReturnValue(
+      later({ success: true, data: { version: 2, question: { id: "q1" } } })
+    );
+    actions.saveExamQuestion.mockImplementation((_e, id, body) =>
+      later(echo(id, body, 3))
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Uzun uzun yazılan soru");
+    await click(button(root, "Kaydet"));
+    held.shift()?.(); // the question is made
+    await settle();
+    // The page read again mid-save: the question exists, still empty.
+    const read = {
+      ...draft,
+      version: 2,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "",
+          options: [],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: [],
+          ownPoints: null,
+          points: "100.00",
+          complete: false,
+          lacks: ["text", "option", "correct", "topic"],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    await rerender(root, wrap(<ExamEditor courseId="c1" draft={read} />));
+    expect(root.textContent).toContain("Uzun uzun yazılan soru");
+    held.shift()?.(); // saved
+    await settle();
+    expect(root.textContent).toContain("Uzun uzun yazılan soru");
+    expect(root.textContent).not.toContain("Kaydediliyor…");
+  });
+
+  it("takes a newer read when nothing of its own is on its way, keeping what was not saved", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: false,
+      code: "SOMETHING",
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Kaydedilemeyen soru");
+    await click(button(root, "Kaydet"));
+    await settle();
+    const newer = {
+      ...draft,
+      version: 7,
+      questions: [
+        {
+          id: "q9",
+          number: 1,
+          text: "Başka sekmede yazılan soru",
+          options: [
+            { id: "o1", text: "Bir", correct: true },
+            { id: "o2", text: "İki", correct: false },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: null,
+          points: "100.00",
+          complete: true,
+          lacks: [],
+        },
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    await rerender(root, wrap(<ExamEditor courseId="c1" draft={newer} />));
+    await settle();
+    expect(root.textContent).toContain("Başka sekmede yazılan soru");
+    expect(root.textContent).toContain("Kaydedilemeyen soru");
+    expect(button(root, "Yeniden dene")).toBeTruthy();
   });
 
   it("shows a new topic with its number at once", async () => {
