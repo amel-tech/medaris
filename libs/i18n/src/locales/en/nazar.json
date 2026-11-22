@@ -330,7 +330,34 @@
       "DRAFT": "Draft"
     },
     "loadFailedTitle": "The medrese settings could not be read",
-    "loadFailed": "The medrese settings could not be read right now. Try again in a few seconds."
+    "loadFailed": "The medrese settings could not be read right now. Try again in a few seconds.",
+    "zeroth": {
+      "title": "The exams' zeroth question",
+      "intro": "Asked before every online exam in all of the medrese's courses; an exam cannot be started until it is answered. It has no correct answer and no points. A change applies only to exams published after it.",
+      "hadithMeaning": "Whoever deceives us is not of us.",
+      "question": "Question",
+      "questionHelp": "Your question about the hadith.",
+      "options": "Options",
+      "optionsHelp": "At least {min} and at most {max} options, each different.",
+      "option": "Option {number}",
+      "removeOption": "Remove option {number}",
+      "addOption": "Add option",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Zeroth question saved",
+      "notSaved": "Not saved; what you typed is kept.",
+      "savedAt": "Last saved: {date}",
+      "none": "No zeroth question yet. Until it is written, no exam can be published in the medrese's courses.",
+      "saveFailedTitle": "The zeroth question was not saved",
+      "loadFailed": "The zeroth question could not be read. Reload the page and try again.",
+      "problems": {
+        "text": "Write the question.",
+        "textLong": "The question can be at most {max} characters.",
+        "options": "Write at least {min} options.",
+        "optionLong": "An option can be at most {max} characters.",
+        "same": "Two options cannot be the same."
+      }
+    }
   },
   "Nazirs": {
     "title": "Medrese nazırs",

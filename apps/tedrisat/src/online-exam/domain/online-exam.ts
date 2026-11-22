@@ -25,6 +25,9 @@ export const ONLINE_EXAM_TITLE_MAX = 200;
 export const ONLINE_EXAM_INSTRUCTIONS_MAX = 4000;
 export const ZEROTH_QUESTION_MAX = 1000;
 export const ZEROTH_OPTION_MAX = 300;
+/** A medrese's zeroth question offers at least two options and at most ten. */
+export const ZEROTH_OPTIONS_MIN = 2;
+export const ZEROTH_OPTIONS_MAX = 10;
 export const QUESTION_TEXT_MAX = 4000;
 export const OPTION_TEXT_MAX = 1000;
 /** The number of questions suggested, never a limit ("50/50 soru"). */

@@ -21,10 +21,12 @@ import type {
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
+  MadrasahZerothQuestionResponse,
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
   OnlineExamSummaryResponse,
   SaveExamQuestionDto,
+  SaveZerothQuestionDto,
   SetQuestionPointsDto,
   UpdateCourseTopicDto,
   UpdateOnlineExamDto,
@@ -43,6 +45,8 @@ import {
     ExamQuestionWriteResponseToJSON,
     ExamVersionResponseFromJSON,
     ExamVersionResponseToJSON,
+    MadrasahZerothQuestionResponseFromJSON,
+    MadrasahZerothQuestionResponseToJSON,
     OnlineExamCreatedResponseFromJSON,
     OnlineExamCreatedResponseToJSON,
     OnlineExamDraftResponseFromJSON,
@@ -51,6 +55,8 @@ import {
     OnlineExamSummaryResponseToJSON,
     SaveExamQuestionDtoFromJSON,
     SaveExamQuestionDtoToJSON,
+    SaveZerothQuestionDtoFromJSON,
+    SaveZerothQuestionDtoToJSON,
     SetQuestionPointsDtoFromJSON,
     SetQuestionPointsDtoToJSON,
     UpdateCourseTopicDtoFromJSON,
@@ -76,6 +82,10 @@ export interface CreateOnlineExamRequest {
     createOnlineExamDto: CreateOnlineExamDto;
 }
 
+export interface GetMadrasahZerothQuestionRequest {
+    id: string;
+}
+
 export interface GetOnlineExamDraftRequest {
     examId: string;
 }
@@ -98,6 +108,11 @@ export interface SaveExamQuestionRequest {
     examId: string;
     questionId: string;
     saveExamQuestionDto: SaveExamQuestionDto;
+}
+
+export interface SaveMadrasahZerothQuestionRequest {
+    id: string;
+    saveZerothQuestionDto: SaveZerothQuestionDto;
 }
 
 export interface SetExamQuestionPointsRequest {
@@ -281,6 +296,50 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
         const response = await this.createOnlineExamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Medrese ayarları\' \"Sınavların sıfırıncı sorusu\": the question and its options in their order. Empty while the medrese has none; an exam of its courses is then not published.
+     * The medrese\'s zeroth question
+     */
+    async getMadrasahZerothQuestionRaw(requestParameters: GetMadrasahZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahZerothQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahZerothQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/exam-zeroth-question`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahZerothQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Medrese ayarları\' \"Sınavların sıfırıncı sorusu\": the question and its options in their order. Empty while the medrese has none; an exam of its courses is then not published.
+     * The medrese\'s zeroth question
+     */
+    async getMadrasahZerothQuestion(requestParameters: GetMadrasahZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahZerothQuestionResponse> {
+        const response = await this.getMadrasahZerothQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -538,6 +597,60 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async saveExamQuestion(requestParameters: SaveExamQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamQuestionWriteResponse> {
         const response = await this.saveExamQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Replaces the question and all its options. The exams already published keep the one they were published with. Written to `audit_log` as `madrasah.zeroth_question.update` with what it was and what it is; a save that changes nothing writes nothing.
+     * Save the medrese\'s zeroth question
+     */
+    async saveMadrasahZerothQuestionRaw(requestParameters: SaveMadrasahZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahZerothQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveMadrasahZerothQuestion().'
+            );
+        }
+
+        if (requestParameters['saveZerothQuestionDto'] == null) {
+            throw new runtime.RequiredError(
+                'saveZerothQuestionDto',
+                'Required parameter "saveZerothQuestionDto" was null or undefined when calling saveMadrasahZerothQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/exam-zeroth-question`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveZerothQuestionDtoToJSON(requestParameters['saveZerothQuestionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahZerothQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Replaces the question and all its options. The exams already published keep the one they were published with. Written to `audit_log` as `madrasah.zeroth_question.update` with what it was and what it is; a save that changes nothing writes nothing.
+     * Save the medrese\'s zeroth question
+     */
+    async saveMadrasahZerothQuestion(requestParameters: SaveMadrasahZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahZerothQuestionResponse> {
+        const response = await this.saveMadrasahZerothQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
