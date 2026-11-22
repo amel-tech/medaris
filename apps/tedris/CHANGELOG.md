@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.16.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.16.0...tedris-web-v2.16.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **tedris-web, i18n, docs:** MDRS-299 list colours plain, blue, dark yellow; skip clears ([#435](https://github.com/amel-tech/medaris/issues/435)) ([f38122c](https://github.com/amel-tech/medaris/commit/f38122ce29cb8e2485955ae26912c34592ef137f))
+
 ## [2.16.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.15.1...tedris-web-v2.16.0) (2026-11-22)
 
 
