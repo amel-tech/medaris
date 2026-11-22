@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.20](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.19...tedrisat-v0.2.20) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 late window in minutes from the opening ([#431](https://github.com/amel-tech/medaris/issues/431)) ([49ef2fd](https://github.com/amel-tech/medaris/commit/49ef2fdd5d433ec1339035f5446632125ffb5737))
+
 ## [0.2.19](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.18...tedrisat-v0.2.19) (2026-11-22)
 
 
