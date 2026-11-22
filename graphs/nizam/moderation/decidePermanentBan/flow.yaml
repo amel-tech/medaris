@@ -316,6 +316,7 @@ states:
     on:
       DONE: { target: shown, say: "the decided requests are there; the newest is selected" }
       FAIL.unavailable: { target: unreadable, effect: [loadFailed], say: "the read failed: the error replaces the tabs and a toast stays on" }
+      TAB_DECIDED: { target: loadingTab, say: "they press Karara bağlanan, the tab shown while its list is read: nothing happens, the read goes on", source: libs/ui/src/mds/tabs.tsx:110 }
 
   waitingDetail:
     title: A waiting request is read
@@ -335,6 +336,7 @@ states:
       APPROVE: { guard: mayApprove, target: approveConfirm, effect: [clearNote], say: "they press Kabul et" }
       REJECT: { target: rejectForm, effect: [openedReject], say: "they press Reddet: the reject form opens" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      TAB_WAITING: { target: waitingDetail, say: "they press Bekleyen, the tab shown: nothing happens (the kit's Base UI tab ignores a press while it is selected)", source: libs/ui/src/mds/tabs.tsx:110 }
 
   decidedDetail:
     title: A decided request is read
@@ -347,6 +349,7 @@ states:
       SELECT_OTHER: { target: decidedDetail, effect: [clearNote], say: "they press another row" }
       TAB_WAITING: { target: shown, effect: [toWaiting], say: "they go back to Bekleyen" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      TAB_DECIDED: { target: decidedDetail, say: "they press Karara bağlanan, the tab shown: nothing happens", source: libs/ui/src/mds/tabs.tsx:110 }
 
   approveConfirm:
     title: The account is about to be closed

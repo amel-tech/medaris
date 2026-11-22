@@ -256,6 +256,7 @@ states:
       PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
       TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      PICK_ALL: { target: narrowing, effect: [toAll], say: "they press Tümü, the chip already on: the chip group turns it off and gives no value, which the page takes as Tümü again, and the new query asks for the same list again", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
     source: apps/nizam/features/bans/components/all-bans-view.tsx:340
 
   noMatch:
@@ -286,6 +287,12 @@ states:
     on:
       DONE: { guard: "refetch == 'ok'", target: classify }
       FAIL.unreadable: { guard: "refetch == 'failed'", target: loadFailed, effect: [toasted], say: "the failure turns the list into the alert and raises a sticky toast with the same words", source: apps/nizam/features/bans/components/all-bans-view.tsx:114 }
+      # The tabs and the chips stay live while the list is read: a press changes the query at once and asks again, and the older answer is dropped (the ticket).
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan before the answer: the list is asked again for the lifted bans, and the answer on its way is dropped", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin before the answer: asked again, the older answer dropped", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_ALL: { guard: "scope != 'all'", target: narrowing, effect: [toAll], say: "they press Tümü before the answer: asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders before the answer: asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk before the answer: asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
     source: apps/nizam/features/bans/components/all-bans-view.tsx:445
 
   loadingMore:
@@ -298,6 +305,19 @@ states:
     on:
       DONE: { guard: "refetch == 'ok'", target: classify, effect: [loadedAll], say: "the rows are appended; the button stays only while rows are left (the walk's data has one page more, so it goes)", source: apps/nizam/features/bans/components/all-bans-view.tsx:124 }
       FAIL.unreadable: { guard: "refetch == 'failed'", target: loadFailed, effect: [toasted], say: "the failure replaces the whole table with the alert, rows already read included", source: apps/nizam/features/bans/components/all-bans-view.tsx:114 }
+      # The rows, the tabs and the chips stay live while the next twenty are read: a tab or a chip asks for page one of the new query, and the
+      # answer for the next twenty is dropped (the ticket); a row's button opens its dialog at once, over the rows still being added to.
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan while the next twenty are read: the list is asked again from page one, and the answer on its way is dropped", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin: the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_ALL: { guard: "scope != 'all'", target: narrowing, effect: [toAll], say: "they press Tümü: the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders: the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk: the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      LIFT:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı kaldır on a row while the next twenty are read: the lift dialog opens at once", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped does the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+      EXTEND:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı genişlet on an open course row while the next twenty are read: its dialog opens at once", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped does the same", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
     source: apps/nizam/features/bans/components/all-bans-view.tsx:345
 
   loadFailed:
