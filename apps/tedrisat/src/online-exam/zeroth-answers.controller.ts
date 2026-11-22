@@ -26,9 +26,8 @@ const FORBIDDEN =
  * "in the platform or in some köşk of mine" is no single resource, so
  * `ZerothAnswersService` decides, as the audit trail's service does.
  *
- * No name, no user id and no single answer is ever sent, and no count under
- * five, nor one from which such a count could be worked out
- * (`zeroth-answers-never-traced`).
+ * No name, no user id and no single answer is ever sent; every count is sent
+ * as it is.
  */
 @ApiTags("nizam")
 @ApiBearerAuth()
@@ -42,7 +41,7 @@ export class ZerothAnswersController {
   @ApiOperation({
     summary: "How the zeroth questions were answered, in aggregate",
     description:
-      "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.",
+      "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option, every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
     operationId: "listZerothAnswerCounts",
   })
   @ApiOkResponse({ type: ZerothAnswerCountsResponse })
@@ -62,7 +61,7 @@ export class ZerothAnswersController {
   @ApiOperation({
     summary: "The exams that asked one zeroth question, each with its counts",
     description:
-      "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.",
+      "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
     operationId: "getZerothQuestionExams",
   })
   @ApiOkResponse({ type: ZerothQuestionExamsResponse })

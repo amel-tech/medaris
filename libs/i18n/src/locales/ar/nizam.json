@@ -3807,7 +3807,7 @@
   },
   "ZerothAnswersPage": {
     "title": "إجابات السؤال الصفري",
-    "intro": "إجابات السؤال الصفري في الاختبارات متعددة الخيارات، إجمالًا. لا يظهر اسم طالب ولا إجابة منفردة، ولا تُكتب الأعداد الأقل من 5 بالأرقام.",
+    "intro": "إجابات السؤال الصفري في الاختبارات متعددة الخيارات، إجمالًا. لا يظهر اسم طالب ولا إجابة منفردة.",
     "hadithMeaning": "من غشّنا فليس منّا.",
     "filtersLabel": "عوامل التصفية",
     "dateSpan": "نطاق التاريخ",
@@ -3823,13 +3823,9 @@
     "questionsTitle": "الأسئلة ({count})",
     "askedInExams": "طُرح في {exams} اختبارات",
     "answeredCount": "أجاب {answered} طالبًا",
-    "answeredFew": "أجاب أقل من 5 طلاب",
-    "answeredHidden": "عدد المجيبين مخفي",
     "optionCountsLabel": "عدد الطلاب الذين اختاروا كل خيار",
     "optionCount": "{option}: {count} طالبًا (%{percent})",
     "optionCountOnly": "{option}: {count} طالبًا",
-    "optionFew": "{option}: أقل من 5 طلاب",
-    "optionHidden": "{option}: مخفي",
     "openExams": "الاختبارات",
     "openExamsLabel": "الاختبارات التي طرحت {question}",
     "questionGone": "لم يعد في هذا النطاق اختبار يطرح هذا السؤال؛ بقيت القائمة كما هي.",
@@ -3838,11 +3834,11 @@
     "colDate": "التاريخ",
     "colAnswered": "المجيبون",
     "colOptions": "الخيارات",
-    "fewerThanFive": "أقل من 5",
-    "hidden": "مخفي",
     "backToQuestions": "العودة إلى الأسئلة",
     "loadFailedTitle": "تعذّرت قراءة الأعداد",
     "loadFailed": "تحقّق من اتصالك وحاول مرة أخرى.",
-    "retry": "حاول مرة أخرى"
+    "retry": "حاول مرة أخرى",
+    "spanReversed": "لا يمكن أن تكون البداية بعد النهاية.",
+    "detailFailedTitle": "تعذّرت قراءة اختبارات هذا السؤال"
   }
 }

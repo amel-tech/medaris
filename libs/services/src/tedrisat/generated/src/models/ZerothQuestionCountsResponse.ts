@@ -20,13 +20,6 @@ import {
     ZerothOptionCountResponseToJSON,
     ZerothOptionCountResponseToJSONTyped,
 } from './ZerothOptionCountResponse';
-import type { ZerothCountResponse } from './ZerothCountResponse';
-import {
-    ZerothCountResponseFromJSON,
-    ZerothCountResponseFromJSONTyped,
-    ZerothCountResponseToJSON,
-    ZerothCountResponseToJSONTyped,
-} from './ZerothCountResponse';
 
 /**
  * 
@@ -54,10 +47,10 @@ export interface ZerothQuestionCountsResponse {
     exams: number;
     /**
      * How many talebe answered it.
-     * @type {ZerothCountResponse}
+     * @type {number}
      * @memberof ZerothQuestionCountsResponse
      */
-    answered: ZerothCountResponse;
+    answered: number;
     /**
      * Its options in their order, with how many chose each.
      * @type {Array<ZerothOptionCountResponse>}
@@ -91,7 +84,7 @@ export function ZerothQuestionCountsResponseFromJSONTyped(json: any, ignoreDiscr
         'questionKey': json['questionKey'],
         'question': json['question'],
         'exams': json['exams'],
-        'answered': ZerothCountResponseFromJSON(json['answered']),
+        'answered': json['answered'],
         'options': ((json['options'] as Array<any>).map(ZerothOptionCountResponseFromJSON)),
     };
 }
@@ -110,7 +103,7 @@ export function ZerothQuestionCountsResponseToJSONTyped(value?: ZerothQuestionCo
         'questionKey': value['questionKey'],
         'question': value['question'],
         'exams': value['exams'],
-        'answered': ZerothCountResponseToJSON(value['answered']),
+        'answered': value['answered'],
         'options': ((value['options'] as Array<any>).map(ZerothOptionCountResponseToJSON)),
     };
 }

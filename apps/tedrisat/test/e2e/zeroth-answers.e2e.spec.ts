@@ -31,8 +31,9 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * MDRS-299: how the zeroth question of the online exams was answered, as
  * Medaris management reads it in nizam. Platform management holding
  * `exam.zeroth_read` (and the başnazım) reads every köşk, a köşk nazımı their
- * own; a count under five is never sent, nor one that would give it away, and
- * no user id is ever in the answer.
+ * own. Every count is sent as it is, small ones included (the owner, 22 Nov
+ * 2026: "neden gizleyeyim tabi ki görünecek"), and no user id is ever in the
+ * answer.
  */
 const ADMIN_ID = "e2990000-0000-4000-8000-000000000001";
 const MEDARIS_ID = "e2990000-0000-4000-8000-000000000002";
@@ -201,10 +202,10 @@ describe("the zeroth answers, in aggregate (e2e)", () => {
         questionKey: zerothKey(QUESTION, OPTIONS),
         question: QUESTION,
         exams: 2,
-        answered: { count: 27, masked: null },
+        answered: 27,
         options: [
-          { text: "Bu derste", count: { count: 16, masked: null } },
-          { text: "Daha önce", count: { count: 11, masked: null } },
+          { text: "Bu derste", count: 16 },
+          { text: "Daha önce", count: 11 },
         ],
       });
       expect(
@@ -227,7 +228,7 @@ describe("the zeroth answers, in aggregate (e2e)", () => {
     expect(own.body.everyKosk).toBe(false);
     expect(own.body.questions).toHaveLength(1);
     expect(own.body.questions[0].exams).toBe(1);
-    expect(own.body.questions[0].answered).toEqual({ count: 15, masked: null });
+    expect(own.body.questions[0].answered).toBe(15);
     expect(
       own.body.courses.every((c: { koskId: string }) => c.koskId === koskA)
     ).toBe(true);
@@ -242,19 +243,23 @@ describe("the zeroth answers, in aggregate (e2e)", () => {
     await http().get("/nizam/exam-zeroth-answers").query(span).expect(401);
   });
 
-  it("never sends a count under five, nor the one that would give it away", async () => {
+  it("sends small counts as they are, one to four included", async () => {
     await exam(koskA, [7, 3]);
     const res = await list(ADMIN_ID).expect(200);
-    expect(res.body.questions[0].answered).toEqual({ count: 10, masked: null });
+    expect(res.body.questions[0].answered).toBe(10);
     expect(res.body.questions[0].options).toEqual([
-      { text: "Bu derste", count: { count: null, masked: "HIDDEN" } },
-      { text: "Daha önce", count: { count: null, masked: "FEWER_THAN_FIVE" } },
+      { text: "Bu derste", count: 7 },
+      { text: "Daha önce", count: 3 },
     ]);
     await exam(koskB, [2, 1], { question: "Az cevaplanan" });
     const few = (await list(ADMIN_ID).expect(200)).body.questions.find(
       (q: { question: string }) => q.question === "Az cevaplanan"
     );
-    expect(few.answered).toEqual({ count: null, masked: "FEWER_THAN_FIVE" });
+    expect(few.answered).toBe(3);
+    expect(few.options).toEqual([
+      { text: "Bu derste", count: 2 },
+      { text: "Daha önce", count: 1 },
+    ]);
   });
 
   it("leaves out drafts and exams outside the span", async () => {
@@ -264,32 +269,27 @@ describe("the zeroth answers, in aggregate (e2e)", () => {
     expect(res.body.questions).toEqual([]);
   });
 
-  it("opens one question's exams, newest first, hidden over the whole table", async () => {
+  it("opens one question's exams, newest first, every count as it is", async () => {
     await exam(koskA, [6, 2], { daysAgo: 5, title: "Fıkıh" });
     await exam(koskB, [7, 8], { daysAgo: 1, title: "Akaid" });
     const key = zerothKey(QUESTION, OPTIONS);
     const res = await detail(ADMIN_ID, key).expect(200);
-    expect(res.body.answered).toEqual({ count: 23, masked: null });
+    expect(res.body.answered).toBe(23);
     expect(res.body.options).toEqual([
-      { text: "Bu derste", count: { count: 13, masked: null } },
-      { text: "Daha önce", count: { count: 10, masked: null } },
+      { text: "Bu derste", count: 13 },
+      { text: "Daha önce", count: 10 },
     ]);
     expect(
       res.body.exams.map((e: { courseTitle: string }) => e.courseTitle)
     ).toEqual(["Akaid", "Fıkıh"]);
-    expect(res.body.exams[1].options).toEqual([
-      { count: null, masked: "HIDDEN" },
-      { count: null, masked: "FEWER_THAN_FIVE" },
-    ]);
-    // The other exam's cells are hidden too, or 13 − 7 would give the 6 and 10 − 8 the 2.
-    expect(res.body.exams[0].options).toEqual([
-      { count: null, masked: "HIDDEN" },
-      { count: null, masked: "HIDDEN" },
-    ]);
+    expect(res.body.exams[0]).toMatchObject({ answered: 15, options: [7, 8] });
+    expect(res.body.exams[1]).toMatchObject({ answered: 8, options: [6, 2] });
     expect(JSON.stringify(res.body)).not.toMatch(/e2990000-0000-4000-9000/);
 
     const gone = await detail(ADMIN_ID, "0".repeat(32)).expect(404);
     expect(gone.body.code).toBe("ZEROTH_QUESTION_NOT_FOUND");
+    // The key sent is not echoed back.
+    expect(JSON.stringify(gone.body)).not.toContain("0".repeat(32));
     await detail(NAZIM_A_ID, key, { koskId: koskB }).expect(403);
   });
 

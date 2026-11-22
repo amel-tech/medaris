@@ -1,6 +1,5 @@
 import type {
   ListZerothAnswerCountsRequest,
-  ZerothCountResponse,
   ZerothCourseResponse,
 } from "@medaris/services/tedrisat";
 
@@ -98,16 +97,15 @@ export function zerothApiQuery(
   };
 }
 
-/** The whole percentage of a count in its total, when both are numbers. */
-export function percentOf(
-  count: ZerothCountResponse,
-  total: ZerothCountResponse
-): number | null {
-  if (count.count === null || total.count === null || total.count === 0) {
-    return null;
-  }
-  return Math.round((count.count / total.count) * 100);
+/** The whole percentage of a count in its total; none of a total of zero. */
+export function percentOf(count: number, total: number): number | null {
+  if (total === 0) return null;
+  return Math.round((count / total) * 100);
 }
+
+/** Whether a span's start is after its end (`YYYY-MM-DD` compare as days). */
+export const spanReversed = (filters: Pick<ZerothFilters, "from" | "to">) =>
+  filters.from > filters.to;
 
 export interface IPlaceOption {
   value: string;

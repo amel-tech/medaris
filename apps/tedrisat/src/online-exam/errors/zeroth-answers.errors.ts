@@ -3,11 +3,11 @@ import { NotFoundError } from "@medaris/common";
 /** No exam in the span and the place asked that zeroth question (getZerothQuestionExams). */
 export class ZerothQuestionNotFoundError extends NotFoundError {
   static readonly code = "ZEROTH_QUESTION_NOT_FOUND";
-  constructor(questionKey: string) {
+  // The key the caller sent is not echoed back: the message is fixed.
+  constructor() {
     super(
       ZerothQuestionNotFoundError.code,
-      `No exam in the span and the place asked zeroth question ${questionKey}`,
-      { questionKey }
+      "No exam in the span and the place asked that zeroth question"
     );
   }
 }

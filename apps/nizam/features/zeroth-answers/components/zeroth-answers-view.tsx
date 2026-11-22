@@ -2,7 +2,6 @@
 
 import type {
   ZerothAnswerCountsResponse,
-  ZerothCountResponse,
   ZerothQuestionExamsResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
@@ -17,6 +16,7 @@ import { useState } from "react";
 import {
   percentOf,
   placeOptions,
+  spanReversed,
   type ZerothFilters,
   zerothFiltersToQuery,
 } from "../present";
@@ -34,17 +34,16 @@ interface Props {
   filters: ZerothFilters;
   /** null when the read failed */
   list: ZerothAnswerCountsResponse | null;
-  /** one question's exams when `filters.question` names one; "gone" when no exam of the span asks it any more */
+  /** one question's exams when `filters.question` names one; "gone" when no exam of the span asks it any more; null when not asked or the read failed */
   detail: ZerothQuestionExamsResponse | "gone" | null;
 }
 
 /**
  * Sıfırıncı soru cevapları (MDRS-299, nizam.exams.zerothAnswers): how the
  * zeroth question of the online exams was answered, in aggregate. No name and
- * no single answer is ever on the page; a count under five reads "5'ten az" and
- * has no percentage, and one hidden so that it could not be worked out reads
- * "gizlendi" (rule never-traced). The filters live in the address: "Uygula"
- * moves to it, and the server page reads again.
+ * no single answer is ever on the page; every count is shown as it is. The
+ * filters live in the address: "Uygula" moves to it, and the server page reads
+ * again.
  */
 export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
   const t = useTranslations("nizam.ZerothAnswersPage");
@@ -54,6 +53,8 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
   const pathname = usePathname();
 
   const [draft, setDraft] = useState(filters);
+  const [checked, setChecked] = useState(false);
+  const reversed = checked && spanReversed(draft);
   const places = placeOptions(list?.courses ?? [], {
     kosk: kosk?.id ?? draft.kosk,
     madrasah: draft.madrasah,
@@ -66,34 +67,16 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
     router.push(query ? `${pathname}?${query}` : pathname);
   };
 
-  /** "238 talebe cevapladı", "5'ten az talebe cevapladı" or "Cevaplayan sayısı gizlendi". */
-  const answeredLine = (answered: ZerothCountResponse) =>
-    answered.masked === "FEWER_THAN_FIVE"
-      ? t("answeredFew")
-      : answered.masked === "HIDDEN"
-        ? t("answeredHidden")
-        : t("answeredCount", { answered: answered.count ?? 0 });
+  /** "238 talebe cevapladı". */
+  const answeredLine = (answered: number) => t("answeredCount", { answered });
 
-  /** "Bu derste: 97 talebe (%41)", "…: 5'ten az talebe" or "…: gizlendi". */
-  const optionLine = (
-    option: string,
-    count: ZerothCountResponse,
-    total: ZerothCountResponse
-  ) => {
-    if (count.masked === "FEWER_THAN_FIVE") return t("optionFew", { option });
-    if (count.masked === "HIDDEN") return t("optionHidden", { option });
+  /** "Bu derste: 97 talebe (%41)", or the count alone when nobody answered. */
+  const optionLine = (option: string, count: number, total: number) => {
     const percent = percentOf(count, total);
     return percent === null
-      ? t("optionCountOnly", { option, count: count.count ?? 0 })
-      : t("optionCount", { option, count: count.count ?? 0, percent });
+      ? t("optionCountOnly", { option, count })
+      : t("optionCount", { option, count, percent });
   };
-
-  const cellOf = (count: ZerothCountResponse) =>
-    count.masked === "FEWER_THAN_FIVE"
-      ? t("fewerThanFive")
-      : count.masked === "HIDDEN"
-        ? t("hidden")
-        : String(count.count ?? 0);
 
   const date = (at: Date | string) =>
     new Intl.DateTimeFormat(locale, {
@@ -104,6 +87,8 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
     }).format(typeof at === "string" ? new Date(at) : at);
 
   const open = detail && detail !== "gone" ? detail : null;
+  // The list was read but the question the address opens was not.
+  const detailFailed = Boolean(filters.question) && detail === null;
   const back = () => go({ ...filters, question: undefined });
 
   return (
@@ -113,7 +98,9 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
     >
       <header className="flex flex-col gap-3">
         <h1 className="mds-h1">{t("title")}</h1>
-        {open ? null : <p className="max-w-[48rem]">{t("intro")}</p>}
+        {open || detailFailed ? null : (
+          <p className="max-w-[48rem]">{t("intro")}</p>
+        )}
         <figure className="flex flex-col gap-1">
           <p className="mds-arabic-text" lang="ar" dir="rtl">
             {ZEROTH_HADITH}
@@ -122,12 +109,14 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
         </figure>
       </header>
 
-      {open ? null : (
+      {open || detailFailed ? null : (
         <search aria-label={t("filtersLabel")}>
           <form
             className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
             onSubmit={(e) => {
               e.preventDefault();
+              setChecked(true);
+              if (spanReversed(draft)) return;
               go({ ...draft, question: undefined });
             }}
           >
@@ -143,7 +132,10 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
                   }
                 />
               </Field>
-              <Field label={t("to")}>
+              <Field
+                label={t("to")}
+                error={reversed ? t("spanReversed") : undefined}
+              >
                 <Input
                   name="to"
                   type="date"
@@ -229,12 +221,27 @@ export function ZerothAnswersView({ kosk, filters, list, detail }: Props) {
             {t("retry")}
           </Button>
         </Alert>
+      ) : detailFailed ? (
+        <Alert tone="error" title={t("detailFailedTitle")}>
+          <p>{t("loadFailed")}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="small"
+              onClick={() => router.refresh()}
+            >
+              {t("retry")}
+            </Button>
+            <Button variant="ghost" size="small" onClick={back}>
+              {t("backToQuestions")}
+            </Button>
+          </div>
+        </Alert>
       ) : open ? (
         <QuestionDetail
           detail={open}
           answeredLine={answeredLine}
           optionLine={optionLine}
-          cellOf={cellOf}
           date={date}
           onBack={back}
         />
@@ -311,18 +318,12 @@ function QuestionDetail({
   detail,
   answeredLine,
   optionLine,
-  cellOf,
   date,
   onBack,
 }: {
   detail: ZerothQuestionExamsResponse;
-  answeredLine: (answered: ZerothCountResponse) => string;
-  optionLine: (
-    option: string,
-    count: ZerothCountResponse,
-    total: ZerothCountResponse
-  ) => string;
-  cellOf: (count: ZerothCountResponse) => string;
+  answeredLine: (answered: number) => string;
+  optionLine: (option: string, count: number, total: number) => string;
   date: (at: Date | string) => string;
   onBack: () => void;
 }) {
@@ -340,7 +341,7 @@ function QuestionDetail({
       key: "answered",
       header: t("colAnswered"),
       align: "right",
-      render: (e) => cellOf(e.answered),
+      render: (e) => String(e.answered),
     },
     {
       key: "options",
@@ -349,11 +350,7 @@ function QuestionDetail({
         <ul className="flex flex-col gap-1">
           {detail.options.map((o, j) => (
             <li key={`${j}-${o.text}`} dir="auto">
-              {optionLine(
-                o.text,
-                e.options[j] ?? { count: null, masked: "HIDDEN" },
-                e.answered
-              )}
+              {optionLine(o.text, e.options[j] ?? 0, e.answered)}
             </li>
           ))}
         </ul>

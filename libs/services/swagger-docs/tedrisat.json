@@ -16111,7 +16111,7 @@
     },
     "/nizam/exam-zeroth-answers": {
       "get": {
-        "description": "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option. A count under five is sent masked as FEWER_THAN_FIVE, and a count from which a masked one could be worked out as HIDDEN. Written to `audit_log` as `exam.zeroth_read`.",
+        "description": "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option, every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
         "operationId": "listZerothAnswerCounts",
         "parameters": [
           {
@@ -16196,7 +16196,7 @@
     },
     "/nizam/exam-zeroth-answers/{questionKey}": {
       "get": {
-        "description": "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count under five is FEWER_THAN_FIVE, and the hiding goes on over the whole table until none masked can be worked out from those shown (HIDDEN). Written to `audit_log` as `exam.zeroth_read`.",
+        "description": "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
         "operationId": "getZerothQuestionExams",
         "parameters": [
           {
@@ -33139,37 +33139,6 @@
           "questions"
         ]
       },
-      "ZerothMask": {
-        "type": "string",
-        "enum": [
-          "FEWER_THAN_FIVE",
-          "HIDDEN"
-        ],
-        "description": "FEWER_THAN_FIVE: under five (\"5'ten az\"). HIDDEN: five or more, hidden so that a count under five cannot be worked out from the others (\"gizlendi\"). null: the count is sent."
-      },
-      "ZerothCountResponse": {
-        "type": "object",
-        "properties": {
-          "count": {
-            "type": "number",
-            "nullable": true,
-            "description": "null when masked"
-          },
-          "masked": {
-            "nullable": true,
-            "description": "FEWER_THAN_FIVE: under five (\"5'ten az\"). HIDDEN: five or more, hidden so that a count under five cannot be worked out from the others (\"gizlendi\"). null: the count is sent.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ZerothMask"
-              }
-            ]
-          }
-        },
-        "required": [
-          "count",
-          "masked"
-        ]
-      },
       "ZerothOptionCountResponse": {
         "type": "object",
         "properties": {
@@ -33177,7 +33146,8 @@
             "type": "string"
           },
           "count": {
-            "$ref": "#/components/schemas/ZerothCountResponse"
+            "type": "number",
+            "description": "How many talebe chose it."
           }
         },
         "required": [
@@ -33200,12 +33170,8 @@
             "description": "How many exams asked it."
           },
           "answered": {
-            "description": "How many talebe answered it.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ZerothCountResponse"
-              }
-            ]
+            "type": "number",
+            "description": "How many talebe answered it."
           },
           "options": {
             "description": "Its options in their order, with how many chose each.",
@@ -33306,13 +33272,14 @@
             "description": "Its celse's time."
           },
           "answered": {
-            "$ref": "#/components/schemas/ZerothCountResponse"
+            "type": "number",
+            "description": "How many talebe answered it in this exam."
           },
           "options": {
             "description": "A count per option, in the order of the question's options.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ZerothCountResponse"
+              "type": "number"
             }
           }
         },
@@ -33335,12 +33302,8 @@
             "type": "string"
           },
           "answered": {
-            "description": "Over every exam: the same as the list shows.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ZerothCountResponse"
-              }
-            ]
+            "type": "number",
+            "description": "Over every exam: the same as the list shows."
           },
           "options": {
             "description": "Over every exam, as the list shows them.",
