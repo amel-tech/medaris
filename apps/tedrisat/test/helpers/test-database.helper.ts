@@ -45,6 +45,13 @@ export async function assignRole(
  */
 export const COURSE_TREE_TABLES = [
   "role_assignments",
+  "exam_options",
+  "exam_question_topics",
+  "exam_questions",
+  "zeroth_options",
+  "online_exam_topics",
+  "online_exams",
+  "course_exam_topics",
   "partner_enrollment_links",
   "partner_course_codes",
   "enrollments",

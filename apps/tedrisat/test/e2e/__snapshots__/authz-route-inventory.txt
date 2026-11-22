@@ -29,6 +29,7 @@ DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madras
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
+DELETE /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
 DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public
 GET /appeals -> no AuthzGuard
@@ -47,11 +48,13 @@ GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/evaluations -> session.manage on byExistingCourse
 GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
+GET /courses/:id/exam-topics -> exam.prepare on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
 GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
+GET /courses/:id/online-exams -> exam.prepare on course
 GET /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
@@ -157,6 +160,7 @@ GET /nizam/platform-policies -> no AuthzGuard
 GET /nizam/scoped-policies -> no AuthzGuard
 GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
+GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -164,6 +168,7 @@ GET /users/lookup -> no AuthzGuard
 PATCH /courses/:id -> course.edit on course
 PATCH /courses/:id/decks/:deckId -> deck.manage_course on course
 PATCH /courses/:id/enrollments/:userId -> enrollment.complete on course
+PATCH /courses/:id/exam-topics/:topicId -> exam.prepare on course
 PATCH /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 PATCH /flashcard/cards/:id -> deck.manage_cards on custom
 PATCH /flashcard/decks/:id -> deck.manage_private on flashcard-deck
@@ -177,6 +182,7 @@ PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
 PATCH /nizam/partner-applications/:clientId -> no AuthzGuard
+PATCH /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 PATCH /questions/:questionId -> course.view on byQuestionCourse
 PATCH /recordings/:id -> recording.manage on byRecordingCourse
 POST /appeals/:id/accept -> no AuthzGuard
@@ -199,7 +205,9 @@ POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
 POST /courses/:id/enrollments/bulk -> enrollment.decide on course
+POST /courses/:id/exam-topics -> exam.prepare on course
 POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
+POST /courses/:id/online-exams -> exam.prepare on course
 POST /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
@@ -264,6 +272,7 @@ POST /nizam/partner-applications -> no AuthzGuard
 POST /nizam/permission-groups -> no AuthzGuard
 POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
+POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
 PUT /courses/:id -> course.edit on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
@@ -286,4 +295,6 @@ PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
 PUT /nizam/partner-applications/:clientId/kosks -> no AuthzGuard
 PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
+PUT /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
+PUT /online-exams/:examId/questions/:questionId/points -> exam.prepare on byOnlineExamCourse
 PUT /questions/:questionId/answer -> course.view on byQuestionCourse

@@ -84,7 +84,7 @@ export const PLATFORM_CATALOG: ReadonlyArray<{
  * the account screen prints them. nizam/13 draws no list for these scopes;
  * this is the course half of the catalog. "Find people" and "define groups"
  * are no course work and never grantable. `question.answer` (MDRS-150) and
- * `submission.read` (MDRS-290) are on no canvas yet: their sentences are the
+ * `submission.read` (MDRS-290) and `exam.prepare` (MDRS-299) are on no canvas yet: their sentences are the
  * web messages' alone.
  */
 export const COURSE_CATALOG: readonly PermissionCode[] = [
@@ -104,6 +104,7 @@ export const COURSE_CATALOG: readonly PermissionCode[] = [
   PERMISSIONS.SESSION_VIEW_CONTENT,
   PERMISSIONS.QUESTION_ANSWER,
   PERMISSIONS.SUBMISSION_READ,
+  PERMISSIONS.EXAM_PREPARE,
   PERMISSIONS.BAN_COURSE,
   PERMISSIONS.BAN_LIFT_COURSE,
   PERMISSIONS.DECK_MANAGE_COURSE,

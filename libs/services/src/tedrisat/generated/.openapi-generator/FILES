@@ -20,6 +20,7 @@ src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
 src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
+src/apis/OnlineExamsApi.ts
 src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
 src/apis/SubmissionsApi.ts
@@ -34,6 +35,7 @@ src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
 src/models/AnswerLessonQuestionDto.ts
+src/models/AnswerMode.ts
 src/models/AppealCreatedResponse.ts
 src/models/AppealListResponse.ts
 src/models/AppealPersonResponse.ts
@@ -99,6 +101,7 @@ src/models/CourseSubmissionResponse.ts
 src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
+src/models/CourseTopicResponse.ts
 src/models/CreateAppealDto.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDeckDto.ts
@@ -106,6 +109,7 @@ src/models/CreateCourseDto.ts
 src/models/CreateCourseMuderrisDto.ts
 src/models/CreateCourseNazirDto.ts
 src/models/CreateCourseRequestDto.ts
+src/models/CreateCourseTopicDto.ts
 src/models/CreateDeckProposalDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDeckLabelDto.ts
@@ -126,6 +130,7 @@ src/models/CreateMadrasahDto.ts
 src/models/CreateMadrasahPermissionGroupDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateOffsiteCourseRequestDto.ts
+src/models/CreateOnlineExamDto.ts
 src/models/CreatePartnerDto.ts
 src/models/CreatePermissionGroupDto.ts
 src/models/CreateRecordingDto.ts
@@ -163,6 +168,7 @@ src/models/DismissDecisionDto.ts
 src/models/DismissMadrasahNazirDecisionDto.ts
 src/models/DismissMadrasahNazirDto.ts
 src/models/DismissMedarisNazimDto.ts
+src/models/DraftCourseTopicResponse.ts
 src/models/EffectivePermissionGroup.ts
 src/models/EnrolledCourseResponse.ts
 src/models/EnrollmentBanResponse.ts
@@ -175,8 +181,13 @@ src/models/EvaluationMarkResponse.ts
 src/models/EvaluationStatus.ts
 src/models/EvaluationTalebeResponse.ts
 src/models/ExamFormat.ts
+src/models/ExamOptionResponse.ts
+src/models/ExamPointsResponse.ts
+src/models/ExamQuestionResponse.ts
+src/models/ExamQuestionWriteResponse.ts
 src/models/ExamReleaseResponse.ts
 src/models/ExamResultResponse.ts
+src/models/ExamVersionResponse.ts
 src/models/ExtendBanDto.ts
 src/models/ExtendBanScope.ts
 src/models/FieldError.ts
@@ -339,6 +350,9 @@ src/models/NizamDashboardResponse.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
+src/models/OnlineExamCreatedResponse.ts
+src/models/OnlineExamDraftResponse.ts
+src/models/OnlineExamSummaryResponse.ts
 src/models/OpenCourseMuderrisUnvanDto.ts
 src/models/OpenMadrasahCourseDto.ts
 src/models/OwnEvaluationResponse.ts
@@ -386,7 +400,9 @@ src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
 src/models/QuestionAnswerResponse.ts
 src/models/QuestionAnswererResponse.ts
+src/models/QuestionOptionDto.ts
 src/models/QuestionPersonResponse.ts
+src/models/QuestionPointsResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingAvailabilityResponse.ts
 src/models/RecordingProvider.ts
@@ -408,6 +424,7 @@ src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
 src/models/SaveEvaluationDto.ts
+src/models/SaveExamQuestionDto.ts
 src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
 src/models/SaveSubmissionNoteDto.ts
@@ -416,6 +433,7 @@ src/models/ScopeRefResponse.ts
 src/models/ScopedPolicyListResponse.ts
 src/models/ScopedPolicyResponse.ts
 src/models/ScopedPolicyScopeResponse.ts
+src/models/Scoring.ts
 src/models/SendSubmissionReviewDto.ts
 src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
@@ -437,6 +455,7 @@ src/models/SetMuderrisUnvanDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SetPartnerKosksDto.ts
 src/models/SetPlatformPolicyDto.ts
+src/models/SetQuestionPointsDto.ts
 src/models/SetRecordingAvailabilityDto.ts
 src/models/StartRecordingUploadDto.ts
 src/models/SubmissionFileResponse.ts
@@ -449,6 +468,7 @@ src/models/TeamSettableEnrollmentStatus.ts
 src/models/UpdateCourseDeckDto.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateCourseNazirDto.ts
+src/models/UpdateCourseTopicDto.ts
 src/models/UpdateFlashcardDeckDto.ts
 src/models/UpdateFlashcardDto.ts
 src/models/UpdateKoskDto.ts
@@ -460,6 +480,7 @@ src/models/UpdateMadrasahDto.ts
 src/models/UpdateMadrasahPermissionGroupDto.ts
 src/models/UpdateMadrasahSettingsDto.ts
 src/models/UpdateMeDto.ts
+src/models/UpdateOnlineExamDto.ts
 src/models/UpdatePartnerDto.ts
 src/models/UpdatePermissionGroupDto.ts
 src/models/UpdateProfileVisibilityDto.ts
@@ -468,9 +489,11 @@ src/models/UpdatePublicProfileDto.ts
 src/models/UpdateRecordingDto.ts
 src/models/UserSummaryResponse.ts
 src/models/UsersPolicy.ts
+src/models/VersionDto.ts
 src/models/WeekHideResponse.ts
 src/models/WeekResponse.ts
 src/models/WeeklyPatternDto.ts
+src/models/ZerothOptionResponse.ts
 src/models/index.ts
 src/runtime.ts
 tsconfig.esm.json
