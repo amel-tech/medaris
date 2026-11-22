@@ -19,7 +19,7 @@ Counted by script on 16 November 2026, and the flows and the needs again on 21 N
 | Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
 | The domain `medaris.api` | one domain over 27 files: 388 actions (363 in the code, 25 sketched for planned work: 23 for the planned flows and 2 of online exams), 79 entities, 327 invariants |
-| `needs.yaml` (the product list of a flow) | 183 files, 2752 needs: 1460 met, 1292 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 670 of the met needs are walked by no scenario and no browser e2e test |
+| `needs.yaml` (the product list of a flow) | 183 files, 2752 needs: 1462 met, 1290 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 672 of the met needs are walked by no scenario and no browser e2e test |
 | Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 

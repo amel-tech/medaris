@@ -3,8 +3,8 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1292 missing needs in 182 flows, of 2752 needs in 183 flows (counted by script from the needs.yaml files, 22 Nov 2026). 221 name a
-# Linear issue first, the most MDRS-284 (35), MDRS-299 (25, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12),
+# 1290 missing needs in 182 flows, of 2752 needs in 183 flows (counted by script from the needs.yaml files, 22 Nov 2026). 219 name a
+# Linear issue first, the most MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12),
 # MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1071 have no Linear issue.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
@@ -327,7 +327,6 @@ gaps:
   nazar.exams.publish:
     - opens-by-itself  # MDRS-299
     - moved-or-taken-back-until-it-opens  # MDRS-299
-    - the-talebe-are-told  # MDRS-299
   nazar.exams.results:
     - words-and-numbers-not-colour-alone  # MDRS-299
   nazar.files.download:
@@ -1385,7 +1384,6 @@ gaps:
     - sample-row-does-not-say-completed
     - loading-is-heard
   tedris.exams.mine:
-    - told-when-an-exam-is-set  # MDRS-299
     - reached-from-the-course-too  # MDRS-299
     - readable-by-keyboard-and-screen-reader  # MDRS-299
   tedris.exams.result:
