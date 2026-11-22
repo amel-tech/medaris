@@ -46,6 +46,14 @@ export async function ExamPage({
           {t("OnlineExams.backToList")}
         </a>
         <h1 className="mds-h1">{draft.data.title}</h1>
+        {draft.data.status !== "DRAFT" ? (
+          <a
+            className="mds-link mds-body-sm"
+            href={`/ders/${courseId}/sinavlar/${examId}/sonuclar`}
+          >
+            {t("ExamResults.link")}
+          </a>
+        ) : null}
       </header>
       <ExamEditor
         key={draft.data.version}
