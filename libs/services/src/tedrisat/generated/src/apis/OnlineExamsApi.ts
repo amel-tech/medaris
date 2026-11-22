@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CourseTopicResponse,
+  CourseZerothQuestionResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
   ExamPointsResponse,
@@ -37,6 +38,8 @@ import type {
 import {
     CourseTopicResponseFromJSON,
     CourseTopicResponseToJSON,
+    CourseZerothQuestionResponseFromJSON,
+    CourseZerothQuestionResponseToJSON,
     CreateCourseTopicDtoFromJSON,
     CreateCourseTopicDtoToJSON,
     CreateOnlineExamDtoFromJSON,
@@ -88,6 +91,10 @@ export interface CreateOnlineExamRequest {
     createOnlineExamDto: CreateOnlineExamDto;
 }
 
+export interface GetCourseZerothQuestionRequest {
+    id: string;
+}
+
 export interface GetMadrasahZerothQuestionRequest {
     id: string;
 }
@@ -114,10 +121,19 @@ export interface RemoveCourseTopicRequest {
     topicId: string;
 }
 
+export interface RemoveCourseZerothQuestionRequest {
+    id: string;
+}
+
 export interface RemoveExamQuestionRequest {
     examId: string;
     questionId: string;
     version: number;
+}
+
+export interface SaveCourseZerothQuestionRequest {
+    id: string;
+    saveZerothQuestionDto: SaveZerothQuestionDto;
 }
 
 export interface SaveExamQuestionRequest {
@@ -317,6 +333,50 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
         const response = await this.createOnlineExamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The course\'s own question if it has one, its medrese\'s (the default), and which one its exams ask as they are published. A course of a köşk alone has no medrese\'s question; with no question of its own, its exams are not published.
+     * A course\'s zeroth question
+     */
+    async getCourseZerothQuestionRaw(requestParameters: GetCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseZerothQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseZerothQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/exam-zeroth-question`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseZerothQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The course\'s own question if it has one, its medrese\'s (the default), and which one its exams ask as they are published. A course of a köşk alone has no medrese\'s question; with no question of its own, its exams are not published.
+     * A course\'s zeroth question
+     */
+    async getCourseZerothQuestion(requestParameters: GetCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseZerothQuestionResponse> {
+        const response = await this.getCourseZerothQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -603,6 +663,50 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Takes the course\'s own question off; its exams ask the medrese\'s again from the next one published. Written to `audit_log` as `course.zeroth_question.delete`; nothing is written when the course had none.
+     * Back to the medrese\'s zeroth question
+     */
+    async removeCourseZerothQuestionRaw(requestParameters: RemoveCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseZerothQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling removeCourseZerothQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/exam-zeroth-question`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseZerothQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Takes the course\'s own question off; its exams ask the medrese\'s again from the next one published. Written to `audit_log` as `course.zeroth_question.delete`; nothing is written when the course had none.
+     * Back to the medrese\'s zeroth question
+     */
+    async removeCourseZerothQuestion(requestParameters: RemoveCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseZerothQuestionResponse> {
+        const response = await this.removeCourseZerothQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * With its options and topics; its points, if it had its own, go back to the share. Written to `audit_log` as `exam_question.remove`.
      * Remove a question
      */
@@ -662,6 +766,60 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async removeExamQuestion(requestParameters: RemoveExamQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamVersionResponse> {
         const response = await this.removeExamQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Replaces the course\'s own question and all its options; its exams ask it instead of the medrese\'s from the next one published. Written to `audit_log` as `course.zeroth_question.update`; a save that changes nothing writes nothing.
+     * Give the course a zeroth question of its own
+     */
+    async saveCourseZerothQuestionRaw(requestParameters: SaveCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseZerothQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveCourseZerothQuestion().'
+            );
+        }
+
+        if (requestParameters['saveZerothQuestionDto'] == null) {
+            throw new runtime.RequiredError(
+                'saveZerothQuestionDto',
+                'Required parameter "saveZerothQuestionDto" was null or undefined when calling saveCourseZerothQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/exam-zeroth-question`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveZerothQuestionDtoToJSON(requestParameters['saveZerothQuestionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseZerothQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Replaces the course\'s own question and all its options; its exams ask it instead of the medrese\'s from the next one published. Written to `audit_log` as `course.zeroth_question.update`; a save that changes nothing writes nothing.
+     * Give the course a zeroth question of its own
+     */
+    async saveCourseZerothQuestion(requestParameters: SaveCourseZerothQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseZerothQuestionResponse> {
+        const response = await this.saveCourseZerothQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

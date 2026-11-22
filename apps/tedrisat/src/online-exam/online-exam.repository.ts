@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
-import { courses, lessons } from "../database/schema/course.schema";
+import { lessons } from "../database/schema/course.schema";
 import {
   courseExamTopics,
   examOptions,
@@ -695,16 +695,6 @@ export class OnlineExamRepository {
         text,
       }))
     );
-  }
-
-  /** The medrese of the exam's course; null for a köşk's own course. */
-  async findCourseMadrasahId(courseId: string): Promise<string | null> {
-    const [course] = await this.db
-      .select({ madrasahId: courses.madrasahId })
-      .from(courses)
-      .where(eq(courses.id, courseId))
-      .limit(1);
-    return course?.madrasahId ?? null;
   }
 
   /** Makes the exam a draft again, its celse's key cleared before the celse goes. */

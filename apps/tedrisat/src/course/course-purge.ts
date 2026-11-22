@@ -36,6 +36,8 @@ import {
 } from "../database/schema/lesson-submission.schema";
 import {
   courseExamTopics,
+  courseZerothOptions,
+  courseZerothQuestions,
   examOptions,
   examQuestions,
   examQuestionTopics,
@@ -245,6 +247,13 @@ export async function deleteCourseOnlineExams(
   await tx
     .delete(courseExamTopics)
     .where(inArray(courseExamTopics.courseId, courseIds));
+  // The course's own zeroth question (its medrese's stays with the medrese).
+  await tx
+    .delete(courseZerothOptions)
+    .where(inArray(courseZerothOptions.courseId, courseIds));
+  await tx
+    .delete(courseZerothQuestions)
+    .where(inArray(courseZerothQuestions.courseId, courseIds));
 }
 
 /**
