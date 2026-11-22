@@ -166,7 +166,10 @@ states:
     description: >-
       The server action updateCourseProgress, PUT /courses/:id/progress with the number alone (the page never sends a status, so
       the API's refusal of a status change cannot happen here). "Kaydet" is busy: aria-disabled and aria-busy, never disabled, and
-      a hidden status beside it says "Yükleniyor" (the kit's default word, not the page's). The window stays open while it runs.
+      a hidden status beside it says "Yükleniyor" (the kit's default word, not the page's). The window stays open while it runs, unless the talebe
+      closes it: "Vazgeç", "Kapat" and Esc stay live (only `pending` on "Kaydet" changes), and the call goes on, so its toast and its refresh
+      land on the card. The graph marks the two buttons `duringStep`: their press is drawn where the call's outcome leads (after a refusal,
+      the window then closes on the card with the toast); the moment between, the window closed while the call runs, is not drawn.
       On success: a toast "İlerlemen güncellendi.", the window closes and the page is read again. On a refusal the window stays
       open and a toast says it in the page's words by the status alone: 404 "Bu ders artık bulunamıyor.", 409 "Kaydının durumu
       değişmiş. Sayfa yenilendi, güncel hâline bak." (nothing refreshes: CRS-03), anything else "İşlem tamamlanamadı. Biraz sonra
