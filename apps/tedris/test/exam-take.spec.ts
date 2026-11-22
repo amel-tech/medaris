@@ -277,6 +277,80 @@ describe("the exam page (MDRS-299)", () => {
     ).toBeTruthy();
   });
 
+  /** A running attempt, and a clock the test moves. */
+  const running = async () => {
+    mocks.resumeExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.recordTabSwitch.mockResolvedValue(ok({ switches: 1 }));
+    await mount(
+      briefing({
+        attempt: { status: "IN_PROGRESS", finishedAt: null, finishedBy: null },
+      } as Partial<ExamBriefingResponse>)
+    );
+    await settle();
+    let now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    let focused = true;
+    vi.spyOn(document, "hasFocus").mockImplementation(() => focused);
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility,
+    });
+    return {
+      later: (ms: number) => {
+        now += ms;
+      },
+      leaveWindow: () => {
+        focused = false;
+        window.dispatchEvent(new Event("blur"));
+      },
+      backToWindow: async () => {
+        focused = true;
+        window.dispatchEvent(new Event("focus"));
+        await settle();
+      },
+      hide: () => {
+        focused = false;
+        visibility = "hidden";
+        document.dispatchEvent(new Event("visibilitychange"));
+      },
+      show: async () => {
+        visibility = "visible";
+        document.dispatchEvent(new Event("visibilitychange"));
+        focused = true;
+        window.dispatchEvent(new Event("focus"));
+        await settle();
+      },
+    };
+  };
+
+  it("counts going to another window, not only another tab", async () => {
+    const page = await running();
+    page.leaveWindow();
+    page.later(5000);
+    await page.backToWindow();
+    expect(mocks.recordTabSwitch).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it("counts a hidden tab once, though both the tab and the window come back", async () => {
+    const page = await running();
+    page.hide();
+    page.later(5000);
+    await page.show();
+    expect(mocks.recordTabSwitch).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it("does not count leaving the page for less than two seconds", async () => {
+    const page = await running();
+    page.leaveWindow();
+    page.later(800);
+    await page.backToWindow();
+    expect(mocks.recordTabSwitch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   it("colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed", async () => {
     const three = attempt();
     three.questions = [
