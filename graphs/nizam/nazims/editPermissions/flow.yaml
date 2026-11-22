@@ -309,12 +309,21 @@ states:
       The kit's Select popup (Base UI), over the dialog: a listbox with no name of its own whose options are "Grup yok" and each platform group the page
       read (the walk's group among them); the one the form says is selected. Choosing an option closes the list and, for a group, ticks and locks its
       boxes and drops from the single permissions what the group carries, or, for "Grup yok", frees them; Esc closes the list alone and not the dialog
-      (Base UI, not verified here). The list the options come from was read when the page was, and is not read again (EPERM-1).
+      (Base UI, not verified here). The list the options come from was read when the page was, and is not read again (EPERM-1). The
+      dialog stays drawn behind it and in the accessibility tree (the Select's focus manager is not modal), but Base UI lays a backdrop
+      over the page with a hole for the select's own button: a press anywhere else lands on the backdrop and only closes the list
+      (read from Base UI 1.8's SelectPositioner, not verified in a browser).
     by: human
     on:
       CHOOSE_GROUP: { target: settle, effect: [groupChosen], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose the group: its two boxes are ticked and locked ('Gruptan gelir.') and the summary counts them apart" }
       CHOOSE_NO_GROUP: { target: settle, effect: [groupNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose 'Grup yok': the group's boxes lose their tick (they were not single permissions) and the summary is '{n} izin'" }
       CLOSE_LIST: { target: settle, source: libs/ui/src/mds/select.tsx:80, say: "Esc: the list closes and the form stays as it was" }
+      OPEN_GROUP_LIST: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press the select's button again, which the backdrop leaves free: the list closes and the form stays as it was (not verified in a browser)" }
+      TOGGLE_DECK: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'Desteyi herkese yayımla' behind the list: the press lands on the Select's backdrop, the list closes and the box keeps its tick" }
+      SAVE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'Kaydet' behind the list: the backdrop takes the press, the list closes and nothing is sent" }
+      OPEN_GROUPS_PAGE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'İzin gruplarını düzenle' behind the list: the backdrop takes the press and the list closes; the link is not followed" }
+      CANCEL: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press Vazgeç behind the list: the backdrop takes the press, the list closes and the dialog stays" }
+      CLOSE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press the close icon behind the list: the list closes and the dialog stays" }
     source: libs/ui/src/mds/select.tsx:80
 
   saving:
@@ -331,6 +340,9 @@ states:
     source: apps/nizam/features/permissions/components/permissions-dialog.tsx:150
     invoke: { action: setMedarisNazimGrants }
     on:
+      CANCEL: { target: saving, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç or Esc: nothing happens, the save goes on" }
+      CLOSE: { target: saving, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "the close icon: nothing happens, the save goes on" }
+      OPEN_GROUPS_PAGE: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle' while the PUT is out: a plain link, never disabled, so the page is loaded anew and no toast or row tells what became of the save, which has already gone (not verified in a browser)" }
       DONE:
         - { guard: "answer == 'saved'", target: applied, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162, say: "the server wrote the form: the row will say it" }
       FAIL.gone:
