@@ -104,6 +104,9 @@ const CURRENT: CSSProperties = {
     "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
 };
 
+/** How long the page must be away before coming back counts as a switch. */
+export const SWITCH_MIN_MS = 2000;
+
 export function ExamTake({
   lessonId,
   sessionHref,
@@ -156,7 +159,8 @@ export function ExamTake({
   const seq = useRef(0);
   // Choices the connection did not carry, sent again after the resume.
   const unsent = useRef(new Map<string, LocalAnswer>());
-  const hidden = useRef(false);
+  // When the page lost the talebe: hidden, or its window without focus.
+  const awaySince = useRef<number | null>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
@@ -323,15 +327,24 @@ export function ExamTake({
   }, [atZero]);
 
   // Coming back from another tab or window is counted; nothing is erased.
+  // A tab switch hides the page; another window or application takes the
+  // focus without hiding it (side by side, a second screen), so both count.
+  // One away period is one switch, counted on the way back, and only when it
+  // lasted SWITCH_MIN_MS: a click on the address bar is not a switch.
   useEffect(() => {
-    const onChange = async () => {
+    const away = () => {
       if (phaseRef.current !== "running") return;
-      if (document.visibilityState === "hidden") {
-        hidden.current = true;
+      if (awaySince.current === null) awaySince.current = Date.now();
+    };
+    const back = async () => {
+      if (document.visibilityState === "hidden" || !document.hasFocus()) {
         return;
       }
-      if (!hidden.current) return;
-      hidden.current = false;
+      const since = awaySince.current;
+      if (since === null) return;
+      awaySince.current = null;
+      if (phaseRef.current !== "running") return;
+      if (Date.now() - since < SWITCH_MIN_MS) return;
       try {
         const result = await recordTabSwitch(lessonId, holderId());
         if (result.success) {
@@ -343,8 +356,19 @@ export function ExamTake({
         setOffline(true);
       }
     };
-    document.addEventListener("visibilitychange", onChange);
-    return () => document.removeEventListener("visibilitychange", onChange);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") away();
+      else void back();
+    };
+    const onFocus = () => void back();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", away);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", away);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [lessonId, notify, refused, t]);
 
   // The connection back: the attempt is taken back and the kept choices sent.
