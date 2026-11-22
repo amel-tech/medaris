@@ -65,7 +65,7 @@ needs:
     missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım"
-      (nazar.exams.publish D1).
+      (nazar.exams.publish D1, decided on 22 Nov 2026: the latest start is the earliest plus 10 minutes by default, for lateness).
 
   - id: taken-once
     need: An exam is taken once. A talebe who finished it cannot start it again, and opening it leads to its result.
@@ -228,19 +228,20 @@ needs:
       Owner: "sınav sırasında talebe koparsa kaldığı yerden devam edecek"; asked whether the clock runs meanwhile: "talebeye
       güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
 
-  - id: a-switch-starts-it-again
+  - id: a-switch-is-counted
     need: >-
-      A deliberate switch to another tab or window during the exam starts it again from the beginning: the answers given are erased,
-      the talebe is told why and what was lost before the briefing shows again, and the new start gives the full length and a new
-      order of questions and options.
+      A deliberate switch to another tab or window during the exam is counted, with its time, for the team. Nothing is erased: the
+      exam goes on where it was, and the talebe is told the switch was counted.
     evidence:
-      - state: restarted
-      - node: restartedDialog
+      - state: notingSwitch
+      - node: switchedNotice
     missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "bilerek sekme veya pencere değiştirirse sınav baştan başlayacak (bu mantıklı gelmiyor bana ama öyle istendi, tekrar
       sorarız)", then "kural kalsın şimdilik, soracağız bunu akış videosunu çekip verdiğimizde" (D1); asked what a restart resets:
-      "Tam süre, yeni sıra". Every switch is also shown to the team, with its time (nazar.exams.results).
+      "Tam süre, yeni sıra". Asked of those who asked for exams with the flow's video, they answered, as the owner relayed on 22 Nov
+      2026: "tab değiştirme meselesinde sıfırlanıp baştan başlamayacak, sadece tab değişikliğini sayacağız" (D1, closed). Every
+      switch is shown to the team, with its time (nazar.exams.results).
 
   - id: the-switch-rule-is-told-first
     need: >-
@@ -248,9 +249,9 @@ needs:
       what happened, at once and in words.
     evidence:
       - state: briefing
-      - state: restarted
+      - state: notingSwitch
       - node: factSwitch
-      - node: restartedDialog
+      - node: switchedNotice
     missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: one-place-at-a-time

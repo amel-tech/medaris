@@ -168,7 +168,7 @@ states:
     title: A talebe's attempt
     description: >-
       Each question in the talebe's own order, with their answer, the correct one and the points got; their answer to the zeroth
-      question; when they started and handed in; each switch to another tab or window, with when, and each restart.
+      question; when they started and handed in; each switch to another tab or window, with when.
     by: human
     on:
       BACK: overview

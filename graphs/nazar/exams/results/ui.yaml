@@ -46,7 +46,6 @@ samples:
   startedAt: 28 Kas 21:04
   finishedAt: 28 Kas 21:57
   at: 28 Kas 21:20
-  erased: "6"
   answer: Hâs lafız
   correct: Âmm lafız
   got: "0,00"
@@ -151,7 +150,7 @@ nodes:
   switchesTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.colSwitches }, in: [talebeDetail] } # h3 "Sekme değişimi"
   switchesLine: { type: text, component: Text, text: { oneOf: [planned.Exams.switchesLine, planned.Exams.noSwitchLine] }, in: [talebeDetail] }
   switchesList: { type: list, component: List, role: list, name: { labelledBy: switchesTitle }, in: [talebeDetail] }
-  switchItem: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.switchItem, params: { at: switch.at, erased: switch.erased } }, in: [talebeDetail], repeat: attempt.switches } # each switch, its time and the answers the restart erased
+  switchItem: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.switchItem, params: { at: switch.at } }, in: [talebeDetail], repeat: attempt.switches } # each switch and its time
   attemptZeroth: { type: text, component: Text, text: { oneOf: [planned.Exams.zerothAnswerLine, planned.Exams.noZeroth] }, in: [talebeDetail] }
   attemptQuestions: { type: list, component: List, role: list, name: { key: planned.Exams.attemptQuestionsLabel }, in: [talebeDetail] } # in the order this talebe got
   attemptQuestion: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.questionStart, params: { number: q.number, textStart: q.textStart } }, in: [talebeDetail], repeat: attempt.questions }

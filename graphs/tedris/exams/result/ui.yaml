@@ -27,7 +27,6 @@ samples:
   right: "41"
   wrong: "6"
   blank: "3"
-  restarts: "1"
   topic: Kıyas
   percent: "62"
   topicRight: "8"
@@ -57,7 +56,6 @@ nodes:
   # --- the result ------------------------------------------------------------------------------------------------------------------
   scoreText: { type: text, component: Text, text: { key: planned.Exams.scoreOutOf, params: { score: score } }, in: [resultShown] } # at most two decimals, reckoned once from the exact points
   countsText: { type: text, component: Text, text: { key: planned.Exams.counts, params: { right: right, wrong: wrong, blank: blank } }, in: [resultShown] } # a skipped question left unanswered is blank
-  restartNote: { type: text, component: Text, text: { key: planned.Exams.restartNote, params: { restarts: restarts } }, in: [resultShown], when: "restarts == 'some'" } # while the restart stands (tedris.exams.take D1)
   topicsButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.byTopic }, in: [resultShown], emits: TOPICS }
   answersButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.myAnswers }, in: [resultShown], when: answersOpen, emits: ANSWERS }
   answersLater: { type: text, component: Text, text: { key: planned.Exams.answersLater }, in: [resultShown], when: "closed == 'no'" } # in place of the button until the exam has closed for everyone

@@ -1,5 +1,5 @@
 {
-  "Changes.note": "Sıfırıncı soruya ve sınavın sorularına verdiğin her cevap, seçtiğin anda kaydedilir ve sınavın cevabı sayılır; sınavı bitirdiğinde ya da süre dolduğunda hiçbiri değişmez. Başka bir sekmeye ya da pencereye geçersen verdiğin cevaplar silinir ve sınav, sorular yeni bir sırayla ve sürenin tamamıyla baştan başlar; ders kadrosu her geçişi saatiyle görür. Sıfırıncı sorunun cevabı puana sayılmaz: ders kadrosu senin cevabını görür, Medaris yönetimi yalnız toplu sayıları görür.",
+  "Changes.note": "Sıfırıncı soruya ve sınavın sorularına verdiğin her cevap, seçtiğin anda kaydedilir ve sınavın cevabı sayılır; sınavı bitirdiğinde ya da süre dolduğunda hiçbiri değişmez. Başka bir sekmeye ya da pencereye geçersen bu sayılır ve ders kadrosu her geçişi saatiyle görür; cevapların silinmez. Sıfırıncı sorunun cevabı puana sayılmaz: ders kadrosu senin cevabını görür, Medaris yönetimi yalnız toplu sayıları görür.",
   "composed.Exams.title": "{title}",
   "composed.Exams.course": "{course}",
   "composed.Exams.instructions": "{instructions}",
@@ -24,7 +24,7 @@
   "planned.Exams.factMarks": "Yuvarlak düğmeli bir soruda bir şık seçersin; kutulu bir soruda doğru bulduğun bütün şıkları işaretlersin.",
   "planned.Exams.factSaved": "Seçtiğin her cevap o anda kaydedilir. Sonda göndermen gereken bir şey yoktur.",
   "planned.Exams.factConnection": "Bağlantın koparsa ya da sayfa kapanırsa sınav kaldığın yerden devam eder; bu sırada süre işlemez.",
-  "planned.Exams.factSwitch": "Başka bir sekmeye ya da pencereye geçersen sınav baştan başlar: verdiğin cevaplar silinir, sorular yeni bir sırayla gelir ve süre baştan işler.",
+  "planned.Exams.factSwitch": "Başka bir sekmeye ya da pencereye geçersen bu sayılır ve ders kadrosu her geçişi saatiyle görür.",
   "planned.Exams.factSkip": "Bir soruyu atlayabilirsin; son sorudan sonra atladığın sorular yeniden gelir. Sorular listesinden istediğin soruya gidebilirsin.",
   "planned.Exams.factFinish": "“Sınavı bitir” ile sınavı istediğin an bitirirsin. Süre dolunca sınav, kaydedilen cevaplarla kendiliğinden biter.",
   "planned.Exams.instructionsTitle": "Hazırlayanın notu",
@@ -59,9 +59,6 @@
   "planned.Exams.elsewhereTitle": "Sınav başka bir yerde açık",
   "planned.Exams.elsewhere": "Bu sınavı başka bir sekmede ya da cihazda açtın; cevapların artık orada kaydediliyor. Buradan devam etmek istersen sınavı burada aç.",
   "planned.Exams.openHere": "Burada aç",
-  "planned.Exams.restartedTitle": "Sınav baştan başlıyor",
-  "planned.Exams.restarted": "Başka bir sekmeye ya da pencereye geçtin. Bu yüzden verdiğin {erased} cevap silindi; sınav, sorular yeni bir sırayla ve sürenin tamamıyla yeniden başlıyor. Sıfırıncı sorunun cevabı duruyor.",
-  "planned.Exams.understood": "Anladım",
   "planned.Exams.finishTitle": "Sınavı bitir?",
   "planned.Exams.finishBody": "{unanswered} soru cevapsız, {skipped} soru atlandı. Kalan süren {timeLeft}. Bitirdikten sonra hiçbir cevap değişmez.",
   "planned.Exams.confirmFinish": "Bitir",
@@ -73,5 +70,6 @@
   "planned.Exams.finishedEnded": "Sınavın kaydedilen cevaplarla bitti.",
   "planned.Exams.resultWhere": "Sonucun, sınavın sonuçları açıklandığında Sınavlarım’da görünür.",
   "planned.Exams.alreadyTaken": "Bu sınava girdin; bir sınava bir kez girilir. Sonucunu Sınavlarım’da görebilirsin.",
-  "planned.Exams.mine": "Sınavlarım"
+  "planned.Exams.mine": "Sınavlarım",
+  "planned.Exams.switchCounted": "Başka bir sekmeye geçtin; bu sayıldı. Sınav kaldığın yerden devam ediyor."
 }

@@ -19,7 +19,7 @@ Counted by script on 16 November 2026, and the flows and the needs again on 21 N
 | Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
 | The domain `medaris.api` | one domain over 27 files: 380 actions (329 in the code, 51 sketched for the planned flows, 28 of them for online exams), 74 entities, 326 invariants |
-| `needs.yaml` (the product list of a flow) | 183 files, 2750 needs: 1373 met, 1377 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
+| `needs.yaml` (the product list of a flow) | 183 files, 2749 needs: 1373 met, 1376 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
 | Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 
@@ -102,7 +102,7 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
 - **Online exams** (MDRS-299, planned on 21 November 2026) were written needs first and then drawn: `tedris.exams.mine`,
   `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.mine`, `nazar.exams.edit`, `nazar.exams.publish` and
-  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management; 110 needs, all missing. Each
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management; 109 needs, all missing. Each
   `flow.yaml` quotes the owner's rules and his answers of that day at its top, and each flow has its screens and Turkish catalog.
   Their API is `domain/planned-exams.yaml`: a third exam format, `MULTIPLE_CHOICE` ("Çoktan seçmeli", not "Çevrimiçi", which the
   session plan already says of an exam's place), with proposed routes, codes and two proposed permissions, `exam.prepare` and

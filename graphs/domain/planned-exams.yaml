@@ -17,8 +17,9 @@
 #   4. 100 points, shared equally over the questions that have no points of their own; the shares are kept exact (a fraction, never a
 #      rounded number) and shown with two decimals; a score is reckoned from the exact points and rounded to two decimals once.
 #   5. Topics are the course's list (CourseTopic); an exam picks some and each question carries one or more.
-#   6. Every answer is saved when it is chosen. A deliberate switch to another tab or window starts the attempt again with the full
-#      length and a new order (the owner keeps the rule for now and asks again: tedris.exams.take D1); the zeroth answer stays.
+#   6. Every answer is saved when it is chosen. A deliberate switch to another tab or window is counted and shown to the team with its
+#      time; nothing is erased (those who asked for exams, relayed by the owner on 22 Nov 2026: "tab değiştirme meselesinde sıfırlanıp
+#      baştan başlamayacak, sadece tab değişikliğini sayacağız").
 #      Opening the exam in a second tab or on a second device moves the attempt there, which is not a switch.
 #   7. The zeroth question: about the hadith "Bizi aldatan bizden değildir", shown fixed in Arabic and in its meaning; each exam's
 #      preparer writes the question and its options, none correct, no points; it is answered before the start and is required. The
@@ -80,7 +81,7 @@ entities:
       durationMinutes: { type: integer, minimum: 1, default: 60, note: "no upper bound (the owner: \"Sınır yok\"); every attempt gets all of it" }
       instructions: { type: [string, "null"], maxLength: 4000, note: "the team's own words, read in the briefing under what every exam says" }
       zerothQuestion: { type: string, maxLength: 1000, note: "the preparer's question about the hadith; empty in a new draft, and an exam without it is not published" }
-      latestStartAt: { type: [string, "null"], format: date-time, note: "until when a talebe may start; set at publication, never before the earliest start" }
+      latestStartAt: { type: [string, "null"], format: date-time, note: "until when a talebe may start, for those who come late; set at publication, never before the earliest start. The page fills it with the earliest start plus 10 minutes (nazar.exams.publish D1, decided on 22 Nov 2026)" }
       publishedAt: { type: [string, "null"], format: date-time, note: "null while it is a draft" }
       closedEarlyAt: { type: [string, "null"], format: date-time }
       version: { type: integer, minimum: 1, note: "bumped by every write of the exam, its questions and its points; a write that names an older version is refused (EXAM_STALE). Every write's answer carries the new version, and the page names it in its next write" }
@@ -158,25 +159,25 @@ entities:
   ExamAttempt: # one talebe's sitting of an exam: their order, where they are and how much time they have used
     planned: "MDRS-299: online exams, no code yet"
     key: [lessonId, userId]
-    required: [lessonId, userId, status, questionOrder, optionOrder, usedSeconds, restarts, startedAt]
+    required: [lessonId, userId, status, questionOrder, optionOrder, usedSeconds, switches, startedAt]
     fields:
       lessonId: { type: string, format: uuid, references: OnlineExam }
       userId: { type: string, format: uuid, note: "Keycloak sub; the talebe holds an ENROLLED seat in the course when they start" }
       status: { enum: [IN_PROGRESS, FINISHED] }
-      questionOrder: { type: array, items: { type: string, format: uuid }, note: "drawn at the start and at every restart, for this talebe only" }
+      questionOrder: { type: array, items: { type: string, format: uuid }, note: "drawn at the start, for this talebe only" }
       optionOrder: { type: object, note: "for each question, its option ids in this talebe's order" }
       currentQuestionId: { type: [string, "null"], format: uuid, note: "where a resumed attempt goes on" }
       usedSeconds: { type: integer, minimum: 0, note: "counted only while the page holding the attempt is connected (decision 1); the time left is durationMinutes·60 − usedSeconds" }
       lastSeq: { type: integer, minimum: 0, note: "the highest seq of saveExamAnswer the holding page has sent; a call at or under it writes nothing. Set to 0 when another page takes the attempt over (resumeExamAttempt)" }
       holderId: { type: [string, "null"], note: "the tab or device that holds the attempt now; the last one to open the exam holds it, and the other is told it is open elsewhere" }
-      restarts: { type: integer, minimum: 0, note: "how many times a switch started it again" }
-      startedAt: { type: string, format: date-time, note: "the first start; a restart does not move it" }
+      switches: { type: integer, minimum: 0, note: "how many times the talebe switched to another tab or window" }
+      startedAt: { type: string, format: date-time, note: "when the talebe started it" }
       finishedAt: { type: [string, "null"], format: date-time }
       finishedBy: { enum: [TALEBE, TIME, CLOSED_EARLY, null] }
       score: { type: [string, "null"], pattern: "^[0-9]{1,3}\\.[0-9]{2}$", note: "set when it finishes, from the exact points, rounded once to two decimals; written to the talebe's ExamResult" }
     lifecycle:
       - "none -> in progress: the talebe starts it between the earliest and the latest start, with the zeroth question answered (startExamAttempt)"
-      - "in progress -> in progress: a deliberate switch starts it again: its answers are erased, a new order is drawn, usedSeconds is 0, restarts grows, a TabSwitch is kept (restartExamAttempt)"
+      - "in progress -> in progress: a deliberate switch is counted: switches grows and a TabSwitch is kept; nothing is erased (recordTabSwitch)"
       - "in progress -> finished: the talebe finishes it, its time runs out, or the team closes the exam early; it is scored"
 
   ExamAnswer: # a talebe's answer to one question of their attempt, saved when it is chosen
@@ -194,13 +195,12 @@ entities:
   TabSwitch: # a deliberate switch to another tab or window during an attempt, kept for the team
     planned: "MDRS-299: online exams, no code yet"
     key: [id]
-    required: [id, lessonId, userId, at, answeredBefore]
+    required: [id, lessonId, userId, at]
     fields:
       id: { type: string, format: uuid }
       lessonId: { type: string, format: uuid, references: OnlineExam }
       userId: { type: string, format: uuid }
       at: { type: string, format: date-time }
-      answeredBefore: { type: integer, minimum: 0, note: "how many answers the restart erased" }
 
 actions:
   # -----------------------------------------------------------------------------------------------------------------------------
@@ -279,8 +279,7 @@ actions:
     route: PUT /lessons/{id}/online-exam/zeroth-answer
     summary: Answer the zeroth question
     description: >-
-      Saves the caller's choice among the zeroth question's options; a second call replaces it until the attempt starts. It is kept
-      when the attempt starts again after a switch.
+      Saves the caller's choice among the zeroth question's options; a second call replaces it until the attempt starts.
     needs: course.view on the lesson's course and an ENROLLED seat of the caller's own; the exam is open and the caller has not finished it
     body:
       type: object
@@ -409,15 +408,14 @@ actions:
     sideEffects:
       - "adds to ExamAttempt.usedSeconds; at the end of the time, finishes it (finishedBy TIME) and scores it, as finishExamAttempt does"
 
-  restartExamAttempt:
+  recordTabSwitch:
     planned: "MDRS-299: online exams, no code yet"
-    route: POST /lessons/{id}/online-exam/attempt/restart
-    summary: A deliberate switch starts the attempt again
+    route: POST /lessons/{id}/online-exam/attempt/switch
+    summary: Count a deliberate switch to another tab or window
     description: >-
       Called by the page when the talebe comes back from another tab or window (the page was hidden while it held the attempt, and the
-      connection did not drop). Every answer of the attempt is erased, a new order of questions and options is drawn and the full length
-      is given again; the zeroth answer stays. The switch is kept, with its time and how many answers it erased, for the team. While the
-      owner's rule stands (tedris.exams.take D1).
+      connection did not drop). The switch is kept with its time for the team; nothing is erased and the attempt goes on where it was
+      (tedris.exams.take D1, decided on 22 Nov 2026).
     needs: the caller's own attempt in progress, held by the calling page
     body:
       type: object
@@ -428,11 +426,10 @@ actions:
     result: { status: 200, returns: ExamAttempt }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
-      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: the switch was to another tab of the exam, which now holds it: not a restart" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: the switch was to another tab of the exam, which now holds it" }
       ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress" }
     sideEffects:
-      - "deletes the attempt's ExamAnswer rows, draws a new order, sets usedSeconds to 0 and adds one to restarts"
-      - "creates a TabSwitch with the time and the number of answers erased"
+      - "adds one to ExamAttempt.switches and creates a TabSwitch with its time"
 
   finishExamAttempt:
     planned: "MDRS-299: online exams, no code yet"
@@ -477,7 +474,7 @@ actions:
       properties:
         released: { type: boolean }
         closed: { type: boolean }
-        attempt: { type: object, description: "{ startedAt, finishedAt, finishedBy, restarts }" }
+        attempt: { type: object, description: "{ startedAt, finishedAt, finishedBy }" }
         score: { type: [string, "null"] }
         counts: { type: [object, "null"], description: "only when released: { right, wrong, blank }, a question in shares counted right when it got all its points, wrong when it got less, blank when nothing was chosen" }
         topics: { type: array, description: "only when released, the weakest first; a question with two topics counts in both", items: { type: object, properties: { topicId: { type: string, format: uuid }, name: { type: string }, percent: { type: integer, minimum: 0, maximum: 100 }, right: { type: integer, minimum: 0 }, wrong: { type: integer, minimum: 0 } } } }
@@ -889,7 +886,7 @@ actions:
     summary: The exam's results, talebe by talebe, with the tab switches and the zeroth answers
     description: >-
       Every talebe with a seat in the course: not started, in progress (with the time left), finished (when and how, the score), and
-      missed once it has closed; how many times a switch started them again, with each time; their zeroth answer. Over them all: the
+      missed once it has closed; how many times they switched to another tab or window, with each time; their zeroth answer. Over them all: the
       counts, the average and the standing of the class in each topic, and how the zeroth question was answered. The scores are the
       ExamResult rows Değerlendirme reads; releasing them is the existing releaseExamResults.
     needs: exam.prepare on the lesson's course
@@ -900,7 +897,7 @@ actions:
       required: [exam, talebe, counts, topics, questions, zeroth, released, release, mayRelease]
       properties:
         exam: { type: object, description: "{ title, course, when, zerothQuestion, closed }, closed once the latest start has passed and no attempt is in progress, which ends the page's reading again" }
-        talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, right, wrong, blank, restarts, switches: [{ at, erased }], zerothOptionId, answers: [{ questionId, number, textStart, optionIds, correctOptionIds, points, got }] in the talebe's own order }" } }
+        talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, right, wrong, blank, switches: [{ at }], zerothOptionId, answers: [{ questionId, number, textStart, optionIds, correctOptionIds, points, got }] in the talebe's own order }" } }
         counts: { type: object, description: "{ seats, started, inProgress, finished, missed, average }" }
         topics: { type: array, items: { type: object, description: "{ topicId, name, percent, questionIds, talebe: [{ userId, name, percent }] from the weakest in the topic to the strongest }" } }
         questions: { type: array, items: { type: object, description: "{ questionId, number, text, textStart, points, rightPercent, blank, options: [{ id, text, correct, chosen }] }" } }
@@ -987,8 +984,8 @@ invariants:
 
   - id: online-exam-order-is-the-talebe-s-own
     rule: >-
-      Every attempt has an order of questions, and of each question's options, drawn for it alone when it starts and again when a switch
-      starts it again; a resumed attempt keeps its order.
+      Every attempt has an order of questions, and of each question's options, drawn for it alone when it starts; a resumed attempt
+      keeps its order.
     holds: false
     finding: MDRS-299
     note: "planned (MDRS-299): no code yet"

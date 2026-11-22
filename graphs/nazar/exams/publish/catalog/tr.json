@@ -17,7 +17,7 @@
   "planned.Exams.formatMultipleChoice": "Çoktan seçmeli",
   "planned.Exams.keepOpen": "Açık bırak",
   "planned.Exams.latestBefore": "En geç başlama, en erken başlamadan sonra olmalı.",
-  "planned.Exams.latestStartHelp": "Talebe en geç bu saate kadar başlayabilir; ne zaman başlarsa başlasın sürenin tamamını alır.",
+  "planned.Exams.latestStartHelp": "Gecikenler için: en erken başlamadan 10 dakika sonrası önerilir. Talebe bu saate kadar başlayabilir ve ne zaman başlarsa başlasın sürenin tamamını alır.",
   "planned.Exams.latestStartLabel": "En geç başlama",
   "planned.Exams.loadFailedTitle": "Sınav okunamadı",
   "planned.Exams.move": "Tarihi değiştir",

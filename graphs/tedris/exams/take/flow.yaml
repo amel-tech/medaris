@@ -8,7 +8,7 @@
 #
 # The server steps: the page reads the exam (getExamBriefing), saves the zeroth answer (answerZerothQuestion), starts the attempt
 # (startExamAttempt) or takes it over where it stopped (resumeExamAttempt), saves every answer (saveExamAnswer), starts it again after
-# a switch (restartExamAttempt) and ends it (finishExamAttempt). The clock is the server's: the page calls tickExamClock every few
+# counts a switch (recordTabSwitch) and ends it (finishExamAttempt). The clock is the server's: the page calls tickExamClock every few
 # seconds while it holds the attempt and is connected, and its answers are the events FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE
 # (drawn as events, not as a state of their own). Önceki, Sonraki, Soruyu atla and a pick in the list send the position with the same
 # saveExamAnswer; the graph draws that call once, at a choice.
@@ -28,8 +28,9 @@
 #     olan bi soru değil."
 #
 # Decided by the owner on 21 Nov 2026, when he read the first draft:
-#   - The switch rule stays for now ("kural kalsın şimdilik"); it is asked again of those who asked for it, with this flow's video (D1).
-#     A restart starts the exam truly anew: the full length again, and a new order of questions and options ("Tam süre, yeni sıra").
+#   - A switch to another tab or window does not start the exam again: it is only counted, and the team sees each one with its time
+#     (nazar.exams.results). The answer of those who asked for exams, relayed by the owner on 22 Nov 2026 (D1, closed):
+#     "tab değiştirme meselesinde sıfırlanıp baştan başlamayacak, sadece tab değişikliğini sayacağız".
 #   - The clock does not run while the connection is lost: "talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya
 #     hesap verir".
 #   - An exam opened in a second tab or on a second device moves there; that is not a switch.
@@ -52,7 +53,7 @@ title: Take an online exam
 summary: >-
   A talebe who holds a seat in the exam's course opens an exam between its earliest and its latest start. "Bilmeniz gerekenler"
   says how long it lasts, how many questions it has, that every answer is saved when it is chosen, that a lost connection resumes
-  where it stopped with the clock stopped meanwhile, and that switching to another tab or window starts the exam again. Under it
+  where it stopped with the clock stopped meanwhile, and that a switch to another tab or window is counted for the team. Under it
   stands the zeroth question, about the hadith "Bizi aldatan bizden değildir", which has to be answered before "Sınava başla" starts
   the clock. The talebe gets the questions, and each question's options, in an order of their own. A countdown is always on the
   screen and turns red, and says so, in the last five minutes. A list of the questions beside the question (behind a button on a
@@ -63,16 +64,6 @@ scope:
   shows: the exam's own page in tedris-web, from the briefing to the end screen
   world: open
   outOfView: [the list it is entered from (tedris.exams.mine), the result (tedris.exams.result)]
-decisions:
-  D1:
-    question: >-
-      Is starting the exam again after a deliberate switch to another tab or window what those who asked for exams want, once they
-      see it in the flow's video?
-    recommend: >-
-      The owner keeps the rule for now (21 Nov 2026) and asks again with the video. Show them that a closed and reopened tab is a lost
-      connection and resumes, so the rule only catches an open switch, and that a phone call or a notification also hides the page;
-      counting the switches and showing them to the team (nazar.exams.results) is the other way.
-    affects: [question, restarted, briefing]
 context:
   window:
     values: [before, open, closed]
@@ -125,7 +116,7 @@ context:
       running: more than five minutes are left
       lastFive: five minutes or less are left
   notice:
-    values: [none, resumed, saved, skippedFollow, notSaved, startFailed]
+    values: [none, resumed, saved, skippedFollow, notSaved, startFailed, switched]
     initial: none
     say:
       none: the page shows no notice
@@ -133,6 +124,7 @@ context:
       saved: the question says its answer is saved
       skippedFollow: the page says the skipped questions follow, and how many
       notSaved: the page says the answer, or the zeroth answer, could not be saved
+      switched: the page says the switch to another tab or window was counted
       startFailed: the briefing says the exam could not be started
   endedBy:
     values: [talebe, time, team, unknown]
@@ -168,6 +160,7 @@ effects:
   startOver: { set: { skipped: none, position: inside, clock: running, notice: none, pending: none } }
   resumedNotice: { set: { notice: resumed } }
   savedNotice: { set: { notice: saved } }
+  switchedNotice: { set: { notice: switched } }
   notSavedNotice: { set: { notice: notSaved } }
   startFailedNotice: { set: { notice: startFailed } }
   endedRead: { havoc: [endedBy] }
@@ -201,8 +194,8 @@ failures:
     ended: [ATTEMPT_ENDED, ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
     other: [ANSWER_INVALID, VALIDATION_ERROR, HTTP_401]
-  restarting:
-    from: restartExamAttempt
+  notingSwitch:
+    from: recordTabSwitch
     elsewhere: [ATTEMPT_HELD_ELSEWHERE]
     ended: [ATTEMPT_NOT_FOUND]
     offline: [network, timeout, 5xx]
@@ -278,8 +271,8 @@ states:
     description: >-
       Before anything starts: the exam's title and course, how long it lasts and that the full length is given whenever it is started,
       how many questions it has and how the points are given, that every answer is saved the moment it is chosen and there is no
-      "send", that a lost connection or a closed page resumes where it stopped and the clock stops meanwhile, that switching to another
-      tab or window starts the exam again, how skipping and the question list work, that "Sınavı bitir" ends it, and the team's own
+      "send", that a lost connection or a closed page resumes where it stopped and the clock stops meanwhile, that a switch to another
+      tab or window is counted and the team sees it, how skipping and the question list work, that "Sınavı bitir" ends it, and the team's own
       instructions. Under it the zeroth question: the hadith in Arabic and its meaning, the preparer's question about it and its
       options. "Sınava başla" is off until the zeroth question is answered, and starts the clock.
     by: human
@@ -350,7 +343,7 @@ states:
       TIME_UP: { target: timeUp, say: "the time runs out" }
       FINISH: { target: confirmFinish, say: "they press Sınavı bitir" }
       CONNECTION_LOST: { target: offline, say: "the connection is lost" }
-      SWITCHED_AWAY: { target: restarting, say: "they switch to another tab or window and come back" }
+      SWITCHED_AWAY: { target: notingSwitch, say: "they switch to another tab or window and come back" }
       MOVED_ELSEWHERE: { target: elsewhere, say: "the clock's call says another tab or device has opened the exam" }
       NAVIGATE: { target: left, say: "they close the page or leave it: the attempt stays in progress and its clock stops" }
   saving:
@@ -395,28 +388,19 @@ states:
     on:
       OPEN_HERE: { target: reading, say: "they press Burada aç: the exam is read again and moves back here" }
       NAVIGATE: left
-  restarting:
-    title: Start the attempt again
+  notingSwitch:
+    title: Count the switch
     description: >-
-      The action restartExamAttempt, POST /lessons/{id}/online-exam/attempt/restart, called when the talebe comes back from another tab
-      or window: every answer of the attempt is erased, a new order of questions and options is drawn, and the full length is given
-      again; the zeroth answer stays. The switch is kept, with its time, for the team (D1).
-    invoke: { action: restartExamAttempt }
+      The action recordTabSwitch, POST /lessons/{id}/online-exam/attempt/switch, called when the talebe comes back from another tab
+      or window: the switch is kept with its time for the team (nazar.exams.results). Nothing is erased and the exam goes on where it
+      was; the page says the switch was counted (D1, decided on 22 Nov 2026).
+    invoke: { action: recordTabSwitch }
     on:
-      DONE: { target: restarted, say: "the attempt is started again on the server" }
-      FAIL.elsewhere: { target: elsewhere, say: "the switch was to another tab of the exam, which now holds it: not a restart" }
+      DONE: { target: question, effect: [switchedNotice], say: "the switch is counted and the question is shown again with a line that says so" }
+      FAIL.elsewhere: { target: elsewhere, say: "the switch was to another tab of the exam, which now holds it" }
       FAIL.ended: { target: timeUp, say: "the attempt had ended meanwhile" }
       FAIL.offline: { target: offline, say: "the connection is gone" }
       FAIL.other: { target: readFailed, say: "the session has ended: the page says it could not go on" }
-  restarted:
-    title: The exam starts again
-    description: >-
-      A deliberate switch to another tab or window: the talebe is told why the exam starts again and what was lost (how many answers
-      were erased) before the briefing shows again, with the full length and a new order of questions and options (D1). The zeroth
-      question keeps its answer.
-    by: human
-    on:
-      CONTINUE: { target: briefing, effect: [startOver], say: "they press Anladım: the briefing is shown again" }
   confirmFinish:
     title: Sınavı bitir?
     description: >-

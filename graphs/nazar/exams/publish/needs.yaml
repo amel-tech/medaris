@@ -90,7 +90,10 @@ needs:
       - node: latestHelp
       - node: openAlert
     missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
-    note: "Owner: \"şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım\" (D1)."
+    note: >-
+      Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım" (D1). Asked of
+      those who asked for exams, relayed by the owner on 22 Nov 2026: "sınava en geç başlama saati" defaultta 10 dakika sonra olacak; the medrese: "sadece gecikme için bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız". The latest start is filled
+      with the earliest start plus 10 minutes, and the team may change it.
 
   - id: taken-back-only-before-anyone-starts
     need: >-

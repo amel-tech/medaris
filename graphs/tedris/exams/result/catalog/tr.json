@@ -7,7 +7,6 @@
   "planned.Exams.notReleasedHint": "Dersin ekibi sonuçları açıkladığında puan ve konulara göre durum burada görünür.",
   "planned.Exams.scoreOutOf": "100 üzerinden {score}",
   "planned.Exams.counts": "{right} doğru · {wrong} yanlış · {blank} boş",
-  "planned.Exams.restartNote": "Başka bir sekmeye ya da pencereye geçildiği için sınav {restarts} kez baştan başladı.",
   "planned.Exams.byTopic": "Konulara göre",
   "planned.Exams.myAnswers": "Cevaplarım",
   "planned.Exams.answersLater": "Cevaplar ve doğruları, sınav herkes için bitince burada açılır.",

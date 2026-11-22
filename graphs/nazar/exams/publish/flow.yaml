@@ -12,8 +12,10 @@
 # olacak".
 #
 # Decided by the owner on 21 Nov 2026:
-#   - For now a talebe starts between an earliest and a latest start, and always gets the full length: "şimdilik 'en erken şu saatte
-#     en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım" (D1 asks it of those who asked for exams).
+#   - A talebe starts between an earliest and a latest start, and always gets the full length: "şimdilik 'en erken şu saatte
+#     en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım". Asked of those who asked for exams, the owner
+#     relayed on 22 Nov 2026 (D1, closed): "sınava en geç başlama saati" defaultta 10 dakika sonra olacak; the medrese: "sadece gecikme için bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız". So the latest start is filled with
+#     the earliest start plus 10 minutes, and the team may change it.
 #   - The earliest start is the exam celse's date and time ("Celse saati = en erken"); "Şimdi yayınla" moves it to now.
 #   - An open exam that a talebe has started cannot be taken back; it can be closed early ("Geri alınamaz, erken bitirilir").
 #   - The talebe are told when it is scheduled or opened, and reminded 24 hours before ("Zamanlanınca + 24 saat önce").
@@ -40,15 +42,6 @@ scope:
     - "who started and finished, and their scores: nazar.exams.results"
     - "the notifications themselves and the 24-hour reminder: the existing remindDueExams, and the talebe's own page (tedris.exams.mine)"
     - "an ended session (every call then sends the person to sign in: realm.auth.signIn)"
-decisions:
-  D1:
-    question: >-
-      Is "start between the earliest and the latest start, always with the full length" what those who asked for exams want? Or does
-      everyone sit it together, or does a late start get less time?
-    recommend: >-
-      The owner's choice for now (21 Nov 2026), asked again of them with the flow's video: start between the two, full length always.
-      Whether the latest start has a default is to be asked with it.
-    affects: [scheduleForm, open, closed]
 context:
   status:
     values: [draft, scheduled, open, closed]

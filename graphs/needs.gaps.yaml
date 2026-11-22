@@ -3,8 +3,8 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1377 missing needs in 183 flows, of 2750 needs in 183 flows (counted by script from the needs.yaml files, 21 Nov 2026). 306 name a
-# Linear issue first, the most MDRS-299 (110, the online exams planned on 21 Nov 2026), MDRS-284 (35), MDRS-238 (17), MDRS-140 (12),
+# 1376 missing needs in 183 flows, of 2749 needs in 183 flows (counted by script from the needs.yaml files, 22 Nov 2026). 305 name a
+# Linear issue first, the most MDRS-299 (109, the online exams planned on 21 Nov 2026), MDRS-284 (35), MDRS-238 (17), MDRS-140 (12),
 # MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1071 have no Linear issue.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
@@ -1447,7 +1447,6 @@ gaps:
     - standing-across-the-course  # MDRS-299
     - own-answers-beside-the-correct-ones  # MDRS-299
     - in-notlarim-with-the-other-exams  # MDRS-299
-    - a-restart-is-said  # MDRS-299
     - words-and-numbers-not-colour-alone  # MDRS-299
   tedris.exams.take:
     - briefing-before-the-start  # MDRS-299
@@ -1469,7 +1468,7 @@ gaps:
     - the-skipped-come-back-after-the-last  # MDRS-299
     - finish-asks-once  # MDRS-299
     - resume-after-a-lost-connection  # MDRS-299
-    - a-switch-starts-it-again  # MDRS-299
+    - a-switch-is-counted  # MDRS-299
     - the-switch-rule-is-told-first  # MDRS-299
     - one-place-at-a-time  # MDRS-299
     - the-key-never-reaches-the-browser  # MDRS-299

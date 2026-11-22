@@ -51,7 +51,7 @@ nodes:
   chooseRegion: { type: page, component: Page, role: region, name: { labelledBy: chooseTitle }, in: [choose, publishingNow] }
   chooseTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.publish }, in: [choose, publishingNow] } # h2
   publishSummary: { type: text, component: Text, text: { key: planned.Exams.publishSummary, params: { course: exam.courseTitle, duration: exam.durationMinutes, count: exam.questionCount } }, in: [choose, publishingNow] } # what the talebe will see
-  latestNowField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.latestStartLabel }, in: [choose, publishingNow], disabledIn: [publishingNow] } # the latest start when it opens now; no default (D1 asks whether it has one)
+  latestNowField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.latestStartLabel }, in: [choose, publishingNow], disabledIn: [publishingNow] } # filled with now plus 10 minutes; the team may change it (D1, decided 22 Nov 2026)
   latestHelp: { type: text, component: Text, text: { key: planned.Exams.latestStartHelp }, in: [choose, publishingNow, scheduleForm, scheduling, scheduleRefused] }
   latestBeforeError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.latestBefore }, in: [choose], when: "notice == 'latestBefore'" } # under the latest start's field
   publishNow: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.publishNow }, in: [choose, publishingNow], disabledIn: [publishingNow], emits: PUBLISH_NOW } # the exam celse's date and time become now; the talebe of the course are told
@@ -63,7 +63,7 @@ nodes:
   scheduleTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.publishLater }, in: [scheduleForm, scheduling, scheduleRefused] } # h2
   earliestField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.earliestStartLabel }, in: [scheduleForm, scheduling, scheduleRefused], disabledIn: [scheduling] } # it becomes the exam celse's date and time
   earliestHelp: { type: text, component: Text, text: { key: planned.Exams.earliestStartHelp }, in: [scheduleForm, scheduling, scheduleRefused] }
-  latestField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.latestStartLabel }, in: [scheduleForm, scheduling, scheduleRefused], disabledIn: [scheduling] }
+  latestField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.latestStartLabel }, in: [scheduleForm, scheduling, scheduleRefused], disabledIn: [scheduling] } # filled with the earliest start plus 10 minutes, and moves with it until the team changes it (D1, decided 22 Nov 2026)
   timeZoneNote: { type: text, component: Text, text: { key: planned.Exams.timeZoneNote, params: { zone: viewer.timeZone } }, in: [scheduleForm, scheduling, scheduleRefused] } # the talebe's own time is shown beside each where their time zone differs (tedris.exams.mine)
   timePassedError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.timePassed }, in: [scheduleRefused] } # under the field it is about; nothing is scheduled
   fixTime: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.changeTime }, in: [scheduleRefused], emits: FIX }
@@ -109,6 +109,6 @@ edges:
 
 rules:
   - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; a refused time moves the focus to the field it is about; a dialog takes the focus and gives it back to the button that opened it. Nothing is built, so the graph sets no initialFocus." }
-  - { id: no-default-latest-start, rule: "The latest start has no default value: whether it has one is asked with D1, so the field is empty until the team fills it, and nothing is published without it." }
+  - { id: latest-start-ten-minutes, rule: "The latest start is filled with the earliest start plus 10 minutes (now plus 10 for Şimdi yayınla), for those who come late; the team may change it, and nothing is published without it (D1, decided on 22 Nov 2026: the medrese uses it for lateness only and sees to an excuse itself)." }
   - { id: time-zones, rule: "The dates are typed and shown in the team member's time zone, named beside them; a talebe whose time zone differs is shown their own time as well (tedris.exams.mine, tedris.exams.take)." }
   - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review; Sessions.* and Problems.* are the app's own." }

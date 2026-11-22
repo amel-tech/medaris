@@ -49,12 +49,6 @@ context:
     say:
       no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress)
       yes: the exam has closed for everyone
-  restarts:
-    values: [none, some]
-    initial: any
-    say:
-      none: the attempt was never started again
-      some: a switch to another tab or window started the attempt again, once or more
   courseRead:
     values: [ok, failed]
     initial: any
