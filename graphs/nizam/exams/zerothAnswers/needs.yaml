@@ -1,5 +1,5 @@
-# What must exist for Medaris management to read the zeroth question's answers in aggregate: written needs-first on 21 November 2026
-# from the owner's rule and his answers (quoted at the top of flow.yaml). Every need is missing: there is no code.
+# What must exist for Medaris management to read the zeroth answers in aggregate: written needs-first on 21 November 2026, then met by
+# MDRS-299 (#420, #427); each met need names its code or test.
 schema: delurio-graph/0
 kind: needs
 id: nizam.exams.zerothAnswers
@@ -12,16 +12,27 @@ needs:
       exams of their own köşk, and nothing of another's.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionsList
+      - node: optionCount
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
+      - source: apps/nizam/lib/shell-nav.ts:141
     note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\"; asked who else: \"Köşk nazımı kendi köşkünü\"."
 
   - id: never-one-talebe-s-answer
     need: >-
-      The page never shows a talebe's name or a single answer, and its counts cannot be traced to one talebe: a count under five is
-      shown as "5'ten az".
+      The page never shows a talebe's name or a single answer; its counts are exact, small ones included.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: optionCount
+      - node: examAnswered
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "sends small counts as they are, one to four included"
+    note: >-
+      The first draft hid every count under five and called it the owner's rule. He said, 22 Nov 2026: "ben böyle bi karar vermedim,
+      saçma bu zaten neden gizleyeyim tabi ki görünecek" (#427).
 
   - id: the-same-question-counted-together
     need: >-
@@ -30,13 +41,22 @@ needs:
     evidence:
       - state: listed
       - state: questionDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionExams
+      - node: examsTable
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
 
   - id: filtered-by-time-and-place
     need: The counts filter by a span of dates, by köşk, by medrese and by course, and the filter stays in the address.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: filters
+      - node: fromField
+      - node: koskField
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "open on the last 90 days in Turkey and drop what they do not know"
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "narrow the medrese and the course to the köşk chosen"
     note: "There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's \"bu dönem ... diğer dönem\" reads."
 
   - id: only-management
@@ -46,17 +66,24 @@ needs:
     evidence:
       - state: opening
       - state: forbidden
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "refuses a Medaris nazımı without the grant, and anyone else"
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "gives a köşk nazımı their own köşk only, and refuses another köşk"
     note: A köşk nazımı reads it for their own köşk only.
 
   - id: none-yet-says-so
     need: With no answer in the span chosen, the page says so.
     evidence:
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: emptyNote
+      - source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx
 
   - id: figures-as-text
     need: Every count is said in numbers and words; a bar only repeats it, and a table has headers a screen reader reads.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: optionBar
+      - node: examsTable
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "says every count as it is, small ones included, with its percentage"

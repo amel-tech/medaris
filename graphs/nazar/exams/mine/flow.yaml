@@ -1,23 +1,22 @@
-# The course team's "Sınavlarım" in nazar-web: the exams of the courses a person prepares exams for, by status, and the way into
-# each. PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and
-# no Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+# The course team's "Sınavlarım" in nazar-web: the exams of every course a person prepares exams for, by status, and the way into each.
+# NOT BUILT (MDRS-299): its read is listMyTeachingExams, still `planned` in domain/online-exams.yaml. What is built instead is each
+# course's own "Sınavlar" page (/ders/<courseId>/sinavlar, listOnlineExams, drawn in nazar.exams.edit's opening): its exams with their
+# status and "Yeni sınav", which makes a draft with its title and no celse ("Celsesiz taslak", the owner, 22 Nov 2026), not the plan's
+# "Celse planla" with "Sınav" and "Çoktan seçmeli" chosen. Written graph-first on 21 November 2026; `status: proposed`.
 #
-# The owner's rules this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
+# The owner's words this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
 # kendilerine özel ekranları da görebilecekler"; "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak".
-# Read for nazar as: the exams the person prepares, and their own screens of the past ones (nazar.exams.results). The menu entry is
-# nazar's navigation graph's (graphs/nazar/nav) once the page exists.
-#
-# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse; a hoca prepares it, and so does a ders
-# nazırı the hoca gives a new grant to prepare exams ("Hoca + yetkili ders nazırı"). The list holds every exam of those courses,
-# written and oral too, as tedris's does ("Hepsi, tedris gibi").
+# The statuses are built on the course's Sınavlar page (Taslak, Yayında with its date); the menu across courses is not.
 schema: delurio-graph/0
 kind: flow
 id: nazar.exams.mine
 status: proposed
+domain: medaris.api
+ui: nazar.exams.mine
 title: Read the exams I prepare (Sınavlarım)
 summary: >-
   A hoca, or a ders nazırı who may prepare exams, opens "Sınavlarım" from nazar's menu. The page lists the exams of the courses
-  where they may, written, oral and online alike. An online one shows its status (Taslak; "<gün> <saat>'te yayında"; Yayında;
+  where they may, written, oral and multiple-choice alike. An online one shows its status (Taslak; "<gün> <saat>'te yayında"; Yayında;
   Bitti), its question count against the suggested 50 and its length, and for an open or past one how many talebe started and
   finished; a written or oral one its date, its place and how many scores are entered. It filters by status and by
   course. "Yeni sınav" starts a draft (nazar.exams.edit); a draft or a scheduled exam opens its editor, an open or past one its
@@ -26,6 +25,18 @@ scope:
   shows: the page "Sınavlarım" of nazar-web
   world: open
 context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: the exams are read
+      failed: the read fails
+  courses:
+    values: [one, several]
+    initial: any
+    say:
+      one: the person prepares exams for one course
+      several: the person prepares exams for more than one course
   exams:
     values: [none, some]
     initial: any
@@ -38,14 +49,28 @@ context:
     say:
       yes: the person is a hoca of a course, or holds the grant to prepare its exams
       no: the person prepares exams for no course
+failures:
+  opening: { from: listMyTeachingExams, unreadable: [network, timeout, 5xx] }
+# A 401 is the session's, and sends the person to sign in (realm.auth.signIn); it is not drawn here.
+
 main:
-  given: { exams: some, may: yes }
-  events: [OPEN]
+  given: { read: ok, exams: some, may: yes }
+  events: [DONE, OPEN]
 initial: opening
 states:
   opening:
     title: Sınavlarım is opened
-    description: The page reads the exams of the courses the person prepares exams for.
+    description: >-
+      The action listMyTeachingExams, GET /me/teaching-exams, with the filter the address holds: the courses where the person is a
+      hoca or holds exam.prepare, and the exams of those courses, of every format, drafts included. A person with no such course gets
+      an empty list of courses.
+    invoke: { action: listMyTeachingExams }
+    on:
+      DONE: { guard: "read == 'ok'", target: loaded, say: "the exams are read" }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
+  loaded:
+    title: The page is drawn as the read says
+    description: A step with no screen of its own.
     always:
       - { guard: "may == 'no'", target: forbidden, say: "the person prepares exams for no course" }
       - { guard: "exams == 'none'", target: empty, say: "no exam yet" }
@@ -64,24 +89,54 @@ states:
     by: human
     goal: true
     on:
-      FILTER: { target: listed, say: "they filter by status or by course" }
-      CREATE: { target: draft_created, say: "they press Yeni sınav" }
-      OPEN: { target: exam_opened, say: "they open an exam" }
+      FILTER: { target: opening, say: "they filter by status or by course: the filter goes into the address and the list is read again" }
+      CREATE:
+        - { guard: "courses == 'one'", target: draft_created, say: "they press Yeni sınav, and prepare exams for one course" }
+        - { target: choosingCourse, say: "they press Yeni sınav, and prepare exams for several courses" }
+      OPEN: { target: exam_opened, say: "they open a multiple-choice exam" }
+      OPEN_SCORES: { target: scores_opened, say: "they open a written or oral exam" }
       NAVIGATE: left
   empty:
     title: No exams yet
-    description: The page says "Henüz sınav yok." and offers "Yeni sınav".
+    description: >-
+      The page says "Henüz sınav yok." and offers "Yeni sınav". The filters stay, so that one that left nothing can be changed or
+      cleared here.
     by: human
     on:
-      CREATE: { target: draft_created, say: "they press Yeni sınav" }
+      FILTER: { target: opening, say: "they change or clear a filter: the list is read again" }
+      CREATE:
+        - { guard: "courses == 'one'", target: draft_created, say: "they press Yeni sınav, and prepare exams for one course" }
+        - { target: choosingCourse, say: "they press Yeni sınav, and prepare exams for several courses" }
       NAVIGATE: left
+  loadFailed:
+    title: Sınavlarım could not be read
+    description: The page keeps its heading and says the exams could not be read, with "Yeniden dene"; it does not draw an empty list.
+    by: human
+    on:
+      RETRY: { target: opening, say: "they press Yeniden dene" }
+      NAVIGATE: left
+  choosingCourse:
+    title: Which course the new exam is for
+    description: >-
+      A dialog over the page: the courses the person prepares exams for, one to choose, with "Devam" and "Vazgeç". Nothing is made
+      yet.
+    by: human
+    on:
+      CONFIRM: { target: draft_created, say: "they choose a course and press Devam" }
+      CANCEL: { target: loaded, say: "they press Vazgeç: the page is as it was" }
   draft_created:
-    title: A new draft is opened in the editor
-    description: nazar.exams.edit.
+    title: A new draft is started
+    description: >-
+      The course's Sınavlar page with "Yeni sınav": a draft with its title and no celse, which opens in the editor (nazar.exams.edit);
+      publishing it makes the celse later. Nothing reaches a talebe.
     type: final
   exam_opened:
     title: An exam is opened
     description: A draft or a scheduled exam opens its editor (nazar.exams.edit), an open or past one its results (nazar.exams.results).
+    type: final
+  scores_opened:
+    title: A written or oral exam's scores are opened
+    description: Its column in the course's Değerlendirme (nazar.evaluation.examScores).
     type: final
   left:
     title: The person left the page

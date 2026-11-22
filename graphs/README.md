@@ -15,12 +15,12 @@ Counted by script on 16 November 2026, and the flows and the needs again on 21 N
 
 | What | How many |
 | -- | -- |
-| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (the planned ones: 5 drawn with their screens, and the 8 of online exams, written needs first) |
-| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | 175 flows with a `ui.yaml` (the 8 flows of online exams have none yet) |
+| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (5 planned ones, each drawn with its screens, and the 8 of online exams, written before their code and brought to it since) |
+| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
-| The domain `medaris.api` | one domain over 26 files: 352 actions (329 in the code, 23 sketched for the planned flows), 64 entities, 319 invariants |
-| `needs.yaml` (the product list of a flow) | 183 files, 2750 needs: 1373 met, 1377 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
-| Findings (distinct ids in `ui.yaml` `rules`) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
+| The domain `medaris.api` | one domain over 27 files: 388 actions (363 in the code, 25 sketched for planned work: 23 for the planned flows and 2 of online exams), 79 entities, 327 invariants |
+| `needs.yaml` (the product list of a flow) | 183 files, 2752 needs: 1460 met, 1292 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 670 of the met needs are walked by no scenario and no browser e2e test |
+| Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 
 ## Layout
@@ -97,16 +97,21 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 
 ## Status
 
-- Every flow is `captured` except the 13 planned ones, which are `proposed`: `landing.site.roadmap`, `nazar.sessions.inPersonSeats`, `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`, and the eight of online exams. A planned flow draws a
-  feature that has no code yet (its `needs.yaml` says which Linear issue builds it, and its API is sketched in
-  `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
-- **Online exams** (planned on 21 November 2026, no Linear issue yet) are written needs first: `tedris.exams.mine`,
-  `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.mine`, `nazar.exams.edit`, `nazar.exams.publish` and
-  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, 110 needs, all missing. Each
-  `flow.yaml` is only the skeleton its needs are drawn on, with the owner's rules and his answers of the same day quoted at its top.
-  Two choices are still open, both to be asked again of those who asked for exams, with the flows' videos: whether a switch to
-  another tab starts the exam again (`tedris.exams.take` D1), and when a talebe may start it (`nazar.exams.publish` D1). Their
-  screens, their API (`domain/planned-exams.yaml`) and their bindings come next.
+- Every flow is `captured` except 13 that are `proposed`: the 5 planned ones (`landing.site.roadmap`, `nazar.sessions.inPersonSeats`,
+  `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`), which draw a feature that
+  has no code yet (each `needs.yaml` says which Linear issue builds it, and the API is sketched in `domain/planned-*.yaml`, every entry
+  marked as planned and carrying no `source`), and the 8 of online exams.
+- **Online exams** (MDRS-299) were written needs first on 21 November 2026 and built from 22 November (PRs #408 to #431):
+  `tedris.exams.mine`, `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.edit`, `nazar.exams.publish` and
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, and `nazar.exams.mine`, the team's
+  Sınavlarım across courses, which is not built (each course has its own Sınavlar page). The flows were brought to the code on 22
+  November and stay `proposed`: written before the code, their states name no `source`. Their API is `domain/online-exams.yaml`, read
+  from the code, with every entity and action naming its line; two actions not built yet say `planned` (`listMyTeachingExams`,
+  `copyOnlineExam`). Each `flow.yaml` quotes the owner's words at its top and says, apart, what was chosen in the code without him;
+  his two open questions are answered (a switch is only counted; the late window is 10 minutes by default and set in minutes). Of the
+  online exams' 112 needs, 87 are met with their code or tests and 25 are missing (what is not built, and the walks with a keyboard
+  and a screen reader). The catalogs keep the plan's keys (`planned.Exams.*`); only the words of what changed are copied from the
+  apps. No binding yet.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,
   `tedris.account.rolesOverview`, `nazar.pano.decideApplications`, `nizam.kosks.open`, `landing.site.contact`) and a number of the
@@ -211,7 +216,7 @@ playback and every file upload (the storage keys are not set, the upload routes 
 - **Gaps.** [`needs.gaps.yaml`](needs.gaps.yaml) lists, per flow, the ids of the needs that are `missing`. `check` holds it to the
   needs: a missing need that is not listed fails (`need-unlisted`), and so does an entry whose need is met (`gap-met`), so the list
   only shrinks, and each new gap is a line a review reads. A met need that no walk covers is not a gap: it is a need whose
-  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 583.
+  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 670.
 
 ## Conventions
 

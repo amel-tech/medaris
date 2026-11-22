@@ -1,44 +1,67 @@
 # A talebe's "Sınavlarım" in tedris-web: the exams of their courses, open now, coming and past, and the way into each.
-# PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and no
-# Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+# BUILT (MDRS-299, #418): apps/tedris/app/my-exams/page.tsx with features/online-exams/components/my-exams-page.tsx, in the desktop bar
+# and the phone menu; its read is listMyExams (domain/online-exams.yaml). Written graph-first on 21 November 2026; `status: proposed`,
+# so no state names code.
 #
-# The owner's rule this flow carries (21 Nov 2026): "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında
-# kendilerine özel ekranları da görebilecekler". In tedris that is the talebe's own exams and their own screen of each past one
-# (tedris.exams.result); nazar's "Sınavlarım" is the course team's (nazar.exams.mine). The menu entry is tedris's navigation graph's
-# (graphs/tedris/nav) once the page exists.
+# The owner's words this flow carries: "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında kendilerine özel
+# ekranları da görebilecekler" (21 Nov); and "tedris'te sınavlar menüsü olsun, mesela yaklaşan ve devam eden sınav varsa tıklayınca direk
+# sınav ekranına gitsin talebe ders ve celse sayfalarını atlayıp kolayca" (22 Nov): an online exam that is coming, open or in progress
+# opens its exam page straight from here, not its course or its celse. An online exam is the third format of the exam celse, and the list
+# holds every exam of the talebe's courses, whatever its format; a completed course's past exams stay, a course left takes its exams.
 #
-# Decided by the owner on 21 Nov 2026: an online exam is the third format of the exam celse (written, oral, online), and the list
-# holds every exam of the talebe's courses, whatever its format. A completed course's past exams stay; a course left or lost takes
-# its exams with it.
+# Choices made in the code that are not his: the menu entry keeps the name "Sınavlarım" (his 21 Nov word) rather than "Sınavlar"; a
+# written or oral exam leads to Notlarım after its celse, and its score is shown out of its own maximum.
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.mine
 status: proposed
+domain: medaris.api
+ui: tedris.exams.mine
 title: Read my exams (Sınavlarım)
 summary: >-
   The talebe opens "Sınavlarım" from tedris's menu. The page lists every exam of the courses they hold a seat in, written, oral and
-  online alike, in three groups: open now, with "Sınava gir" (or "Devam et" for one in progress) and until when it can be started;
-  coming, with the day and time it opens (and, for a written or oral exam, its place) in the talebe's own time zone; and past, with
-  the score once the course team has released it. An online exam is entered through its briefing (tedris.exams.take); a past one
+  multiple-choice alike, in three groups: open now, with "Sınava gir" (or "Devam et" for one in progress) and until when it can be
+  started; coming, with the day and time it opens (and, for a written or oral exam, its place) in the talebe's own time zone; and
+  past, with the score once the course team has released it. An online exam is entered through its briefing (tedris.exams.take); a past one
   opens the talebe's own screen of it (tedris.exams.result), and a written or oral one its course's Notlarım.
 scope:
   shows: the page "Sınavlarım" of tedris-web
   world: open
 context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: the exams are read
+      failed: the read fails
   exams:
     values: [none, some]
     initial: any
     say:
       none: no course of the talebe has an exam that is scheduled, open or past
       some: at least one exam is listed
+failures:
+  opening: { from: listMyExams, unreadable: [network, timeout, 5xx] }
+# A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
+
 main:
-  given: { exams: some }
-  events: [ENTER]
+  given: { read: ok, exams: some }
+  events: [DONE, ENTER]
 initial: opening
 states:
   opening:
     title: Sınavlarım is opened
-    description: The page reads the talebe's exams; a draft online exam is never among them.
+    description: >-
+      The action listMyExams, GET /me/exams, read once: the open and coming exams first, then the past ones (when=all, the default). Only
+      the exams of courses where the talebe holds an ENROLLED or COMPLETED seat come back, of every format; a draft online exam is never
+      among them, and a course the talebe left takes its exams with it.
+    invoke: { action: listMyExams }
+    on:
+      DONE: { guard: "read == 'ok'", target: loaded, say: "the exams are read" }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
+  loaded:
+    title: The page is drawn as the read says
+    description: A step with no screen of its own.
     always:
       - { guard: "exams == 'none'", target: empty, say: "no exam" }
       - { target: listed, say: "exams are listed" }
@@ -46,17 +69,25 @@ states:
     title: The talebe's exams
     description: >-
       Three groups, each with a heading: "Şimdi açık", "Yaklaşan", "Geçmiş". Each exam names its course, its title and its format;
-      an online one its length and its question count. An open one offers "Sınava gir", or "Devam et" when it is in progress; a
-      coming one says when it opens; a past one says its score or "Sonuç henüz açıklanmadı".
+      an online one its length and its question count. An online exam that is coming, open or in progress links straight to its exam
+      page ("Sınav sayfası", "Sınava gir", "Devam et"); a past one says its score or that it was taken, and "Sonucu gör".
     by: human
     goal: true
     on:
-      ENTER: { target: exam_entered, say: "they press Sınava gir, or Devam et" }
-      READ_RESULT: { target: result_opened, say: "they open a past exam" }
+      ENTER: { target: exam_entered, say: "they open a coming, open or running online exam: its exam page, not its course or celse" }
+      READ_RESULT: { target: result_opened, say: "they open a past multiple-choice exam" }
+      READ_GRADES: { target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam" }
+      NAVIGATE: left
+  loadFailed:
+    title: Sınavlarım could not be read
+    description: The page keeps its heading and says the exams could not be read, with "Yeniden dene"; it does not draw an empty list.
+    by: human
+    on:
+      RETRY: { target: opening, say: "they press Yeniden dene" }
       NAVIGATE: left
   empty:
     title: No exams yet
-    description: The page says "Henüz sınavınız yok." and that exams of their courses will be listed here.
+    description: The page says "Henüz sınavın yok." and that exams of their courses will be listed here.
     by: human
     on:
       NAVIGATE: left
@@ -67,6 +98,10 @@ states:
   result_opened:
     title: The talebe's screen of a past exam is opened
     description: tedris.exams.result.
+    type: final
+  grades_opened:
+    title: The course's Notlarım is opened
+    description: A written or oral exam has no screen of its own; its score stands in the course's Notlarım (tedris.course.grades).
     type: final
   left:
     title: The talebe left the page

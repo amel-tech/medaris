@@ -1,7 +1,6 @@
 # What must exist for a talebe to take an online exam: written needs-first on 21 November 2026 from the owner's rules (quoted at the
-# top of flow.yaml and, rule by rule, in each need's note) and his answers of the same day (also at the top of flow.yaml). Every need
-# is missing: there is no code. Where a need carries a choice still open, the note names the flow's decision (D1 in flow.yaml)
-# and the need is written as its recommendation.
+# top of flow.yaml), then met by the code of MDRS-299 (#416 and its follow-ups): each met need names the code or the test that shows it.
+# One need is still missing: nobody has walked the page with the keyboard alone or a screen reader.
 schema: delurio-graph/0
 kind: needs
 id: tedris.exams.take
@@ -16,7 +15,11 @@ needs:
       only when they press "Sınava başla".
     evidence:
       - state: briefing
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: briefingFacts
+      - node: startButton
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:767
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "says in the briefing what A− and A+ do, and draws them"
     note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
 
   - id: the-zeroth-question-first
@@ -27,7 +30,14 @@ needs:
       and no points, and is not part of the score.
     evidence:
       - state: briefing
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: hadithArabic
+      - node: zerothOptions
+      - node: startHint
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:811
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "asks for the zeroth answer before the start"
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "starts only with the zeroth question answered, in an order of the talebe's own"
     note: >-
       Owner: "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda.
       mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış
@@ -41,7 +51,11 @@ needs:
       no exam at all, and the server refuses every call of theirs to it.
     evidence:
       - state: opening
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: notFound
+      - node: notFoundAlert
+      - source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:75
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "briefs the enrolled talebe with no question, and no one else"
     note: As the course's other content is read (an ENROLLED seat; a ban or a passive scope shuts it).
 
   - id: started-between-the-earliest-and-the-latest
@@ -53,16 +67,21 @@ needs:
     evidence:
       - state: notOpen
       - state: closed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: notOpenAlert
+      - node: closedAlert
+      - source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:120
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "refuses to start before the earliest start and after the latest"
     note: >-
       Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım"
-      (nazar.exams.publish D1).
+      (nazar.exams.publish D1, decided on 22 Nov 2026: the latest start is the earliest plus 10 minutes by default, for lateness).
 
   - id: taken-once
     need: An exam is taken once. A talebe who finished it cannot start it again, and opening it leads to its result.
     evidence:
       - state: already_finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: alreadyTaken
+      - source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:46
     note: >-
       Not one of the owner's rules; it follows from "verilen cevap kabul edilecek". A second chance is a make-up exam, as exam
       celses have one today (LessonExam.isRetake).
@@ -73,7 +92,8 @@ needs:
       talebe side by side do not see the same question or the same option in the same place.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "starts only with the zeroth question answered, in an order of the talebe's own"
     note: "Owner: \"çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için\". The order is drawn by the server when the attempt starts."
 
   - id: the-order-stays-for-the-attempt
@@ -83,7 +103,9 @@ needs:
     evidence:
       - state: resuming
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:372
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "goes on with an attempt in progress where the talebe was"
 
   - id: answered-as-the-question-asks
     need: >-
@@ -92,7 +114,12 @@ needs:
       They can change their answer as long as the exam has not ended.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: radioOptions
+      - node: checkOptions
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:624
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:639
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "saves every answer by the page's count, and only what fits the question"
     note: >-
       Owner: "en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir"; "5 şıklı, 2'si doğru bi
       soruda sadece radio button olabilir. istenirse checkbox da olur"; asked whether the talebe is told: "Hiçbir şey söylenmez".
@@ -104,7 +131,10 @@ needs:
       the exam ends is the talebe's answer. The question says that its answer is saved.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: savedLine
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:225
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "shows a choice at once, and a late answer to an earlier save does not take it back"
     note: "Owner: \"her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek direk 'sınav bitti tüm cevapları tek seferde gönder' demeye gerek yok\"."
 
   - id: an-answer-not-saved-is-said
@@ -114,7 +144,16 @@ needs:
     evidence:
       - state: offline
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: offlineAlert
+      - node: notSavedLine
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:572
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:563
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
+    note: >-
+      Built as a notice over the page, not at the question: "Bağlantı koptu" with the clock stopped, or "Medaris güncellendi" with
+      "Sayfayı yenile" when a new version was deployed while the exam was open (#429). The unsent choices are kept in the tab and sent
+      after the resume.
 
   - id: the-countdown-is-always-there
     need: >-
@@ -122,7 +161,8 @@ needs:
       count, so setting the device's clock gives no time; it does not run while the connection is lost.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: timer
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:543
     note: "Owner: \"sınav ekranında geri sayım olacak\"."
 
   - id: the-last-five-minutes-stand-out
@@ -131,7 +171,8 @@ needs:
       sign, and a screen reader is told once that five minutes are left, not every second.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: lastFive
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:547
     note: "Owner: \"son 5 dk kala geri sayım mesela kırmızı olacak ki anlaşılsın\"."
 
   - id: the-time-running-out-ends-it
@@ -141,7 +182,11 @@ needs:
     evidence:
       - state: timeUp
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: finishedByTime
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "ends the exam when the time runs out, with the answers saved"
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "runs the clock only while the page calls, and ends the attempt when the time is up"
     note: >-
       Not one of the owner's first rules: without it an exam would never end for a talebe who stays on the page. Asked whether it
       should end by itself, the owner answered "önerdiğin gibi" (21 Nov 2026).
@@ -152,14 +197,20 @@ needs:
       number and whether it is answered, skipped or not seen yet, marks the one shown, and takes the talebe to any question.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionList
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:675
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
 
   - id: previous-and-next
     need: '"Önceki" and "Sonraki" move one question back or on, in the talebe''s own order.'
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: previousButton
+      - node: nextButton
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:655
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:668
 
   - id: skip-a-question
     need: >-
@@ -167,7 +218,8 @@ needs:
       can still be answered at any time.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: skipButton
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:657
     note: "Owner: \"soruyu atla seçeneği olacak\"."
 
   - id: the-skipped-come-back-after-the-last
@@ -176,7 +228,8 @@ needs:
       how many there are. When none is skipped, the last question offers "Sınavı bitir".
     evidence:
       - state: skippedTurn
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: skippedNotice
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:512
     note: "Owner: \"son soruya gelindiğinde atlanan sorulara dönülecek\"."
 
   - id: finish-asks-once
@@ -186,7 +239,9 @@ needs:
     evidence:
       - state: confirmFinish
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: finishButton
+      - node: finishDialog
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:718
     note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
 
   - id: resume-after-a-lost-connection
@@ -197,23 +252,33 @@ needs:
     evidence:
       - state: offline
       - state: resuming
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: resumedNotice
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:406
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "sends the choices kept before a reload once the attempt is taken back"
     note: >-
       Owner: "sınav sırasında talebe koparsa kaldığı yerden devam edecek"; asked whether the clock runs meanwhile: "talebeye
       güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
 
-  - id: a-switch-starts-it-again
+  - id: a-switch-is-counted
     need: >-
-      A deliberate switch to another tab or window during the exam starts it again from the beginning: the answers given are erased,
-      the talebe is told why and what was lost before the briefing shows again, and the new start gives the full length and a new
-      order of questions and options.
+      A deliberate switch to another tab or window during the exam is counted, with its time, for the team. Nothing is erased: the
+      exam goes on where it was, and the talebe is told the switch was counted.
     evidence:
-      - state: restarted
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: notingSwitch
+      - node: switchedNotice
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "counts a switch to another tab with its time, and erases nothing"
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "counts going to another window, not only another tab"
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "counts a hidden tab once, though both the tab and the window come back"
     note: >-
-      Owner: "bilerek sekme veya pencere değiştirirse sınav baştan başlayacak (bu mantıklı gelmiyor bana ama öyle istendi, tekrar
-      sorarız)", then "kural kalsın şimdilik, soracağız bunu akış videosunu çekip verdiğimizde" (D1); asked what a restart resets:
-      "Tam süre, yeni sıra". Every switch is also shown to the team, with its time (nazar.exams.results).
+      The first draft started the exam again after a switch. Those who asked for exams answered, as the owner relayed on 22 Nov 2026:
+      "tab değiştirme meselesinde sıfırlanıp baştan başlamayacak, sadece tab değişikliğini sayacağız" (D1, closed). Another window
+      taking the focus counts as well, once the page has been away two seconds (#425, after the owner's "başka ekranlara geçtim sekme
+      değiştirmedim ama saymamış"; the two seconds are my choice). Every switch is shown to the team with its time
+      (nazar.exams.results).
 
   - id: the-switch-rule-is-told-first
     need: >-
@@ -221,8 +286,10 @@ needs:
       what happened, at once and in words.
     evidence:
       - state: briefing
-      - state: restarted
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: notingSwitch
+      - node: factSwitch
+      - node: switchedNotice
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:774
 
   - id: one-place-at-a-time
     need: >-
@@ -231,7 +298,12 @@ needs:
     evidence:
       - state: opening
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: elsewhere
+      - node: elsewhereAlert
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "says the exam is open elsewhere when another tab has taken it"
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "moves the attempt to the last page that opens it, which alone saves and finishes"
     note: "Owner, asked what a second tab or device does: \"Yeni yere taşınsın\". It is not counted as a switch."
 
   - id: the-key-never-reaches-the-browser
@@ -240,7 +312,9 @@ needs:
       scores the exam. No talebe can read another's order or answers.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:311
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "starts only with the zeroth question answered, in an order of the talebe's own"
 
   - id: answers-only-while-it-is-open
     need: >-
@@ -249,7 +323,10 @@ needs:
     evidence:
       - state: question
       - state: timeUp
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "refuses to start before the earliest start and after the latest"
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "finishes the attempts of an exam the team closed early"
 
   - id: arabic-in-questions
     need: >-
@@ -257,7 +334,9 @@ needs:
       and a quoted ayet in the Qur'an's face. A long question or option wraps and stays readable on a phone.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - source: apps/tedris/features/online-exams/arabic.ts
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "makes the text bigger step by step, stops at the largest, and keeps it for a reload"
     note: The faces are the design system's (Scheherazade New for the Qur'an, Noto Naskh Arabic for other Arabic).
 
   - id: in-the-talebe-s-language
@@ -267,7 +346,8 @@ needs:
     evidence:
       - state: briefing
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - source: libs/i18n/src/locales/ar/tedris-learn.json
+      - source: libs/i18n/src/locales/en/tedris-learn.json
 
   - id: keyboard-and-screen-reader
     need: >-
@@ -276,7 +356,9 @@ needs:
       question list says each question's state in words, not by colour alone.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: radioOptions
+      - node: questionListItem
+    missing: "MDRS-299: built with roles and names (the options as a radio group or check boxes, the list's numbers named with their state, the countdown a timer), but not walked with the keyboard alone or with a screen reader"
 
   - id: the-end-says-what-comes-next
     need: >-
@@ -284,4 +366,54 @@ needs:
       result can be read (Sınavlarım).
     evidence:
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: resultWhere
+      - node: toMine
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:876
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:878
+
+  - id: the-text-size-can-change
+    need: >-
+      During the exam the talebe can make the text of the questions and their options bigger or smaller, from the question itself, and
+      the briefing says so and shows what the buttons look like. Arabic is drawn at a size that reads.
+    evidence:
+      - state: question
+      - node: textSmallerButton
+      - node: textBiggerButton
+      - node: factTextSize
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:528
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "makes the text bigger step by step, stops at the largest, and keeps it for a reload"
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "says in the briefing what A− and A+ do, and draws them"
+    note: >-
+      Owner, 22 Nov 2026: "arapça font boyutu küçük kalıyor, biraz büyütmemiz lazım 1 rem yapalım. bir de sınav sırasında soruların
+      bi yerine yazı boyutu büyütme küçültme butonu ekleyelim. sınav öncesi bilmeniz gerekenler listesinde bu yazsın butonların neye
+      benzediğini de göstersin".
+
+  - id: the-list-says-each-state-by-colour
+    need: >-
+      The question list shows at a glance which questions are not answered, which are skipped and which are answered, and says the
+      same in words; the briefing names the colours.
+    evidence:
+      - state: question
+      - node: questionListItem
+      - node: factColors
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "colours the question list: unanswered yellow, skipped orange, answered plain, the current one ringed"
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "names the list's colours among what to know before the start"
+    note: >-
+      Owner, 22 Nov 2026: "sınavlarda altta soru indicatorleri cevaplanmamışsa sarı olsun, atlanmışsa turuncu olsun, cevaplanmışsa
+      beyaz/dark olsun". The design system has no orange; skipped uses the warning's bold fill.
+
+  - id: a-new-version-loses-no-choice
+    need: >-
+      When a new version of Medaris is deployed while the exam is open, the page says so and how to go on, and no choice made on it is
+      lost.
+    evidence:
+      - state: offline
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:563
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "sends the choices kept before a reload once the attempt is taken back"

@@ -1,5 +1,5 @@
-# What must exist for the course team's screens of an online exam: written needs-first on 21 November 2026 from the owner's rules.
-# Every need is missing: there is no code. The owner's answers of the same day are at the top of flow.yaml.
+# What must exist for the course team's results of an online exam: written needs-first on 21 November 2026 from the owner's rules, then
+# met by MDRS-299 (#417, #423); each met need names its code or test. One is still missing: no walk with a screen reader.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.results
@@ -12,7 +12,9 @@ needs:
     evidence:
       - state: opening
       - state: forbidden
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: forbiddenAlert
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "is read by those who prepare the exam, and says who may release it"
 
   - id: every-talebe-and-where-they-are
     need: >-
@@ -21,14 +23,22 @@ needs:
     evidence:
       - state: overview
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: talebeTable
+      - node: rowState
+      - node: sortField
+      - source: apps/tedrisat/src/online-exam/exam-results.controller.ts:56
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "draws a talebe's state, switches and zeroth answer"
     note: "Owner, for nazar: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: live-while-it-is-open
     need: "While the exam is open, the overview follows it: who started, who handed in, how many are in progress."
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: liveNote
+      - node: countsLine
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "reads again while the exam is open, and not once it has closed"
 
   - id: the-topics-across-the-talebe
     need: >-
@@ -37,7 +47,9 @@ needs:
     evidence:
       - state: overview
       - state: topicDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: topicsTable
+      - node: topicTalebeTable
+      - source: apps/tedrisat/src/online-exam/domain/exam-results.ts
     note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\": what the talebe sees of themselves, the team sees of all."
 
   - id: a-question-that-misled-is-found
@@ -47,7 +59,10 @@ needs:
     evidence:
       - state: overview
       - state: questionDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionRight
+      - node: optionChosen
+      - node: questionBlank
+      - source: apps/tedrisat/src/online-exam/domain/exam-results.ts
 
   - id: a-talebe-s-attempt
     need: >-
@@ -55,7 +70,17 @@ needs:
       when they started and handed in.
     evidence:
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: attemptQuestions
+      - node: attemptTimes
+      - test: apps/nazar/test/exam-answers.spec.tsx
+        name: "marks the talebe's choice with a check and words, the correct option with the badge, and the points earned"
+      - test: apps/nazar/test/exam-answers.spec.tsx
+        name: "opens a talebe's answers from the results row of one who started, and not of one who did not"
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "opens one talebe's answers: the exam's order, the correct marks, the choices and the points, and only that talebe's"
+    note: >-
+      Owner, 22 Nov 2026: "sınav sonuçlarında talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım" (#423). The
+      questions come in the exam's order, not the talebe's (my choice).
 
   - id: the-switches-are-shown
     need: >-
@@ -64,7 +89,10 @@ needs:
     evidence:
       - state: overview
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowSwitches
+      - node: switchItem
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "draws a talebe's state, switches and zeroth answer"
     note: "Owner, asked whether the team sees the switches: \"Evet, sayı ve zaman\"."
 
   - id: the-zeroth-answers-per-talebe
@@ -74,7 +102,11 @@ needs:
     evidence:
       - state: overview
       - state: talebeDetail
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowZeroth
+      - node: zerothCounts
+      - node: zerothNoScore
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "reads a finished talebe's score, counts and zeroth answer, and writes the score to Değerlendirme"
     note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\" (management's view is nizam.exams.zerothAnswers)."
 
   - id: saved-answers-count-for-an-unfinished-attempt
@@ -83,7 +115,9 @@ needs:
       saved, and says that the time ended it.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: rowState
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "closes early: an attempt in progress ends with its saved answers, and nothing starts or closes again"
     note: "From the owner's \"verilen cevap kabul edilecek\"."
 
   - id: release-the-results
@@ -92,7 +126,11 @@ needs:
       once and for all, and the page says when and by whom.
     evidence:
       - state: released
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: releaseButton
+      - node: releaseDialog
+      - node: releasedLine
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "releases at once, and offers no release to one who may not"
     note: "As Değerlendirme releases an exam celse's results today (nazar.evaluation.examScores); owner, asked whether the team releases them: \"evet\"."
 
   - id: in-degerlendirme-with-the-other-exams
@@ -101,8 +139,11 @@ needs:
       started is "Girmedi" there, and the release is the one Değerlendirme has.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
-    note: An online exam is an exam celse (owner, 21 Nov 2026).
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "reads a finished talebe's score, counts and zeroth answer, and writes the score to Değerlendirme"
+    note: >-
+      An online exam is an exam celse (owner, 21 Nov 2026). Değerlendirme keeps whole scores, so 87.50 is written as 88 (half up);
+      "Girmedi" is not written by itself: the team marks it there as today (choices of #417, not his).
 
   - id: words-and-numbers-not-colour-alone
     need: >-
@@ -110,4 +151,6 @@ needs:
       a chart has the same figures as text.
     evidence:
       - state: overview
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: countsLine
+      - node: topicBar
+    missing: "MDRS-299: the results say each figure in text, but the page was not walked with a screen reader"

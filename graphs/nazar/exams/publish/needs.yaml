@@ -1,5 +1,6 @@
-# What must exist for the course team to publish, schedule and take back an online exam: written needs-first on 21 November 2026
-# from the owner's rules and his answers of the same day (at the top of flow.yaml). Every need is missing: there is no code.
+# What must exist for the course team to publish an online exam: written needs-first on 21 November 2026 from the owner's rules, then met
+# by MDRS-299 (#415, #431); each met need names its code or test. Still missing: moving a scheduled exam in place, a page that redraws
+# itself when the exam opens, and a notification when it is scheduled or opened.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.publish
@@ -13,7 +14,10 @@ needs:
       - state: scheduled
       - state: open
       - state: closed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: draftBadge
+      - node: scheduledBadge
+      - node: openBadge
+      - source: apps/nazar/features/online-exams/components/exams-page.tsx:49
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
 
   - id: checked-before-it-is-published
@@ -24,27 +28,44 @@ needs:
     evidence:
       - state: checking
       - state: notReady
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: problemLink
+      - source: apps/nazar/features/online-exams/components/exam-publish.tsx:42
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "lists every problem of an exam that is not ready, and plans nothing"
+      - test: apps/nazar/test/exam-publish.spec.tsx
+        name: "lists what keeps it from being published, and offers no button"
 
   - id: publish-now
     need: >-
-      "Şimdi yayınla" opens the exam at once, with a latest start, after saying what the talebe will see: the course, the length and
-      the question count. The exam celse's date and time become now.
+      "Şimdi yayınla" opens the exam when the button is pressed, with a late window in minutes, after saying what the talebe will see:
+      the length and the question count. The exam celse is made at that time.
     evidence:
       - state: choose
       - state: open
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: publishSummary
+      - node: lateMinutesField
+      - node: publishNow
+      - test: apps/nazar/test/exam-publish.spec.tsx
+        name: "publishes now with the late window counted from the press, twenty minutes when the hoca says so"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "counts the late window in minutes from the start it sets, now included"
 
   - id: publish-at-a-day-and-time
     need: >-
-      The team chooses the earliest start, a day and a time, which is the exam celse's own, and the latest start, in its own time
-      zone, with the talebe's shown beside it where they differ. A time that has passed, or a latest start before the earliest, is
-      refused with why.
+      The team chooses the earliest start, a day and a time, which is the exam celse's own, and the late window in minutes, in its own
+      time zone, which the form names. A time that has passed is refused with why.
     evidence:
       - state: scheduleForm
       - state: scheduleRefused
       - state: scheduled
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: earliestField
+      - node: lateMinutesField
+      - node: timeZoneNote
+      - node: timePassedError
+      - test: apps/nazar/test/exam-publish.spec.tsx
+        name: "schedules it at the day and time chosen, the latest start ten minutes later"
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
     note: "Owner: \"'şu gün şu saat yayında'\"; asked how the celse's time and the start relate: \"Celse saati = en erken\"."
 
   - id: opens-by-itself
@@ -54,7 +75,9 @@ needs:
     evidence:
       - state: scheduled
       - state: open
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: scheduledAlert
+      - source: apps/tedrisat/src/online-exam/domain/exam-attempt.ts
+    missing: "MDRS-299: the exam opens by its time (the window is reckoned on every read), but a page left open is not drawn again when it opens"
 
   - id: moved-or-taken-back-until-it-opens
     need: >-
@@ -63,7 +86,13 @@ needs:
     evidence:
       - state: scheduled
       - state: draft_again
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: moveButton
+      - node: toDraftScheduled
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "takes it back until it opens: the celse goes and the draft stays"
+      - test: apps/nazar/test/exam-publish.spec.tsx
+        name: "takes a scheduled exam back to a draft, and gives the editor back"
+    missing: "MDRS-299: taking it back to a draft is built; moving a scheduled exam in place is not (it is taken back, then published again)"
 
   - id: started-until-the-latest-start-with-the-full-length
     need: >-
@@ -73,17 +102,28 @@ needs:
       - state: scheduleForm
       - state: open
       - state: closed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
-    note: "Owner: \"şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım\" (D1)."
+      - node: latestHelp
+      - node: openAlert
+      - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
+        name: "refuses to start before the earliest start and after the latest"
+    note: >-
+      Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın" (21 Nov). Relayed on 22 Nov
+      2026 (D1, answered): "'sınava en geç başlama saati' de defaultta 10 dakika sonra olacak. şu anki medresemiz 'sadece gecikme için
+      bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız' dedi"; and "belki 10 dk değil 20 dk seçecek hoca": the late
+      window is asked in minutes, 10 by default.
 
   - id: taken-back-only-before-anyone-starts
     need: >-
-      An open exam can be taken back to a draft only while no talebe has started it. After that the page says how many are in
-      progress, and offers to close it early, which ends every attempt with the answers saved so far.
+      A published exam can be taken back to a draft only until it opens. After that it can be closed early, which ends every attempt
+      with the answers saved so far.
     evidence:
       - state: open
       - state: unpublishRefused
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: unpublishRefusedDialog
+      - node: closeDialog
+      - source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "closes early: an attempt in progress ends with its saved answers, and nothing starts or closes again"
     note: "Owner, asked whether it can be taken back after a talebe has started: \"Geri alınamaz, erken bitirilir\"."
 
   - id: the-talebe-are-told
@@ -93,7 +133,8 @@ needs:
     evidence:
       - state: scheduled
       - state: open
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: notifiedNote
+    missing: "MDRS-299: the exam celse's 24-hour reminder runs as for every exam celse, but no notification says an online exam is scheduled or opened; not verified on the stack"
     note: "Owner: \"Zamanlanınca + 24 saat önce\"; as exam celses are reminded today (LessonExam.remindedAt)."
 
   - id: only-the-course-team-and-audited
@@ -102,4 +143,7 @@ needs:
       audited: who, when, and what it was before.
     evidence:
       - state: choose
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: forbiddenAlert
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "publishes only with exam.prepare"
+      - source: apps/tedrisat/src/online-exam/online-exam.service.ts:165

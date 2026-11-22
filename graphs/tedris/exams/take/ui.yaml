@@ -1,0 +1,176 @@
+# The screens of tedris.exams.take: the exam's own page in tedris-web, from "Bilmen gerekenler" and the zeroth question to "Sınav bitti".
+# BUILT (MDRS-299): apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx and features/online-exams/components/exam-take.tsx,
+# reached from Sınavlarım (tedris.exams.mine, straight to this page) and from the exam celse's "Sınava gir". The nodes carry no `source`:
+# the graph is `proposed`, written before the code.
+#
+# Layout as built: the title and the course at the top; on the question screen a bar with the countdown and the question's number, the
+# question card with its points, A− and A+ in its header, the options, Önceki / Soruyu atla / Sonraki under it, "Sınavı bitir" apart,
+# and the list of the questions under the card, each number coloured by its state (rule list-colours).
+#
+# Words. The keys are the plan's (`planned.Exams.*`); the Turkish of the parts added on 22 November (A−/A+, the colours, the switch) is
+# copied from tedris-learn.json (OnlineExam). The talebe is addressed as "sen", as tedris speaks. Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.exams.take
+flow: tedris.exams.take
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Ara sınav
+  course: Fıkha Giriş
+  opens: 24 Kas Sal 21:00
+  latest: 24 Kas Sal 23:00
+  minutes: "60"
+  count: "50"
+  instructions: Sorular 2. ile 5. haftaların konularından.
+  zerothQuestion: Bu hadisi ne zaman öğrendiniz?
+  option: Bu dersten önce
+  number: "12"
+  points: "2,00"
+  timeLeft: "23:41"
+  question: Kıyasın rükünleri kaç tanedir?
+  state: Cevaplandı
+  skipped: "2"
+  unanswered: "3"
+  at: "21:47"
+
+nodes:
+  # --- the page, on every screen -----------------------------------------------------------------------------------------------------
+  examPage: { type: page, component: Page, role: main, in: [notFound, readFailed, notOpen, closed, briefing, savingZeroth, starting, question, saving, offline, elsewhere, confirmFinish, finishing, finished, already_finished] } # the shell's one <main>
+  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notOpen, closed, briefing, savingZeroth, starting, question, saving, offline, elsewhere, confirmFinish, finishing, finished, already_finished] } # h1: the exam's own title
+  courseLine: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: exam.courseTitle } }, in: [notOpen, closed, briefing, savingZeroth, starting, finished, already_finished] }
+  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [notOpen, closed, briefing, savingZeroth, starting] } # a badge, not a live region
+
+  # --- before and after the window, and no exam ----------------------------------------------------------------------------------------
+  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.notFoundTitle }, text: { key: planned.Exams.notFound }, in: [notFound] } # says nothing of the exam: to this person there is none
+  readFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.loadFailedTitle }, text: { key: planned.Exams.readFailed }, in: [readFailed] }
+  retryButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.retry }, in: [readFailed], emits: RETRY }
+  notOpenAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.notOpenTitle }, text: { key: planned.Exams.notOpen, params: { opens: exam.startsAt, latest: exam.latestStartAt } }, in: [notOpen] } # both times on the talebe's own clock; no start is offered
+  closedAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.closedTitle }, text: { key: planned.Exams.closed, params: { latest: exam.latestStartAt } }, in: [closed] }
+
+  # --- Bilmeniz gerekenler -------------------------------------------------------------------------------------------------------------
+  briefingRegion: { type: page, component: Page, role: region, name: { labelledBy: briefingTitle }, in: [briefing, savingZeroth, starting] }
+  briefingTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.briefingTitle }, in: [briefing, savingZeroth, starting] } # h2
+  briefingFacts: { type: list, component: List, role: list, name: { labelledBy: briefingTitle }, in: [briefing, savingZeroth, starting] }
+  factLength: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factLength, params: { minutes: exam.durationMinutes } }, in: [briefing, savingZeroth, starting] }
+  factQuestions: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factQuestions, params: { count: exam.questionCount } }, in: [briefing, savingZeroth, starting] }
+  factMarks: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factMarks }, in: [briefing, savingZeroth, starting] } # says how each kind is answered, never how many options are correct
+  factSaved: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSaved }, in: [briefing, savingZeroth, starting] }
+  factConnection: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factConnection }, in: [briefing, savingZeroth, starting] }
+  factSwitch: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSwitch }, in: [briefing, savingZeroth, starting] } # what a switch does, told before the start: it is counted (D1, decided 22 Nov 2026)
+  factSkip: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSkip }, in: [briefing, savingZeroth, starting] }
+  factColors: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factColors }, in: [briefing, savingZeroth, starting] } # the list's colours, named in words (#418)
+  factTextSize: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factTextSize }, in: [briefing, savingZeroth, starting] } # followed by the two buttons drawn inert, aria-hidden (#421)
+  factFinish: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factFinish }, in: [briefing, savingZeroth, starting] }
+  instructionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.instructionsTitle }, in: [briefing, savingZeroth, starting], when: hasInstructions } # h3; only when the team wrote some
+  instructionsText: { type: text, component: Text, text: { key: composed.Exams.instructions, params: { instructions: exam.instructions } }, in: [briefing, savingZeroth, starting], when: hasInstructions }
+
+  # --- the zeroth question -------------------------------------------------------------------------------------------------------------
+  zerothRegion: { type: page, component: Page, role: region, name: { labelledBy: zerothTitle }, in: [briefing, savingZeroth, starting] }
+  zerothTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothTitle }, in: [briefing, savingZeroth, starting] } # h2
+  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [briefing, savingZeroth, starting] } # lang="ar" dir="rtl" on this element, the Arabic face (rule arabic-runs)
+  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [briefing, savingZeroth, starting] }
+  zerothQuestionText: { type: text, component: Text, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: exam.zeroth.question } }, in: [briefing, savingZeroth, starting] } # the preparer's question
+  zerothNote: { type: text, component: Text, role: note, text: { key: planned.Exams.zerothNote }, in: [briefing, savingZeroth, starting] }
+  zerothOptions: { type: list, component: List, role: radiogroup, name: { labelledBy: zerothQuestionText }, in: [briefing, savingZeroth, starting], disabledIn: [starting] }
+  zerothOption: { type: field, component: ListItem, role: radio, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [briefing, savingZeroth, starting], disabledIn: [starting], repeat: exam.zeroth.options, emits: ANSWER_ZEROTH } # choosing one saves it; another choice replaces it until the start
+  zerothNotSaved: { type: alert, component: Text, role: alert, text: { key: planned.Exams.notSaved }, in: [briefing], when: "notice == 'notSaved'" } # at the question, said at once
+  startButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.start }, in: [briefing, savingZeroth, starting], disabledIn: [savingZeroth, starting], disabledWhen: "not zerothGiven", emits: START } # off until the zeroth question is answered
+  startHint: { type: text, component: Text, role: note, text: { key: planned.Exams.startHint }, in: [briefing, savingZeroth], when: "not zerothGiven" } # says why the start is off, beside it (aria-describedby)
+  startFailed: { type: alert, component: Text, role: alert, text: { key: planned.Exams.startFailed }, in: [briefing], when: "notice == 'startFailed'" }
+
+  # --- the bar that is always on the question screen -------------------------------------------------------------------------------------
+  examBar: { type: page, component: Page, role: region, name: { key: planned.Exams.barLabel }, in: [question, saving, confirmFinish, finishing] } # stays at the top while the page scrolls
+  timer: { type: text, component: Text, role: timer, name: { key: planned.Exams.timeLeftLabel }, text: { key: composed.Exams.timeLeft, params: { timeLeft: attempt.timeLeft } }, in: [question, saving, offline, confirmFinish, finishing] } # minutes and seconds, the server's count; a timer is not a live region, so it is not read every second; red in the last five minutes
+  lastFive: { type: status, component: Status, role: status, text: { key: planned.Exams.lastFive }, in: [question, saving, confirmFinish, finishing], when: "clock == 'lastFive'" } # the words beside the red, spoken once when it appears
+  counter: { type: text, component: Text, text: { key: planned.Exams.counter, params: { number: question.number, count: exam.questionCount } }, in: [question, saving] } # "Soru 12/50"
+  textSmallerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.textSmaller }, text: { key: composed.Exams.textSmallerMark }, in: [question, saving], emits: TEXT_SIZE } # disabled at the smallest step (rule text-size)
+  textBiggerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.textBigger }, text: { key: composed.Exams.textBiggerMark }, in: [question, saving], emits: TEXT_SIZE } # disabled at the largest step
+  pointsLine: { type: text, component: Text, text: { key: planned.Exams.questionPoints, params: { points: question.points } }, in: [question, saving] } # two decimals
+
+  # --- the question ----------------------------------------------------------------------------------------------------------------------
+  questionRegion: { type: page, component: Page, role: region, name: { labelledBy: counter }, in: [question, saving] }
+  resumedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.resumed }, in: [question], when: "notice == 'resumed'" }
+  switchedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.switchCounted }, in: [question], when: "notice == 'switched'" } # nothing is erased; the team sees the switch
+  skippedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.skippedFollow, params: { skipped: attempt.skippedCount } }, in: [question], when: "notice == 'skippedFollow'" }
+  questionText: { type: text, component: Heading, role: heading, text: { key: composed.Exams.question, params: { question: question.text } }, in: [question, saving] } # h2; going to a question puts the focus here (focus); an Arabic text is set right to left (rule arabic-runs)
+  radioOptions: { type: list, component: List, role: radiogroup, name: { labelledBy: questionText }, in: [question, saving], when: "mode == 'single'" } # one choice
+  radioOption: { type: field, component: ListItem, role: radio, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [question, saving], when: "mode == 'single'", repeat: question.options, emits: CHOOSE } # in the talebe's own order; choosing saves it
+  checkOptions: { type: list, component: List, role: group, name: { labelledBy: questionText }, in: [question, saving], when: "mode == 'multiple'" } # any number of marks; nothing says how many are right
+  checkOption: { type: field, component: TextField, role: checkbox, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [question, saving], when: "mode == 'multiple'", repeat: question.options, emits: CHOOSE } # marking or clearing one saves the question's marks
+  savingLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saving }, in: [saving] }
+  savedLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saved }, in: [question], when: "notice == 'saved'" } # only once the server holds it
+  notSavedLine: { type: alert, component: Text, role: alert, text: { key: planned.Exams.notSaved }, in: [question], when: "notice == 'notSaved'" }
+  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.previous }, in: [question, saving], disabledIn: [saving], emits: PREVIOUS }
+  skipButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.skip }, in: [question, saving], disabledIn: [saving], emits: SKIP }
+  nextButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.next }, in: [question, saving], disabledIn: [saving], emits: NEXT }
+  finishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.finish }, in: [question, saving], disabledIn: [saving], emits: FINISH } # apart from the three above, always there
+
+  # --- Sorular, the question list --------------------------------------------------------------------------------------------------------
+  questionList: { type: list, component: List, role: navigation, name: { key: planned.Exams.questionsTitle }, in: [question, saving] } # beside the question; behind a button on a phone (rule list-on-a-phone)
+  questionListItem: { type: action, component: Button, role: button, name: { key: planned.Exams.listItemLabel, params: { number: row.number, state: row.state } }, text: { key: composed.Exams.number, params: { number: row.number } }, in: [question, saving], repeat: attempt.questions, disabledIn: [saving], emits: JUMP } # the one shown has aria-current; its state is said in words, not by colour alone
+  questionListState: { type: text, component: Text, text: { oneOf: [planned.Exams.stateAnswered, planned.Exams.stateSkipped, planned.Exams.stateUnseen] }, in: [question, saving], repeat: attempt.questions }
+
+  # --- the connection, another place -------------------------------------------------------------------------------------------
+  offlineAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.offlineTitle }, text: { key: planned.Exams.offline }, in: [offline] } # the clock has stopped; the choice is kept here and sent when the connection is back
+  elsewhereAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.elsewhereTitle }, text: { key: planned.Exams.elsewhere }, in: [elsewhere] } # not a switch: nothing is erased
+  openHereButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.openHere }, in: [elsewhere], emits: OPEN_HERE }
+
+  # --- Sınavı bitir? ---------------------------------------------------------------------------------------------------------------------
+  finishDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: finishTitle }, in: [confirmFinish, finishing], initialFocus: backToExamButton } # opens on Sınava dön, the choice that loses nothing
+  finishTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.finishTitle }, in: [confirmFinish, finishing] }
+  finishBody: { type: text, component: Text, text: { key: planned.Exams.finishBody, params: { unanswered: attempt.unansweredCount, skipped: attempt.skippedCount, timeLeft: attempt.timeLeft } }, in: [confirmFinish, finishing] }
+  confirmFinishButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.confirmFinish }, in: [confirmFinish, finishing], disabledIn: [finishing], emits: CONFIRM }
+  backToExamButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: planned.Exams.backToExam }, in: [confirmFinish, finishing], disabledIn: [finishing], emits: CANCEL } # the focus goes back to Sınavı bitir (returnsFocus)
+
+  # --- Sınav bitti -----------------------------------------------------------------------------------------------------------------------
+  finishedRegion: { type: page, component: Page, role: region, name: { labelledBy: finishedTitle }, in: [finished, already_finished] }
+  finishedTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.finishedTitle }, in: [finished, already_finished] } # h2
+  finishedByTalebe: { type: text, component: Text, text: { key: planned.Exams.finishedByTalebe, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'talebe'" }
+  finishedByTime: { type: text, component: Text, text: { key: planned.Exams.finishedByTime, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'time'" } # the time ran out
+  finishedByTeam: { type: text, component: Text, text: { key: planned.Exams.finishedByTeam, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'team'" } # the team closed it early
+  finishedEnded: { type: text, component: Text, text: { key: planned.Exams.finishedEnded }, in: [finished], when: "endedBy == 'unknown'" } # how it ended could not be read
+  resultWhere: { type: text, component: Text, text: { key: planned.Exams.resultWhere }, in: [finished] }
+  alreadyTaken: { type: text, component: Text, text: { key: planned.Exams.alreadyTaken }, in: [already_finished] }
+  toMine: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [finished, already_finished] } # to Sınavlarım (tedris.exams.mine), where the result is read once released
+
+focus: { question: questionText }
+
+edges:
+  - { labelledBy: [finishDialog, finishTitle] }
+  - { returnsFocus: [finishDialog, finishButton] }
+  - { labelledBy: [briefingRegion, briefingTitle] }
+  - { labelledBy: [briefingFacts, briefingTitle] }
+  - { labelledBy: [zerothRegion, zerothTitle] }
+  - { labelledBy: [zerothOptions, zerothQuestionText] }
+  - { labelledBy: [questionRegion, counter] }
+  - { labelledBy: [radioOptions, questionText] }
+  - { labelledBy: [checkOptions, questionText] }
+  - { labelledBy: [finishedRegion, finishedTitle] }
+  - { triggers: [retryButton, reading] }
+  - { triggers: [zerothOption, savingZeroth] }
+  - { triggers: [startButton, starting] }
+  - { triggers: [radioOption, saving] }
+  - { triggers: [checkOption, saving] }
+  - { triggers: [finishButton, confirmFinish] }
+  - { triggers: [confirmFinishButton, finishing] }
+  - { triggers: [openHereButton, reading] }
+
+rules:
+  - { id: text-size, rule: "A− and A+ in the question card's header scale the question and its options in four steps, 100, 115, 130 and 150 %, kept in the tab (sessionStorage) for the attempt; the smallest and the largest disable their button. Arabic grows with them (#421; the steps are my choice)." }
+  - { id: arabic-text, rule: "A question or an option whose first letter is Arabic script is drawn with lang=ar, dir=rtl, the Arabic font at 1rem or more and the Arabic leading, isolated from what stands beside it (the owner, 22 Nov: \"arapça font boyutu küçük kalıyor … 1 rem yapalım\")." }
+  - { id: list-colours, rule: "The list's numbers are yellow when unanswered, orange when skipped and plain when answered (the owner, 22 Nov); the design system has no orange, so skipped uses the warning's bold fill (my choice). The current one has a ring of its own, and each number's name says its state, so colour is not the only cue." }
+  - { id: away-counts, rule: "A switch is counted on the way back when the page was hidden (another tab) or its window lost the focus (another window or application), for two seconds or more (#425); one away period is one switch." }
+  - { id: new-version, rule: "A save, a clock count or a resume that Medaris answers as unknown after a new version was deployed shows \"Medaris güncellendi\" with \"Sayfayı yenile\" in place of the connection notice; the choices not yet taken are kept in the tab and sent once the attempt is taken back after the reload (#429)." }
+  - { id: arabic-runs, rule: "An Arabic run, the hadith and any Arabic in a question or an option, gets lang=\"ar\", dir=\"rtl\" and the Arabic face on the element itself, never on a shared ancestor (the design system's rule); a question that mixes Arabic and Turkish is split into runs. A long question or option wraps and stays readable on a phone." }
+  - { id: hadith-to-confirm, rule: "The hadith's Arabic, \"مَنْ غَشَّنَا فَلَيْسَ مِنَّا\", and its meaning, \"Bizi aldatan bizden değildir.\", are written here by the graph and are for the owner to confirm, letter for letter, before they are built: they are fixed and the same in every exam (planned.Exams.hadithArabic, planned.Exams.hadithMeaning)." }
+  - { id: the-key-stays-on-the-server, rule: "Nothing the page holds says which options are correct or what an answer scores: the server sends the options in the talebe's own order and scores the exam at the end (getExamBriefing, startExamAttempt, invariant online-exam-correct-options-stay-hidden)." }
+  - { id: countdown, rule: "The countdown is the server's count (tickExamClock), shown in minutes and seconds. It is a timer, which a screen reader does not read every second; the words \"Son 5 dakika\" appear beside it, in a live status spoken once, when five minutes are left, and the countdown turns red then, so the colour is never the only sign. It stops while the connection is lost." }
+  - { id: list-on-a-phone, rule: "Proposal, not drawn: on a phone the list Sorular sits behind a button \"Sorular\" in the bar, a disclosure that opens it over the question and closes when a question is picked." }
+  - { id: focus, rule: "Going to a question (Önceki, Sonraki, Soruyu atla, a pick in the list, a resume) puts the focus on its text, so a screen reader reads the question first (focus). Sınavı bitir? opens on Sınava dön, and closing it returns the focus to Sınavı bitir. Proposal: nothing is built." }
+  - { id: answered-in-words, rule: "The list Sorular says each question's state in words (Cevaplandı, Atlandı, Görülmedi) in each item's name, beside any colour or mark, and the question shown carries aria-current." }
+  - { id: closed-early-words, rule: "An attempt that ends with no answer to the page's Bitir (the time, an early close by the team, or a Bitir whose answer was lost) is read again (getExamBriefing, the attempt's finishedBy), and the end screen says which, in its own words: finishedByTalebe, finishedByTime, finishedByTeam; finishedEnded when that read fails." }
+  - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review, Turkish only; composed.Exams.* is a value shown alone. No key of the app is reused: none of tedris.json's says what these screens say." }
