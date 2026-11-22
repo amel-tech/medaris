@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.15.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.14.0...tedris-web-v2.15.0) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 Sınavlarım, result, rank, list colors ([#418](https://github.com/amel-tech/medaris/issues/418)) ([472fc3c](https://github.com/amel-tech/medaris/commit/472fc3c69f57963790e29ad9ee516b20988a81de))
+
+
+### Bug Fixes
+
+* **tedris-web:** MDRS-299 going to another window counts as a switch, not only a tab ([#425](https://github.com/amel-tech/medaris/issues/425)) ([7f226b7](https://github.com/amel-tech/medaris/commit/7f226b7dd1d378fa5d482df5dd88f545e38524ba))
+
 ## [2.14.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.13.0...tedris-web-v2.14.0) (2026-11-22)
 
 
