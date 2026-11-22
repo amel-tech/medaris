@@ -147,6 +147,7 @@ export type {
   MadrasahStudentCourseResponse,
   MadrasahStudentResponse,
   MadrasahStudentsResponse,
+  MadrasahZerothQuestionResponse,
   MedarisNazimResponse,
   MeResponse,
   MuderrisResponse,
