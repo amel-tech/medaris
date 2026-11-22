@@ -234,6 +234,7 @@ states:
     on:
       OPEN_MENU: { target: menuOpen, effect: [clearNote], say: "they press the row's ··· button" }
       OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow the link Arşiv under the table: a navigation inside the app" }
+      OPEN_COURSES: { target: listed, source: apps/nazar/features/shell/components/portal-menu.tsx:33, say: "they follow Dersler in the sidebar, the page's own address: the same list is drawn again" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/courses/components/courses-table.tsx:223
 
@@ -252,6 +253,9 @@ states:
         say: "they choose Hocaları değiştir: the dialog is nazar.courses.changeHocas's"
         source: apps/nazar/features/courses/components/courses-table.tsx:168
       CLOSE_MENU: { target: listed, say: "they press Esc" }
+      OPEN_MENU: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press the row's ··· again: the menu closes" }
+      OPEN_ARCHIVE: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press the link Arşiv: the menu is modal (Base UI's default), so the press only closes it and the link is not followed" }
+      OPEN_COURSES: { target: listed, source: libs/ui/src/mds/menu.tsx:48, say: "they press Dersler in the sidebar: the press only closes the menu" }
     source: libs/ui/src/mds/menu.tsx:64
 
   confirmHide:
@@ -289,6 +293,8 @@ states:
       FAIL.vanished: { target: listedWithout, effect: [hideGone], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
       FAIL.forbidden: { target: listed, effect: [hideRefused], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
       FAIL.other: { target: listed, effect: [hideFailed], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
+      CANCEL: { target: hiding, source: apps/nazar/features/courses/components/hide-course.tsx:77, say: "Vazgeç: nothing happens, the hide goes on (HIDE-3)" }
+      CLOSE: { target: hiding, source: apps/nazar/features/courses/components/hide-course.tsx:77, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/courses/components/hide-course.tsx:42
 
   listedWithout:
@@ -301,6 +307,7 @@ states:
     goal: true
     on:
       OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow the link Arşiv: a navigation inside the app, which takes the toast down" }
+      OPEN_COURSES: { target: listedWithout, source: apps/nazar/features/shell/components/portal-menu.tsx:33, say: "they follow Dersler in the sidebar, the page's own address: the same list, without the course, is drawn again" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/courses/components/courses-table.tsx:60
 

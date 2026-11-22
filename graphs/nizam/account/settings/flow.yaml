@@ -339,7 +339,22 @@ states:
       it. The focus never moves into the bubble. The star's own name is "Dersin imamı", described by the same text.
     source: libs/ui/src/mds/imam-star.tsx:99
     on:
-      CLOSE_STAR: { target: settings, say: "Esc, a press outside, the focus moving on, or a second press on the star", source: libs/ui/src/mds/imam-star.tsx:67 }
+      CLOSE_STAR: { target: settings, say: "Esc, a press outside or the focus moving on", source: libs/ui/src/mds/imam-star.tsx:67 }
+      OPEN_STAR: { target: settings, say: "a second press on the star closes the bubble: the trigger's click toggles it", source: libs/ui/src/mds/imam-star.tsx:76 }
+      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list: the press is outside the bubble, which closes, and the page behind it was never inert", source: apps/nizam/features/account/components/time-zone-form.tsx:85 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list: the bubble closes as the list opens", source: apps/nizam/features/account/components/time-zone-form.tsx:103 }
+      CLOSE_ALERT: { guard: alerting, target: settings, effect: [clearAlert], say: "they press Kapat on the error toast: the press is outside the bubble, so both close", source: libs/ui/src/mds/toast.tsx:95 }
+      OPEN_NAZAR:
+        guard: teaches
+        target: settings
+        starts: { flow: nazar.access.landingScope }
+        say: "'Nazar’da aç' opens Nazar in a new tab, as from the page; the press is outside the bubble, which closes"
+        source: apps/nizam/features/account/components/account-page.tsx:247
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nizam'", entry: "'confirmationPage'" } }
+        say: "'Çıkış yap' is a link to /auth/signout in the same tab, as from the page: the bubble does not hold it"
+        source: apps/nizam/features/account/components/account-page.tsx:264
 
   loadFailed:
     title: The page says a read failed

@@ -255,6 +255,8 @@ states:
         - { guard: "reads == 'ok'", target: opened, source: apps/nazar/features/nazirs/components/permission-editor.tsx:104, say: "the four reads answer" }
       FAIL.failed:
         - { guard: "reads == 'failed'", target: loadFailed, source: apps/nazar/features/nazirs/components/permission-editor.tsx:108, say: "one of them fails: the editor says so and keeps its form shut" }
+      CANCEL: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "Vazgeç or Esc while the editor is read: the dialog closes" }
+      CLOSE: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "the close icon while the editor is read: the dialog closes" }
     source: apps/nazar/features/nazirs/components/permission-editor.tsx:96
 
   opened:
@@ -337,6 +339,8 @@ states:
         - { guard: "answer == 'nazirGone'", target: nazir_gone, source: apps/nazar/features/nazirs/components/permission-editor.tsx:183, say: "MADRASAH_NAZIR_NOT_FOUND: an error toast 'Bu kişi artık bu medresenin nazırı değil.', the dialog closes and the roster is read again without the row" }
       FAIL.refused:
         - { guard: "answer == 'refused'", target: editing, effect: [refusedToast], source: apps/nazar/features/nazirs/components/permission-editor.tsx:176, say: "an error toast 'İzinler kaydedilemedi' with the sentence of the code; the dialog stays open and the form is as it was" }
+      CANCEL: { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "Vazgeç or Esc: nothing happens, the save goes on" }
+      CLOSE: { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "the close icon: nothing happens, the save goes on" }
     source: apps/nazar/features/nazirs/components/permission-editor.tsx:163
 
   opened_other:

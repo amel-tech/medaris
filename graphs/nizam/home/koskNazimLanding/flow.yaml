@@ -106,6 +106,14 @@ context:
       upcoming: "the tab Yaklaşan is selected: the list the page's own read brought"
       past: "the tab Geçmiş is selected"
       cancelled: "the tab İptal edilen is selected"
+  behind:
+    values: [home, tab, refused, failed]
+    initial: home
+    say:
+      home: "the phone's sheet, if open, is over the home"
+      tab: "the sheet is over the home whose tab could not be read: the alert stays under it"
+      refused: "the sheet is over the screen 'Bu bölüm için izniniz yok': the shell, and so the button Menü, is around it"
+      failed: "the sheet is over the box 'Ana sayfa okunamadı': the menu is around it"
 
 guards:
   onPhone: "view == 'phone'"
@@ -120,6 +128,10 @@ effects:
   tabCancelled: { set: { tab: cancelled } }
   againTab: { havoc: [tabRead] } # the button asks again, and the answer may differ
   againPage: { havoc: [read] }
+  overHome: { set: { behind: home } }
+  overTab: { set: { behind: tab } }
+  overRefused: { set: { behind: refused } }
+  overFailed: { set: { behind: failed } }
 
 failures:
   reading: { from: getKoskDashboard, refused: [AUTHZ_FORBIDDEN, KOSK_NOT_FOUND], unreadable: [] }
@@ -196,7 +208,7 @@ states:
       OPEN_SESSIONS: { guard: hasRows, target: handed_over.manage_sessions, starts: { flow: nizam.courses.manageSessions }, say: "a row's button opens that course's celse list (/kosks/<id>/courses/<course>/sessions)", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:299" }
       OPEN_COURSE: { target: handed_over.open_course, starts: { flow: nizam.courses.open }, say: "'Ders aç' opens the form for a new course of the köşk", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:411" }
       DECIDE_APPLICATIONS: { guard: hasApplication, target: handed_over.decide_applications, starts: { flow: nizam.home.decideApplications, given: { approval: "'needed'", mayDecide: "'may'" } }, say: "the card 'Son başvurular' holds a waiting application and the köşk's nazım may decide it: Onayla and Reddet answer it on this page", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:499" }
-      OPEN_SHEET: { guard: onPhone, target: sheet, say: "on a phone they press Menü", source: "libs/ui/src/mds/app-bar.tsx:64" }
+      OPEN_SHEET: { guard: onPhone, target: sheet, effect: [overHome], say: "on a phone they press Menü", source: "libs/ui/src/mds/app-bar.tsx:64" }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   readingTab:
@@ -223,6 +235,8 @@ states:
       OPEN_UPCOMING: { guard: "tab != 'upcoming'", target: home, effect: [tabUpcoming], say: "Yaklaşan is put back with no read", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:96" }
       OPEN_PAST: { guard: "tab != 'past'", target: readingTab, effect: [tabPast], source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
       OPEN_CANCELLED: { guard: "tab != 'cancelled'", target: readingTab, effect: [tabCancelled], source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
+      OPEN_COURSE: { target: handed_over.open_course, starts: { flow: nizam.courses.open }, say: "'Ders aç' is still in the page's header above the alert: it opens the form for a new course", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:411" }
+      OPEN_SHEET: { guard: onPhone, target: sheet, effect: [overTab], say: "on a phone they press Menü: the bar is the shell's, the alert stays under the sheet", source: "libs/ui/src/mds/app-bar.tsx:64" }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   sheet:
@@ -236,8 +250,16 @@ states:
       an entry closes it and opens the page. The entries and the picker are nizam.shell.menuPerPersona's.
     source: "libs/ui/src/mds/app-bar.tsx:62"
     on:
-      CLOSE_SHEET: { target: home, say: "Kapat, Esc or a click on the scrim: the focus goes back to Menü", source: "libs/ui/src/mds/app-bar.tsx:82" }
-      FOLLOW_HOME: { target: home, say: "Ana sayfa in the sheet: the sheet closes and the page opens again at the same address", source: "libs/ui/src/mds/app-bar.tsx:92" }
+      CLOSE_SHEET:
+        - { guard: "behind == 'refused'", target: refused, say: "Kapat, Esc or the scrim: the refusal is under it as it was, and the focus goes back to Menü", source: "libs/ui/src/mds/app-bar.tsx:82" }
+        - { guard: "behind == 'failed'", target: loadFailed, say: "Kapat, Esc or the scrim: the box is under it as it was", source: "libs/ui/src/mds/app-bar.tsx:82" }
+        - { guard: "behind == 'tab'", target: tabUnreadable, say: "Kapat, Esc or the scrim: the alert of the tab is under it as it was", source: "libs/ui/src/mds/app-bar.tsx:82" }
+        - { target: home, say: "Kapat, Esc or a click on the scrim: the focus goes back to Menü", source: "libs/ui/src/mds/app-bar.tsx:82" }
+      FOLLOW_HOME:
+        - { guard: "behind == 'refused'", target: left, say: "Ana sayfa in the sheet: the address names none of the person's köşks, so the menu names the newest köşk they manage (MENU-2) and its home opens", source: "libs/ui/src/mds/app-bar.tsx:92" }
+        - { guard: "behind == 'failed'", target: reading, effect: [againPage], say: "Ana sayfa in the sheet: the sheet closes and the same address is opened again, so the page reads the home again (not verified in a browser)", source: "libs/ui/src/mds/app-bar.tsx:92" }
+        - { guard: "behind == 'tab'", target: tabUnreadable, say: "Ana sayfa in the sheet: the sheet closes and the same address opens again; the home's client state, the tab and its alert, is taken to stay, as the router keeps a mounted page on a navigation to itself (not verified in a browser)", source: "libs/ui/src/mds/app-bar.tsx:92" }
+        - { target: home, say: "Ana sayfa in the sheet: the sheet closes and the page opens again at the same address", source: "libs/ui/src/mds/app-bar.tsx:92" }
       NAVIGATE: { target: left, say: "they follow another entry of the menu" }
 
   refused:
@@ -252,6 +274,7 @@ states:
     source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30"
     on:
       BACK_HOME: { target: landing_opened, say: "'/' sends a köşk nazımı to their first köşk's home", source: "apps/nizam/components/errors/no-access.tsx:38" }
+      OPEN_SHEET: { guard: onPhone, target: sheet, effect: [overRefused], say: "on a phone they press Menü in the shell's bar around the refusal", source: "libs/ui/src/mds/app-bar.tsx:64" }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   loadFailed:
@@ -264,6 +287,7 @@ states:
     source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:32"
     on:
       RETRY: { target: reading, effect: [againPage], say: "Yeniden dene", source: "apps/nizam/features/kosks/components/load-failed.tsx:29" }
+      OPEN_SHEET: { guard: onPhone, target: sheet, effect: [overFailed], say: "on a phone they press Menü in the shell's bar around the box", source: "libs/ui/src/mds/app-bar.tsx:64" }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   handed_over.manage_sessions: { type: final, title: "The person opens the course's celse list", leavesPage: true }

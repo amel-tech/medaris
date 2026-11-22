@@ -164,6 +164,8 @@ states:
         - { guard: gaveNothing, target: nothingToAsk }
         - { target: choosing }
       FAIL.unread: loadFailed
+      CANCEL: { target: roster, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:148, say: "they press Vazgeç, or Esc, while the list is read: the dialog closes" }
+      CLOSE: { target: roster, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:148, say: "they press the close icon while the list is read: the dialog closes" }
     source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:89
 
   loadFailed:
@@ -255,6 +257,8 @@ states:
       FAIL.forbidden: { target: backToDialog, effect: [refused] }
       FAIL.selfGrant: { target: backToDialog, effect: [selfGrant] }
       FAIL.other: { target: backToDialog, effect: [failed] }
+      CANCEL: { target: dismissing, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:148, say: "they press Vazgeç, or Esc: nothing happens, the dismissal goes on (DISMISS-2)" }
+      CLOSE: { target: dismissing, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:148, say: "they press the close icon: nothing happens, the dismissal goes on (DISMISS-2)" }
     source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:112
 
   backToDialog:

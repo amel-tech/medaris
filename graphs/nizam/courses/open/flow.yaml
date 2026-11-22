@@ -301,6 +301,10 @@ states:
         - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nizam/features/courses/components/team-picker.tsx:108, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nizam/features/courses/components/team-picker.tsx:110, say: "the directory is not reachable: 'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.'" }
       CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:507, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
+      # "Dersi aç" is not off while a search runs: the press sends the form as it stands, without the hoca being looked up.
+      SUBMIT:
+        - { guard: problems, target: looking, effect: [attempt], source: apps/nizam/features/courses/components/course-create-form.tsx:127, say: "they press 'Dersi aç' with something missing while the search runs: the messages appear, nothing is sent, and the search already sent goes on" }
+        - { target: opening, source: apps/nizam/features/courses/components/course-create-form.tsx:131, say: "they press 'Dersi aç' while the search runs: the course is made with the hocas listed so far; the search's answer comes to a page that is already sending" }
       BACK: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:210, say: "they follow the breadcrumb while the search runs; its answer is dropped" }
     source: apps/nizam/features/courses/components/team-picker.tsx:80
 
@@ -314,6 +318,13 @@ states:
     on:
       DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the second person is added: two rows, a radio each, the first the imam" }
       CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:507, say: "they press 'Vazgeç' while the search runs" }
+      # "Dersi aç" is not off while a search runs: the press sends the form as it stands, without the hoca being looked up.
+      SUBMIT:
+        - { guard: problems, target: lookingAnother, effect: [attempt], source: apps/nizam/features/courses/components/course-create-form.tsx:127, say: "they press 'Dersi aç' with something missing while the search runs: the messages appear, nothing is sent, and the search already sent goes on" }
+        - { target: opening, source: apps/nizam/features/courses/components/course-create-form.tsx:131, say: "they press 'Dersi aç' while the search runs: the course is made with the hocas listed so far; the search's answer comes to a page that is already sending" }
+      # The first hoca's "Çıkar" is live while the second search runs, and the row goes at once; but the search writes back the list it began
+      # with (`value` is read when it was sent, team-picker.tsx:79-101), so a person found brings the removed hoca back beside them.
+      REMOVE_A: { guard: "team == 'a'", target: lookingAnother, effect: [removedAAlone], source: apps/nizam/features/courses/components/team-picker.tsx:225, say: "they take the first hoca off while the second search runs: the row goes, the search already sent goes on, and its answer puts the row back" }
       BACK: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:210, say: "they follow the breadcrumb while the search runs" }
     source: apps/nizam/features/courses/components/team-picker.tsx:80
 
@@ -334,6 +345,9 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [forbiddenToast], source: apps/nizam/features/courses/components/course-create-form.tsx:151, say: "a toast says they may not do this; the form stays" }
       FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [unknownUserToast], source: apps/nizam/features/courses/components/course-create-form.tsx:151, say: "a toast says one of the hocas has no account; the form stays" }
       FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [failedToast], source: apps/nizam/features/courses/present.ts:1231, say: "a toast says the action could not be completed, try again; the form stays" }
+      # The breadcrumb's "Dersler" is a plain <a> that keeps its address while "Vazgeç" loses its: following it unloads the page mid-press,
+      # and the calls the page would have made next are never made.
+      BACK: { target: left_half_done, source: apps/nizam/features/courses/components/course-create-form.tsx:213, say: "they follow the breadcrumb's 'Dersler' while the course is being made: it is made, and the request's answer and the celses that come after it are never sent" }
     source: apps/nizam/features/courses/components/course-create-form.tsx:132
 
   answering:
@@ -347,6 +361,7 @@ states:
     on:
       DONE: { guard: "request == 'accepted'", target: planning, source: apps/nizam/features/courses/components/course-create-form.tsx:164, say: "the request is ACCEPTED and points at the course" }
       FAIL.left: { guard: "request == 'left'", target: planning, source: apps/nizam/features/courses/components/course-create-form.tsx:167, say: "a warning toast says the course was opened but the request no longer waits; the celses are made all the same" }
+      BACK: { target: left_half_done, source: apps/nizam/features/courses/components/course-create-form.tsx:213, say: "they follow the breadcrumb's 'Dersler' while the request is being answered: the course exists, and its celses are never sent" }
     source: apps/nizam/features/courses/components/course-create-form.tsx:164
 
   planning:
@@ -361,6 +376,7 @@ states:
     on:
       DONE: { guard: "answer == 'created'", target: opened, source: apps/nizam/features/courses/components/course-create-form.tsx:190, say: "the celses exist: a toast says so and Dersler opens" }
       FAIL.refused: { guard: "answer == 'sessionsFailed'", target: session_planner, starts: { flow: nizam.courses.planSessions, given: { fromOpen: "true" } }, source: apps/nizam/features/courses/components/course-create-form.tsx:181, say: "the celses are refused: a toast says so and the person goes to Celse planla of the new course" }
+      BACK: { target: left_half_done, source: apps/nizam/features/courses/components/course-create-form.tsx:213, say: "they follow the breadcrumb's 'Dersler' while the celses are being made: the course exists, and no toast says whether the celses were" }
     source: apps/nizam/features/courses/components/course-create-form.tsx:174
 
   opened:
@@ -379,6 +395,15 @@ states:
       The course exists as a draft or published, with no celse, and the page is the course's Celse planla (nizam.courses.planSessions): its h1,
       with the sticky error toast "Ders açıldı, celseler eklenemedi" over it. The pattern the person typed is not carried there (F-W4-open-2).
       The warning toast of `answering` is still up if the request's answer failed.
+
+  left_half_done:
+    type: final
+    title: The person goes back to Dersler with the press half done
+    leavesPage: true
+    description: >-
+      The breadcrumb's "Dersler" was followed while "Dersi aç" was being carried out. The page is gone before the answer: what the server had
+      been asked for is made (the course, the request's answer, the celses, as far as the press had come), and nothing after it is asked for.
+      A course can be left with no celse and its request still waiting, and nothing says so (not verified in a browser).
 
   courses_listed:
     type: final

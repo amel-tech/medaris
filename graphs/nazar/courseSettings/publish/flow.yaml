@@ -188,6 +188,7 @@ states:
       DISCARD_EDIT: { target: published, effect: [discarded], say: "they press Vazgeç of the access form: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
       OPEN_PUBLIC: { target: publishedEdited, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab and this tab stays", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91 }
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+      EDIT: { target: published, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209
 
   asking:
@@ -217,6 +218,8 @@ states:
       DONE: { guard: "write == 'ok'", target: toDraft, effect: [noteDrafted], say: "the API answered 200: toast \"Ders taslağa çekildi\"; the page is read again", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
       FAIL.forbidden: { guard: "write == 'refused'", target: toPublished, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
       FAIL.other: { guard: "write == 'hidden'", target: toPublished, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      CANCEL: { target: drafting, say: "Vazgeç or Esc while the call runs: nothing happens, the dialog stays and the status is still written (PUB-2)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:114 }
+      CLOSE: { target: drafting, say: "the close icon while the call runs: nothing happens (PUB-2)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:114 }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
 
   toPublished:
@@ -276,6 +279,7 @@ states:
         say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab (DRAFT-1) and this tab stays"
         source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+      EDIT: { target: draft, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209
 
   publishing:
@@ -289,6 +293,7 @@ states:
       DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
       FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
       FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      EDIT: { target: publishingEdited, effect: [edited], say: "they tick Kayıt onayı gereksin while the publish runs: the access form is not busy, so the box turns and its Kaydet comes on", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
 
   publishingEdited:
@@ -299,6 +304,8 @@ states:
       DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again and the form keeps its change", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
       FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
       FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      EDIT: { target: publishing, effect: [discarded], say: "they untick the box again while the publish runs: the form is as stored", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
+      DISCARD_EDIT: { target: publishing, effect: [discarded], say: "they press Vazgeç of the access form while the publish runs: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
 
   not_found:

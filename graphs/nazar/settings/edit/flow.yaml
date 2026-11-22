@@ -121,7 +121,7 @@ context:
       failed: "anything else: the medrese is gone (MADRASAH_NOT_FOUND) or the server does not answer"
   stamp: { values: [hidden, shown], initial: hidden } # the line "Son değişiklik" is on the page
   base: { values: [loaded, savedNow], initial: loaded } # the values the form was loaded with, or what a save in this visit left
-  box: { values: [loaded, changed, kept], initial: loaded } # the box `flips` names: as loaded, pressed and not saved, pressed and saved
+  box: { values: [loaded, changed, kept, pressedInSave], initial: loaded } # the box `flips` names: as loaded, pressed and not saved, pressed and saved, pressed while a save runs
   said: { values: [none, required, short, long, descriptionLong], initial: none } # the message under a field
   toast: { values: [none, saved, invalid, forbidden, failed], initial: none } # the toast the last save left
   fixed: { values: ["no", "yes"], initial: "no" } # a refused field was typed again, so the next Kaydet is accepted
@@ -134,6 +134,7 @@ effects:
   clearToast: { set: { toast: none } }
   boxChanged: { set: { box: changed } }
   boxLoaded: { set: { box: loaded } }
+  boxPressedInSave: { set: { box: pressedInSave } }
   noSaid: { set: { said: none } }
   revertedLoaded: { set: { said: none } }
   fixedOn: { set: { said: none, fixed: "yes" } }
@@ -209,11 +210,14 @@ states:
       text), the four levels list "Bu sayfa" on the medrese's own, and the courses card lists the published and the draft courses
       with their köşk, müderrisler and "Yayında" or "Taslak", or says the medrese has none yet, or says they could not be read
       (SET-1). "Vazgeç" and "Kaydet" are natively disabled while nothing differs from the saved values, and nothing says why
-      (F-B-11). No node has the focus: the page sets none (focus-not-set). A box can be pressed first as well; the graph draws
-      the box after a first typed change (the form is then `dirty`), so that a walk's save always carries a typed value.
+      (F-B-11). No node has the focus: the page sets none (focus-not-set). A box can be pressed first as well, which makes the
+      form `dirty` as a typed change does.
       Findings read here: policy-no-public-recordings-inert (the third box), SET-1, SET-2.
     on:
       EDIT: { target: dirty, say: "they type in the name or the description", source: apps/nazar/features/settings/components/settings-form.tsx:148 }
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: dirty, effect: [boxChanged], say: "they press a box: the form differs from the save", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: dirty, effect: [boxChanged], say: "they press a box: the form differs from the save", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: dirty, effect: [boxChanged], say: "they press a box: the form differs from the save", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
       OPEN_PUBLIC_PAGE: { target: clean, say: "'Medrese sayfasını gör' opens the public page in a new tab (target=_blank); this tab stays", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
       OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' in the courses card", source: apps/nazar/features/settings/components/settings-page.tsx:190 }
       NAVIGATE: { target: left, say: "they follow the menu, a breadcrumb or the address bar" }
@@ -239,6 +243,7 @@ states:
         - { guard: "attempt == 'longDescription'", target: refusedDescription, effect: [saidDescriptionLong], say: "the name is right and the description is over 1000: the message is under the description and the focus goes there", source: apps/nazar/features/settings/settings.ts:73 }
       CANCEL: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
       OPEN_PUBLIC_PAGE: { target: dirty, say: "the link opens in a new tab; the draft stays here", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' leaves in the same tab: the draft is lost and nothing warned them (SET-2)", source: apps/nazar/features/settings/components/settings-page.tsx:209 }
       NAVIGATE: { target: left, say: "they leave the page: the draft is lost and nothing warned them (SET-2)" }
     source: apps/nazar/features/settings/components/settings-form.tsx:61
 
@@ -252,6 +257,12 @@ states:
       from then on. The message is no live region of its own: it is read because the focus moved.
     on:
       FIX: { target: dirty, effect: [fixedOn], say: "they type a name the page accepts: the message goes", source: apps/nazar/features/settings/components/settings-form.tsx:62 }
+      SUBMIT: { target: refused, say: "Kaydet is still on: pressed again, the message stays, the focus goes back to the name and nothing is sent", source: apps/nazar/features/settings/components/settings-form.tsx:68 }
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: refused, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: refused, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: refused, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      OPEN_PUBLIC_PAGE: { target: refused, say: "the link opens in a new tab; the draft stays here", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' leaves in the same tab: the draft is lost and nothing warned them (SET-2)", source: apps/nazar/features/settings/components/settings-page.tsx:209 }
       CANCEL: { target: reverting, say: "Vazgeç puts the saved values back and clears the message", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
       NAVIGATE: { target: left, say: "they leave the page" }
     source: apps/nazar/features/settings/components/settings-form.tsx:68
@@ -265,6 +276,12 @@ states:
       Nothing is sent. When the name is wrong too, the name wins the focus and both messages are shown (not drawn).
     on:
       FIX: { target: dirty, effect: [fixedOn], say: "they shorten the description: the message goes", source: apps/nazar/features/settings/components/settings-form.tsx:63 }
+      SUBMIT: { target: refusedDescription, say: "Kaydet is still on: pressed again, the message stays, the focus goes back to the description and nothing is sent", source: apps/nazar/features/settings/components/settings-form.tsx:68 }
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: refusedDescription, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: refusedDescription, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: refusedDescription, effect: [boxChanged], say: "they press a box: it turns, and the message stays", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      OPEN_PUBLIC_PAGE: { target: refusedDescription, say: "the link opens in a new tab; the draft stays here", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' leaves in the same tab: the draft is lost and nothing warned them (SET-2)", source: apps/nazar/features/settings/components/settings-page.tsx:209 }
       CANCEL: { target: reverting, say: "Vazgeç puts the saved values back and clears the message", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
       NAVIGATE: { target: left, say: "they leave the page" }
     source: apps/nazar/features/settings/components/settings-form.tsx:69
@@ -295,14 +312,27 @@ states:
       refusal keeps the draft and says so in a toast: AUTHZ_FORBIDDEN "Bunu yapma izniniz yok.", VALIDATION_ERROR "Medrese adını
       ve açıklamayı denetleyip yeniden deneyin." (unreachable from this page), anything else "Bir şeyler ters gitti." A call that
       fails outright (the network) is not caught here either; not verified.
+    # App behaviour worth a look: the fields and the boxes stay editable while the save runs, and a success puts the API's answer in
+    # the draft (settings-form.tsx:82), so what was typed or pressed meanwhile is lost without a word; a refusal keeps it.
     invoke: { action: updateMadrasahSettings }
     on:
       DONE:
+        - { guard: "answer == 'saved' and box == 'pressedInSave'", target: saved, effect: [savedText, boxLoaded], say: "the form takes the API's answer, which puts back the box pressed meanwhile: the press is lost", source: apps/nazar/features/settings/components/settings-form.tsx:82 }
         - { guard: "answer == 'saved' and box == 'changed'", target: saved, effect: [savedBox], say: "the form and the saved snapshot take the API's answer, the box stays as pressed, a toast says so and the page is read again", source: apps/nazar/features/settings/components/settings-form.tsx:80 }
         - { guard: "answer == 'saved'", target: saved, effect: [savedText], say: "the form and the saved snapshot take the API's answer, a toast says so and the page is read again", source: apps/nazar/features/settings/components/settings-form.tsx:80 }
-      FAIL.invalid: { guard: "answer == 'invalid'", target: dirty, effect: [toastInvalid], source: apps/nazar/features/settings/settings.ts:108 }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: dirty, effect: [toastForbidden], source: apps/nazar/features/settings/settings.ts:109 }
-      FAIL.other: { guard: "answer == 'failed'", target: dirty, effect: [toastFailed], source: apps/nazar/features/settings/settings.ts:111 }
+      FAIL.invalid:
+        - { guard: "answer == 'invalid' and box == 'pressedInSave'", target: dirty, effect: [toastInvalid, boxChanged], say: "the draft is kept, with the box pressed meanwhile", source: apps/nazar/features/settings/settings.ts:108 }
+        - { guard: "answer == 'invalid'", target: dirty, effect: [toastInvalid], source: apps/nazar/features/settings/settings.ts:108 }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden' and box == 'pressedInSave'", target: dirty, effect: [toastForbidden, boxChanged], say: "the draft is kept, with the box pressed meanwhile", source: apps/nazar/features/settings/settings.ts:109 }
+        - { guard: "answer == 'forbidden'", target: dirty, effect: [toastForbidden], source: apps/nazar/features/settings/settings.ts:109 }
+      FAIL.other:
+        - { guard: "answer == 'failed' and box == 'pressedInSave'", target: dirty, effect: [toastFailed, boxChanged], say: "the draft is kept, with the box pressed meanwhile", source: apps/nazar/features/settings/settings.ts:111 }
+        - { guard: "answer == 'failed'", target: dirty, effect: [toastFailed], source: apps/nazar/features/settings/settings.ts:111 }
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: saving, effect: [boxPressedInSave], say: "they press a box while the save runs: it turns at once; the save sends what was there before", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: saving, effect: [boxPressedInSave], say: "they press a box while the save runs: it turns at once; the save sends what was there before", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: saving, effect: [boxPressedInSave], say: "they press a box while the save runs: it turns at once; the save sends what was there before", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' leaves in the same tab while the save is out; the page does not wait for its answer", source: apps/nazar/features/settings/components/settings-page.tsx:209 }
     source: apps/nazar/features/settings/components/settings-form.tsx:77
 
   saved:
@@ -316,6 +346,9 @@ states:
       (e2e settings#4 a8-a11); a further change is typed again here. Findings read here: F-B-11, policy-no-public-recordings-inert.
     on:
       EDIT_AGAIN: { target: dirty, effect: [clearToast], say: "they change the description again", source: apps/nazar/features/settings/components/settings-form.tsx:167 }
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: dirty, effect: [clearToast, boxChanged], say: "they press a box again", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: dirty, effect: [clearToast, boxChanged], say: "they press a box again", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: dirty, effect: [clearToast, boxChanged], say: "they press a box again", source: apps/nazar/features/settings/components/settings-form.tsx:199 }
       RELOAD: { target: opened, effect: [clearToast], say: "they reload the page: the form is read again", source: apps/nazar/features/settings/components/settings-page.tsx:57 }
       OPEN_PUBLIC_PAGE: { target: saved, say: "the link opens in a new tab", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
       OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' in the courses card", source: apps/nazar/features/settings/components/settings-page.tsx:190 }

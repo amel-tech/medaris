@@ -325,6 +325,11 @@ states:
         - { guard: "zone == 'tokyo'", target: settings, effect: [saveRefused, boxOpened], say: "the zone before was a listed one: the first list reads 'Diğer…' again and the second list is drawn with it", source: apps/nazar/features/account/components/time-zone-form.tsx:71 }
         - { target: settings, effect: [saveRefused, boxClosed], say: "the zone before was one of the eight: the first list reads it again and the second list is not drawn (e2e account#6)", source: apps/nazar/features/account/components/time-zone-form.tsx:71 }
       FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: handleUnauthenticated goes to sign in and back to /hesap, no toast", source: apps/nazar/features/account/components/time-zone-form.tsx:66 }
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nazar'", entry: "'directButton'" } }
+        say: "'Çıkış yap' while the save is out: the button posts to /api/auth/signout at once and the page leaves without waiting for the save"
+        source: apps/nazar/features/account/components/sign-out-button.tsx:26
 
   starOpen:
     title: The imam star's bubble is open
@@ -336,6 +341,15 @@ states:
     source: libs/ui/src/mds/imam-star.tsx:99
     on:
       CLOSE_STAR: { target: settings, say: "Esc, a press outside, the focus moving on, or a second press on the star", source: libs/ui/src/mds/imam-star.tsx:67 }
+      OPEN_STAR: { target: settings, say: "a second press on the star closes the bubble", source: libs/ui/src/mds/imam-star.tsx:67 }
+      OPEN_ZONES: { guard: readable, target: choosingZone, effect: [clearToast], say: "they open the first list: the bubble is not modal, so the press reaches the list and closes the bubble", source: apps/nazar/features/account/components/time-zone-form.tsx:85 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list: the bubble closes", source: apps/nazar/features/account/components/time-zone-form.tsx:101 }
+      CLOSE_ALERT: { guard: alerting, target: settings, effect: [clearAlert], say: "they press Kapat on the error toast: the toast and the bubble close", source: libs/ui/src/mds/toast.tsx:95 }
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nazar'", entry: "'directButton'" } }
+        say: "'Çıkış yap' with the bubble open: the bubble closes and the sign-out starts as from the page"
+        source: apps/nazar/features/account/components/sign-out-button.tsx:26
 
   portal_unavailable:
     type: final

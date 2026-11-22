@@ -345,6 +345,7 @@ states:
         - { target: creating, effect: [clearToast], source: "apps/nizam/features/permissions/components/group-form.tsx:161", say: "they press Kaydet: the group is sent" }
       RESET: { target: newForm, effect: [resetNew], source: "apps/nizam/features/permissions/components/group-form.tsx:87", say: "they press Vazgeç: the form is emptied" }
       SELECT_OTHER: { guard: "rows != 'none'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose a group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
+      NEW_GROUP: { target: newForm, source: "apps/nizam/features/permissions/components/groups-view.tsx:133", say: "they press Grup oluştur on the empty form: the address becomes ?grup=yeni, the form keeps its key 'new', so it stays as it was with what was typed" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   creating:
@@ -361,6 +362,7 @@ states:
       DONE: { guard: "answer == 'done' or answer == 'gone'", target: afterCreate, source: "apps/nizam/features/permissions/components/group-form.tsx:124", say: "the group is made" }
       FAIL.taken: { guard: "answer == 'taken'", target: newForm, effect: [saveTaken], source: "apps/nizam/features/permissions/components/group-form.tsx:123", say: "another group got the name since the page was read: a toast, not a message under the field" }
       FAIL.other: { guard: "answer == 'failed'", target: newForm, effect: [saveFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:123", say: "any other refusal: a toast, the form as it was" }
+      NEW_GROUP: { target: creating, source: "apps/nizam/features/permissions/components/groups-view.tsx:133", say: "they press Grup oluştur, which stays on in the header: the address becomes ?grup=yeni, the form being sent keeps its key 'new', so nothing changes and the create goes on" }
 
   afterCreate:
     title: The new group's form opens
@@ -404,6 +406,7 @@ states:
       EDIT_USER: { guard: "holders == 'used'", target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: "apps/nizam/features/permissions/components/group-form.tsx:295", say: "they press İzinlerini düzenle beside a person: that person's permissions dialog opens over this page" }
       SELECT_OTHER: { guard: "rows == 'several'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose another group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
       NEW_GROUP: { target: newForm, effect: [freshNew], source: "apps/nizam/features/permissions/components/groups-view.tsx:67", say: "they press Grup oluştur: the empty form replaces this one (F-W2-8)" }
+      PICK_PLATFORM: { target: editForm, source: "apps/nizam/features/permissions/components/group-form.tsx:169", say: "they press 'Platform', the group's own radio, which is chosen already: nothing changes" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   editFormCourses:
@@ -436,6 +439,7 @@ states:
         - { target: askDeletePlain, source: "apps/nizam/features/permissions/components/group-form.tsx:317", say: "nobody uses it: a plain question opens" }
       SELECT_OTHER: { guard: "rows == 'several'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose another group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
       NEW_GROUP: { target: newForm, effect: [freshNew], source: "apps/nizam/features/permissions/components/groups-view.tsx:67", say: "they press Grup oluştur: the empty form replaces this one (F-W2-8)" }
+      PICK_COURSES: { target: editFormCourses, source: "apps/nizam/features/permissions/components/group-form.tsx:169", say: "they press 'Her ders', the group's own radio, which is chosen already: nothing changes" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   updating:
@@ -497,6 +501,8 @@ states:
       FAIL.taken: { guard: refusedTakenSave, target: askSaveReady, effect: [saveTaken], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "another group got the name: a toast over the question, which stays" }
       FAIL.gone: { guard: "answer == 'gone'", target: askSaveReady, effect: [saveGone], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "the group is gone: a toast, the question stays" }
       FAIL.other: { guard: "answer == 'failed'", target: askSaveReady, effect: [saveFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "any other refusal: a toast, the question stays" }
+      CANCEL: { target: savingAsked, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "Vazgeç: nothing happens, the save goes on (F-W2-groups-1)" }
+      CLOSE: { target: savingAsked, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "the close icon: nothing happens, the save goes on (F-W2-groups-1)" }
 
   askDelete:
     title: The question before deleting, no answer chosen
@@ -538,6 +544,8 @@ states:
       DONE: { guard: "answer == 'done' or answer == 'taken'", target: afterDelete, effect: [deletedAsked], source: "apps/nizam/features/permissions/components/group-form.tsx:138", say: "the group is deleted and its people are detached" }
       FAIL.gone: { guard: "answer == 'gone'", target: askDeleteReady, effect: [deleteGone], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "the group is gone already: a toast, the question stays" }
       FAIL.other: { guard: "answer == 'failed'", target: askDeleteReady, effect: [deleteFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "any other refusal: a toast, the question stays" }
+      CANCEL: { target: deletingAsked, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "Vazgeç: nothing happens, the delete goes on (F-W2-groups-1)" }
+      CLOSE: { target: deletingAsked, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "the close icon: nothing happens, the delete goes on (F-W2-groups-1)" }
 
   askDeletePlain:
     title: The question before deleting a group nobody uses
@@ -562,6 +570,8 @@ states:
       DONE: { guard: "answer == 'done' or answer == 'taken'", target: afterDelete, effect: [deletedPlain], source: "apps/nizam/features/permissions/components/group-form.tsx:138", say: "the group is deleted" }
       FAIL.gone: { guard: "answer == 'gone'", target: askDeletePlain, effect: [deleteGone], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "the group is gone already: a toast, the question stays" }
       FAIL.other: { guard: "answer == 'failed'", target: askDeletePlain, effect: [deleteFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "any other refusal: a toast, the question stays" }
+      CANCEL: { target: deletingPlain, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "Vazgeç: nothing happens, the delete goes on (F-W2-groups-1)" }
+      CLOSE: { target: deletingPlain, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "the close icon: nothing happens, the delete goes on (F-W2-groups-1)" }
 
   afterDelete:
     title: The page after a delete

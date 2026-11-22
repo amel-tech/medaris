@@ -281,6 +281,11 @@ states:
       PICK_FIRST: { target: dialog, effect: [pickedFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:103, say: "they choose the first deck" }
       PICK_OTHER: { target: dialog, effect: [pickedSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:103, say: "they choose the other deck: the field shows it and the file will go to it" }
       DISMISS: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "Esc closes the list only; the dialog stays" }
+      OPEN_DECKS: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Hedef deste\" again: the list closes, the deck is as it was" }
+      SUBMIT: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Aktar\": the list is modal (Base UI's default), so the press only closes it and nothing is sent" }
+      CANCEL: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press Vazgeç or the close icon: the press only closes the list; the dialog stays" }
+      SAMPLE_XLSX: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Excel (.xlsx)\": the press only closes the list, no template comes" }
+      SAMPLE_CSV: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"CSV (.csv)\": the press only closes the list" }
 
   sampling:
     title: Save the template

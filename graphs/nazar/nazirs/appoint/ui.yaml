@@ -70,7 +70,7 @@ nodes:
   # the person chosen
   chosenRegion: { type: page, component: Page, role: region, name: { labelledBy: chosenTitle }, in: [picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:162 } # <section aria-labelledby="chosen-nazir" data-testid="chosen-nazir">
   chosenTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.chosenTitle }, in: [picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:167 } # h3
-  removePerson: { type: action, component: Button, role: button, intent: secondary, name: { key: Appoint.remove, params: { name: person.name } }, in: [picked, pickedMember, appointing], emits: REMOVE, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:182 } # an icon button named by aria-label; it removes itself and the focus is not moved (F-B-8)
+  removePerson: { type: action, component: Button, role: button, intent: secondary, name: { key: Appoint.remove, params: { name: person.name } }, in: [picked, pickedMember, appointing], emits: REMOVE, duringStep: true, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:182 } # an icon button named by aria-label; it removes itself and the focus is not moved (F-B-8). Not disabled while the appointment is on its way (onClick={reset}, :186): the person is taken off the dialog at once and the appointment still goes out for them, so a refusal leaves the e-mail field back (APPOINT-1)
   alreadyAlert: { type: alert, component: Alert, role: status, text: { key: Appoint.already }, in: [pickedMember], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:192 } # warning tone
 
   # the footer

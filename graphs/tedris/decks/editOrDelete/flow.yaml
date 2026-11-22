@@ -45,7 +45,7 @@ scope:
     - "the cards, the study button and the import and export of the deck: tedris.decks.manageCards, tedris.decks.importExport, tedris.decks.study; the owner's header, tabs, progress, sample cards and the aside's publication buttons are not drawn here (tedris.decks.publish owns the buttons)"
     - "a deck whose request was PUBLISHED or REJECTED: its badge, its text and its button belong to tedris.decks.publish; an edit of a PUBLISHED deck is saved and stays public, with no new review and no note in the dialog (decision D1)"
     - "the page of someone who is not the author, a missing or private deck, and the unavailable screen: tedris.decks.accessRefusals; the reader's view: tedris.decks.readAndCopy"
-    - "deleting after a rename in the same visit: the dialog is the same, with the new name in its text (the replay would need a second heading and a second sentence); and a second edit after a save"
+    - "the delete confirmation's sentence after a rename in the same visit: it names the new name, and the graph draws only the first (`deleteBody`; the replay would need a second sentence); a second edit after a save, which is a new load of the edit address (exit edit_reloaded)"
     - "a deck with no cards: the owner page shows an empty state and the delete text says '0 kart'"
     - "the typed address /decks/<id>/edit as a way in: the page loads anew, as when 'Düzenle' is pressed, so every state below follows from it; tedris.nav enters the dialog's page by the author's link (deck->deckEdit)"
     - "the sidebar, the top bar and the footer of the app: tedris.shell.frame; the toast region's chrome"
@@ -115,6 +115,10 @@ context:
     values: [true, false]
     initial: false
     say: { "true": "the delete confirmation was shown for this delete", "false": "no confirmation was shown" }
+  renamed:
+    values: [true, false]
+    initial: false
+    say: { "true": "a save of this visit renamed the deck: the page shows the new name and description", "false": "the deck has the name and description it was opened with" }
 
 effects:
   opened: { set: { said: none, last: nothing } }
@@ -125,6 +129,7 @@ effects:
   ask: { set: { asked: true, last: nothing } }
   dropAsk: { set: { asked: false } }
   deleteRefused: { set: { last: deleteFailed, asked: false } }
+  renamedDeck: { set: { renamed: true } }
 
 failures:
   saving:
@@ -162,7 +167,9 @@ states:
     by: human
     goal: true
     on:
-      EDIT: { target: editForm, effect: [opened], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle: it is a link, so the browser loads /decks/<id>/edit, which draws this page again with the dialog open" }
+      EDIT:
+        - { guard: renamed, target: edit_reloaded, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle after a save of this visit: the browser loads /decks/<id>/edit anew, with the new name in the dialog" }
+        - { target: editForm, effect: [opened], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle: it is a link, so the browser loads /decks/<id>/edit, which draws this page again with the dialog open" }
       DELETE: { target: confirmDelete, effect: [ask], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250, say: "they press Desteyi sil: nothing is sent, the confirmation opens" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:55
@@ -232,7 +239,7 @@ states:
       session that is over into a trip to sign-in. "Vazgeç", "Kapat" and Esc are live and close the dialog without stopping the call (EDITDEL-1).
     invoke: { action: updateDeck }
     on:
-      DONE: { guard: "answer == 'ok'", target: saved, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved" }
+      DONE: { guard: "answer == 'ok'", target: saved, effect: [renamedDeck], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved" }
       FAIL.failed: { guard: "answer == 'refused'", target: filled, effect: [saveRefused], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81, say: "an error toast says it could not be saved; the dialog stays with the typed words" }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the person is sent to sign in and back, and nothing else is drawn" }
       CANCEL: { target: savingClosed, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "Vazgeç or Esc while it is out: the dialog closes, the call goes on (EDITDEL-1)" }
@@ -248,7 +255,7 @@ states:
       "Kaydedilemedi" whose text says "yazdıkların korundu", over a page with no form.
     invoke: { action: updateDeck }
     on:
-      DONE: { guard: "answer == 'ok'", target: saved, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved although they closed the dialog" }
+      DONE: { guard: "answer == 'ok'", target: saved, effect: [renamedDeck], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved although they closed the dialog" }
       FAIL.failed: { guard: "answer == 'refused'", target: overview, effect: [saveRefused], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81, say: "the toast says what they typed was kept, and there is nothing to keep it in" }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over" }
     source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97
@@ -260,8 +267,12 @@ states:
       description are the new words, and the badge is what it was: a waiting request is still "Yayın isteği bekliyor" (e2e decks#14). The toast was fired
       after the person's last keystroke, so the route change does not dismiss it (use-dismiss-stale-toasts.ts). The focus is on nothing (DCK-18). The deck's
       `updatedAt` is unchanged (deck-edit-updated-at; the page shows no date, so the person cannot see it, a köşk's deck list orders by it).
+      The page's own buttons are live again: "Desteyi sil" opens the confirmation as before, whose sentence now names the new name
+      (not drawn, see outOfView), and "Düzenle" loads the edit address anew.
     by: human
     on:
+      EDIT: { target: edit_reloaded, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle again: the link loads /decks/<id>/edit anew, with the new name in the dialog" }
+      DELETE: { target: confirmDelete, effect: [ask], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250, say: "they press Desteyi sil: nothing is sent, the confirmation opens, naming the new name" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89
 
@@ -302,12 +313,15 @@ states:
     description: >-
       The person pressed "Vazgeç", "Kapat" or Esc while the delete was out: `onOpenChange={setConfirmOpen}` closed the dialog and nothing cancelled the call
       (DCK-30). The page shows the deck as before. When the call answers the deck is gone and the page leaves for /decks, though the person said no; a refusal
-      raises the error toast "Silinemedi".
+      raises the error toast "Silinemedi". The page's buttons are live meanwhile: "Desteyi sil" opens the confirmation again over the same call, its
+      button still busy (confirmLoading is `deleting`), and "Düzenle" leaves the page.
     invoke: { action: deleteDeck }
     on:
       DONE: { guard: "answer == 'ok'", target: decks_opened, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90, say: "the deck is deleted although they called it off" }
       FAIL.failed: { guard: "answer == 'refused'", target: overview, effect: [deleteRefused], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:93, say: "an error toast says it could not be deleted" }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over" }
+      DELETE: { target: deleting, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250, say: "they press Desteyi sil on the page while the delete is out: the confirmation opens again with its button busy; no second request is sent, the first one's answer comes to it" }
+      EDIT: { target: edit_reloaded, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle while the delete is out: the link leaves the page at once for /decks/<id>/edit; the delete goes on at the server" }
     source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256
 
   decks_opened:
@@ -316,6 +330,16 @@ states:
     description: >-
       `router.push('/decks')`: the list of the author's decks and their collection, without the deck. No toast and no live text say that the deck was
       deleted (EDITDEL-2). The deck's address now answers "Sayfa bulunamadı". tedris.decks.browse draws the list.
+
+  edit_reloaded:
+    title: The edit address loads anew
+    type: final
+    leavesPage: true
+    description: >-
+      "Düzenle" is a plain link: the browser leaves the page it is on and loads /decks/<id>/edit, which is this flow again from its start, drawn
+      once. After a save of this visit the dialog holds the new name and description. Pressed while a delete is out (deletingClosed), the browser
+      drops the action's answer but the server goes on, so what loads is the edit dialog or "Sayfa bulunamadı", by whether the delete has ended
+      (from the code, not verified).
 
   sent_to_sign_in:
     title: The session is over

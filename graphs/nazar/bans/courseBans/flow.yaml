@@ -335,6 +335,7 @@ states:
       WIDEN: { guard: mayWiden, target: reasonForm, effect: [openWiden], say: "they press 'Medreseden de yasakla' on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
       REQUEST: { guard: mayRequest, target: reasonForm, effect: [openRequest], say: "they press 'Kalıcı yasak talebi aç' on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
       OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press the Kaldırılan tab: a full page load of ?durum=kaldirilan", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press Etkin, the tab they are on: a link, so the same address is loaded again", source: libs/ui/src/mds/tabs.tsx:78 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:278
 
@@ -347,6 +348,7 @@ states:
     on:
       BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
       OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press the Kaldırılan tab", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press Etkin, the tab they are on: the same address is loaded again", source: libs/ui/src/mds/tabs.tsx:78 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:299
 
@@ -360,6 +362,7 @@ states:
     on:
       BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
       OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press the Etkin tab: a full page load", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press Kaldırılan, the tab they are on: a link, so the same address is loaded again", source: libs/ui/src/mds/tabs.tsx:78 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:278
 
@@ -371,6 +374,7 @@ states:
     on:
       BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
       OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press the Etkin tab", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press Kaldırılan, the tab they are on: the same address is loaded again", source: libs/ui/src/mds/tabs.tsx:78 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:299
 
@@ -437,6 +441,8 @@ states:
       FAIL.refused: { guard: "banAnswer == 'refused'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "the caller may not bar from this course: an error toast 'Bu yasağı koymak için yetkiniz yok.'; the dialog stays open" }
       FAIL.gone: { guard: "banAnswer == 'gone'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "the course is no longer there: an error toast says to refresh the page and choose again; the dialog stays open and does not close itself" }
       FAIL.failed: { guard: "banAnswer == 'failed'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "an error toast ('Gerekçeyi denetleyip yeniden deneyin.' or 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'); the dialog stays open" }
+      CANCEL: { target: banning, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:90, say: "Vazgeç or Esc: nothing happens, the ban is still sent (BANDEC-1)" }
+      CLOSE: { target: banning, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:90, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/bans/components/course-ban-dialog.tsx:60
 
   reasonForm:
@@ -491,6 +497,8 @@ states:
         - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "someone lifted it first, or it is gone: an error toast says the list was refreshed, the dialog closes" }
       FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller's kademe does not reach the ban's: an error toast, the dialog stays open with the reason" }
       FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+      CANCEL: { target: lifting, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "Vazgeç or Esc: nothing happens, the lift is still sent (BANDEC-1)" }
+      CLOSE: { target: lifting, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/bans/components/reason-dialog.tsx:71
 
   escalating:
@@ -512,6 +520,8 @@ states:
         - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted, gone or cannot be widened: an error toast, the dialog closes and the list is read again" }
       FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller may not widen to the medrese: an error toast, the dialog stays open" }
       FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+      CANCEL: { target: escalating, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "Vazgeç or Esc: nothing happens, the widening is still sent (BANDEC-1)" }
+      CLOSE: { target: escalating, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/bans/components/reason-dialog.tsx:71
 
   requesting:
@@ -529,6 +539,8 @@ states:
         - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone, or a request exists already, or it is a ban Medaris placed: an error toast, the dialog closes and the list is read again" }
       FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller may not ask: an error toast that says 'Bu yasağı koymak için yetkiniz yok.' (BANDEC-2), the dialog stays open" }
       FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+      CANCEL: { target: requesting, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "Vazgeç or Esc: nothing happens, the request is still sent (BANDEC-1)" }
+      CLOSE: { target: requesting, source: apps/nazar/features/bans/components/reason-dialog.tsx:108, say: "the close icon: nothing happens either" }
     source: apps/nazar/features/bans/components/reason-dialog.tsx:71
 
   not_found:

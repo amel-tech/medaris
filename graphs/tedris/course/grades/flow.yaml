@@ -145,6 +145,7 @@ states:
       OPEN_GRADES:
         - { guard: nothingListed, target: gradesEmpty, say: "they press Notlarım, and there is nothing to list", source: apps/tedris/features/courses/components/exam-grades.tsx:57 }
         - { target: gradesShown, say: "they press Notlarım: the tab is chosen in place, the address does not change (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:469 }
+      OPEN_CURRICULUM: { target: curriculum, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
   gradesShown:
@@ -162,6 +163,7 @@ states:
     on:
       OPEN_CURRICULUM: { target: curriculum, say: "the tab Müfredat, in place; the address is not touched", source: libs/ui/src/mds/tabs.tsx:110 }
       RELOAD: { target: reading, say: "the page is read again and chooses its tab from the address once more: Müfredat, unless the address says notlarim (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      OPEN_GRADES: { target: gradesShown, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
   gradesEmpty:
@@ -174,6 +176,7 @@ states:
     on:
       OPEN_CURRICULUM: { target: curriculum, say: "the tab Müfredat, in place", source: libs/ui/src/mds/tabs.tsx:110 }
       RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      OPEN_GRADES: { target: gradesEmpty, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
   noGradesTab:
@@ -186,6 +189,7 @@ states:
     source: apps/tedris/features/courses/components/course-page.tsx:190
     on:
       RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      OPEN_CURRICULUM: { target: noGradesTab, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
   left: { type: final, title: The person leaves the course page, leavesPage: true }
