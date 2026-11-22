@@ -395,6 +395,24 @@ describe("online exams, publishing (e2e)", () => {
     expect(planned.body.code).toBe("VALIDATION_ERROR");
   });
 
+  it("answers a length or a version past the column as invalid, not as a failure", async () => {
+    const examId = await readyExam();
+    const long = await http()
+      .patch(`/online-exams/${examId}`)
+      .set("Authorization", muderris)
+      .send({ version: 3, durationMinutes: 2_147_483_648 })
+      .expect(400);
+    expect(long.body.code).toBe("VALIDATION_ERROR");
+    await http()
+      .patch(`/online-exams/${examId}`)
+      .set("Authorization", muderris)
+      .send({ version: 3, durationMinutes: 2_147_483_647 })
+      .expect(200);
+    expect(
+      (await publish(examId, { version: 2_147_483_648 }).expect(400)).body.code
+    ).toBe("VALIDATION_ERROR");
+  });
+
   it("publishes only with exam.prepare", async () => {
     const examId = await readyExam();
     // A ders nazırı with session.manage, who plans celses, does not prepare exams.

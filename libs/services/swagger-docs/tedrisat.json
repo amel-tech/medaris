@@ -30142,6 +30142,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "title": {
@@ -30151,7 +30152,8 @@
           "durationMinutes": {
             "type": "number",
             "minimum": 1,
-            "description": "\"Süre (dakika)\"; no upper bound."
+            "maximum": 2147483647,
+            "description": "\"Süre (dakika)\"; no upper bound but the column's (the owner: \"Sınır yok\")."
           },
           "instructions": {
             "type": "string",
@@ -30190,6 +30192,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "startsAt": {
@@ -30215,6 +30218,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           }
         },
@@ -30260,6 +30264,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "text": {
@@ -30312,6 +30317,7 @@
           "version": {
             "type": "number",
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
           },
           "points": {

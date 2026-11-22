@@ -34,15 +34,23 @@ const trimmed = ({ value }: { value: unknown }) =>
 const trimmedOrNull = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() || null : value;
 
+/**
+ * The largest Postgres `integer`: the columns' bound, not a product limit.
+ * Above it a write would fail in the database (500) instead of here (400).
+ */
+const INTEGER_MAX = 2_147_483_647;
+
 /** The version every write names: the draft's read, or the answer of the write before. */
 class VersionedDto {
   @ApiProperty({
     minimum: 1,
+    maximum: INTEGER_MAX,
     description:
       "The exam's version the page holds; an older one is refused (409 EXAM_STALE).",
   })
   @IsInt()
   @Min(1)
+  @Max(INTEGER_MAX)
   version!: number;
 }
 
@@ -61,11 +69,14 @@ export class UpdateOnlineExamDto extends VersionedDto {
 
   @ApiPropertyOptional({
     minimum: 1,
-    description: '"Süre (dakika)"; no upper bound.',
+    maximum: INTEGER_MAX,
+    description:
+      '"Süre (dakika)"; no upper bound but the column\'s (the owner: "Sınır yok").',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(INTEGER_MAX)
   durationMinutes?: number;
 
   @ApiPropertyOptional({

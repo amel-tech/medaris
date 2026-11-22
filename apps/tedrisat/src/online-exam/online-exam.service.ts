@@ -50,6 +50,8 @@ import { ZerothQuestionRepository } from "./zeroth-question.repository";
 
 /** An online exam's celse is out of 100, as the results are (MDRS-299). */
 const ONLINE_EXAM_MAX_SCORE = 100;
+/** The largest Postgres `integer`, the bound of a celse's length in minutes. */
+const CELSE_MINUTES_MAX = 2_147_483_647;
 
 /**
  * Preparing a course's online multiple-choice exams (MDRS-299): the course's
@@ -201,7 +203,11 @@ export class OnlineExamService {
       w.courseId,
       {
         title: draft.title,
-        durationMinutes: draft.durationMinutes + spread,
+        // Kept within the column: the length has no bound of its own.
+        durationMinutes: Math.min(
+          draft.durationMinutes + spread,
+          CELSE_MINUTES_MAX
+        ),
         scheduledAt: startsAt,
         exam: {
           format: ExamFormat.MULTIPLE_CHOICE,

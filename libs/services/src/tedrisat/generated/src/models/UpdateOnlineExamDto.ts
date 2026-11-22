@@ -32,7 +32,7 @@ export interface UpdateOnlineExamDto {
      */
     title?: string;
     /**
-     * "Süre (dakika)"; no upper bound.
+     * "Süre (dakika)"; no upper bound but the column's (the owner: "Sınır yok").
      * @type {number}
      * @memberof UpdateOnlineExamDto
      */
