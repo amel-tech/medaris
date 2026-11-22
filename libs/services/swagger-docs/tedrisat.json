@@ -15589,6 +15589,77 @@
           "online-exam-attempts"
         ]
       }
+    },
+    "/me/exams": {
+      "get": {
+        "description": "The exams of the courses where the caller holds an ENROLLED or COMPLETED seat, written, oral and online: the open and coming ones first, soonest first, then the past ones, latest first. Each says where it stands for the caller; a score only once the course team released the results. A draft online exam is not listed, and neither is a cancelled or hidden celse, nor a course the caller left.",
+        "operationId": "listMyExams",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyExamResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınavlarım: every exam of the caller's courses",
+        "tags": [
+          "my-exams"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/my-result": {
+      "get": {
+        "description": "Before the release: that the exam was taken, when and how it ended. After it: the score out of 100, the right, wrong and blank counts, the standing in each of the exam's topics and across the course's released exams, as percentages. Once the exam has also closed for everyone (closed early, or past its latest start with no attempt in progress): every question in the caller's own order, with their answer, the correct options and the points got. Only the caller's own attempt; an ENROLLED or COMPLETED seat.",
+        "operationId": "getMyExamResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyExamResultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND (the caller did not take the exam), EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own screen of a past online exam",
+        "tags": [
+          "my-exams"
+        ]
+      }
     }
   },
   "info": {
@@ -31152,6 +31223,382 @@
         "required": [
           "secondsLeft",
           "status"
+        ]
+      },
+      "MyExamFormat": {
+        "type": "string",
+        "enum": [
+          "WRITTEN",
+          "ORAL",
+          "MULTIPLE_CHOICE"
+        ]
+      },
+      "MyExamState": {
+        "type": "string",
+        "enum": [
+          "UPCOMING",
+          "OPEN",
+          "IN_PROGRESS",
+          "TAKEN",
+          "MISSED",
+          "RELEASED"
+        ]
+      },
+      "MyExamResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "An online exam's own title; a written or oral exam's celse title."
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamFormat"
+              }
+            ]
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "An online exam's latest start; null for any other."
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamState"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Only once released: an online exam's score out of 100 with two decimals (\"85.50\"), a written or oral one's whole score out of `maxScore`."
+          },
+          "maxScore": {
+            "type": "number",
+            "nullable": true,
+            "description": "What the score is out of; 100 for an online exam."
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "An online exam's length in minutes."
+          },
+          "questionCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "An online exam's question count."
+          },
+          "place": {
+            "type": "string",
+            "nullable": true,
+            "description": "A written or oral exam's place, as the team typed it."
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "title",
+          "format",
+          "startsAt",
+          "latestStartAt",
+          "state",
+          "score",
+          "maxScore",
+          "durationMinutes",
+          "questionCount",
+          "place"
+        ]
+      },
+      "MyExamCountsResponse": {
+        "type": "object",
+        "properties": {
+          "right": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "number"
+          },
+          "blank": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "right",
+          "wrong",
+          "blank"
+        ]
+      },
+      "MyTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "The points of the topic's questions that were got, as a whole percentage."
+          },
+          "right": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "number"
+          },
+          "blank": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "right",
+          "wrong",
+          "blank"
+        ]
+      },
+      "MyCourseTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "exams": {
+            "type": "number",
+            "minimum": 1,
+            "description": "How many exams it is counted from."
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "exams"
+        ]
+      },
+      "QuestionOutcome": {
+        "type": "string",
+        "enum": [
+          "RIGHT",
+          "WRONG",
+          "BLANK"
+        ]
+      },
+      "MyAnsweredOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "chosen": {
+            "type": "boolean"
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "chosen",
+          "correct"
+        ]
+      },
+      "MyAnsweredQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in this talebe's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionOutcome"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, with two decimals (\"33.33\")."
+          },
+          "got": {
+            "type": "string",
+            "description": "What the answer got of them (\"33.33\")."
+          },
+          "options": {
+            "description": "In this talebe's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAnsweredOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "outcome",
+          "points",
+          "got",
+          "options"
+        ]
+      },
+      "MyExamResultResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "released": {
+            "type": "boolean",
+            "description": "The course team released the results."
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "The exam has closed for everyone: closed early, or past its latest start with no attempt in progress."
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Only when released: out of 100, with two decimals (\"85.50\")."
+          },
+          "counts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamCountsResponse"
+              }
+            ]
+          },
+          "topics": {
+            "description": "Only when released, the weakest first; a question with two topics counts in both.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyTopicStandingResponse"
+            }
+          },
+          "courseTopics": {
+            "description": "Only when released: each topic of the course over the caller's released exams of it, the weakest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyCourseTopicStandingResponse"
+            }
+          },
+          "questions": {
+            "nullable": true,
+            "description": "Only when released and closed for everyone, in the talebe's own order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAnsweredQuestionResponse"
+            }
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "title",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "released",
+          "closed",
+          "score",
+          "counts",
+          "topics",
+          "courseTopics",
+          "questions"
         ]
       }
     }

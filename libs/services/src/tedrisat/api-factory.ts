@@ -15,6 +15,7 @@ import {
   LessonsApi,
   MadrasahsApi,
   MeApi,
+  MyExamsApi,
   NizamApi,
   NotificationsApi,
   OnlineExamAttemptsApi,
@@ -165,14 +166,23 @@ export type {
   MedarisNazimResponse,
   MeResponse,
   MuderrisResponse,
+  MyAnsweredOptionResponse,
+  MyAnsweredQuestionResponse,
   MyAssignmentsResponse,
+  MyCourseTopicStandingResponse,
   MyEffectivePermissionsResponse,
+  MyExamCountsResponse,
+  MyExamFormat,
+  MyExamResponse,
+  MyExamResultResponse,
+  MyExamState,
   MyGrantsResponse,
   MyPermissionsResponse,
   MyPublicProfileResponse,
   MyRolesResponse,
   MySubmissionSummaryResponse,
   MySubmissionsResponse,
+  MyTopicStandingResponse,
   NazimGroupResponse,
   NazimPermissionResponse,
   NazimPersonResponse,
@@ -195,6 +205,7 @@ export type {
   ProfileVisibility,
   PublicProfileResponse,
   QuestionAnswerResponse,
+  QuestionOutcome,
   QuestionPersonResponse,
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
@@ -327,6 +338,8 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     onlineExams: new OnlineExamsApi(configuration),
     // A talebe's sitting of a published online exam (MDRS-299), by its celse.
     onlineExamAttempts: new OnlineExamAttemptsApi(configuration),
+    // A talebe's own exams (MDRS-299): Sınavlarım and the screen of a past one.
+    myExams: new MyExamsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.
