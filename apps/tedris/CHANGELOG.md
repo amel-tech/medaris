@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.16.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.15.1...tedris-web-v2.16.0) (2026-11-22)
+
+
+### Features
+
+* **tedris-web:** MDRS-299 A− / A+ zoom the whole exam, the widest step spans the screen ([#432](https://github.com/amel-tech/medaris/issues/432)) ([e8f19db](https://github.com/amel-tech/medaris/commit/e8f19dba5f97d1aaa2bd0347fa4ffdfd54225989))
+
 ## [2.15.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.15.0...tedris-web-v2.15.1) (2026-11-22)
 
 
