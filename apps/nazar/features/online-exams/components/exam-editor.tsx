@@ -92,6 +92,42 @@ const typedOwnOf = (q: Question): number | null =>
 const ownOf = (q: Question): number | null =>
   q.failed ? ownHundredthsOf(q.ownPoints) : typedOwnOf(q);
 
+/**
+ * The questions as the server has them, with what this browser kept unsaved
+ * laid over them: an edit to a question over it, a new question at the end,
+ * each marked "Kaydedilemedi" to try again.
+ */
+function keptOver(base: Question[], kept: UnsavedQuestion[]): Question[] {
+  const next = [...base];
+  for (const item of kept) {
+    const lacks = lacksOf(item);
+    const shown = {
+      text: item.text,
+      options: item.options.map((o, i) => ({ id: `kept-${i}`, ...o })),
+      topicIds: item.topicIds,
+      answerMode: item.answerMode,
+      scoring: item.scoring,
+      wantedPoints: item.points,
+      lacks,
+      complete: lacks.length === 0,
+      pending: false,
+      failed: true,
+    };
+    const at = item.id ? next.findIndex((q) => q.id === item.id) : -1;
+    if (at >= 0) next[at] = { ...next[at], ...shown };
+    else
+      next.push({
+        ...shown,
+        key: localKey(),
+        id: "",
+        number: next.length + 1,
+        ownPoints: null,
+        points: "",
+      } as Question);
+  }
+  return next;
+}
+
 let localKeys = 0;
 const localKey = () => `local-${++localKeys}`;
 
@@ -154,36 +190,7 @@ export function ExamEditor({
     restored.current = true;
     const kept = readUnsaved(draft.id, window.localStorage);
     if (kept.length === 0) return;
-    setQuestions((all) => {
-      const next = [...all];
-      for (const item of kept) {
-        const lacks = lacksOf(item);
-        const shown = {
-          text: item.text,
-          options: item.options.map((o, i) => ({ id: `kept-${i}`, ...o })),
-          topicIds: item.topicIds,
-          answerMode: item.answerMode,
-          scoring: item.scoring,
-          wantedPoints: item.points,
-          lacks,
-          complete: lacks.length === 0,
-          pending: false,
-          failed: true,
-        };
-        const at = item.id ? next.findIndex((q) => q.id === item.id) : -1;
-        if (at >= 0) next[at] = { ...next[at], ...shown };
-        else
-          next.push({
-            ...shown,
-            key: localKey(),
-            id: "",
-            number: next.length + 1,
-            ownPoints: null,
-            points: "",
-          } as Question);
-      }
-      return next;
-    });
+    setQuestions((all) => keptOver(all, kept));
     notify({
       tone: "info",
       title: t("OnlineExams.restored", { count: kept.length }),
@@ -204,6 +211,31 @@ export function ExamEditor({
       }));
     writeUnsaved(draft.id, unsaved, window.localStorage);
   }, [draft.id, questions]);
+
+  // A newer read of the exam reaches this editor without remounting it: the
+  // router draws the page again after a save that renewed the session, or
+  // after EXAM_STALE. It is taken only when nothing of the page's own is on
+  // its way or open, since the queue carries the page's version; what was
+  // typed and not saved is laid over it again.
+  useEffect(() => {
+    if (draft.version <= version.current) return;
+    if (inFlight > 0 || editing !== null) return;
+    version.current = draft.version;
+    setTopics(draft.courseTopics);
+    setQuestions(
+      keptOver(
+        draft.questions.map((q) => ({ ...q, key: q.id })),
+        readUnsaved(draft.id, window.localStorage)
+      )
+    );
+    if (settingsState !== "failed" && settingsState !== "pending") {
+      setSettings({
+        title: draft.title,
+        durationMinutes: draft.durationMinutes,
+        instructions: draft.instructions ?? null,
+      });
+    }
+  }, [draft, inFlight, editing, settingsState]);
 
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
