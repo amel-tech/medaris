@@ -104,7 +104,7 @@ nodes:
   # --- Yasaklamalar -------------------------------------------------------------------------------------------------------------------------
   bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [shown], when: "page == 'bans'", source: apps/nazar/features/bans/components/bans-page.tsx:55 } # h1
   bansLine: { type: text, component: Text, text: { key: Bans.intro }, in: [shown], when: "page == 'bans'", source: apps/nazar/features/bans/components/bans-page.tsx:56 }
-  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [shown], when: "body == 'drawn' and page == 'bans'", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 } # the header button, left out with the list (e2e bans#8 a3)
+  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [shown], when: "body == 'drawn' and page == 'bans'", source: apps/nazar/features/bans/components/ban-dialog.tsx:316 } # the header button, left out with the list (e2e bans#8 a3)
 
   # --- İtirazlar ------------------------------------------------------------------------------------------------------------------------------
   appealsTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.title }, in: [shown], when: "page == 'appeals'", source: apps/nazar/features/appeals/components/appeals-page.tsx:27 } # h1

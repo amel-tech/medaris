@@ -638,8 +638,8 @@ Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk k
 - **F-A-9** · düşük · arayüz — Ders başlığı her satırda ders sayfasına bağlanıyor; derste koltuğu olmayan nazır, açamayacağı bir sayfaya giden bağlantıyı görüyor. (`nazar.courses.browse`, `nazar.archive.hideAndRestoreCourse` +1; `apps/nazar/features/courses/components/courses-page.tsx:92-94`)
 - **F-A-14** = RESTORE-3 · düşük · arayüz — Meşgul düğmeler kitin sabit "Yükleniyor" sözünü söylüyor, katalogdan gelmiyor; bugün yalnız Türkçe olduğu için zararsız, başka dil açılınca yanlış olur. (`nazar.courses.browse`, `nazar.archive.hideAndRestoreCourse` +5; `button.tsx:62`)
 - **HOCAS-4** · düşük · arayüz — 'Bu kişi zaten listede.' dendikten sonra kişi 'Çıkar' ile alınıp aynı adrese yine Enter'a basılınca arama yapılmıyor ve eski ileti kalıyor; yalnız adres değişince yeniden aranıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:109`)
-- **HOCAS-5** · düşük · arayüz — Kaydedilirken 'Vazgeç' ve kapatma simgesi açık görünüyor ama basınca hiçbir şey olmuyor ve hiçbir şey söylenmiyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:96-98`)
-- **HOCAS-6** · düşük · arayüz — Tek hocası hesapsız olan derste 'Kaydet' kapalı açılıyor ve yardım satırı hesap gerektiğini söylemiyor; kişi neden kaydedemediğini anlamıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:128`)
+- **HOCAS-5** · düşük · arayüz — Kaydedilirken 'Vazgeç' ve kapatma simgesi açık görünüyor ama basınca hiçbir şey olmuyor ve hiçbir şey söylenmiyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:99-101`)
+- **HOCAS-6** · düşük · arayüz — Tek hocası hesapsız olan derste 'Kaydet' kapalı açılıyor ve yardım satırı hesap gerektiğini söylemiyor; kişi neden kaydedemediğini anlamıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:131`)
 
 ### nazar/curriculum
 
