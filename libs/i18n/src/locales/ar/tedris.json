@@ -817,7 +817,10 @@
     "notifications": "الإشعارات",
     "homeLabel": "مدارس تدريس، الصفحة الرئيسية",
     "liveIntro": "درس {course} مباشر الآن.",
-    "exams": "امتحاناتي"
+    "exams": "امتحاناتي",
+    "examOpenIntro": "امتحان {course} مفتوح الآن.",
+    "examPage": "صفحة الامتحان",
+    "examEnter": "ادخل الامتحان"
   },
   "SchedulePage": {
     "pageTitle": "جدولي",
@@ -848,7 +851,9 @@
     "loadErrorTitle": "تعذّر تحميل جدولك",
     "loadError": "تعذّرت قراءة جلساتك الآن.",
     "retry": "أعد المحاولة",
-    "exam": "اختبار"
+    "exam": "اختبار",
+    "examOpen": "الامتحان مفتوح",
+    "examEnter": "ادخل الامتحان"
   },
   "Decks": {
     "title": "المجموعات",

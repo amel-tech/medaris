@@ -200,6 +200,10 @@ needs:
       - node: toastUnknown
       - node: toastForbidden
       - node: toastFailed
+      - node: removePerson
       - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
       - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:186
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx
+        name: "keeps the person chosen while the appointment is on its way: 'Seçimi kaldır' is off until it answers"
       - test: apps/nazar/test/nazirs-dialogs.spec.tsx

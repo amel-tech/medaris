@@ -30,9 +30,12 @@ import { MuderrisPicker } from "./muderris-picker";
  * their e-mail address and taken off with "Çıkar", and with several accounts
  * the imam is chosen. "Kaydet" stays off until the list differs from where it
  * started and is complete: at least one account, and an imam where there are
- * several, so the reason is written under the list at once. The scrim does not
- * close the dialog. The list is sent whole: the API gives the accounts that
- * leave no role, and leaves a müderris with no account as it is.
+ * several, so the reason is written under the list at once. It is off too
+ * while an address is looked up, so the list is not sent without that hoca.
+ * While the list is saved it is held (the search, "Çıkar", the imam), so what
+ * is saved is what is shown. The scrim does not close the dialog. The list is
+ * sent whole: the API gives the accounts that leave no role, and leaves a
+ * müderris with no account as it is.
  */
 export function ChangeMuderris({
   madrasahId,
@@ -54,13 +57,14 @@ export function ChangeMuderris({
   const [start] = useState(() => teamOf(course.team));
   const [team, dispatch] = useReducer(teamReducer, start);
   const searchRef = useRef<HTMLElement | null>(null);
+  const [looking, setLooking] = useState(false);
 
   const problem = teamProblem(team);
   const ready = problem === null && teamChanged(start, team);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!ready || pending) return;
+    if (!ready || pending || looking) return;
     startTransition(async () => {
       const result = await replaceMuderris(
         madrasahId,
@@ -111,7 +115,7 @@ export function ChangeMuderris({
             type="submit"
             loading={pending}
             loadingLabel={t("ChangeTeam.saving")}
-            disabled={!ready}
+            disabled={!ready || looking}
           >
             {t("ChangeTeam.save")}
           </Button>
@@ -129,6 +133,8 @@ export function ChangeMuderris({
         removal="text"
         keepOne
         inputRef={searchRef}
+        onSearchingChange={setLooking}
+        disabled={pending}
       />
     </Dialog>
   );

@@ -304,6 +304,7 @@ export function GroupDialog({
           name="name"
           autoComplete="off"
           value={draft.name}
+          disabled={pending}
           onChange={(event) => {
             setTaken(false);
             setDraft({ ...draft, name: event.target.value });
@@ -317,6 +318,7 @@ export function GroupDialog({
           name="scope"
           bordered
           value={draft.scope}
+          disabled={pending}
           onChange={(value) =>
             setDraft(
               known
@@ -382,7 +384,9 @@ export function GroupDialog({
                   labelOf={label}
                   ticked={(code) => draft.permissions.includes(code)}
                   disabled={(code) =>
-                    !givable.has(code) || !scopeAllows(draft.scope, known, code)
+                    pending ||
+                    !givable.has(code) ||
+                    !scopeAllows(draft.scope, known, code)
                   }
                   onToggle={(code, on) => setDraft(toggleCode(draft, code, on))}
                 />
@@ -434,6 +438,7 @@ export function GroupDialog({
               name="usersPolicy"
               bordered
               value={policy}
+              disabled={pending}
               onChange={(value) => setPolicy(value as UsersPolicy)}
               options={[
                 {

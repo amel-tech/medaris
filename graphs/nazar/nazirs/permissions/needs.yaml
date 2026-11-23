@@ -38,6 +38,8 @@ needs:
       - test: apps/nazar/e2e/permissions.e2e.ts
         name: "nazir/06 — 'İzin ver': a group and one extra permission are saved, and the row shows the group chip and 'Ayrıca 1 izin' (criteria 1, 4, 5)"
       - test: apps/nazar/test/permission-editor.spec.tsx
+      - test: apps/nazar/test/permission-editor.spec.tsx
+        name: "turns the form off while the save is on its way, so what is sent is what is shown"
 
   - id: limit-course-permissions-to-chosen-courses
     need: >-

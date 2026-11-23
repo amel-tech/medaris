@@ -179,4 +179,4 @@ needs:
       - node: saveSettings
       - node: settingsGeneral
       - source: apps/nazar/features/pano/components/pano-page.tsx:108
-      - source: apps/nazar/features/settings/components/settings-form.tsx:224
+      - source: apps/nazar/features/settings/components/settings-form.tsx:228

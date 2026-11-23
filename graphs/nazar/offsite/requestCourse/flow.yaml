@@ -242,17 +242,17 @@ states:
       error of its own, "Bir köşk seçin.", which the page can never draw: a köşk is chosen whenever the form is drawn (OFFSITE-3). The
       page sets no initial focus (focus-not-set). The server's köşk list is the only data: nothing is typed or stored before the send.
     on:
-      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she types the name (two or more characters); where an error was drawn it goes at once" }
-      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason" }
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:164, say: "she types the name (two or more characters); where an error was drawn it goes at once" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:187, say: "she types the reason" }
       OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
       SUBMIT:
-        - { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:62, say: "the name is blank: nothing is sent, 'Ders adı boş olamaz.' stands under it (and 'Bir gerekçe yazın.' under the reason if that is blank too), the focus goes to the name" }
-        - { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:64, say: "the name is fine and the reason is blank: nothing is sent, 'Bir gerekçe yazın.' stands under it, the focus goes to the reason" }
-        - { guard: complete, target: sending, effect: [attempt], source: apps/nazar/features/offsite/components/offsite-form.tsx:74, say: "the form passes the page's check: the request is sent" }
-      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç', a plain link to Dersler: nothing is written" }
+        - { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:63, say: "the name is blank: nothing is sent, 'Ders adı boş olamaz.' stands under it (and 'Bir gerekçe yazın.' under the reason if that is blank too), the focus goes to the name" }
+        - { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:65, say: "the name is fine and the reason is blank: nothing is sent, 'Bir gerekçe yazın.' stands under it, the focus goes to the reason" }
+        - { guard: complete, target: sending, effect: [attempt], source: apps/nazar/features/offsite/components/offsite-form.tsx:75, say: "the form passes the page's check: the request is sent" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:193, say: "'Vazgeç', a plain link to Dersler: nothing is written" }
       OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
       NAVIGATE: left
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:115
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:116
 
   refusedTitle:
     title: The send was refused, on the name
@@ -264,14 +264,14 @@ states:
       a screen-reader user hears the reason's error only when they reach the field (the shape of F-L-18). The köşk's choice and
       what was typed are kept.
     on:
-      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she types the name: its error goes at once; the focus is where she types" }
-      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason" }
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:164, say: "she types the name: its error goes at once; the focus is where she types" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:187, say: "she types the reason" }
       OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
-      SUBMIT: { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:62, say: "she presses it again with the name still blank: the focus goes back to it (once she has typed the name, the press is the form's)" }
-      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç': nothing is written" }
+      SUBMIT: { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:63, say: "she presses it again with the name still blank: the focus goes back to it (once she has typed the name, the press is the form's)" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:193, say: "'Vazgeç': nothing is written" }
       OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
       NAVIGATE: left
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:62
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:63
 
   refusedReason:
     title: The send was refused, on the reason
@@ -280,14 +280,14 @@ states:
       The same form after a refused "Talebi gönder" whose name is fine and whose reason is blank: "Bir gerekçe yazın." under the
       reason and the focus on "Gerekçe" (element.focus()). Nothing was sent.
     on:
-      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she changes the name" }
-      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason: its error goes at once; the focus is where she types" }
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:164, say: "she changes the name" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:187, say: "she types the reason: its error goes at once; the focus is where she types" }
       OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
-      SUBMIT: { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:64, say: "she presses it again with the reason still blank: the focus goes back to it (once she has typed the reason, the press is the form's)" }
-      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç': nothing is written" }
+      SUBMIT: { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:65, say: "she presses it again with the reason still blank: the focus goes back to it (once she has typed the reason, the press is the form's)" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:193, say: "'Vazgeç': nothing is written" }
       OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
       NAVIGATE: left
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:64
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:65
 
   choosingKosk:
     title: The list of köşks is open
@@ -299,23 +299,25 @@ states:
       yönetimi talebi görür."; Esc closes it and changes nothing. The page behind stays drawn (not verified; the same Select is
       measured so in tedris.discover.applyForKosk). After a vanished köşk the list no longer holds it.
     on:
-      CHOOSE_FIRST: { guard: "kosk != 'gone'", target: form, effect: [pickedFirst], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses the köşk the form started with" }
-      CHOOSE_OTHER: { target: form, effect: [pickedOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses another köşk: the card names it at once" }
+      CHOOSE_FIRST: { guard: "kosk != 'gone'", target: form, effect: [pickedFirst], source: apps/nazar/features/offsite/components/offsite-form.tsx:142, say: "she chooses the köşk the form started with" }
+      CHOOSE_OTHER: { target: form, effect: [pickedOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:142, say: "she chooses another köşk: the card names it at once" }
       DISMISS: { target: form, say: "Esc: the list closes and the choice stays" }
       OPEN_KOSK: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses the box again: the list closes and the choice stays" }
       SUBMIT: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Talebi gönder': the open list's backdrop takes the press, the list closes and nothing is sent" }
       CANCEL: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Vazgeç': the open list's backdrop takes the press, the list closes and the page stays" }
       OPEN_COURSES: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Dersler' in the breadcrumb: the open list's backdrop takes the press, the list closes and the page stays" }
       NAVIGATE: left
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:132
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:133
 
   sending:
     title: The request is on its way
     description: >-
       sendOffsiteRequest, a server action, calls POST /madrasahs/:id/offsite-course-requests with the köşk's id and the name and the
       reason trimmed. "Talebi gönder" is busy (aria-disabled and aria-busy, a spinner, and a visually hidden status that says
-      "Talep gönderiliyor", a message of the catalog: F-A-14 does not touch it); the fields stay editable. In one transaction the API
-      checks that the medrese and the köşk are not hidden, inserts a CourseRequest (PENDING, requestedBy the caller) and writes the
+      "Talep gönderiliyor", a message of the catalog: F-A-14 does not touch it); the köşk, the name and the reason are held (the
+      Select, the input and the textarea are disabled, offsite-form.tsx:141, :163, :186), so what the page shows is what the
+      request carries.
+      In one transaction the API checks that the medrese and the köşk are not hidden, inserts a CourseRequest (PENDING, requestedBy the caller) and writes the
       audit row course_request.create. It makes no course, adds nothing to the medrese's list and sends nobody a notification. A refused
       send keeps the form and what was typed and gives one error toast, "Talep gönderilemedi", worded by the code: KOSK_NOT_FOUND
       "Bu köşk artık yok. Köşk listesi yenilendi; yeniden seçin." (and the page reads the köşks again), VALIDATION_ERROR "Ders adını ve
@@ -325,15 +327,15 @@ states:
       nearest boundary (F-A-10, not verified).
     invoke: { action: requestOffsiteCourse }
     on:
-      DONE: { guard: "answer == 'sent'", target: recorded, source: apps/nazar/features/offsite/components/offsite-form.tsx:80, say: "the API answers 201" }
-      FAIL.koskGone: { guard: "answer == 'koskGone'", target: form, effect: [koskWentAway], source: apps/nazar/features/offsite/components/offsite-form.tsx:97, say: "404 KOSK_NOT_FOUND: the error toast, and router.refresh() reads the köşks again; the form still holds the gone köşk (OFFSITE-2)" }
-      FAIL.invalid: { guard: "answer == 'invalid'", target: form, effect: [toastInvalid], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "400 VALIDATION_ERROR: the error toast" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastForbidden], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "403 AUTHZ_FORBIDDEN: the error toast" }
-      FAIL.other: { guard: "answer == 'other'", target: form, effect: [toastOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "any other code: the generic error toast" }
+      DONE: { guard: "answer == 'sent'", target: recorded, source: apps/nazar/features/offsite/components/offsite-form.tsx:81, say: "the API answers 201" }
+      FAIL.koskGone: { guard: "answer == 'koskGone'", target: form, effect: [koskWentAway], source: apps/nazar/features/offsite/components/offsite-form.tsx:98, say: "404 KOSK_NOT_FOUND: the error toast, and router.refresh() reads the köşks again; the form still holds the gone köşk (OFFSITE-2)" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: form, effect: [toastInvalid], source: apps/nazar/features/offsite/components/offsite-form.tsx:93, say: "400 VALIDATION_ERROR: the error toast" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastForbidden], source: apps/nazar/features/offsite/components/offsite-form.tsx:93, say: "403 AUTHZ_FORBIDDEN: the error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: form, effect: [toastOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:93, say: "any other code: the generic error toast" }
       FAIL.signedOut: sent_to_sign_in
-      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç' is a plain link and is not held back while the request is on its way: Dersler opens, and the request is not taken back" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:193, say: "'Vazgeç' is a plain link and is not held back while the request is on its way: Dersler opens, and the request is not taken back" }
       OPEN_COURSES: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-page.tsx:54, say: "she follows 'Dersler' in the breadcrumb while the request is on its way: Dersler opens, and the request is not taken back" }
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:74
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:75
 
   recorded:
     title: The request is in the köşk nazım's list
@@ -357,7 +359,7 @@ states:
       entry and the bell (F-L-6). Nothing on the page tells her afterwards what became of the request (OFFSITE-1).
     on:
       NAVIGATE: left
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:81
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:82
 
   courses_opened:
     title: Dersler opens
@@ -390,7 +392,7 @@ assertions:
   - id: only-a-complete-form-is-sent
     never: "state == 'sending' and (title == 'empty' or reason == 'empty')"
     say: A form with a blank name or a blank reason is never sent; the page's own check stops it.
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:61
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:62
   - id: the-form-is-drawn-only-where-the-reads-allow
     never: "state in ['form', 'refusedTitle', 'refusedReason', 'choosingKosk', 'sending'] and read != 'ok'"
     say: The form is drawn only when the person may and a köşk is listed.
@@ -398,8 +400,8 @@ assertions:
   - id: the-toast-comes-only-after-the-api-took-it
     never: "state == 'sent' and answer != 'sent'"
     say: '"Talep gönderildi" shows only after the API answered that it recorded the request.'
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:80
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:81
   - id: the-first-error-takes-the-focus
     never: "state == 'refusedReason' and title == 'empty'"
     say: The focus goes to the reason only when the name is fine.
-    source: apps/nazar/features/offsite/components/offsite-form.tsx:62
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:63

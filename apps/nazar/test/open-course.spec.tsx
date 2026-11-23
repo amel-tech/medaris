@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
@@ -554,6 +554,104 @@ describe("'Dersi aç'", () => {
     await settle(60);
     expect(toast("error")).toContain("Bir şeyler ters gitti.");
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("will not open the course while a hoca is being looked up, and sends them once they are listed", async () => {
+    let answer: (value: unknown) => void = () => {};
+    lookupPerson.mockResolvedValueOnce(ISIKOGLU).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    openCourse.mockResolvedValue({
+      success: true,
+      data: { id: "c-9", title: "Maksûd şerhi" },
+    });
+    await mount();
+    await typeInto(titleField(), "Maksûd şerhi");
+    await search(ISIKOGLU);
+    // the second address is being looked up: the form already holds a hoca and a name
+    await search(KILICARSLAN);
+    expect(emailField().disabled).toBe(true);
+    expect((submit() as HTMLButtonElement).disabled).toBe(true);
+    // Enter in a field sends the form without the button: it is refused as well
+    await act(async () => {
+      form().requestSubmit();
+    });
+    await settle(20);
+    expect(openCourse).not.toHaveBeenCalled();
+
+    await act(async () => {
+      answer(KILICARSLAN);
+    });
+    await settle(40);
+    expect((submit() as HTMLButtonElement).disabled).toBe(false);
+    await click(submit());
+    await settle(60);
+    expect(openCourse).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-1",
+      title: "Maksûd şerhi",
+      muderrisUserIds: ["u-1", "u-2"],
+      imamUserId: "u-1",
+      closedCourse: false,
+      requiresApproval: false,
+    });
+  });
+
+  it("holds the whole form while the course is opened, so the course opened is the one shown", async () => {
+    lookupPerson
+      .mockResolvedValueOnce(ISIKOGLU)
+      .mockResolvedValueOnce(KILICARSLAN);
+    let answer: (value: unknown) => void = () => {};
+    openCourse.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await typeInto(titleField(), "Maksûd şerhi");
+    await search(ISIKOGLU);
+    await search(KILICARSLAN);
+    await click(submit());
+    await settle(20);
+
+    expect(openCourse).toHaveBeenCalledOnce();
+    expect(titleField().disabled).toBe(true);
+    expect(emailField().disabled).toBe(true);
+    const held = (element: Element | null) =>
+      element?.hasAttribute("data-disabled") === true ||
+      element?.getAttribute("aria-disabled") === "true" ||
+      (element as HTMLButtonElement | null)?.disabled === true;
+    expect(held(byLabel("Çıkar: Mehmet Emin Işıkoğlu"))).toBe(true);
+    expect(held(byLabel("Dersin imamı: Ayşe Nur Kılıçarslan"))).toBe(true);
+    expect(held(unvanSelect("Mehmet Emin Işıkoğlu"))).toBe(true);
+    expect(held(checkbox("Kapalı ders"))).toBe(true);
+    expect(held(checkbox("Kayıt onayı gereksin"))).toBe(true);
+    const kosk = form().querySelector("[role=radio]:not([aria-label])");
+    expect(held(kosk)).toBe(true);
+    // a press on a held control changes nothing on the screen
+    await click(byLabel("Çıkar: Mehmet Emin Işıkoğlu"));
+    await click(choice("Kapalı ders"));
+    expect(form().textContent).toContain("Mehmet Emin Işıkoğlu");
+    expect(checkbox("Kapalı ders").getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(openCourse).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-1",
+      title: "Maksûd şerhi",
+      muderrisUserIds: ["u-1", "u-2"],
+      imamUserId: "u-1",
+      closedCourse: false,
+      requiresApproval: false,
+    });
+    expect(titleField().disabled).toBe(false);
+    expect(held(checkbox("Kapalı ders"))).toBe(false);
+    expect(held(byLabel("Çıkar: Mehmet Emin Işıkoğlu"))).toBe(false);
   });
 
   it("goes back to the list with 'Vazgeç', without sending anything", async () => {

@@ -8,6 +8,20 @@
 /** The countdown turns red, and says so, in the last five minutes. */
 export const LAST_FIVE_SECONDS = 5 * 60;
 
+/**
+ * A question's points as the API writes them ("25.00") in the locale's
+ * numbers, always with two decimals ("25,00" in Turkish), as the exam's
+ * points are given (MDRS-299).
+ */
+export const pointsText = (points: string, locale: string): string => {
+  const value = Number(points);
+  if (!Number.isFinite(value)) return points;
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
 /** How often the page counts the clock with the server, in milliseconds. */
 export const TICK_MS = 10_000;
 

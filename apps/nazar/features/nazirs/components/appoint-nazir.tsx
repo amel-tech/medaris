@@ -183,6 +183,7 @@ export function AppointNazir({
                 type="button"
                 className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost"
                 aria-label={t("Appoint.remove", { name: picked.name })}
+                disabled={pending}
                 onClick={reset}
               >
                 <Icon name="close" size="sm" />

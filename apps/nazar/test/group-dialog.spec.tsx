@@ -234,6 +234,38 @@ describe("'İzin grubu tanımla' (nazir 16)", () => {
     expect(onDone).toHaveBeenCalledOnce();
   });
 
+  it("turns the form off while the group is on its way, so what is sent is what is shown", async () => {
+    let answer: (value: unknown) => void = () => {};
+    createGroup.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open({ mode: "create" });
+    await typeInto(nameField(), "Ders açma ve kadro");
+    await toggle("Hafta ve celse gizle, geri al");
+    await click(button(dialog(), "Grubu kaydet"));
+    await settle(20);
+
+    expect(nameField().disabled).toBe(true);
+    expect(off("Medrese dersi aç")).toBe(true);
+    expect(off("Hafta ve celse gizle, geri al")).toBe(true);
+    expect(scopeRadio("Ders").hasAttribute("data-disabled")).toBe(true);
+    await click(scopeRadio("Ders"));
+    await toggle("Medrese dersi aç");
+    await settle(20);
+    expect(dialog().textContent).toContain("Medrese kapsamı · 1 izin seçili");
+
+    answer({ success: true });
+    await settle(80);
+    expect(createGroup).toHaveBeenCalledExactlyOnceWith("m-1", {
+      name: "Ders açma ve kadro",
+      scope: "MADRASAH",
+      permissions: ["week.hide"],
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("turns the medrese's permissions off under 'Ders' and unticks the ones already ticked (criterion 3)", async () => {
     await open({ mode: "create" });
     await toggle("Medrese dersi aç");
@@ -355,6 +387,46 @@ describe("'İzin grubunu düzenle' (nazir 16)", () => {
     );
     expect(onClose).toHaveBeenCalledOnce();
     expect(onDone).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the answer to the question while the save is on its way: the radios are off until it answers", async () => {
+    let answer: (value: unknown) => void = () => {};
+    updateGroup.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open({ mode: "edit", group: kayit });
+    await toggle("Hafta ve celse gizle, geri al");
+    await click(button(dialog(), "Grubu kaydet"));
+    await settle(80);
+    const ask = question() as HTMLElement;
+    const radio = (label: string) =>
+      [...ask.querySelectorAll("[role=radio]")].find((r) =>
+        r.closest("label")?.textContent?.includes(label)
+      ) as HTMLElement;
+    await click(radio("İzinleri korusunlar"));
+    await settle(40);
+    await click(button(ask, "Grubu kaydet"));
+    await settle(20);
+
+    expect(radio("İzinleri kaybetsinler").hasAttribute("data-disabled")).toBe(
+      true
+    );
+    await click(radio("İzinleri kaybetsinler"));
+    await settle(20);
+    expect(radio("İzinleri korusunlar").getAttribute("aria-checked")).toBe(
+      "true"
+    );
+
+    answer({ success: true });
+    await settle(80);
+    expect(updateGroup).toHaveBeenCalledExactlyOnceWith(
+      "m-1",
+      "g-1",
+      { permissions: ["week.hide", "enrollment.decide", "enrollment.remove"] },
+      "keep"
+    );
   });
 
   it("does not ask when nobody uses the group", async () => {

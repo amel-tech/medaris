@@ -31,7 +31,7 @@ needs:
       - node: sampleCsv
       - source: apps/nazar/app/api/decks/sample/route.ts:12
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
-      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:134
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:141
       - test: apps/nazar/test/deck-sample-route.spec.ts
 
   - id: template-failure-is-told
@@ -75,7 +75,7 @@ needs:
       - node: optionSecond
       - state: deckPage
       - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
-      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:94
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:100
       - source: apps/nazar/features/decks/components/deck-detail-screen.tsx:105
 
   - id: the-confirmation-names-the-deck
@@ -98,7 +98,7 @@ needs:
       - node: errSize
       - node: fileHelp
       - source: apps/nazar/features/decks/decks.ts:303
-      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:54
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
       - test: apps/nazar/test/decks.spec.ts
 
   - id: a-good-file-adds-every-row
@@ -114,7 +114,7 @@ needs:
       - node: cardsHeadingAdded
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
       - source: apps/nazar/features/decks/actions.ts:175
-      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:66
       - test: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts
 
   - id: a-bad-file-adds-nothing-and-lists-its-rows
@@ -130,7 +130,7 @@ needs:
       - node: rowItem
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
       - source: apps/nazar/features/decks/decks.ts:268
-      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:143
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:150
       - test: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts
       - test: apps/nazar/test/decks.spec.ts
 

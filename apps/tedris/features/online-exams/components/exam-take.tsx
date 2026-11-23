@@ -37,6 +37,7 @@ import {
   LAST_FIVE_SECONDS,
   type LocalAnswer,
   nextIndex,
+  pointsText,
   type QuestionState,
   readTextScale,
   readUnsent,
@@ -157,6 +158,8 @@ export function ExamTake({
       action: { label: t("reload"), onClick: () => window.location.reload() },
     });
   const [pending, setPending] = useState(0);
+  /** The question whose latest answer the server holds: it says "Cevabın kaydedildi." */
+  const [savedFor, setSavedFor] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [asking, setAsking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -232,6 +235,7 @@ export function ExamTake({
     async (questionId: string, answer: LocalAnswer) => {
       seq.current += 1;
       const mine = seq.current;
+      setSavedFor(null);
       setPending((n) => n + 1);
       try {
         const result = await saveExamAnswer(lessonId, questionId, {
@@ -245,6 +249,7 @@ export function ExamTake({
           unsent.current.delete(questionId);
           writeUnsent(lessonId, unsent.current, window.sessionStorage);
           if (result.data.written) setLeft(result.data.secondsLeft);
+          if (mine === seq.current) setSavedFor(questionId);
           return;
         }
         if (lostConnection(result)) {
@@ -596,7 +601,11 @@ export function ExamTake({
                 })}
               </p>
               <p className="mds-body-sm text-neutral-muted" aria-live="polite">
-                {pending > 0 ? t("saving") : ""}
+                {pending > 0
+                  ? t("saving")
+                  : q && savedFor === q.id
+                    ? t("saved")
+                    : ""}
               </p>
             </section>
 
@@ -627,7 +636,9 @@ export function ExamTake({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="mds-caption text-neutral-muted">
-                    {t("questionPoints", { points: q.points })}
+                    {t("questionPoints", {
+                      points: pointsText(q.points, locale),
+                    })}
                   </p>
                   <div className="flex gap-1">
                     <Button

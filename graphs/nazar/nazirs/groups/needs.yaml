@@ -39,6 +39,8 @@ needs:
       - test: apps/nazar/test/group-dialog.spec.tsx
       - scenario: defines
       - scenario: taken
+      - test: apps/nazar/test/group-dialog.spec.tsx
+        name: "turns the form off while the group is on its way, so what is sent is what is shown"
 
   - id: scope-limits-the-permissions
     need: >-
@@ -110,13 +112,15 @@ needs:
       - state: askEditChosen
       - state: updatingAsked
       - source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:144
-      - source: apps/nazar/features/nazirs/components/group-dialog.tsx:400
+      - source: apps/nazar/features/nazirs/components/group-dialog.tsx:404
       - test: apps/nazar/e2e/groups.e2e.ts
         name: "nazir/16 — changing a used group's permissions asks about the people who use it; nothing is chosen, and 'Grubu kaydet' waits for an answer (criterion 4)"
       - test: apps/nazar/test/group-dialog.spec.tsx
       - scenario: usedCourse
       - scenario: usedMedrese
       - scenario: unusedCourse
+      - test: apps/nazar/test/group-dialog.spec.tsx
+        name: "keeps the answer to the question while the save is on its way: the radios are off until it answers"
     note: Also drawn as the assertion a-used-group-is-asked-about.
 
   - id: delete-asks-the-holders
