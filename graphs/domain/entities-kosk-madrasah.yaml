@@ -21,9 +21,9 @@ entities:
       level: { type: [string, "null"], enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED, null], note: "an application enum, no DB check (kosk-field-rules.ts:25-30)" }
       tags: { type: array, items: { type: string, maxLength: 40 }, maxItems: 10, default: [] }
       alwaysRequireApproval: { type: boolean, default: false, note: "the köşk policy (MDRS-174): every enrollment in its courses waits for approval" }
-      recordingsNeverPublic: { type: boolean, default: false, note: "the köşk policy: no recording of its courses is open to everyone. Stale comments say nothing reads it (kosk.schema.ts:38-41 and create-kosk.dto.ts), but course.service.ts:855-868 and the authz policy chain do" }
+      recordingsNeverPublic: { type: boolean, default: false, note: "the köşk policy: no recording of its courses is open to everyone. Stale comments say nothing reads it (kosk.schema.ts:38-41 and create-kosk.dto.ts), but course.service.ts:859-872 and the authz policy chain do" }
       verified: { type: boolean, default: false, note: "no writer in src" }
-      featured: { type: boolean, default: false, note: "no writer in src; only read, for the ordering of the köşk list (kosk.repository.ts:408)" }
+      featured: { type: boolean, default: false, note: "no writer in src; only read, for the ordering of the köşk list (kosk.repository.ts:410)" }
       rating: { type: number, default: 0, note: "no writer in src" }
       ratingCount: { type: integer, default: 0, note: "no writer in src" }
       passiveSince: { type: [string, "null"], format: date-time }
@@ -84,7 +84,7 @@ entities:
       madrasahId: { type: string, format: uuid, references: Madrasah, note: "the primary key; on delete cascade" }
       policyClosedCourseRequired: { type: boolean, default: false, note: "closes setting.course_open in every course of the medrese" }
       policyAlwaysApproval: { type: boolean, default: false, note: "closes setting.approval_off; enroll then answers PENDING" }
-      policyNoPublicRecordings: { type: boolean, default: false, note: "closes setting.recordings_public in the engine, but CourseService.publicRecordingsAllowed does not read it (course.service.ts:857-867), so a PUBLIC recording of a medrese course is still shown to visitors" }
+      policyNoPublicRecordings: { type: boolean, default: false, note: "closes setting.recordings_public in the engine, but CourseService.publicRecordingsAllowed does not read it (course.service.ts:861-871), so a PUBLIC recording of a medrese course is still shown to visitors" }
       updatedAt: { type: string, format: date-time }
       updatedBy: { type: string, format: uuid, note: "Keycloak sub" }
     lifecycle:

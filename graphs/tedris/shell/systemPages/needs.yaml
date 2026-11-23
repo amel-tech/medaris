@@ -42,7 +42,7 @@ needs:
       unknown address, and tell a visitor no more than a member.
     evidence:
       - state: notFound
-      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:27"
+      - source: apps/tedris/features/courses/load-course.ts:33
       - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27"
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "a course the API answers 404 for falls onto it"
@@ -173,7 +173,7 @@ needs:
     evidence:
       - state: notFound
       - source: apps/tedris/app/not-found.tsx:5
-      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:23"
+      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:22"
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "an unknown URL answers 404 with the page and its button leads home"
       - test: apps/tedris/e2e/system-pages.e2e.ts

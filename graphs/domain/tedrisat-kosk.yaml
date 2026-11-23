@@ -283,7 +283,7 @@ actions:
     summary: Delete a köşk for real
     needs: "AuthGuard + AuthzGuard: @Authz(kosk.delete, byExistingKosk). kosk.delete is held by no role, grant or relationship: only SYSTEM_ADMIN, by the realm bypass"
     description: >-
-      One transaction (kosk.repository.ts:687): every course of the köşk and all under it (lessons, weeks, recordings, notes, questions,
+      One transaction (kosk.repository.ts:689): every course of the köşk and all under it (lessons, weeks, recordings, notes, questions,
       submissions and their files, exams, assignments, resources, müderris rows, enrollments, partner links and codes, the courses' role
       rows, queued file deletions), the followers, the köşk's role assignments, the Kosk, and one audit row naming the name, the managers
       and per-table counts. Hosting rights go with the row (cascade). A köşk nazım hides and never deletes.
@@ -1090,7 +1090,7 @@ invariants:
     rule: >-
       The public köşk list never holds an unlisted (isPrivate) or a hidden (archivedAt) köşk, for anyone, the başnazım included. managedBy=me
       adds the caller's unlisted köşks and never a hidden one. The fields list follows the same rule.
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:157
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:158
 
   - id: kosk-unlisted-by-link
     rule: >-
@@ -1102,7 +1102,7 @@ invariants:
     rule: >-
       Every enrollment in a course of an unlisted köşk waits (PENDING) whatever the course says; the köşk policy alwaysRequireApproval and the
       platform policy ALWAYS_REQUIRE_APPROVAL say the same.
-    source: apps/tedrisat/src/course/course.service.ts:1551
+    source: apps/tedrisat/src/course/course.service.ts:1566
 
   - id: kosk-hidden-comes-back-by-level
     rule: >-
@@ -1133,7 +1133,7 @@ invariants:
       A köşk's short name is unique across köşks, compared without case and with a leading @ removed; an empty one compares equal to
       nothing; an update excepts the köşk itself.
     note: "The rule is the application's: the column is not unique in the database (see Kosk.handle), so two concurrent creates can store one handle."
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:456
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:458
 
   - id: kosk-field-limits
     rule: >-
@@ -1158,7 +1158,7 @@ invariants:
     rule: >-
       The last live nazım of a köşk cannot be removed unless a successor is named, who is seated first in the same transaction under the
       köşk row lock; the successor must have signed in; nobody is their own successor.
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:625
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:627
 
   - id: kosk-nazim-one-live-seat
     rule: >-
@@ -1184,10 +1184,10 @@ invariants:
     finding: kosk-passive-status-after-managers-route
     note: >-
       Two ways of seating a nazım differ. POST /kosks/{id}/nazims and the inactive-scope assignment clear passiveSince; POST
-      /kosks/{id}/managers/{userId}, and the successor seating of the DELETE on it, do not (kosk.repository.ts:556-593). After deactivate, adding
+      /kosks/{id}/managers/{userId}, and the successor seating of the DELETE on it, do not (kosk.repository.ts:558-595). After deactivate, adding
       a manager through the managers route leaves the directory and overview status at PASSIVE although a live nazım holds the seat; the
       engine's own passive scope, derived from the role rows, is open again. Read from the code; no spec covers it. Inventory F-2.
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:556
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:558
 
   - id: kosk-deactivation-confirmed
     rule: >-
@@ -1200,13 +1200,13 @@ invariants:
       A köşk may switch its own alwaysRequireApproval and recordingsNeverPublic on, but not off while the platform policy of the same name is
       on (409 PLATFORM_POLICY_LOCKED), except the başnazım; every change of either field writes kosk.policy_change.
     note: >-
-      recordingsNeverPublic is read (course.service.ts:855-868 and the authz policy chain), although the description of the field in
+      recordingsNeverPublic is read (course.service.ts:859-872 and the authz policy chain), although the description of the field in
       create-kosk.dto.ts and the comment in kosk.schema.ts still say nothing reads it. Inventory F-1.
     source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:56
 
   - id: kosk-follow-idempotent
     rule: Following a köşk already followed changes nothing; unfollowing needs no permission.
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:726
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:728
 
   - id: kosk-hidden-cannot-be-followed
     rule: A köşk that answers 404 to the caller cannot be followed by them.
@@ -1222,7 +1222,7 @@ invariants:
       The public courseCount is the PUBLISHED, non-hidden courses and studentCount the distinct non-REVOKED enrollees in non-hidden courses;
       every admin number that says talebe (overview.students, dashboard.counts.students, platformCounts.enrolledStudents) counts distinct
       ENROLLED only; dashboard.counts.courses counts non-hidden courses with drafts; the directory's courseCount counts every course.
-    source: apps/tedrisat/src/kosk/kosk.repository.ts:92
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:93
 
   - id: kosk-dashboard-redaction
     rule: >-

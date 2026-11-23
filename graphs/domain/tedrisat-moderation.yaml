@@ -387,7 +387,7 @@ actions:
         page: { type: integer }
         limit: { type: integer }
     refusals:
-      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397, note: "an absent course (for a caller who is not SYSTEM_ADMIN), or any course of a hidden köşk for a caller who holds neither course.hide nor platform.kosk_edit (the closure, authz.guard.ts:89). A SYSTEM_ADMIN asking for an absent course gets an empty page" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400, note: "an absent course (for a caller who is not SYSTEM_ADMIN), or any course of a hidden köşk for a caller who holds neither course.hide nor platform.kosk_edit (the closure, authz.guard.ts:89). A SYSTEM_ADMIN asking for an absent course gets an empty page" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller does not hold week.hide on the course; an id that is not a uuid also lands here for everyone but SYSTEM_ADMIN" }
       HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:155, note: "an unknown archive type in types ('Validation failed (unknown archive type: x)'), page or limit not an integer; for SYSTEM_ADMIN also an id that is not a uuid" }
     sideEffects:
@@ -905,19 +905,19 @@ invariants:
     rule: >-
       The real delete of a course, köşk, week, session or deck removes everything under it in one transaction, writes its audit row in the
       same one, queues the stored files for deletion and sends the invitation CANCELs still owed.
-    source: apps/tedrisat/src/archive/archive.repository.ts:691
+    source: apps/tedrisat/src/archive/archive.repository.ts:692
 
   - id: archive-lists-only-what-has-a-shown-parent
     rule: >-
       A week is listed only while its course is shown, a session only while its week and its course are; the köşk's archive never lists the
       köşk itself. So a part of a hidden whole is not restored on its own: it comes back with the whole, or answers 404.
-    source: apps/tedrisat/src/archive/archive.repository.ts:84
+    source: apps/tedrisat/src/archive/archive.repository.ts:85
 
   - id: archive-restore-week-brings-its-sessions
     rule: >-
       Restoring a week also restores the sessions hidden at the same instant (equal archived_at); one hidden on its own earlier stays
       hidden. Bringing sessions back is session work (week.hide or session.manage), not course.edit alone.
-    source: apps/tedrisat/src/archive/archive.repository.ts:514
+    source: apps/tedrisat/src/archive/archive.repository.ts:515
 
   - id: archive-restore-parent-first
     rule: >-
@@ -929,7 +929,7 @@ invariants:
     rule: >-
       Restoring a course, a week or a session increments courses.version, so an editor holding the old version is refused 409
       COURSE_VERSION_CONFLICT.
-    source: apps/tedrisat/src/archive/archive.repository.ts:621
+    source: apps/tedrisat/src/archive/archive.repository.ts:622
 
   - id: archive-canrestore-leads-to-no-403
     rule: >-
@@ -995,7 +995,7 @@ invariants:
     rule: >-
       Enrolling is PENDING when any of: the course's requires_approval; its köşk is unlisted; the köşk's always_require_approval; the
       platform's ALWAYS_REQUIRE_APPROVAL; a medrese policy that forces approval.
-    source: apps/tedrisat/src/course/course.service.ts:1552
+    source: apps/tedrisat/src/course/course.service.ts:1567
 
   - id: platform-policy-cannot-be-loosened-below
     rule: >-
@@ -1015,7 +1015,7 @@ invariants:
       reads the medrese's policy_no_public_recordings: it is stored, shown, saved and fed to the engine (which closes
       setting.recordings_public), but a PUBLIC recording of a medrese course is still shown to visitors. Read from the code, not run; the
       medrese-settings e2e only checks the form saves it.
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
 
   - id: platform-policy-edit-needs-policy-edit
     rule: >-

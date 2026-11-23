@@ -152,7 +152,7 @@ states:
     on:
       DONE:
         - { guard: listed, target: card, say: "the button stays flipped and the page is read again", source: apps/tedris/features/discover/components/follow-button.tsx:52 }
-        - { guard: hiddenNow, target: list_without_kosk, say: "the page is read again and the hidden köşk's card is gone", source: apps/tedrisat/src/kosk/kosk.repository.ts:164 }
+        - { guard: hiddenNow, target: list_without_kosk, say: "the page is read again and the hidden köşk's card is gone", source: apps/tedrisat/src/kosk/kosk.repository.ts:165 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { target: card, effect: [flipOn, toastFailed], source: apps/tedris/features/discover/components/follow-button.tsx:49 }
 

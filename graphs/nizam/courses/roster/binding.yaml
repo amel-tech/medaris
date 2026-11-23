@@ -9,7 +9,8 @@
 # tedrisat's API (helpers/course.mjs, which keeps it under graphs/.local/made/rosternizam.json), "Deneme dersi rosternizam": a published course of the
 # seed's second köşk with one week and one celse, the müderris as its hoca, taking anyone, and applicantC (Esma Başvuran), applicantD (Salih Başvuran),
 # applicantE (Betül Başvuran) and applicantG (Dilek Başvuran) enrolled in it. The talebe C then records her own progress, 40 (PUT /courses/:id/progress), so
-# the bar of students#4 has a number to show. A removal leaves a REVOKED row, which blocks the person from applying and leaving (409) for as long as it
+# the bar of students#4 has a number to show. That route is deprecated since MDRS-248, which counts the progress from the celses watched, and it still
+# answers; the walk watches nothing, so nothing overwrites the 40. A removal leaves a REVOKED row, which blocks the person from applying and leaving (409) for as long as it
 # exists, and no route deletes one: so `teardown` deletes the course (helpers/course.mjs remove: DELETE /courses/:id as the başnazım, which purges the
 # course's whole tree, the REVOKED and COMPLETED rows included, and clears the notices that point at it, the REMOVED_FROM_COURSE of the talebe, and the
 # invitation mails the course sent), then asks the database that none of the four accounts holds a REVOKED row anywhere (`"n":0`) and clears their Mailpit

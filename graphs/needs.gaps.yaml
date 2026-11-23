@@ -3,12 +3,14 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1290 missing needs in 182 flows, of 2752 needs in 183 flows (counted by script from the needs.yaml files, 22 Nov 2026). 219 name a
-# Linear issue first, the most MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12),
-# MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1071 have no Linear issue.
+# 1292 missing needs in 181 flows, of 2756 needs in 182 flows (counted by script from the needs.yaml files, 23 Nov 2026, after
+# tedris.course.updateProgress was retired with MDRS-248; `check` prints the same 1292 of 2756). 219 name a Linear issue first, the most
+# MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12), MDRS-141 (11), MDRS-246 (11),
+# MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1073 have no Linear issue.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
-# `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 670; README.md says so under Gaps.
+# `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 675 (counted by the same script, 23 Nov 2026;
+# README.md, under Gaps, gives the number of an earlier count).
 
 schema: delurio-graph/0
 kind: gaps
@@ -1222,6 +1224,9 @@ gaps:
     - recording-public-honours-medrese-policy
     - failed-recording-seen-by-team
     - notes-position-on-bunny  # MDRS-264
+    - bunny-watching-is-recorded
+    - the-counter-is-perceived-by-everyone
+    - a-failed-save-says-what-happened
   tedris.celse.watchStream:
     - the-page-says-live-only-when-it-is
     - the-frame-keeps-its-name
@@ -1258,6 +1263,8 @@ gaps:
     - success-is-said-and-the-focus-goes-somewhere
     - a-left-seat-frees-the-gender-count  # MDRS-284
   tedris.course.readProgramme:
+    - completion-is-the-teams
+    - the-progress-follows-the-programme
     - the-tab-is-in-the-address
     - a-closed-seat-is-told-why
     - a-week-shows-its-number-once
@@ -1267,10 +1274,6 @@ gaps:
     - medrese-policy-hides-public-recordings
     - failed-upload-is-seen-by-staff  # MDRS-259
     - public-and-host-reach-the-name
-  tedris.course.updateProgress:
-    - completion-is-the-teams
-    - a-refused-number-is-announced
-    - a-failed-save-says-what-happened
   tedris.decks.accessRefusals:
     - hidden-public-deck-is-gone
     - forbidden-words-are-true

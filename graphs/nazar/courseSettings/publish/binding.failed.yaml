@@ -1,7 +1,7 @@
 # nazar.courseSettings.publish, the other failure: the course is hidden while the hoca's page is open. The başnazım hides it (POST
 # /courses/<id>/archive, which only the köşk's nazım, a başmüderris with madrasah.course_hide and platform management may do), so the müderris's
 # write meets a course she may not see: tedrisat answers 404 COURSE_NOT_FOUND (a hidden course is not written by someone who cannot restore it,
-# course.service.ts:325-346 and :922), the question closes and an error toast says "Yayın durumu değiştirilemedi" and the generic sentence "İşlem
+# course.service.ts:329-350 and :926), the question closes and an error toast says "Yayın durumu değiştirilemedi" and the generic sentence "İşlem
 # tamamlanamadı. Biraz sonra yeniden deneyin."; the card is not read again.
 #   node apps/engine/src/cli.ts replay graphs/nazar/courseSettings/publish --bind graphs/nazar/courseSettings/publish/binding.failed.yaml --cover transitions --out <dir>
 # NOT RUN: written without a replay; every behaviour is from the code. As in binding.refused.yaml, `drafting` and `publishing` carry no `call`, and

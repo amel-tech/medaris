@@ -47,7 +47,7 @@ context:
     initial: any
     say:
       tab: "the talebe opens the course and presses the tab \"Ders destesi\""
-      address: "the page opens on this tab at once, by the address ?tab=deste (course-page.tsx:194-198); nothing in the app links there, the e2e does"
+      address: "the page opens on this tab at once, by the address ?tab=deste (course-page.tsx:202-206); nothing in the app links there, the e2e does"
   decks:
     values: [none, one, several]
     initial: any
@@ -123,10 +123,10 @@ initial: arriving
 states:
   arriving:
     title: The course page opens
-    source: apps/tedris/features/courses/components/course-page.tsx:194
+    source: apps/tedris/features/courses/components/course-page.tsx:202
     description: >-
       The course page of a talebe who holds a seat is drawn on the server with the course's decks already read (`GET /courses/:id/decks`,
-      app/courses/[courseId]/page.tsx:64-77, read only for a seat holder). The tab is chosen once, from `?tab=` (course-page.tsx:194-198): "deste"
+      app/courses/[courseId]/page.tsx:63-77, read only for a seat holder). The tab is chosen once, from `?tab=` (course-page.tsx:202-206): "deste"
       opens on the deck tab, anything else, or nothing, on Müfredat. A step with no screen of its own.
     always:
       - { guard: viaAddress, target: tabOpened, say: "the address names the tab" }
@@ -135,18 +135,18 @@ states:
   courseOpened:
     title: The course page, on its first tab
     by: human
-    source: apps/tedris/features/courses/components/course-page.tsx:394
+    source: apps/tedris/features/courses/components/course-page.tsx:402
     description: >-
       The course page with the tab list under the header and the card: Müfredat is selected and its panel is drawn (the programme: tedris.course.readProgramme).
       "Ders destesi" is in the list for a seat holder, with the number of decks beside its name when there are some ("Ders destesi 1": the count is in the tab's
-      accessible name, course-page.tsx:181-184). The page sets no initial focus (`focus-not-set`).
+      accessible name, course-page.tsx:189-192). The page sets no initial focus (`focus-not-set`).
     on:
       OPEN_DECK_TAB: tabOpened
       NAVIGATE: left
 
   tabOpened:
     title: The deck tab is selected
-    source: apps/tedris/features/courses/components/course-page.tsx:451
+    source: apps/tedris/features/courses/components/course-page.tsx:460
     description: >-
       Base UI's Tabs selects the panel. The panel is the list of decks when the course has any, else the empty state. The address does not change
       (PROG-1): a reload after this lands on Müfredat again. A step with no screen of its own.
@@ -157,11 +157,11 @@ states:
   noDecks:
     title: The course has no deck
     by: human
-    source: apps/tedris/features/courses/components/course-page.tsx:452
+    source: apps/tedris/features/courses/components/course-page.tsx:461
     description: >-
       The panel says "Bu derse bağlı bir deste yok." in the kit's empty state, a paragraph with no heading, and the tab's name carries no count.
-      The same panel is drawn when the read of the decks failed, because `getCourseDecks` answers null for a failure and the page turns null into [] (public-reads.ts:117-122,
-      page.tsx:96): the talebe cannot tell "no deck" from "could not read" and has no retry (DECKTAB-1; the recordings tab, by contrast, draws RecordingsFailed with
+      The same panel is drawn when the read of the decks failed, because `getCourseDecks` answers null for a failure and the page turns null into [] (public-reads.ts:118-123,
+      page.tsx:102): the talebe cannot tell "no deck" from "could not read" and has no retry (DECKTAB-1; the recordings tab, by contrast, draws RecordingsFailed with
       "Yeniden dene"). Seen in a browser on the stack for a course with no deck (the seeded köşk's own course, as a spare talebe); the binding's `noDeck` scenario makes its own course for it (walk phase).
     on:
       OPEN_PROGRAMME: courseOpened
@@ -385,7 +385,7 @@ assertions:
   - id: no-list-for-a-course-without-decks
     never: "decks == 'none' and state in ['list', 'readingCards', 'cards', 'test']"
     say: "a course with no deck draws the empty state, never the list or the grid"
-    source: apps/tedris/features/courses/components/course-page.tsx:452
+    source: apps/tedris/features/courses/components/course-page.tsx:461
   - id: unsaved-marks-end-with-the-round
     never: "unsaved == 'some' and state in ['list', 'cards', 'cardsTurned']"
     say: "the alert for marks that were not saved is only in a round; leaving the round forgets them (reset())"

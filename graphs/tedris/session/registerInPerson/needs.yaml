@@ -31,7 +31,7 @@ needs:
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
       - source: apps/tedris/features/courses/components/session-action-card.tsx:339
       - source: apps/nazar/features/sessions/attendance.ts:25
-      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:228
     note: >-
       MDRS-283 built it (a label only: no address and no seats). tedris.celse.attend's scenario `inPerson` and
       nazar.courseSettings.access draw it; their replays are walk phase.

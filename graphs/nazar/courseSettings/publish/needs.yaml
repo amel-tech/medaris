@@ -86,7 +86,7 @@ needs:
       - node: statusPublished
       - node: statusDraft
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nazar/features/course-settings/controls.ts:52
+      - source: apps/nazar/features/course-settings/controls.ts:55
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "a ders nazırı with session.manage alone may change the sample session, and nothing else"
       - test: apps/nazar/e2e/course-settings.e2e.ts
@@ -128,7 +128,7 @@ needs:
       recording back; the hoca sees the effect from the same page that holds the closed box and the public link.
     evidence:
       - node: viewPublic
-      - source: apps/tedrisat/src/course/course.service.ts:857
+      - source: apps/tedrisat/src/course/course.service.ts:861
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "a closed course hides its public recording from a visitor in tedris, and opening it shows it again"
     note: >-

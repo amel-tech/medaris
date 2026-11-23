@@ -7,7 +7,7 @@
 #   CLS-02 / MDRS-265  an enrolled talebe of a passive course, and one barred from it, are shown "Kayıt başvurusu yap" (lesson-lock.ts:19-27)
 #   CLS-03   every celse page has the title "Medaris Tedris"
 #   CLS-10   a 409 on the button says the page was refreshed and nothing refreshes it (lesson-locked.tsx:91-94)
-#   CLS-11   the sample celse's row in the programme points at #ornek-celse, which this page does not have (course-programme.tsx:105-111)
+#   CLS-11   the sample celse's row in the programme points at #ornek-celse, which this page does not have (course-programme.tsx:148-154)
 #   CLS-12   the window says the application can be taken back "bu sayfadan"; this page has no such button (enrollment-received-dialog.tsx:46)
 #   CLS-16   the refusal toast is Sonner's, a second toast system beside the mds toaster in this page's layout
 #   CLS-18   the busy word "Yükleniyor" is the kit's own default, outside the catalog (libs/ui/src/mds/button.tsx:62)

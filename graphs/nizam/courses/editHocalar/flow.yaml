@@ -5,7 +5,7 @@
 # GET /courses/:id, GET /users/lookup and PUT /courses/:id/muderris). Nothing here was walked: it is what the code says.
 #
 # The same dialog opens from Ders ayarları (/kosks/<id>/courses/<id>/ayarlar, "Hocaları düzenle" in the team card, drawn to the
-# manager only: course-settings-page.tsx:391); that page is nizam.courses.settingsAndPublish. This flow starts on Dersler.
+# manager only: course-settings-page.tsx:407); that page is nizam.courses.settingsAndPublish. This flow starts on Dersler.
 #
 # What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
 #   - the dialog reads the whole course when it opens (GET /courses/:id) to get the list and its version, and the API writes a
@@ -302,7 +302,7 @@ states:
       PICK_IMAM:
         - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
         - { guard: "list == 'pairNoImam'", target: settle, effect: [imamMarkedOfNoImam], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark one of the two accounts as the imam" }
-      OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and nothing here says so" }
+      OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:837, say: "somebody else saves the course's hocas while this dialog is open: its version moves and nothing here says so" }
       CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
       CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
     source: apps/nizam/features/courses/components/muderris-dialog.tsx:119
@@ -322,7 +322,7 @@ states:
         - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press a non-imam account's 'Çıkar'" }
       PICK_IMAM:
         - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
-      OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and 'Kaydet' is still on" }
+      OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:837, say: "somebody else saves the course's hocas while this dialog is open: its version moves and 'Kaydet' is still on" }
       SAVE: { target: saving, effect: [clearToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:95, say: "they press 'Kaydet'" }
       CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
       CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc: the list is thrown away" }
@@ -397,4 +397,4 @@ assertions:
   - { id: a-list-with-no-imam-is-never-sent, never: "state == 'saving' and list == 'pairNoImam'", say: "A list with several accounts and no imam is never sent: Kaydet is off and the page says 'Birden çok hoca var; dersin imamını işaretleyin.'.", source: apps/nizam/features/courses/present.ts:321 }
   - { id: an-empty-list-is-never-sent, never: "state == 'saving' and list == 'empty'", say: "A course always keeps a hoca: the empty list is never sent, Kaydet is off and the page says 'En az bir hoca olmalı.'.", source: apps/nizam/features/courses/present.ts:321 }
   - { id: an-unchanged-list-is-never-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nizam/features/courses/components/muderris-dialog.tsx:92 }
-  - { id: a-moved-course-is-never-overwritten, never: "state == 'saved' and behind == 'moved'", say: "A list built on a version somebody else has moved past is never saved: the API refuses it and the dialog reads the course again.", source: apps/tedrisat/src/course/course.repository.ts:834 }
+  - { id: a-moved-course-is-never-overwritten, never: "state == 'saved' and behind == 'moved'", say: "A list built on a version somebody else has moved past is never saved: the API refuses it and the dialog reads the course again.", source: apps/tedrisat/src/course/course.repository.ts:837 }

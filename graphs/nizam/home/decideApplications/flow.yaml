@@ -222,7 +222,7 @@ states:
     on:
       APPROVE: { guard: holdsDecide, target: approving, effect: [clearNote], say: "they press Onayla on a row", source: apps/nizam/features/dashboard/components/kosk-home.tsx:377 }
       REJECT: { guard: holdsDecide, target: confirmReject, effect: [asking], say: "they press Reddet on a row", source: apps/nizam/features/dashboard/components/kosk-home.tsx:389 }
-      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1703 }
       BAN_PLACED: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/dashboard/components/kosk-home.tsx:505

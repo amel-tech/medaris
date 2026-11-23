@@ -81,7 +81,7 @@ needs:
       - node: progressEntered
       - node: rosterHelp
       - node: colProgress
-      - source: apps/tedrisat/src/course/course.controller.ts:821
+      - source: apps/tedrisat/src/course/course.controller.ts:822
       - source: apps/nizam/features/applications/components/roster-table.tsx:196
       - test: apps/nizam/e2e/students.e2e.ts
         name: "nizam/58 — the progress bar shows the value the talebe entered (criterion 3)"
@@ -204,7 +204,7 @@ needs:
     need: >-
       A removal made by mistake can be undone from the product by the course team: the removed talebe's row has a way to bring the
       seat back, and the talebe is told. (Decision D1; the API's approve route reinstates a REVOKED seat,
-      course.service.ts:1627-1668, and no screen calls it.)
+      course.service.ts:1644-1685, and no screen calls it.)
     missing: no Linear issue
     note: |-
       Drawn on the state removedList and on the nodes removedTable and removedNote, which the code has: they are not evidence, so

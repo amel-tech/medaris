@@ -32,7 +32,6 @@ states:
   grades_tab_opened: { url: '{tedris}/courses/{prog.course}' }
   leave_menu_opened: { url: '{tedris}/courses/{prog.course}' }
   calendar_menu_opened: { url: '{tedris}/courses/{prog.course}' }
-  progress_dialog_opened: { url: '{tedris}/courses/{prog.course}' }
   my_courses_opened: { url: '{tedris}/my-courses' }
   kosk_opened: { url: '{tedris}/kosks/{seed.kosk2}' }
   not_found_page: { url: '{tedris}/courses/**' }

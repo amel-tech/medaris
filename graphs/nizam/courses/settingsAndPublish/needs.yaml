@@ -133,7 +133,7 @@ needs:
     note: |-
       Drawn on the nodes neverPublicBox and neverPublicDesc, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).
-      SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:857-867)
+      SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:861-871)
 
   - id: the-policy-saves-with-its-own-word
     need: >-
@@ -153,8 +153,8 @@ needs:
       - state: readFixed
       - node: approvalBox
       - node: approvalFixedDesc
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:248
-      - source: apps/nizam/features/courses/present.ts:1184
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:258
+      - source: apps/nizam/features/courses/present.ts:1195
       - test: apps/nizam/test/course-views.spec.tsx
       - test: apps/nizam/test/course-settings-in-person.spec.tsx
     note: |-
@@ -216,7 +216,7 @@ needs:
       - node: publishedBody2
       - node: statusPublished
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:356
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:372
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 3: 'Taslağa çek' makes the course a draft, and it can be published again"
       - test: apps/nizam/test/course-views.spec.tsx
@@ -233,7 +233,7 @@ needs:
       - node: unpublishNoteCount
       - node: unpublishNote
       - source: apps/tedrisat/src/course/course.controller.ts:543
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:340
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:356
     note: "replay: saves (two enrolled talebe, written, not run); `count: unread` cannot be made on the stack"
 
   - id: the-warning-says-who-loses-the-course

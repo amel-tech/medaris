@@ -7,7 +7,7 @@
 //   node helpers/draft-course.mjs remove   the course and everything under it is deleted
 //
 // Why a draft with a bad zone: a draft is shown to those who may edit it as a preview (apps/tedris/features/courses/components/
-// course-page.tsx:147-170), and the preview card writes the first celse's time with Intl.DateTimeFormat in the course's zone
+// course-page.tsx:155-178), and the preview card writes the first celse's time with Intl.DateTimeFormat in the course's zone
 // (features/courses/preview.ts:31). A zone the platform cannot format makes the server render throw a RangeError, which is the one
 // way to meet app/error.tsx without breaking tedrisat itself (the same trick as apps/tedris/e2e/system-pages.e2e.ts#10). The API
 // takes only a real zone when a course is made ("an IANA zone, canonicalised"), so `break` is SQL on tedrisat's own database

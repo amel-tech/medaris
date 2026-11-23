@@ -62,7 +62,7 @@ needs:
     evidence:
       - state: handed_over.sign_in
       - source: apps/tedris/lib/invite-hrefs.ts:10
-      - source: apps/tedris/features/courses/components/course-aside.tsx:352
+      - source: apps/tedris/features/courses/components/course-aside.tsx:348
       - test: apps/tedris/e2e/anonymous.e2e.ts
         name: "invites the visitor to sign in or register instead of offering a köşk application"
       - test: apps/tedris/e2e/anonymous.e2e.ts
@@ -80,7 +80,7 @@ needs:
     evidence:
       - state: handed_over.register
       - source: apps/tedris/lib/invite-hrefs.ts:11
-      - source: apps/tedris/features/courses/components/course-aside.tsx:358
+      - source: apps/tedris/features/courses/components/course-aside.tsx:354
       - test: apps/tedris/e2e/anonymous.e2e.ts
         name: "sends 'kayıt ol' to Keycloak's registration form"
     note: "anonymous.e2e.ts anonymous#7 (it awaits only /realms/, so a login form passes it too: E2E-P-06)"
@@ -101,8 +101,8 @@ needs:
       why, and what stays out of the page: the meeting links and the closed celses' agenda and source.
     evidence:
       - state: course
-      - source: apps/tedris/features/courses/components/course-programme.tsx:199
-      - source: apps/tedris/features/courses/components/course-aside.tsx:195
+      - source: apps/tedris/features/courses/components/course-programme.tsx:243
+      - source: apps/tedris/features/courses/components/course-aside.tsx:194
       - test: apps/tedris/e2e/course.e2e.ts
         name: "sees the page, the programme with its locked weeks, and is asked to sign in"
       - scenario: fullIntro
@@ -115,7 +115,7 @@ needs:
     evidence:
       - state: course
       - state: recordings
-      - source: apps/tedris/features/courses/components/course-page.tsx:498
+      - source: apps/tedris/features/courses/components/course-page.tsx:507
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
       - test: apps/tedris/e2e/course.e2e.ts
         name: "shows the sample session with its agenda and source, and hides the closed one"

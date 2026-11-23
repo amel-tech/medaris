@@ -246,8 +246,8 @@ entries:
   - { from: schedule, to: accountCalendar, how: button, label: a button in calendar-menu.tsx, source: apps/tedris/features/courses/components/calendar-menu.tsx:133 }
   - { from: celse, to: accountCalendar, how: button, label: a button in calendar-menu.tsx, source: apps/tedris/features/courses/components/calendar-menu.tsx:133 }
   - { from: course, to: deck, how: link, label: a link in course-decks-tab.tsx, data: true, source: apps/tedris/features/courses/components/course-decks-tab.tsx:92 }
-  - { from: course, to: madrasah, how: link, label: a link in course-page.tsx, data: true, source: apps/tedris/features/courses/components/course-page.tsx:210 }
-  - { from: course, to: kosk, how: link, label: a link in course-page.tsx, data: true, source: apps/tedris/features/courses/components/course-page.tsx:215 }
+  - { from: course, to: madrasah, how: link, label: a link in course-page.tsx, data: true, source: apps/tedris/features/courses/components/course-page.tsx:218 }
+  - { from: course, to: kosk, how: link, label: a link in course-page.tsx, data: true, source: apps/tedris/features/courses/components/course-page.tsx:223 }
   - { from: kosk, to: madrasah, how: link, label: a link in kosk-page.tsx, data: true, source: apps/tedris/features/courses/components/kosk-page.tsx:116 }
   - { from: kosk, to: deck, how: link, label: KoskPage.deckMeta, data: true, source: apps/tedris/features/courses/components/kosk-page.tsx:256 }
   - { from: celse, to: course, how: link, label: a link in lesson-locked.tsx, data: true, source: apps/tedris/features/courses/components/lesson-locked.tsx:262 }
@@ -256,8 +256,8 @@ entries:
   - { from: myCourses, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/courses/components/my-courses-page.tsx:205 }
   - { from: myCourses, to: discover, how: link, label: MyCoursesPage.goDiscover, source: apps/tedris/features/courses/components/my-courses-page.tsx:226 }
   - { from: myCourses, to: course, how: link, label: MyCoursesPage.recordings, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:403 }
-  - { from: celseWatch, to: course, how: link, label: tedrisLearn.WatchPage.backSr, data: true, source: apps/tedris/features/courses/components/watch-view.tsx:207 }
-  - { from: celseWatch, to: celse, how: link, label: tedrisLearn.WatchPage.details, data: true, source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+  - { from: celseWatch, to: course, how: link, label: tedrisLearn.WatchPage.backSr, data: true, source: apps/tedris/features/courses/components/watch-view.tsx:225 }
+  - { from: celseWatch, to: celse, how: link, label: tedrisLearn.WatchPage.details, data: true, source: apps/tedris/features/courses/components/watch-view.tsx:249 }
   - { from: discover, to: kosk, how: link, label: a link in kosk-card.tsx, data: true, source: apps/tedris/features/discover/components/kosk-card.tsx:25 }
   - { from: discover, to: madrasah, how: link, label: a link in madrasah-card.tsx, data: true, source: apps/tedris/features/discover/components/madrasah-card.tsx:26 }
   - { from: discover, to: course, how: link, label: a link in madrasah-card.tsx, data: true, source: apps/tedris/features/discover/components/madrasah-card.tsx:61 }

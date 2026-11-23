@@ -257,7 +257,7 @@ failures:
     already: [LESSON_ALREADY_CANCELLED]
     forbidden: [AUTHZ_FORBIDDEN]
     failed: [VALIDATION_ERROR, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
-# `failed` stands for every answer but the classes named beside it: the page words any code it does not know as 'İşlem tamamlanamadı…' (present.ts:1231).
+# `failed` stands for every answer but the classes named beside it: the page words any code it does not know as 'İşlem tamamlanamadı…' (present.ts:1242).
 
 # The story e2e courses#17 tells: the nazım adds a link to a celse that has none, the page refuses an http:// address, then takes an https one.
 main:

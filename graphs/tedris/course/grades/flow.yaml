@@ -97,7 +97,7 @@ failures:
   reading:
     from: getMyGrades
     refused: [GRADES_FORBIDDEN, COURSE_NOT_FOUND]
-# `refused` stands for any answer but the grades: the page reads through `orNull` (features/courses/public-reads.ts:49-56), which turns every
+# `refused` stands for any answer but the grades: the page reads through `orNull` (features/courses/public-reads.ts:50-57), which turns every
 # failure into null, a thrown network error too. The two codes are the ones the domain lists for the route.
 
 # The main story: a talebe opens the course page on Müfredat, presses Notlarım, reads the released score, the closed exam and the marks,
@@ -128,7 +128,7 @@ states:
     description: >-
       Classification only. The page opens on the tab its address names when the person has that tab (`?tab=notlarim`), else on Müfredat;
       what the tab will hold depends on whether the read listed anything.
-    source: apps/tedris/features/courses/components/course-page.tsx:194
+    source: apps/tedris/features/courses/components/course-page.tsx:202
     always:
       - { guard: "tabParam == 'grades' and nothingListed", target: gradesEmpty, say: "the address asks for Notlarım and the read listed nothing" }
       - { guard: "tabParam == 'grades'", target: gradesShown, say: "the address asks for Notlarım" }
@@ -140,11 +140,11 @@ states:
     description: >-
       The course page as a seat holder meets it, with the tab Notlarım among the tabs. The programme under Müfredat, the header and the
       card are tedris.course.readProgramme's; this step draws only the tab list. No code sets the focus when the page opens.
-    source: apps/tedris/features/courses/components/course-page.tsx:190
+    source: apps/tedris/features/courses/components/course-page.tsx:198
     on:
       OPEN_GRADES:
         - { guard: nothingListed, target: gradesEmpty, say: "they press Notlarım, and there is nothing to list", source: apps/tedris/features/courses/components/exam-grades.tsx:57 }
-        - { target: gradesShown, say: "they press Notlarım: the tab is chosen in place, the address does not change (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:469 }
+        - { target: gradesShown, say: "they press Notlarım: the tab is chosen in place, the address does not change (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:478 }
       OPEN_CURRICULUM: { target: curriculum, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
@@ -162,7 +162,7 @@ states:
     source: apps/tedris/features/courses/components/exam-grades.tsx:81
     on:
       OPEN_CURRICULUM: { target: curriculum, say: "the tab Müfredat, in place; the address is not touched", source: libs/ui/src/mds/tabs.tsx:110 }
-      RELOAD: { target: reading, say: "the page is read again and chooses its tab from the address once more: Müfredat, unless the address says notlarim (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      RELOAD: { target: reading, say: "the page is read again and chooses its tab from the address once more: Müfredat, unless the address says notlarim (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:202 }
       OPEN_GRADES: { target: gradesShown, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
@@ -175,7 +175,7 @@ states:
     source: apps/tedris/features/courses/components/exam-grades.tsx:57
     on:
       OPEN_CURRICULUM: { target: curriculum, say: "the tab Müfredat, in place", source: libs/ui/src/mds/tabs.tsx:110 }
-      RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:202 }
       OPEN_GRADES: { target: gradesEmpty, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
@@ -186,9 +186,9 @@ states:
       The course page when the read of the grades did not answer: the tab list has Müfredat and the others but no Notlarım, and the page
       is on Müfredat even when the address says `?tab=notlarim`. Nothing tells the talebe that grades exist and could not be read, or
       why (GRADES-2). A talebe of a passive scope meets this too, with the rest of what PROG-2 describes.
-    source: apps/tedris/features/courses/components/course-page.tsx:190
+    source: apps/tedris/features/courses/components/course-page.tsx:198
     on:
-      RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:194 }
+      RELOAD: { target: reading, say: "the page is read again", source: apps/tedris/features/courses/components/course-page.tsx:202 }
       OPEN_CURRICULUM: { target: noGradesTab, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
 
@@ -198,11 +198,11 @@ assertions:
   - id: tab-needs-the-read
     never: "state in ['curriculum', 'gradesShown', 'gradesEmpty'] and read == 'refused'"
     say: "The tab Notlarım is in the list only when the page's read of the grades answered"
-    source: apps/tedris/features/courses/components/course-page.tsx:190
+    source: apps/tedris/features/courses/components/course-page.tsx:198
   - id: no-tab-after-a-refused-read
     never: "state == 'noGradesTab' and read == 'ok'"
     say: "The course page has no Notlarım only after a read that did not answer"
-    source: apps/tedris/features/courses/components/course-page.tsx:190
+    source: apps/tedris/features/courses/components/course-page.tsx:198
   - id: empty-only-with-nothing-listed
     never: "state == 'gradesEmpty' and not nothingListed"
     say: "The empty sentence is drawn only when the read lists no exam and no memorisation"

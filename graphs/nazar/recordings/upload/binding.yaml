@@ -26,7 +26,7 @@
 #
 # Data. Every scenario makes its own course (helpers/course.mjs make recup: one celse, three days ago at 21:00 Istanbul, no talebe, the müderris as
 # hoca; or, for the ders nazırı, a course of the medrese with the başmüderris as hoca, as nazar.course.overview does) and removes it, which also
-# deletes the recording the scenario wrote (the purge deletes a course's recordings, course-purge.ts:99). The recordings that no API can make are
+# deletes the recording the scenario wrote (the purge deletes a course's recordings, course-purge.ts:100). The recordings that no API can make are
 # written with helpers/sql.mjs, which is the only SQL here and says why: a Bunny recording needs a video in Bunny, and the stack has none (the check
 # constraint lesson_recordings_provider_columns wants provider BUNNY with a video id, an upload expiry and no url). The seeded courses, the seeded
 # ders nazırı's own post and every other account are never touched. `make` removes a tag a crashed walk left, so `setup` is safe to run twice. Run

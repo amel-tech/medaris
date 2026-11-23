@@ -2,7 +2,7 @@
 # Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
 #
 # Findings this flow touches (ui.yaml `rules` carries the same ids):
-#   CRS-03   a 409 on "Kayıt ol" says the page was refreshed and nothing refreshes it (course-aside.tsx:84-87)
+#   CRS-03   a 409 on "Kayıt ol" says the page was refreshed and nothing refreshes it (course-aside.tsx:83-86)
 #   CRS-04   no try/catch around the two actions: a request that never reaches the server is not drawn (what follows is not verified)
 #   CRS-05   focus is lost after an open enrolment and after a withdrawal
 #   CRS-13   the toast has no role of its own and its region has the library's English name
@@ -108,13 +108,13 @@ states:
     title: The apply card
     by: human
     goal: true
-    source: apps/tedris/features/courses/components/course-aside.tsx:323
+    source: apps/tedris/features/courses/components/course-aside.tsx:319
     description: >-
       The card "Derse kayıt" of a signed-in talebe who holds no enrolment (the page's state `apply`,
       features/courses/course-view.ts:21-38). One large button. It reads "Kayıt başvurusu yap" and the card carries the
       notice "Kayıt onaya bağlı" and the line "Onaylandığında bildirim alırsın." when the page's `approvalRequired` is
-      true, else "Kayıt ol" and "Kayıt onay gerektirmez". `approvalRequired` is `course.requiresApproval || kosk.isPrivate`
-      (app/courses/[courseId]/page.tsx:89); the API also asks for approval when the köşk's own always-approve policy, the
+      true, else "Kayıt ol" and "Kayıt onay gerektirmez". `approvalRequired` is `course.requiresApproval || course.isUnlisted ||
+      kosk.isPrivate` (app/courses/[courseId]/page.tsx:93-95); the API also asks for approval when the köşk's own always-approve policy, the
       platform policy ALWAYS_REQUIRE_APPROVAL or the medrese's policyAlwaysApproval is on, and the page reads none of the
       three (CRS-APPLY-1), so a card can say "Kayıt ol" over an application that waits (approval unseenRule).
       The facts above the button (the span of weeks, the weekly rhythm) are course data and are not drawn. Every toast
@@ -125,7 +125,7 @@ states:
 
   enrolling:
     title: Send the application
-    source: apps/tedris/features/courses/components/course-aside.tsx:80
+    source: apps/tedris/features/courses/components/course-aside.tsx:79
     description: >-
       The server action enrollInCourse, POST /courses/:id/enroll with no body. The button is busy ("Kaydolunuyor..."
       through a hidden status) and aria-disabled. What the API answers decides everything after it, not the card:
@@ -138,7 +138,7 @@ states:
     on:
       DONE:
         - { guard: waits, target: reachesNazar, say: "the API says PENDING" }
-        - { guard: "not waits", target: enrolled, effect: [toastEnrolled], say: "the API says ENROLLED: the toast, then the page is read again", source: "apps/tedris/features/courses/components/course-aside.tsx:91" }
+        - { guard: "not waits", target: enrolled, effect: [toastEnrolled], say: "the API says ENROLLED: the toast, then the page is read again", source: "apps/tedris/features/courses/components/course-aside.tsx:90" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.gone: { target: applyCard, effect: [toastGone] }
       FAIL.conflict: { target: applyCard, effect: [toastConflict], say: "the toast promises a refresh that does not happen (CRS-03)" }
@@ -179,11 +179,11 @@ states:
     by: human
     source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
     description: >-
-      Opened by setReceived(true) when the API answers PENDING (course-aside.tsx:90) and never otherwise (assertion
+      Opened by setReceived(true) when the API answers PENDING (course-aside.tsx:89) and never otherwise (assertion
       window-only-for-an-application-that-waits). A modal dialog, focus trapped, opened on "Tamam". Esc, the scrim, the
       header close button "Kapat" and "Tamam" all run the same close. It has no trigger, so the kit has no opener to
       return the focus to; the page does it itself: an effect puts the focus on "Başvuruyu geri çek" once the pending
-      card is on the page (course-aside.tsx:97-101; e2e system-pages#3 asserts it, #2 asserts the trap and that Esc
+      card is on the page (course-aside.tsx:96-100; e2e system-pages#3 asserts it, #2 asserts the trap and that Esc
       closes). The eyebrow above the title is the course's title in capitals of the page's language, a value and not a
       catalog message, so it is not drawn.
     on:
@@ -193,7 +193,7 @@ states:
   pending:
     title: The application waits
     by: human
-    source: apps/tedris/features/courses/components/course-aside.tsx:329
+    source: apps/tedris/features/courses/components/course-aside.tsx:325
     description: >-
       The card "Derse kayıt" with the badge "Onay bekliyor", the line "Başvurun {when} ders kadrosuna iletildi.
       Onaylandığında bildirim alırsın." (when is "bugün 10:02’de" or "12 Ekim 10:02’de" in the course's time zone) and
@@ -232,7 +232,7 @@ states:
   enrolled:
     title: The talebe holds a seat
     type: final
-    source: apps/tedris/features/courses/components/course-aside.tsx:271
+    source: apps/tedris/features/courses/components/course-aside.tsx:270
     description: >-
       The page is read again and the card is the enrolled one ("Devam ediyor", the next celse, the progress bar): the
       course page of an enrolled talebe, which tedris.course.readProgramme draws and from which tedris.course.leave
@@ -257,4 +257,4 @@ assertions:
   - id: window-only-for-an-application-that-waits
     never: "state == 'received' and approval == 'open'"
     say: "the window \"Başvurun alındı\" opens only when the API answered PENDING"
-    source: apps/tedris/features/courses/components/course-aside.tsx:90
+    source: apps/tedris/features/courses/components/course-aside.tsx:89

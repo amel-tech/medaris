@@ -6,7 +6,7 @@ kind: domain
 id: medaris.api
 entities:
   LessonRecording: # at most one recording per session: a pasted link (YOUTUBE, DRIVE, OTHER) or a video in the Medaris Bunny Stream library (BUNNY)
-    source: apps/tedrisat/src/database/schema/course.schema.ts:421
+    source: apps/tedrisat/src/database/schema/course.schema.ts:427
     required: [id, lessonId, title, provider, visibility, status, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
@@ -34,7 +34,7 @@ entities:
       - "ready -> ready: patching a link sets READY again (audit recording.update); the talebe see it only when READY, the session has begun and Lesson.recordingAvailableAt has passed"
 
   BunnyVideoRemoval: # the queue of Bunny videos that left their recording and wait to be deleted from the library
-    source: apps/tedrisat/src/database/schema/course.schema.ts:466
+    source: apps/tedrisat/src/database/schema/course.schema.ts:472
     key: [videoId]
     required: [videoId, recordingId, queuedBy, queuedAt, attempts]
     fields:

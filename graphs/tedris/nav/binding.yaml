@@ -129,7 +129,7 @@ entries:
   course->madrasah: { css: 'a[href="/madrasahs/{seed.madrasah}"]', nth: 0 }
   course->kosk: { skip: 'two plain links to the köşk (the breadcrumb and the line under the title) share their ends, and neither has a key' }
   course->celse CoursePage.continue: { role: link, name: Derse devam et }
-  course->celse CoursePage.openSession: { skip: "only once the course is completed (course-aside.tsx:258); the seeded one is not" }
+  course->celse CoursePage.openSession: { skip: "only once the course is completed (course-aside.tsx:257); the seeded one is not" }
   course->celse: { skip: "a row of the programme is a plain link named by the celse's title; no key tells it from the other two entries of these ends" }
   course->celseWatch: { skip: 'a recording row: the seed makes no recording' }
   course->deckStudy CoursePage.deckStudy: { skip: "the 'Çalış' link of a row in the Desteler tab, which is not the tab the page opens on" }

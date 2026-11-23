@@ -123,7 +123,7 @@ needs:
       - state: listForOutsider
       - state: recordingsEmpty
       - source: apps/tedrisat/src/course/lesson.controller.ts:257
-      - source: apps/tedrisat/src/course/course.service.ts:857
+      - source: apps/tedrisat/src/course/course.service.ts:861
       - test: apps/tedrisat/test/e2e/recordings.e2e.spec.ts
       - scenario: koskHides
     note: |-

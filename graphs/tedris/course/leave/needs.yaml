@@ -41,7 +41,7 @@ needs:
       - state: courseMenu
       - state: apply_card
       - source: apps/tedrisat/src/course/course.controller.ts:773
-      - source: apps/tedris/features/courses/components/course-aside.tsx:271
+      - source: apps/tedris/features/courses/components/course-aside.tsx:270
     note: >-
       scenario leavesFromCourse died at load in its replay (a nav entry key naming two entries) and was not run again; a hand run
       of the generated spec passed
@@ -131,7 +131,7 @@ needs:
     evidence:
       - state: course_read_again
       - source: apps/tedrisat/src/course/course.controller.ts:773
-      - source: apps/tedris/features/courses/components/course-aside.tsx:236
+      - source: apps/tedris/features/courses/components/course-aside.tsx:235
     note: the API answers 409 ENROLLMENT_STATE_CONFLICT; tedris.course.readProgramme draws the two cards
 
   - id: a-left-seat-frees-the-gender-count

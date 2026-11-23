@@ -215,17 +215,17 @@ states:
         target: settingsEditable
         effect: [bodyDrawn]
         say: "course.edit and course.settings: the boxes, the zone and the sample are not all open, but the form saves"
-        source: apps/nazar/features/course-settings/controls.ts:29
+        source: apps/nazar/features/course-settings/controls.ts:30
       - guard: "mayOpen and page == 'settings' and held == 'sessions'"
         target: settingsSample
         effect: [bodyDrawn]
         say: "session.manage alone: only the sample session is open"
-        source: apps/nazar/features/course-settings/controls.ts:45
+        source: apps/nazar/features/course-settings/controls.ts:47
       - guard: "mayOpen and page == 'settings'"
         target: settingsShut
         effect: [bodyDrawn]
         say: "course.settings (and course.publish) with no course.edit, or course.edit gone with a passive course: every box is shut and the page says why"
-        source: apps/nazar/features/course-settings/controls.ts:55
+        source: apps/nazar/features/course-settings/controls.ts:63
       - guard: mayOpen
         target: shown
         effect: [bodyDrawn]
@@ -362,7 +362,7 @@ states:
       the status with no button (publishing takes course.publish). The card “Hocalar ve unvanları” is open with its own “Kaydet” and
       “Vazgeç”, because it asks course.settings alone (F-D2c-14). A box a medrese policy holds says why instead of opening (not drawn
       here: no policy is on).
-    source: apps/nazar/features/course-settings/controls.ts:29
+    source: apps/nazar/features/course-settings/controls.ts:30
     on:
       OPEN_OVERVIEW:
         target: judged
@@ -453,7 +453,7 @@ states:
       the form's “Kaydet” and “Vazgeç”; the two boxes, the time zone and “Celseler yüz yüze yapılır” are shut and no line says why. The
       card “Hocalar ve unvanları” shows its selects shut and says “Unvanları değiştirme izniniz yok; yalnız görebilirsiniz.” “Yayın” says
       the status with no button.
-    source: apps/nazar/features/course-settings/controls.ts:45
+    source: apps/nazar/features/course-settings/controls.ts:47
     on:
       OPEN_OVERVIEW:
         target: judged
@@ -547,7 +547,7 @@ states:
       unvanları” is open with its own “Kaydet” and “Vazgeç”: course.settings is all it asks, so the e2e's “no Kaydet on the page”
       (course-settings#9 a-last, course-nazirs#14 a20) is stale and the page has one (F-D2c-14). “Yayın” says the status with no button,
       course.publish or not, because the buttons ask course.edit as well.
-    source: apps/nazar/features/course-settings/controls.ts:55
+    source: apps/nazar/features/course-settings/controls.ts:63
     on:
       OPEN_OVERVIEW:
         target: judged

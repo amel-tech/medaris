@@ -42,7 +42,7 @@ entities:
       id: { type: string, format: uuid }
       partnerClientId: { type: string, references: IntegrationPartner, note: "no foreign key: these rows predate the partner table and a partner is only ever disabled" }
       code: { type: string, note: "unique with partnerClientId (partner_course_codes_partner_code_uq): a code belongs to one partner and maps to at most one course; a course may carry several codes of one partner. A code counts only in a course of a köşk its partner is bound to" }
-      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict; the course purge removes these rows first (course/course-purge.ts:166)" }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict; the course purge removes these rows first (course/course-purge.ts:170)" }
       createdBy: { type: string, format: uuid, note: "Keycloak sub; who mapped it" }
       createdAt: { type: string, format: date-time }
     lifecycle:

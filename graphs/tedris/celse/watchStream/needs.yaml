@@ -27,7 +27,7 @@ needs:
       - node: backLink
       - node: detailsLink
       - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:18"
-      - source: apps/tedris/features/courses/components/watch-view.tsx:82
+      - source: apps/tedris/features/courses/components/watch-view.tsx:91
       - source: apps/tedrisat/src/course/lesson.controller.ts:230
       - test: apps/tedris/e2e/celse-states.e2e.ts
         name: "tedris/16: a session on air says so, opens the meeting in a new tab, and leads to the stream on its watch page (MDRS-285)"
@@ -52,7 +52,7 @@ needs:
     need: Someone who may read the course but holds no seat sees the stream and the chat, and no notes and no questions.
     evidence:
       - node: asideChatOnly
-      - source: apps/tedris/features/courses/components/watch-page.tsx:44
+      - source: apps/tedris/features/courses/components/watch-page.tsx:46
     note: Also drawn as the guard isReader.
 
   - id: the-end-of-the-stream-is-told-by-the-player
@@ -67,7 +67,7 @@ needs:
       - node: questionsSection
       - node: asideQuestions
       - source: apps/tedris/features/courses/watch-model.ts:72
-      - source: apps/tedris/features/courses/components/watch-view.tsx:122
+      - source: apps/tedris/features/courses/components/watch-view.tsx:131
 
   - id: no-chat-beside-a-stream-on-air-and-no-questions-panel
     need: >-
@@ -76,7 +76,7 @@ needs:
     evidence:
       - state: streamLive
       - node: questionsSection
-      - source: apps/tedris/features/courses/components/watch-view.tsx:126
+      - source: apps/tedris/features/courses/components/watch-view.tsx:135
       - test: apps/tedris/e2e/lesson-questions.e2e.ts
         name: "on a recording's watch page: asks in Soru sor with no session to pick, reads it there and on Sorularım; beside a stream on air the live chat stands there instead (MDRS-285)"
 
@@ -120,7 +120,7 @@ needs:
     evidence:
       - node: releaseNote
       - node: endedPlayerLineHeld
-      - source: apps/tedris/features/courses/components/watch-page.tsx:90
+      - source: apps/tedris/features/courses/components/watch-page.tsx:109
       - source: apps/tedris/features/courses/recordings-model.ts:174
     note: Also drawn as the guard recordingHeld.
 
@@ -132,7 +132,7 @@ needs:
       - state: streamUnframed
       - node: framePlaceholder
       - node: openStream
-      - source: apps/tedris/features/courses/components/media-player.tsx:71
+      - source: apps/tedris/features/courses/components/media-player.tsx:74
 
   - id: the-page-says-live-only-when-it-is
     need: >-

@@ -206,7 +206,7 @@ needs:
       right was withdrawn and the course stayed; a course of a hidden köşk is not lost without a word (COURSES-3, decision D2).
     missing: >-
       no issue: the filter and the card come from the hosting list, the list from the courses (courses.ts:86,
-      madrasah.repository.ts:1467)
+      madrasah.repository.ts:1469)
     note: >-
       Drawn on the nodes koskOptionOne, hostName and counter, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).

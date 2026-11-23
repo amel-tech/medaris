@@ -26,6 +26,9 @@
 #                         page draws too (its own curriculum list, breadcrumb, "Devam ediyor" and the locked card's sentence)
 # Not walked, so bound and read only: completed and pending (their locators were counted against the live page by hand), every other
 # exit, OPEN_CURRICULUM, CLOSE_WEEK, and the values ahead none and linked, read gone and failed, tabParam teachers.
+# The watch marks of the programme (MDRS-248, added on 23 Nov 2026): programme-data.mjs records no watch, so every scenario gives
+# `views: none` and no walk reads "İzlendi", "%63 izlendi" or "Kaldığın yer"; a scenario for them would write the talebe's records
+# first, as the talebe, through PUT /lessons/{id}/view. Not written, and not walked.
 # The first call of the page after a fresh start compiles it (15 to 30 s). The dates are the walk's own (the celses are two, three and
 # five days ahead, so "Öbür gün" and "3 gün kaldı" move), which is why the nodes that hold a date or a day count are found by a pattern.
 schema: delurio-graph/0
@@ -35,7 +38,7 @@ flow: tedris.course.readProgramme
 
 scenarios:
   enrolled:
-    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: none }
+    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: none, views: none }
     as: applicantA
     open: '{tedris}/courses/{prog.course}'
     setup:
@@ -45,7 +48,7 @@ scenarios:
       - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]
   # Not walked. The address asks for Hocalar: the page opens on it, and a reload keeps it (the other half of PROG-1).
   opensOnTeachers:
-    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: teachers }
+    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: teachers, views: none }
     as: applicantA
     open: '{tedris}/courses/{prog.course}?tab=muderrisler'
     setup:
@@ -56,6 +59,6 @@ scenarios:
   # Not walked (tedris.shell.systemPages walks the not-found page itself). The course is one the API does not know; the other variables
   # are given and mean nothing there.
   courseGone:
-    given: { read: gone, who: enrolled, ahead: noLink, course: rich, tabParam: none }
+    given: { read: gone, who: enrolled, ahead: noLink, course: rich, tabParam: none, views: none }
     as: applicantA
     open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'

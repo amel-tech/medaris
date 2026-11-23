@@ -23,8 +23,8 @@ samples:
 changes: { key: CourseQuestions.private }
 
 nodes:
-  # the page the panel or the tab sits on: the watch page's <main> (watch-view.tsx:205) or the course page's (course-page.tsx:229)
-  page: { type: page, component: Page, role: main, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], source: apps/tedris/features/courses/components/watch-view.tsx:205, script: actions } # no name, no initial focus: neither page sets one (not verified in a browser). The course page is server-drawn, the watch page needs its script.
+  # the page the panel or the tab sits on: the watch page's <main> (watch-view.tsx:223) or the course page's (course-page.tsx:237)
+  page: { type: page, component: Page, role: main, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], source: apps/tedris/features/courses/components/watch-view.tsx:223, script: actions } # no name, no initial focus: neither page sets one (not verified in a browser). The course page is server-drawn, the watch page needs its script.
 
   # the watch page's panel: a section named by its heading
   panel: { type: page, component: Page, role: region, name: { labelledBy: panelTitle }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'watch'", source: apps/tedris/features/courses/components/lesson-questions.tsx:69 }

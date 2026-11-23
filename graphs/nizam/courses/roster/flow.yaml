@@ -9,9 +9,9 @@
 # it, the finding is in ui.yaml `rules` and in the description of the state it touches:
 #   - NROS-1  (the nizam half of RMV-2) the removal dialog's note ("Talebe yeniden başvurabilir.") and the Erişimi kaldırılanlar note ("Çıkarılan
 #             talebe yeniden başvurabilir.") promise a new application, and the API answers it with 409: the seat is kept as REVOKED, the record
-#             of the removal (course.service.ts:1537-1541). The code's own comments say the same wrong thing (remove-dialog.tsx:33-35,
+#             of the removal (course.service.ts:1552-1556). The code's own comments say the same wrong thing (remove-dialog.tsx:33-35,
 #             actions/courses.ts:144-145, and the unused message CourseTeam.removeDescription, nizam.json:502); the API's comment is right
-#             (course.service.ts:1754).
+#             (course.service.ts:1771).
 #   - NROS-2  the same note says "Yeniden başvurmasını da engellemek gerekiyorsa “Yasakla”yı kullanın", and that cannot be done from this page: the
 #             removed talebe has no row to press it on, and a barred row offers no "Dersten çıkar" (present.ts:145). Nizam's only BanDialog opener
 #             is this table, so removing and barring a talebe exclude each other here.

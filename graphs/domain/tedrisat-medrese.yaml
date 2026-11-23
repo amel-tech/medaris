@@ -205,7 +205,7 @@ actions:
     note: >-
       Finding overview-exposes-head-id (not in the inventory): the controller does not apply the anonymous mask to this response, so headMuderris.id,
       the başmüderris's Keycloak sub, reaches a caller with no token, although GET /madrasahs/{id} hides nazirIds from that caller for the reason
-      that "a person's id is not for the public" (MDRS-160; the köşk page has a test for it, public-pages.e2e.spec.ts:273, the medrese overview has none).
+      that "a person's id is not for the public" (MDRS-160; the köşk page has a test for it, public-pages.e2e.spec.ts:274, the medrese overview has none).
       Read from the code, not run.
     source: apps/tedrisat/src/madrasah/madrasah.controller.ts:355
 
@@ -843,7 +843,7 @@ actions:
       - audit:madrasah.settings.update (only when something changed)
     note: >-
       The DTO and schema comments (madrasah-settings.dto.ts, madrasah.schema.ts:47-54) still say nothing enforces closedCourseRequired; it is
-      enforced (openMadrasahCourse, and the course save at course.service.ts:995-1001 answers 409 PLATFORM_POLICY_LOCKED). There is no
+      enforced (openMadrasahCourse, and the course save at course.service.ts:1010-1016 answers 409 PLATFORM_POLICY_LOCKED). There is no
       admission-rule feature behind the madrasah.admission_rules permission (finding no-admission-rules; the code gates nothing, MDRS-208 in
       domain.yaml). Read from the code, not run.
     source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
@@ -1681,14 +1681,14 @@ invariants:
       With alwaysApproval on, every new enrollment in a course of the medrese is PENDING whatever the course's own requiresApproval says; courses the
       medrese opens also get requiresApproval true; and setting.approval_off is closed in its courses, except to a person with a grant from above the
       medrese (the platform).
-    source: apps/tedrisat/src/course/course.service.ts:1556
+    source: apps/tedrisat/src/course/course.service.ts:1571
 
   - id: madrasah-closed-course-required
     rule: >-
       With closedCourseRequired on, a course the medrese opens is created closed (isClosed true), and a course save that sets isClosed false is
       409 PLATFORM_POLICY_LOCKED (CLOSED_COURSE_REQUIRED) unless the caller holds setting.course_open through a grant from above.
     note: "No test pins the medrese-level lock specifically (platform-admin.e2e.spec.ts covers the approval lock only)."
-    source: apps/tedrisat/src/course/course.service.ts:995
+    source: apps/tedrisat/src/course/course.service.ts:1010
 
   - id: madrasah-no-public-recordings-closes-recordings
     rule: >-
@@ -1697,9 +1697,9 @@ invariants:
     finding: policy-no-public-recordings-inert
     note: >-
       The policy is stored and loaded as one that would close setting.recordings_public, but no handler asks that code and
-      CourseService.publicRecordingsAllowed reads only the platform and the köşk flags (course.service.ts:857-867), so the switch has no effect.
+      CourseService.publicRecordingsAllowed reads only the platform and the köşk flags (course.service.ts:861-871), so the switch has no effect.
       policyNoPublicRecordings appears only in madrasah.repository.ts, madrasah-settings.ts, the schema, the DTOs and tedrisat-authz-context.service.ts.
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
 
   - id: madrasah-opens-courses-only-with-a-hosting-right
     rule: >-
@@ -1753,7 +1753,7 @@ invariants:
     note: >-
       GET /madrasahs/{id}/overview returns headMuderris.id to a caller with no token; only the page and the list are masked. Not in the inventory;
       found while writing. Read from the code, not run.
-    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:1220
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:1222
 
   - id: madrasah-delete-keeps-its-courses
     rule: >-
@@ -1802,6 +1802,6 @@ invariants:
     finding: two-course-request-routes
     note: >-
       POST /kosks/{id}/course-requests needs the role itself (a grant of madrasah.offsite_course_request does not pass), checks only that the köşk
-      exists (KoskRepository.exists has no archivedAt filter, kosk.repository.ts:472), so a hidden köşk is accepted, and writes no audit row;
+      exists (KoskRepository.exists has no archivedAt filter, kosk.repository.ts:474), so a hidden köşk is accepted, and writes no audit row;
       POST /madrasahs/{id}/offsite-course-requests needs the permission, refuses hidden köşks and writes course_request.create. Read from the code, not run.
     source: apps/tedrisat/src/course-request/course-request.service.ts:104

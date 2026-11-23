@@ -11,7 +11,7 @@
 #     with its own Kaydet is nazar.courseSettings.hocaTitles, the partner codes are nazar.courseSettings.partnerCodes. A ders nazırı
 #     who may not publish sees the card with no button (nazar.access.dersNazirPages).
 #   - Who: the hoca (a müderris of the course). The card's buttons are drawn only for a caller who holds course.edit and
-#     course.publish (controls.ts:52); the API asks the same (course.service.ts:951-985), so a status change by anyone else is a 403.
+#     course.publish (controls.ts:55); the API asks the same (course.service.ts:957-1000), so a status change by anyone else is a 403.
 #   - Findings it carries: F-D2c-7 (the key that makes edits survive), F-D2c-13 (the busy label), F-D2c-14 (stale e2e locators),
 #     DRAFT-1 (the link for a draft), and two new ones, PUB-1 (the link's address still has the language segment MDRS-248 took out)
 #     and PUB-2 (Vazgeç and Kapat stay enabled while the call runs and do nothing). See ui.yaml `rules`.
@@ -169,7 +169,7 @@ states:
     goal: true
     on:
       UNPUBLISH: { target: asking, effect: [clearNote], say: "they press Taslağa çek", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:98 }
-      EDIT: { target: publishedEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
+      EDIT: { target: publishedEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
       OPEN_PUBLIC: { target: published, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab (a visitor's page, tedris.course.readProgramme) and this tab stays", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91 }
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:97
@@ -185,11 +185,11 @@ states:
     by: human
     on:
       UNPUBLISH: { target: asking, effect: [clearNote], say: "they press Taslağa çek", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:98 }
-      DISCARD_EDIT: { target: published, effect: [discarded], say: "they press Vazgeç of the access form: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
+      DISCARD_EDIT: { target: published, effect: [discarded], say: "they press Vazgeç of the access form: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
       OPEN_PUBLIC: { target: publishedEdited, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab and this tab stays", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91 }
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
-      EDIT: { target: published, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209
+      EDIT: { target: published, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225
 
   asking:
     title: Taslağa çek asks once
@@ -255,7 +255,7 @@ states:
     by: human
     on:
       PUBLISH: { target: publishing, effect: [clearNote], say: "they press Yayımla", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:105 }
-      EDIT: { target: draftEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
+      EDIT: { target: draftEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
       OPEN_PUBLIC:
         target: draft
         starts: { flow: tedris.course.draftPreview }
@@ -272,15 +272,15 @@ states:
     by: human
     on:
       PUBLISH: { target: publishingEdited, effect: [clearNote], say: "they press Yayımla", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:105 }
-      DISCARD_EDIT: { target: draft, effect: [discarded], say: "they press Vazgeç of the access form", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
+      DISCARD_EDIT: { target: draft, effect: [discarded], say: "they press Vazgeç of the access form", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
       OPEN_PUBLIC:
         target: draftEdited
         starts: { flow: tedris.course.draftPreview }
         say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab (DRAFT-1) and this tab stays"
         source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
-      EDIT: { target: draft, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209
+      EDIT: { target: draft, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225
 
   publishing:
     title: The publish is on its way
@@ -293,7 +293,7 @@ states:
       DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
       FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
       FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
-      EDIT: { target: publishingEdited, effect: [edited], say: "they tick Kayıt onayı gereksin while the publish runs: the access form is not busy, so the box turns and its Kaydet comes on", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
+      EDIT: { target: publishingEdited, effect: [edited], say: "they tick Kayıt onayı gereksin while the publish runs: the access form is not busy, so the box turns and its Kaydet comes on", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
 
   publishingEdited:
@@ -304,8 +304,8 @@ states:
       DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again and the form keeps its change", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
       FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
       FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
-      EDIT: { target: publishing, effect: [discarded], say: "they untick the box again while the publish runs: the form is as stored", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-      DISCARD_EDIT: { target: publishing, effect: [discarded], say: "they press Vazgeç of the access form while the publish runs: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
+      EDIT: { target: publishing, effect: [discarded], say: "they untick the box again while the publish runs: the form is as stored", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      DISCARD_EDIT: { target: publishing, effect: [discarded], say: "they press Vazgeç of the access form while the publish runs: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
 
   not_found:

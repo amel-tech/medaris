@@ -133,7 +133,7 @@ needs:
       already promise ("yeri ancak ders kadrosu onaylarsa geri gelir"); until then a removal made by mistake cannot be undone from
       the product (RMV-2, decision D1).
     missing: >-
-      no Linear issue; the API reinstates a REVOKED seat on POST .../approve (course.service.ts:1627-1668); no screen calls it for
+      no Linear issue; the API reinstates a REVOKED seat on POST .../approve (course.service.ts:1644-1685); no screen calls it for
       one
     note: >-
       Drawn on the states form and removedList, which the code has: they are not evidence, so that a replay still walks them

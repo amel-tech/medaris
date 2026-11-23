@@ -315,7 +315,7 @@ pages:
     # her too (`koskManager`), so the checker says link-refused for the chief: a finding of the code, not of this graph.
     opensFor: "signedIn and variant == 'kosk'"
     refusal: the "Bu bölüm için izniniz yok" screen (KOSK_FORBIDDEN) for the başnazım, who is no row of the köşk's nazımlar, and for a Medaris nazımı who reaches the köşk by platform.kosk_edit alone
-    evidence: apps/nizam/app/kosks/[id]/basvurular/page.tsx:34-35; tedrisat course.controller.ts:523 asks course.manage_all on the köşk, then course.service.ts:1575 calls koskService.assertManager (kosk.service.ts:128-139; kosk.repository.ts:488 reads a KOSK_NAZIM row of this köşk only)
+    evidence: apps/nizam/app/kosks/[id]/basvurular/page.tsx:34-35; tedrisat course.controller.ts:523 asks course.manage_all on the köşk, then course.service.ts:1590 calls koskService.assertManager (kosk.service.ts:128-139; kosk.repository.ts:490 reads a KOSK_NAZIM row of this köşk only)
   courseRequests:
     route: /kosks/:kosk/ders-talepleri
     opensFor: "signedIn and koskManager"
@@ -612,7 +612,7 @@ entries:
   - { from: courseSessionsNew, to: courseSessions, how: button, label: SessionPlan.submit, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
   - { from: courseSettings, to: koskCourses, how: link, label: CourseSettings.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:196 }
   - { from: courseSettings, to: tedris, how: link, label: CourseSettings.viewPublic, source: apps/nizam/features/courses/components/course-settings-page.tsx:207 }
-  - { from: courseSettings, to: koskCourses, how: button, label: CourseSettings.hide, source: apps/nizam/features/courses/components/course-settings-page.tsx:452 }
+  - { from: courseSettings, to: koskCourses, how: button, label: CourseSettings.hide, source: apps/nizam/features/courses/components/course-settings-page.tsx:468 }
 
   # ---- köşk decks, legacy deck pages, notifications ----
   - { from: koskDecks, to: koskDeckNew, how: link, label: KoskDecksPage.open, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:266 }

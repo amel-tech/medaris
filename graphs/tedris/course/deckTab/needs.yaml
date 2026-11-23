@@ -24,7 +24,7 @@ needs:
       - state: list
       - state: noDecks
       - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:145
-      - source: apps/tedris/features/courses/components/course-page.tsx:451
+      - source: apps/tedris/features/courses/components/course-page.tsx:460
       - test: apps/tedris/e2e/course-decks.e2e.ts
         name: "counts the decks, features one, and links every deck to its page"
 

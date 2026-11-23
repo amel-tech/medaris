@@ -291,7 +291,7 @@ states:
       FILTER_ALL: { guard: "place == 'kosk' and course == 'picked'", target: listed, effect: [allCourses], say: "they pick 'Ders: tümü' again", source: "apps/nizam/features/applications/components/applications-view.tsx:99" }
       SEARCH_FOUND: { guard: "place == 'kosk'", target: listed, say: "they type a word that some waiting talebe's name or e-mail holds, in any case and with or without the Turkish letters ('betul' finds 'Betül')", source: "apps/nizam/features/applications/present.ts:50" }
       SEARCH_NOTHING: { guard: "place == 'kosk'", target: noMatch, say: "they type a word that no waiting talebe's name or e-mail holds", source: "apps/nizam/features/applications/components/applications-view.tsx:128" }
-      SETTLED_ELSEWHERE: { guard: "row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      SETTLED_ELSEWHERE: { guard: "row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1703 }
       BAN_PLACED: { guard: "row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: "apps/nizam/features/applications/components/applications-view.tsx:124"

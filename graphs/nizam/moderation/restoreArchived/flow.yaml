@@ -23,7 +23,7 @@
 #     no button for the nazım, only a sentence (HideLevel.locked). The başnazım acts at the platform's kademe, above every other, so no row of the platform's list is
 #     ever locked for him. A medrese's başmüderris hides at the medrese's kademe, which the köşk's nazımı is above: a course of a hidden medrese is listed in the köşk's
 #     Arşiv with a "Geri al", and pressing it is refused while the medrese is still hidden (ARCHIVE_PARENT_HIDDEN).
-#   - A week is listed only while its course is shown, and a session only while its week and its course are (archive.repository.ts:84). So the one way a week or a
+#   - A week is listed only while its course is shown, and a session only while its week and its course are (archive.repository.ts:85). So the one way a week or a
 #     session meets ARCHIVE_PARENT_HIDDEN from this page is a hide that lands between the read and the press; the course of a hidden medrese is the way a person meets it.
 #   - Four facts of the world decide what the page draws and do not change inside a walk: `view` (the köşk's Arşiv with nothing locked, with a row the başnazım hid, or
 #     the platform's), `held` (which kinds of rows can be restored) and, told by the steps, `type`, `search`, `toast` and `stale`. After the first read the list is the

@@ -92,12 +92,12 @@ extract:
     # Keşfet, the course page, Derslerim, the köşk and the medrese
     # discover-page.tsx:203: the application card renders only when signedIn (a visitor gets the invitation, :210-218); written below (:206) with when: signedIn
     discover->newKoskApplication DiscoverPage.applyLink: { skip: "written below (discover-page.tsx:206), where it is signedIn" }
-    # course-aside.tsx:200: the "revoked" card is the state of an enrolment (state, :56-63; the visitor's is :350); written below (:214) with when: signedIn
-    course->myCourses CoursePage.backToMyCourses: { skip: "written below (course-aside.tsx:214), where it is signedIn: only a person with an enrolment is in this state" }
-    # course-aside.tsx:226: the "completed" card is the state of an enrolment; written below (:258) with when: signedIn
-    course->celse CoursePage.openSession: { skip: "written below (course-aside.tsx:258), where it is signedIn: only a person with an enrolment is in this state" }
-    # course-aside.tsx:271: the seat card (state enrolled, :133) is the state of an enrolment; written below (:289) with when: signedIn
-    course->celse CoursePage.continue: { skip: "written below (course-aside.tsx:289), where it is signedIn: only a person with a seat is in this state" }
+    # course-aside.tsx:199: the "revoked" card is the state of an enrolment (state, :55-62; the visitor's is :346); written below (:213) with when: signedIn
+    course->myCourses CoursePage.backToMyCourses: { skip: "written below (course-aside.tsx:213), where it is signedIn: only a person with an enrolment is in this state" }
+    # course-aside.tsx:225: the "completed" card is the state of an enrolment; written below (:257) with when: signedIn
+    course->celse CoursePage.openSession: { skip: "written below (course-aside.tsx:257), where it is signedIn: only a person with an enrolment is in this state" }
+    # course-aside.tsx:270: the seat card (state enrolled, :132) is the state of an enrolment; written below (:288) with when: signedIn
+    course->celse CoursePage.continue: { skip: "written below (course-aside.tsx:288), where it is signedIn: only a person with a seat is in this state" }
     # my-courses-page.tsx:100-103: a card's link is its title (written below at :102); "İlerlemen" is the progress bar's label inside it (:142-144)
     myCourses->course MyCoursesPage.progress: { skip: "the card's link is its title, written below (my-courses-page.tsx:102); the extractor named it by the progress label (:143)" }
     # my-courses-page.tsx:224,231: the EmptyState and its sentence, not a control; the button in it is MyCoursesPage.goDiscover (:226), written below
@@ -210,7 +210,7 @@ pages:
   course:
     route: /courses/:courseId
     title: KoskPage.courses # the kind's name ("Ders"); the tab title is the course's own title
-    evidence: public (one segment); the tabs (mufredat, kayitlar, deste, sorularim, notlarim, muderrisler) are one page, because ?tab= only picks the tab it opens on, and switching tabs does not change the address (course-page.tsx:194-198); a draft answers the not-found page unless the caller may edit it, who gets the preview; the layout reads the course before it streams, so an unknown id is a real 404
+    evidence: public (one segment); the tabs (mufredat, kayitlar, deste, sorularim, notlarim, muderrisler) are one page, because ?tab= only picks the tab it opens on, and switching tabs does not change the address (course-page.tsx:202-206); a draft answers the not-found page unless the caller may edit it, who gets the preview; the layout reads the course before it streams, so an unknown id is a real 404
   celse:
     route: /courses/:courseId/lessons/:lessonId
     title: CourseQuestions.sessionLabel
@@ -471,19 +471,19 @@ entries:
   - { from: newKoskApplication, to: landingPrivacyNotice, how: link, label: KoskApplication.noticeLink, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:217 }
 
   # ---- the course page ----
-  - { from: course, to: kosk, how: link, label: "The köşk (breadcrumb)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:248 }
-  - { from: course, to: kosk, how: link, label: "The köşk (line under the title)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:215 }
-  - { from: course, to: madrasah, how: link, label: "The medrese (line under the title)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:210 }
-  - { from: course, to: signIn, how: link, label: CoursePage.signInToApply, when: not signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:352 }
-  - { from: course, to: register, how: link, label: "Register (the link in \"Hesabın yok mu?\")", when: not signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:358 }
-  - { from: course, to: celse, how: link, label: CoursePage.continue, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:289 } # the next celse, for a seat holder
-  - { from: course, to: celse, how: link, label: CoursePage.openSession, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:258 } # the same, once the course is completed
-  - { from: course, to: celse, how: link, label: "A celse row of the programme", data: true, when: signedIn, source: apps/tedris/features/courses/components/course-programme.tsx:105 } # a seat holder; a row is a link only while its week is open
+  - { from: course, to: kosk, how: link, label: "The köşk (breadcrumb)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:256 }
+  - { from: course, to: kosk, how: link, label: "The köşk (line under the title)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:223 }
+  - { from: course, to: madrasah, how: link, label: "The medrese (line under the title)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:218 }
+  - { from: course, to: signIn, how: link, label: CoursePage.signInToApply, when: not signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:348 }
+  - { from: course, to: register, how: link, label: "Register (the link in \"Hesabın yok mu?\")", when: not signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:354 }
+  - { from: course, to: celse, how: link, label: CoursePage.continue, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:288 } # the next celse, for a seat holder
+  - { from: course, to: celse, how: link, label: CoursePage.openSession, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:257 } # the same, once the course is completed
+  - { from: course, to: celse, how: link, label: "A celse row of the programme", data: true, when: signedIn, source: apps/tedris/features/courses/components/course-programme.tsx:148 } # a seat holder; a row is a link only while its week is open
   - { from: course, to: celseWatch, how: link, label: "Kaydı izle: a recording row", data: true, when: signedIn, source: apps/tedris/features/courses/components/recordings-tab.tsx:281 }
   - { from: course, to: deckStudy, how: link, label: CoursePage.deckStudy, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-decks-tab.tsx:145 }
   - { from: course, to: deck, how: link, label: "A deck row of the course", data: true, when: signedIn, source: apps/tedris/features/courses/components/course-decks-tab.tsx:171 }
-  - { from: course, to: myCourses, how: link, label: CoursePage.backToMyCourses, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:214 } # the card of a revoked access
-  - { from: course, to: nazarApp, how: link, label: CoursePage.backToEditing, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-page.tsx:368 } # the preview of a draft, for an editor, and only when NAZAR_URL is set; the accessible name is the longer aria-label "Düzenlemeye dön: {title}, Nazar’da Müfredat" (CoursePage.backToEditingLabel)
+  - { from: course, to: myCourses, how: link, label: CoursePage.backToMyCourses, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-aside.tsx:213 } # the card of a revoked access
+  - { from: course, to: nazarApp, how: link, label: CoursePage.backToEditing, data: true, when: signedIn, source: apps/tedris/features/courses/components/course-page.tsx:376 } # the preview of a draft, for an editor, and only when NAZAR_URL is set; the accessible name is the longer aria-label "Düzenlemeye dön: {title}, Nazar’da Müfredat" (CoursePage.backToEditingLabel)
   - { from: course, to: filesCourseResource, how: link, label: "A course resource that is a file", data: true, when: signedIn, source: apps/tedris/features/courses/components/course-resources.tsx:124 }
   - { from: course, to: lessonCalendar, how: link, label: AddToCalendar.apple, data: true, when: signedIn, source: apps/tedris/features/courses/components/add-to-calendar.tsx:97 }
 
@@ -506,8 +506,8 @@ entries:
   - { from: celse, to: filesLessonAssignment, how: link, label: "A file of the homework set for the celse", data: true, source: apps/tedris/features/courses/components/session-homework.tsx:848 }
   - { from: celse, to: filesSubmissionFile, how: link, label: "One of my own homework files", data: true, source: apps/tedris/features/courses/components/session-homework.tsx:924 }
   - { from: celse, to: filesReviewFile, how: link, label: "A file returned with the review", data: true, source: apps/tedris/features/courses/components/session-homework.tsx:759 }
-  - { from: celseWatch, to: course, how: link, label: "The course (back link)", data: true, source: apps/tedris/features/courses/components/watch-view.tsx:209 }
-  - { from: celseWatch, to: celse, how: link, label: WatchPage.details, source: apps/tedris/features/courses/components/watch-view.tsx:233 }
+  - { from: celseWatch, to: course, how: link, label: "The course (back link)", data: true, source: apps/tedris/features/courses/components/watch-view.tsx:227 }
+  - { from: celseWatch, to: celse, how: link, label: WatchPage.details, source: apps/tedris/features/courses/components/watch-view.tsx:251 }
 
   # ---- Derslerim and Programım ----
   - { from: myCourses, to: course, how: link, label: "the course card's title", data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:102 } # the card's title link: its name is the course's own title, composed in code (`title={course.title}`); the key exists so that a binding can tell this entry from the recordings link below (they share their ends and their `how`)
@@ -598,7 +598,6 @@ goals:
   - { id: tedris.course.apply, say: "Enrol in or apply for a course, and withdraw", page: course, for: [talebe], within: 1 }
   - { id: tedris.course.leave, say: "Leave a course or take back an application from Derslerim", page: myCourses, for: [talebe], within: 1 }
   - { id: tedris.course.readProgramme, say: "Follow a course as an enrolled talebe", page: course, for: [talebe], within: 1 }
-  - { id: tedris.course.updateProgress, say: "Update my progress on a course", page: course, for: [talebe], within: 1 }
   - { id: tedris.course.draftPreview, say: "Open the page of a draft course", page: course, for: [talebe], within: 1 }
   - { id: tedris.course.recordings, say: "Open the recordings tab of a course", page: course, for: [visitor, talebe], within: 1 }
   - { id: tedris.course.deckTab, say: "Study the course deck from its tab", page: course, for: [talebe], within: 1 }

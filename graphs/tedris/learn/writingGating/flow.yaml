@@ -167,7 +167,7 @@ states:
       - guard: "address == 'tab'"
         target: readingCourse
         say: "the course page reads the course and nothing of the celse"
-        source: apps/tedris/features/courses/components/course-page.tsx:166
+        source: apps/tedris/features/courses/components/course-page.tsx:174
       - target: readingCelse
         say: "the celse page and its watch page read the celse first, in their layout"
         source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
@@ -200,13 +200,13 @@ states:
     description: >-
       The course page reads GET /courses/{id} (getCourse) and draws its tabs from what comes back: the enrolment's status and
       `contentLocked`. A visitor may read it too (outOfView).
-    source: apps/tedris/features/courses/components/course-page.tsx:166
+    source: apps/tedris/features/courses/components/course-page.tsx:174
     invoke: { action: getCourse }
     on:
       DONE:
         target: courseDeciding
         say: "the course is there"
-        source: apps/tedris/features/courses/components/course-page.tsx:166
+        source: apps/tedris/features/courses/components/course-page.tsx:174
 
   deciding:
     title: Decide which page the person gets
@@ -227,11 +227,11 @@ states:
       - guard: "onWatch and mayWrite"
         target: watchPanels
         say: "an active talebe on the watch page gets the questions and the notes beside the video"
-        source: apps/tedris/features/courses/components/watch-page.tsx:44
+        source: apps/tedris/features/courses/components/watch-page.tsx:46
       - guard: "onWatch and isStaff"
         target: staffWatch
         say: "the hoca watches: the content is open, there is no aside"
-        source: apps/tedris/features/courses/components/watch-page.tsx:44
+        source: apps/tedris/features/courses/components/watch-page.tsx:46
       - guard: onWatch
         target: watchRedirected
         say: "anyone else is sent back to the celse page"
@@ -264,15 +264,15 @@ states:
     description: >-
       The tab row is built from the same two facts: `asksQuestions = !course.contentLocked && canWriteNotes(enrollment.status)`. "Sorularım" is in
       the row for an active talebe only; for anyone else the tab is not there and the address's `?tab=sorularim` falls back to "Müfredat".
-    source: apps/tedris/features/courses/components/course-page.tsx:166
+    source: apps/tedris/features/courses/components/course-page.tsx:174
     always:
       - guard: mayWrite
         target: courseAsk
         say: "the row has \"Sorularım\" and the address selects it"
-        source: apps/tedris/features/courses/components/course-page.tsx:187
+        source: apps/tedris/features/courses/components/course-page.tsx:195
       - target: courseNoAsk
         say: "no \"Sorularım\" in the row; \"Müfredat\" is selected"
-        source: apps/tedris/features/courses/components/course-page.tsx:187
+        source: apps/tedris/features/courses/components/course-page.tsx:195
 
   celsePanels:
     title: The celse page with its panels
@@ -398,7 +398,7 @@ states:
       has no player for): the video's header and placeholder, then an <aside> named "Sorular ve notlar" holding "Soru sor" (a region named by its h2,
       the caption of who reads it, a form) over "Notlarım". The same two components as the celse page and the course tab, so the same 403 line
       appears in each (CourseQuestions.forbidden for a question). Nothing moves the focus.
-    source: apps/tedris/features/courses/components/watch-view.tsx:245
+    source: apps/tedris/features/courses/components/watch-view.tsx:263
     on:
       SUBMIT:
         target: watchPanels
@@ -418,7 +418,7 @@ states:
       WatchPage computes `talebe = !contentLocked && canWriteNotes(status)`, which is false for a hoca (the content is open, there is no enrolment),
       so WatchView gets `notes={false}` and `questions={false}` and draws no <aside> at all: the video, the header and the link "Celse ayrıntıları".
       e2e lesson-notes#16 asserts the same page for the müderris and the başnazım.
-    source: apps/tedris/features/courses/components/watch-view.tsx:245
+    source: apps/tedris/features/courses/components/watch-view.tsx:263
     on:
       TRY_NOTE:
         target: noteTried
@@ -508,7 +508,7 @@ states:
     description: >-
       The tab row of an active talebe: "Müfredat", "Ders kayıtları", "Ders destesi", "Sorularım", "Notlarım" (the grades), "Hocalar"; the address
       selects "Sorularım" and its panel is the caption of who reads the questions and the form "Soru sor" over the list (tedris.learn.questions).
-    source: apps/tedris/features/courses/components/course-page.tsx:459
+    source: apps/tedris/features/courses/components/course-page.tsx:468
     on:
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -521,7 +521,7 @@ states:
       "Sorularım", and `?tab=sorularim` selects "Müfredat". A removed talebe also reads "Bu derse erişimin kaldırıldı." in the aside; a passive
       course's talebe reads the closed course's own words, not drawn here. Nobody is told that a question could be asked; a talebe whose seat
       was taken away loses the tab and the list of their questions together (MDRS-268).
-    source: apps/tedris/features/courses/components/course-page.tsx:187
+    source: apps/tedris/features/courses/components/course-page.tsx:195
     on:
       TRY_QUESTION:
         target: questionTried
@@ -549,7 +549,7 @@ states:
         guard: mayWrite
         target: hidden_celse_written
         say: "201: the note is stored on the celse nobody can open"
-        source: apps/tedrisat/src/course/course.service.ts:507
+        source: apps/tedrisat/src/course/course.service.ts:511
       FAIL.forbidden:
         guard: "not mayWrite"
         target: write_refused
@@ -584,7 +584,7 @@ states:
         guard: "not passiveNow"
         target: own_writing_read
         say: "200: what the person wrote, or []"
-        source: apps/tedrisat/src/course/course.service.ts:586
+        source: apps/tedrisat/src/course/course.service.ts:590
       FAIL.forbidden:
         guard: passiveNow
         target: own_writing_closed
@@ -603,7 +603,7 @@ states:
         guard: "not passiveNow"
         target: own_writing_read
         say: "200: their questions with the answers"
-        source: apps/tedrisat/src/course/course.service.ts:586
+        source: apps/tedrisat/src/course/course.service.ts:590
       FAIL.forbidden:
         guard: passiveNow
         target: own_writing_closed
@@ -655,7 +655,7 @@ assertions:
   - id: staff-gets-no-panel
     never: "state in ['celsePanels', 'drafting', 'adding', 'addRefused', 'watchPanels', 'courseAsk'] and isStaff"
     say: "The course's own hoca is never drawn a panel on the celse page, the watch page or the course page"
-    source: apps/tedris/features/courses/components/watch-page.tsx:44
+    source: apps/tedris/features/courses/components/watch-page.tsx:46
   - id: celse-panels-only-on-the-celse-page
     never: "state in ['celsePanels', 'drafting', 'adding', 'addRefused'] and address != 'celse'"
     say: "The celse page's panels are never drawn for a cancelled celse, a hidden one, the watch address or the course page"
@@ -663,7 +663,7 @@ assertions:
   - id: watch-panels-only-on-the-watch-page
     never: "state == 'watchPanels' and address != 'watch'"
     say: "The questions and the notes beside the video are drawn on the watch page only"
-    source: apps/tedris/features/courses/components/watch-view.tsx:245
+    source: apps/tedris/features/courses/components/watch-view.tsx:263
   - id: hidden-celse-has-no-page
     never: "state in ['celsePanels', 'drafting', 'addRefused', 'watchPanels', 'staffWatch', 'staffCelse', 'lockedShown', 'cancelledShown'] and isHidden"
     say: "A hidden celse is a page nobody opens: no panel, no lock card, no cancelled card, not even for the hoca"
@@ -671,12 +671,12 @@ assertions:
   - id: only-the-active-write
     never: "state == 'hidden_celse_written' and not mayWrite"
     say: "A note is stored only from a person whose seat is active, on a hidden celse as on a live one"
-    source: apps/tedrisat/src/course/course.service.ts:563
+    source: apps/tedrisat/src/course/course.service.ts:567
   - id: a-refusal-needs-no-seat
     never: "state == 'write_refused' and mayWrite"
     say: "The API never refuses a note or a question to a person whose seat is active and unbarred"
-    source: apps/tedrisat/src/course/course.service.ts:563
+    source: apps/tedrisat/src/course/course.service.ts:567
   - id: own-writing-closes-with-the-scope
     never: "state == 'own_writing_closed' and not passiveNow"
     say: "A person's own writing is closed to them only by a passive scope, never by a removal or a ban"
-    source: apps/tedrisat/src/course/course.service.ts:586
+    source: apps/tedrisat/src/course/course.service.ts:590

@@ -5,7 +5,7 @@
 # Three messages are built in code and are in no i18n file, so they are `composed.SessionPlan.*` ("Günler *" at plan-form.tsx:571, a weekday's
 # short name at :570, the date of a previewed celse at :708). `Changes.note` is the one catalog entry the app does not have: no app message says
 # what making celses changes (the toast says only "N celse eklendi"), so one short factual sentence was written for it from the API's
-# side effects (the calendar invitation mail and, for an exam, the notification: apps/tedrisat/src/course/course.service.ts:1386-1415).
+# side effects (the calendar invitation mail and, for an exam, the notification: apps/tedrisat/src/course/course.service.ts:1401-1430).
 # Where a node says "repeat", the page draws it once per item; the replay finds the items through the binding.
 schema: delurio-graph/0
 kind: ui

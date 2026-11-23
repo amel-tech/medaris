@@ -107,10 +107,10 @@ nodes:
 # What a removal leaves outside the screen, read through the API as the müderris and, for what no route reads, through the database.
 effects:
   removeEnrollment:
-    # the seat stays as the record: REVOKED, not deleted (course.repository.ts:2463)
+    # the seat stays as the record: REVOKED, not deleted (course.repository.ts:2470)
     - run: [node, helpers/sql.mjs, "select status from enrollments where course_id = '{made.course}' and user_id = '{whoSub}'"]
       expect: '"status":"REVOKED"'
-    # Erişimi kaldırılanlar reads the audit row: the trimmed reason (course.repository.ts:2548, e2e: none)
+    # Erişimi kaldırılanlar reads the audit row: the trimmed reason (course.repository.ts:2555, e2e: none)
     - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/enrollments/removed']
       expect: '"reason":"{reasonSaved}"'
     # RMV-1: the talebe is sent the reason, word for word (course-notifier.ts:72-85)

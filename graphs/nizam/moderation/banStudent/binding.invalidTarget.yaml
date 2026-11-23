@@ -1,6 +1,6 @@
 # nizam.moderation.banStudent where the person runs the course: BAN_TARGET_INVALID, "Bu kişi yasaklanamaz.", an error toast that stays and the
 # window still open with what was typed. The person is a spare account (applicantG, Dilek Başvuran) made the course's hoca AND enrolled in it
-# as a talebe, so the roster has a row for her: nothing in tedrisat refuses a hoca a seat (CourseService.enroll, course.service.ts:1527-1567).
+# as a talebe, so the roster has a row for her: nothing in tedrisat refuses a hoca a seat (CourseService.enroll, course.service.ts:1542-1582).
 # The ban is refused at ban.service.ts:155-163 (she holds MUDERRIS at the course), before anything is written.
 #   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \
 #     --bind graphs/nizam/moderation/banStudent/binding.invalidTarget.yaml --cover transitions --absent --out <dir>

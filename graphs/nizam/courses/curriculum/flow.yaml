@@ -444,7 +444,7 @@ states:
         target: clean
         effect: [savedElsewhere]
         say: "someone else saves the course (another editor, Ders ayarları); this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page" }
       PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
@@ -558,7 +558,7 @@ states:
         target: edited
         effect: [savedElsewhere]
         say: "someone else saves the course; this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page: every edit is lost" }
       PLAN: { target: plan_opened, say: "they follow Haftalık celse üret: the edits are lost, only a caption warned", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir: the edits are lost, nothing asks (F-W4-5)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
@@ -645,7 +645,7 @@ states:
         target: invalid
         effect: [savedElsewhere]
         say: "someone else saves the course; this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page: every edit is lost" }
       PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }

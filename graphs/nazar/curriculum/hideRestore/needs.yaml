@@ -47,7 +47,7 @@ needs:
       - state: hidingWeek
       - state: weekSettled
       - source: apps/tedrisat/src/course/lesson.controller.ts:436
-      - source: apps/tedrisat/src/course/course.repository.ts:1687
+      - source: apps/tedrisat/src/course/course.repository.ts:1690
       - test: apps/nazar/test/curriculum-hide.spec.tsx
 
   - id: see-what-is-hidden
@@ -91,7 +91,7 @@ needs:
       - node: restoreWeek
       - node: restoreSession
       - source: apps/tedrisat/src/archive/archive.controller.ts:246
-      - source: apps/tedrisat/src/archive/archive.repository.ts:514
+      - source: apps/tedrisat/src/archive/archive.repository.ts:515
     note: Also drawn as the assertion a-covered-celse-needs-a-hidden-week.
 
   - id: an-answer-that-came-late-is-told

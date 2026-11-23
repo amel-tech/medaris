@@ -32,7 +32,7 @@ needs:
       - source: apps/nazar/features/sessions/attendance.ts:25
       - source: apps/nazar/features/sessions/components/attendance-cell.tsx:33
       - source: apps/nazar/features/sessions/components/sessions-table.tsx:478
-      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:228
     note: >-
       MDRS-283 built it: a label only, no address and no seats. "Celseler yüz yüze yapılır" is drawn by
       nazar.courseSettings.access and "Yüz yüze ayarı" by nazar.sessions.manage; their replays are walk phase.

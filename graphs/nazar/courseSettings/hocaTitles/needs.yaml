@@ -108,7 +108,7 @@ needs:
       none.
     evidence:
       - node: toastSaved
-      - source: apps/tedris/features/courses/components/course-page.tsx:308
+      - source: apps/tedris/features/courses/components/course-page.tsx:316
       - source: apps/tedrisat/src/course/dto/course-response.dto.ts:202
       - test: apps/tedrisat/test/e2e/course-muderris-unvan.e2e.spec.ts
 

@@ -43,7 +43,7 @@ needs:
       - node: timeField
       - node: dateField
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
-      - source: apps/tedrisat/src/course/course.service.ts:1177
+      - source: apps/tedrisat/src/course/course.service.ts:1192
 
   - id: mark-in-person
     need: >-
@@ -174,7 +174,7 @@ needs:
     need: >-
       Every change of a celse's meeting link, time or in-person mark is written to the audit log with who made it and what it was,
       as the stream, the recording access and the cancel already are (MANAGE-1).
-    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1555)
+    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1558)
     note: >-
       Drawn on the states savingLink, savingTime and savingInPerson, which the code has: they are not evidence, so that a replay
       still walks them (SPEC.md §13 leaves out what only missing needs name).

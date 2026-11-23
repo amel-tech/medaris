@@ -124,7 +124,7 @@ failures:
   renewing: { from: regenerateMyCalendarFeed, signedOut: [], refused: [CALENDAR_NOT_CONFIGURED] }
   pollingOld: { from: webGetCalendarFeed, notFound: [HTTP_404, CALENDAR_FEED_NOT_FOUND] }
 # `unreadable` stands for any answer but a refused token: the domain lists no refusal for the status read, and the page treats a
-# network error, a 5xx and a 4xx alike (features/courses/actions/index.ts:197-208). `signedOut` is the guard's 401, which the domain
+# network error, a 5xx and a 4xx alike (features/courses/actions/index.ts:183-194). `signedOut` is the guard's 401, which the domain
 # leaves out; a 401 sends the person to sign in through sendToSignIn (calendar-subscription.tsx:126). `refused` is every other
 # failure of the call, drawn as one red alert whatever the status: tedrisat's 503 CALENDAR_NOT_CONFIGURED is the only one the
 # domain lists, a 5xx and a network answer from tedris-web's own side say the same.
@@ -143,14 +143,14 @@ states:
     description: >-
       The page's server side asks tedrisat GET /me/calendar-feed, which says whether a link exists and when it was made, never the
       link (only its SHA-256 is stored). An answer is `{ createdAt }`, with the date or null; a failure of any kind other than a
-      refused token is not told apart and becomes `null`, which the page draws as "could not be read" (getMyCalendarFeed, actions/index.ts:197-208).
+      refused token is not told apart and becomes `null`, which the page draws as "could not be read" (getMyCalendarFeed, actions/index.ts:183-194).
       A token tedrisat refuses sends the person to sign in again (out of view). The graph draws the read as a step of its own.
     invoke: { action: getMyCalendarFeed }
     on:
       DONE:
         - { guard: noFeed, target: noLink, say: "the status has no date: no link was ever made", source: apps/tedris/app/account/calendar/page.tsx:38 }
         - { guard: hasFeed, target: masked, say: "the status has a date: a link exists and cannot be shown again", source: apps/tedris/app/account/calendar/page.tsx:38 }
-      FAIL.unreadable: { guard: noRead, target: unknown, say: "the status is null", source: apps/tedris/features/courses/actions/index.ts:205 }
+      FAIL.unreadable: { guard: noRead, target: unknown, say: "the status is null", source: apps/tedris/features/courses/actions/index.ts:191 }
 
   noLink:
     title: No link yet

@@ -153,14 +153,14 @@ needs:
       - node: closedHelp
       - node: approvalHelp
       - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
-      - source: apps/tedrisat/src/course/course.service.ts:995
+      - source: apps/tedrisat/src/course/course.service.ts:1010
 
   - id: no-public-recordings-is-enforced
     need: >-
       "Ders kayıtları herkese açılamaz" does what its help line says: while it is on, no recording of the medrese's courses can be
       made public or uploaded to YouTube. Today it is saved and audited and nothing reads it (policy-no-public-recordings-inert;
       decision D1).
-    missing: no issue found for the medrese's own flag; the köşk's and the platform's flags are read (course.service.ts:857)
+    missing: no issue found for the medrese's own flag; the köşk's and the platform's flags are read (course.service.ts:861)
     note: >-
       Drawn on the nodes policyRecordings and recordingsHelp, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).

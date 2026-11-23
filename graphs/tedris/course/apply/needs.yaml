@@ -23,7 +23,7 @@ needs:
       - state: enrolled
       - source: apps/tedrisat/src/course/course.controller.ts:497
       - source: apps/tedrisat/src/course/course.controller.ts:794
-      - source: apps/tedris/features/courses/components/course-aside.tsx:80
+      - source: apps/tedris/features/courses/components/course-aside.tsx:79
       - source: apps/tedris/features/courses/components/leave-course.tsx:26
       - test: apps/tedris/e2e/course.e2e.ts
         name: "applies, reads the window, waits with the time of the application, and withdraws"
@@ -51,7 +51,7 @@ needs:
       köşk, the köşk's always-approve policy, the platform's policy, the medrese's policy), the card says so and offers "Kayıt
       başvurusu yap"; it never says "Kayıt onay gerektirmez" over an application that waits.
     evidence:
-      - source: "apps/tedris/app/courses/[courseId]/page.tsx:89"
+      - source: "apps/tedris/app/courses/[courseId]/page.tsx:93"
     missing: no Linear issue; findings CRS-APPLY-1; code exists in part
     note: |-
       Drawn on the state applyCard and on the nodes approvalFact and openFact, which the code has: they are not evidence, so that
@@ -79,7 +79,7 @@ needs:
     note: |-
       Drawn on the states enrolling and reachesNazar, which the code has: they are not evidence, so that a replay still walks them
       (SPEC.md §13 leaves out what only missing needs name).
-      No code: enrolment gives a seat with no count (apps/tedrisat/src/course/course.service.ts:1529). MDRS-284 plans it per celse
+      No code: enrolment gives a seat with no count (apps/tedrisat/src/course/course.service.ts:1544). MDRS-284 plans it per celse
       and per week, not per course (tedris.session.registerInPerson, nazar.sessions.inPersonSeats).
 
   - id: gender-required-before-a-seat

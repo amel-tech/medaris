@@ -43,7 +43,7 @@ scope:
     - "the not-found page's own story: its HTTP status (200 here, because loading.tsx has already streamed the shell; the page carries noindex) and the system pages (tedris.shell.systemPages); drawn here only as far as this address shows it"
     - "the köşk's nazım, who opens the same page and gets the köşk's draft courses on the shelf as well (listKoskCourses), and a hidden köşk, which opens only for its nazım and the Medaris management (nizam.moderation.*); neither is one of the readers drawn"
     - "the imam's star after a hoca, which shows only among more than one hoca of a course, and the unvan before a hoca's name"
-    - "the browser tab's title: \"<köşk> · Tedris\", or only \"Tedris\" for an unlisted köşk because the metadata is read with no token (intro-metadata.ts:26, public-reads.ts:57)"
+    - "the browser tab's title: \"<köşk> · Tedris\", or only \"Tedris\" for an unlisted köşk because the metadata is read with no token (intro-metadata.ts:26, public-reads.ts:58)"
     - "the loading skeleton while the reads run (app/kosks/[koskId]/loading.tsx; DSC-19)"
     - "the phone layout, where the breadcrumb shows only its parent as a back link"
 
@@ -124,7 +124,7 @@ failures:
   readingDecks: { from: listKoskDecks, unreadable: [] }
 # `missing` is what getKosk (actions/index.ts:31-48) takes for "no such köşk": a 400, a 403 or a 404 (the domain lists no 403 for it).
 # `unreadable` of the other two stands for any answer at all but 200: getKoskCourses throws on every one, a 404 included (index.ts:51-65),
-# and getKoskDecks answers null on every one (public-reads.ts:164), which the page draws as no block.
+# and getKoskDecks answers null on every one (public-reads.ts:177), which the page draws as no block.
 
 # The main story: a talebe the köşk knows opens its page, reads it, and opens the first course.
 main:
@@ -164,7 +164,7 @@ states:
   askingDecks:
     title: See whether the decks are asked for
     description: classification only; a visitor's decks are not read at all (no call is made), a signed-in person's are
-    source: apps/tedris/features/courses/public-reads.ts:163
+    source: apps/tedris/features/courses/public-reads.ts:176
     always:
       - { guard: isVisitor, target: koskShown, say: "no token, so no deck read and no deck block" }
       - { target: readingDecks, say: "a signed-in person: the köşk's decks are asked for" }
@@ -175,11 +175,11 @@ states:
       The public, unarchived decks of the köşk and whether the caller belongs to it. A caller who does not belong gets accessible false and
       no deck, never an error; a failed read is null, and the page leaves the block out.
     includes: ["accessible, and each deck with its title, its number of cards and whether it is in the caller's collection"]
-    source: apps/tedris/features/courses/public-reads.ts:164
+    source: apps/tedris/features/courses/public-reads.ts:177
     invoke: { action: listKoskDecks }
     on:
-      DONE: { guard: "not decksDown", target: koskShown, source: apps/tedris/features/courses/public-reads.ts:164, say: "the answer says whether the block is drawn and with what" }
-      FAIL.unreadable: { guard: decksDown, target: koskShown, source: apps/tedris/features/courses/public-reads.ts:164, say: "the read failed and the page says nothing: the block is left out, as it is for someone the köşk does not know" }
+      DONE: { guard: "not decksDown", target: koskShown, source: apps/tedris/features/courses/public-reads.ts:177, say: "the answer says whether the block is drawn and with what" }
+      FAIL.unreadable: { guard: decksDown, target: koskShown, source: apps/tedris/features/courses/public-reads.ts:177, say: "the read failed and the page says nothing: the block is left out, as it is for someone the köşk does not know" }
 
   koskShown:
     title: The köşk page
@@ -275,7 +275,7 @@ assertions:
   - id: decks-are-for-the-signed-in
     never: "state == 'readingDecks' and viewer == 'visitor'"
     say: "The decks are asked for only when there is a token: a visitor's page makes no deck read"
-    source: apps/tedris/features/courses/public-reads.ts:163
+    source: apps/tedris/features/courses/public-reads.ts:176
   - id: not-found-only-for-no-such-kosk
     never: "state == 'notFound' and not hidden"
     say: "The not-found page is the answer for \"no such köşk\" only, never for a read that failed"

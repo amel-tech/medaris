@@ -44,7 +44,7 @@ scope:
     - "Onayla and Reddet on Başvurular, and the page's approval note for a course that asks for it: nazar.roster.decide"
     - "Dersten çıkar (drawn on every Kayıtlı row, never pressed here) and the tab Erişimi kaldırılanlar: nazar.roster.remove"
     - "Toplu talebe ekle (drawn for whoever holds enrollment.decide, never pressed here): nazar.roster.bulkAdd"
-    - "what the talebe sees once their course is complete or reopened: tedris.course.updateProgress, tedris.course.readProgramme, tedris.learning.schedule"
+    - "what the talebe sees once their course is complete or reopened: tedris.course.readProgramme (the card and, while enrolled, the progress counted from the celses watched), tedris.learning.schedule"
     - "a roster of ten or fewer (no \"Daha fazla göster\"), an empty Kayıtlı tab (\"Kayıtlı talebe yok\"), and the search, the sort and the paging of Tamamlayanlar, which are the same component as Kayıtlı's"
     - "a reader who holds enrollment.complete without enrollment.remove (or the other way round): the buttons are drawn one by one; the graph draws the müderris, who holds both, and the decider, who holds neither"
     - "the phone: each row becomes a card below 768 px (Table responsive=\"stack\"); the same nodes"

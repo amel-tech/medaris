@@ -27,8 +27,8 @@ needs:
       - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:133
       - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:138
       - source: apps/tedris/features/courses/components/session-page.tsx:130
-      - source: apps/tedris/features/courses/components/watch-page.tsx:44
-      - source: apps/tedris/features/courses/components/course-page.tsx:166
+      - source: apps/tedris/features/courses/components/watch-page.tsx:46
+      - source: apps/tedris/features/courses/components/course-page.tsx:174
       - test: apps/tedris/e2e/lesson-notes.e2e.ts
         name: "a passive course: no panel on the session page or the recordings tab, no watch page, and the API closes the notes"
       - test: apps/tedris/e2e/lesson-notes.e2e.ts
@@ -49,7 +49,7 @@ needs:
     evidence:
       - state: staffCelse
       - state: staffWatch
-      - source: apps/tedris/features/courses/components/watch-page.tsx:44
+      - source: apps/tedris/features/courses/components/watch-page.tsx:46
       - source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
       - test: apps/tedris/e2e/lesson-notes.e2e.ts
         name: "nobody else reads a talebe's notes: a second enrolled talebe, the müderris and the başnazım see none, and the API answers 404"
@@ -118,7 +118,7 @@ needs:
       - state: noteTried
       - state: write_refused
       - source: apps/tedrisat/src/ban/ban.controller.ts:83
-      - source: apps/tedrisat/src/course/course.service.ts:563
+      - source: apps/tedrisat/src/course/course.service.ts:567
     note: >-
       walked: nothing. No e2e check of tedris bars a talebe and then reads the panel or the API; the binding's scenario `barred`
       is written and has not been replayed

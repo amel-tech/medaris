@@ -7,7 +7,7 @@
 # Words that are not copied:
 #   - Changes.note is the one message written for the graph: no app message says what Kaydet changes (what it hides, what it deletes, what an upload does
 #     meanwhile, what a conflict leaves), so one short, factual Turkish note is authored. Each claim is the code's: curriculum-editor.tsx:78-90, payload.ts:21-27,
-#     resource-file-parts.tsx:60-64, 97-107 and course.repository.ts:538 (a week or a celse left out is hidden, a resource left out is deleted).
+#     resource-file-parts.tsx:60-64, 97-107 and course.repository.ts:541 (a week or a celse left out is hidden, a resource left out is deleted).
 #   - composed.Curriculum.fileName "{file}": the file's own name as the text of its link (resource-file-parts.tsx:49), data and not a message.
 # The toasts are Sonner's (libs/ui/src/components/sonner.tsx), not the kit's toaster: one <li data-sonner-toast> with the title in [data-title] and the
 # description in [data-description], no role; a success closes after six seconds, an error stays until it is closed.

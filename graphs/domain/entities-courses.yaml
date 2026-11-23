@@ -39,16 +39,16 @@ entities:
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
     lifecycle:
-      - "none -> draft: a course is created DRAFT (course.repository.ts:445), or opened by a medrese (madrasah-course.repository.ts:190). Creation accepts status PUBLISHED, requiresApproval and isClosed with only course.open_standalone: the publish and settings gates run on PATCH and PUT, not on create"
-      - "draft -> published: a save that carries status, by a holder of course.publish (course.service.ts:951-985)"
+      - "none -> draft: a course is created DRAFT (course.repository.ts:448), or opened by a medrese (madrasah-course.repository.ts:190). Creation accepts status PUBLISHED, requiresApproval and isClosed with only course.open_standalone: the publish and settings gates run on PATCH and PUT, not on create"
+      - "draft -> published: a save that carries status, by a holder of course.publish (course.service.ts:957-1000)"
       - "published -> draft: the same save, back"
-      - "published | draft -> hidden: archivedAt, archivedBy and archivedLevel are set by a hide (course.repository.ts:1995-2030) or by the hide of its medrese, which cascades; a hidden course answers 404 COURSE_NOT_FOUND to anyone without a hide or restore code"
+      - "published | draft -> hidden: archivedAt, archivedBy and archivedLevel are set by a hide (course.repository.ts:1999-2037) or by the hide of its medrese, which cascades; a hidden course answers 404 COURSE_NOT_FOUND to anyone without a hide or restore code"
       - "hidden -> published | draft: restored by someone at the level that hid it or above, with a shown parent (archive/restore-course.ts)"
       - "any -> none: deleted for real, by the SYSTEM_ADMIN only, in one transaction with the audit row course.delete (course-purge.ts)"
-      - "requiresApproval and isClosed: switching either on needs course.settings; switching either off also needs the ability a policy may have closed, else 409 PLATFORM_POLICY_LOCKED (course.service.ts:947-1010)"
+      - "requiresApproval and isClosed: switching either on needs course.settings; switching either off also needs the ability a policy may have closed, else 409 PLATFORM_POLICY_LOCKED (course.service.ts:951-1025)"
 
   CourseWeek: # a week of a course's programme
-    source: apps/tedrisat/src/database/schema/course.schema.ts:124
+    source: apps/tedrisat/src/database/schema/course.schema.ts:130
     required: [id, courseId, weekNumber, title, orderIndex, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
@@ -64,12 +64,12 @@ entities:
       updatedAt: { type: string, format: date-time }
     lifecycle:
       - "none -> shown: created with the course, by a whole-course save, or by planning sessions, which adds a missing week as 'Hafta N' after the last"
-      - "shown -> hidden: the week hide (course.repository.ts:1668-1700) hides its live sessions at one instant with one stamp; a whole-course PUT that drops it hides it too"
+      - "shown -> hidden: the week hide (course.repository.ts:1671-1703) hides its live sessions at one instant with one stamp; a whole-course PUT that drops it hides it too"
       - "hidden -> shown: restored at the same level or above (archive.repository.ts)"
       - "shown -> none: a DELETE is refused while the week holds any session (MDRS-124); only the purge deletes rows"
 
   Lesson: # a session (celse) of a week; the code calls it a lesson and its type is VIDEO, DOCUMENT, LIVE or QUIZ. Its status is NEVER stored
-    source: apps/tedrisat/src/database/schema/course.schema.ts:148
+    source: apps/tedrisat/src/database/schema/course.schema.ts:154
     required: [id, weekId, title, type, isPreview, orderIndex, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
@@ -99,12 +99,12 @@ entities:
     lifecycle:
       - "scheduled -> live: derived, never stored: the clock reaches scheduledAt (sessionStatus, course/domain/session-view.ts:126-139); a session with no scheduledAt is scheduled"
       - "live -> ended: derived: scheduledAt plus durationMinutes has passed"
-      - "scheduled | live | ended -> cancelled: cancelledAt, cancelReason and optionally replacementLessonId are set, the audit action lesson.cancel is written (course.repository.ts:1335-1375); a second cancel is 409 LESSON_ALREADY_CANCELLED. The session stays in the programme, and a cancelled session takes no live stream link and no pasted recording"
-      - "shown -> hidden: archivedAt, archivedBy and archivedLevel are set (course.repository.ts:1619-1640), or a whole-course PUT drops it (:728-745)"
-      - "hidden -> shown: restored at the same level or above (archive.repository.ts:551)"
+      - "scheduled | live | ended -> cancelled: cancelledAt, cancelReason and optionally replacementLessonId are set, the audit action lesson.cancel is written (course.repository.ts:1338-1378); a second cancel is 409 LESSON_ALREADY_CANCELLED. The session stays in the programme, and a cancelled session takes no live stream link and no pasted recording"
+      - "shown -> hidden: archivedAt, archivedBy and archivedLevel are set (course.repository.ts:1622-1643), or a whole-course PUT drops it (:731-748)"
+      - "hidden -> shown: restored at the same level or above (archive.repository.ts:552)"
 
   CourseMuderris: # the müderris list a course page SHOWS (name, title, bio, avatar). Authorization does not read it: it reads the MUDERRIS role assignments, and syncMuderrisAssignments keeps the two in step
-    source: apps/tedrisat/src/database/schema/course.schema.ts:223
+    source: apps/tedrisat/src/database/schema/course.schema.ts:229
     required: [id, courseId, name, avatarHue, orderIndex]
     fields:
       id: { type: string, format: uuid }
@@ -123,7 +123,7 @@ entities:
       - "listed -> none: a save drops the row, and the person's MUDERRIS role assignment is revoked with it"
 
   CourseResource: # a course-level resource: a link (MDRS-279), a file in Medaris storage (MDRS-287), or only a name and a line
-    source: apps/tedrisat/src/database/schema/course.schema.ts:269
+    source: apps/tedrisat/src/database/schema/course.schema.ts:275
     required: [id, courseId, name, orderIndex]
     fields:
       id: { type: string, format: uuid }
@@ -143,7 +143,7 @@ entities:
       - "listed -> none: a row left out of a whole-list save is deleted and its object queued in StorageDeletion; a file row refuses a url (400 RESOURCE_IS_FILE)"
 
   LessonResource: # a session-level resource (MDRS-286): exactly one of an absolute http(s) link of at most 500 characters, or a stored file
-    source: apps/tedrisat/src/database/schema/course.schema.ts:300
+    source: apps/tedrisat/src/database/schema/course.schema.ts:306
     required: [id, lessonId, name, orderIndex]
     fields:
       id: { type: string, format: uuid }
@@ -162,7 +162,7 @@ entities:
       - "listed -> none: a row left out of a list is deleted and its object queued in StorageDeletion"
 
   Enrollment: # a talebe's seat in a course; also what makes a person a talebe of a medrese, derived from the enrolled or completed seats in its shown courses
-    source: apps/tedrisat/src/database/schema/course.schema.ts:326
+    source: apps/tedrisat/src/database/schema/course.schema.ts:332
     key: [userId, courseId]
     required: [userId, courseId, progress, status, createdAt, updatedAt]
     fields:
@@ -170,15 +170,15 @@ entities:
       courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
       studentName: { type: [string, "null"], sensitivity: personal, note: "what the roster shows; copied at enrollment time" }
       studentEmail: { type: [string, "null"], format: email, sensitivity: personal, note: "what the roster shows; copied at enrollment time. A roster read is audited (course.roster_read)" }
-      progress: { type: integer, default: 0, note: "written by the talebe only against an ENROLLED or COMPLETED row; reaching 100 never completes the course" }
+      progress: { type: integer, default: 0, note: "the share of the course's celses the talebe watched, worked out by recordLessonView when a report completes a celse (MDRS-248), against an ENROLLED or COMPLETED row; the deprecated PUT /courses/{id}/progress still writes a number the talebe gives, which the next completion overwrites; reaching 100 never completes the course" }
       status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED], default: ENROLLED, note: "the declaration order of the enum is its sort order: PENDING was added before ENROLLED (migration 0010), REVOKED last (0039)" }
       completedAt: { type: [string, "null"], format: date-time, note: "set when the course team completes; null otherwise (migration 0031 backfilled it from updatedAt)" }
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
     lifecycle:
-      - "none -> pending: a self-enrollment lands PENDING when the course requires approval, or its köşk is unlisted, or the köşk's alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the medrese's policyAlwaysApproval is on (forcesApproval); else it lands ENROLLED. A held REVOKED row refuses it (409 ENROLLMENT_STATE_CONFLICT), a barred talebe too (course.service.ts:1529-1567)"
+      - "none -> pending: a self-enrollment lands PENDING when the course requires approval, or its köşk is unlisted, or the köşk's alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the medrese's policyAlwaysApproval is on (forcesApproval); else it lands ENROLLED. A held REVOKED row refuses it (409 ENROLLMENT_STATE_CONFLICT), a barred talebe too (course.service.ts:1544-1582)"
       - "none -> enrolled: a self-enrollment that needs no approval; a bulk add (audit enrollment.bulk_add); a partner enrollment (audit enrollment.partner_add)"
-      - "pending | revoked -> enrolled: the course team approves; refused for a COMPLETED row and for a barred talebe (course.service.ts:1642-1668)"
+      - "pending | revoked -> enrolled: the course team approves; refused for a COMPLETED row and for a barred talebe (course.service.ts:1659-1685)"
       - "pending -> none: the course team rejects, with an optional reason (audit enrollment.reject), or the talebe withdraws"
       - "enrolled -> completed: the course team completes (completedAt is set); reaching 100 progress does not"
       - "completed -> enrolled: the course team reopens, if the talebe is not barred (completedAt is cleared)"

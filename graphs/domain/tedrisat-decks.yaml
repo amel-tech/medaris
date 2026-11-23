@@ -197,7 +197,7 @@ actions:
     result: { returns: Deck }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. An anonymous caller meets it for every non-public deck (tedrisat-role-resolver.service.ts:237)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. An anonymous caller meets it for every non-public deck (tedrisat-role-resolver.service.ts:240)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:187 }
       DECK_FORBIDDEN: { status: 403, note: "a second lock: the guard has already answered, so this is reached only when the deck turned private between the guard's read and the handler's", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
     sideEffects:
@@ -262,7 +262,7 @@ actions:
     result: { returns: DeckUser, status: 201 }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:187)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:187)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:306 }
       DECK_FORBIDDEN: { status: 403, note: "the guard let the caller read the deck but the handler's second look does not: the SYSTEM_ADMIN on another person's private deck, or course staff who are not enrolled and so not shared with", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
     sideEffects:
@@ -283,7 +283,7 @@ actions:
     result: { returns: Deck, status: 201 }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:271)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:271)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:338 }
       DECK_PUBLISH_STATE_CONFLICT: { status: 409, note: "the deck is PENDING or PUBLISHED already, or its status moved between the read and the write; the message names the current status", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:277 }
@@ -311,7 +311,7 @@ actions:
         description: { type: string, maxLength: 1000 }
     result: { returns: Deck }
     refusals:
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:359 }
       VALIDATION_ERROR: { status: 400, note: "the same bounds as createDeck, isPublic included", source: libs/common/src/pipes/validation.pipe.ts:40 }
@@ -337,7 +337,7 @@ actions:
     result: { returns: Deck }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:392 }
       VALIDATION_ERROR: { status: 400, note: "a bound is broken, or an unknown property is sent (cardType and isPublic included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
@@ -355,7 +355,7 @@ actions:
     result: { status: 200, type: boolean, note: "true; false for the SYSTEM_ADMIN naming an absent deck, or for a caller who loses a race with another delete" }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:419 }
     note: >-
@@ -374,7 +374,7 @@ actions:
     result: { returns: Deck }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:294)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:294)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:441 }
       DECK_PUBLISH_STATE_CONFLICT: { status: 409, note: "the deck is PRIVATE already (nothing to withdraw), or its status moved between the read and the write", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:296 }
@@ -428,7 +428,7 @@ actions:
     result: { type: array, items: { type: object, references: Flashcard } }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. An anonymous caller meets it for every non-public deck. The SYSTEM_ADMIN is never refused: for an absent deck it gets 200 [] (the guard's bypass and the handler check nothing)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. An anonymous caller meets it for every non-public deck. The SYSTEM_ADMIN is never refused: for an absent deck it gets 200 [] (the guard's bypass and the handler check nothing)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       HTTP_400: { status: 400, note: "deckId is missing or not a string (the guard, libs/common/src/authz/resolvers.ts:19), or not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:151 }
     sideEffects:
       - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
@@ -455,7 +455,7 @@ actions:
         dueCount: { type: integer, note: "how many of cards are repeats that are due" }
         newCount: { type: integer, note: "how many of cards the caller has not started" }
     refusals:
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. The SYSTEM_ADMIN is never refused: for an absent deck it gets an empty round, 200 { cards: [], dueCount: 0, newCount: 0 }", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. The SYSTEM_ADMIN is never refused: for an absent deck it gets an empty round, 200 { cards: [], dueCount: 0, newCount: 0 }", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:178 }
     sideEffects:
       - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
@@ -484,7 +484,7 @@ actions:
     result: { status: 201, type: array, items: { type: object, references: Flashcard } }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "the body is not an array, or an element breaks its bounds (ParseArrayPipe: only the first failure is reported, as an HTTP_400, never VALIDATION_ERROR), or the deckId is not a uuid (:202; only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:203 }
       INTERNAL_ERROR: { status: 500, note: "an insert the database refuses: the SYSTEM_ADMIN naming an absent deck (the guard checks nothing for it and the handler no more, so the foreign key fails), or an element with an id that is not a uuid or is taken, or with a createdAt or updatedAt (drizzle calls toISOString on a string). Derived by reading, not run (finding card-create-extra-columns)", source: apps/tedrisat/src/flashcard/flashcard.repository.ts:119 }
@@ -611,7 +611,7 @@ actions:
           contentMeta: { type: object, note: "free JSON; any object" }
     result: { type: object, required: [count], properties: { count: { type: integer } }, status: 201 }
     refusals:
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "the body is not an array (ParseArrayPipe), or the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:364 }
       BULK_PAYLOAD_INVALID: { status: 400, note: "the array is empty", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:51 }
@@ -651,7 +651,7 @@ actions:
     result: { status: 200, type: string, format: binary, note: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, or text/csv; Content-Disposition: attachment; filename=<title>.<format>" }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:224)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:224)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:430 }
       DECK_FORBIDDEN: { status: 403, note: "the caller passed the guard (the deck's course staff, or the SYSTEM_ADMIN on a public deck) but is not the deck's author: an export is an owner's affordance (finding export-refused-to-staff)", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:227 }
@@ -677,7 +677,7 @@ actions:
     result: { type: object, required: [count], properties: { count: { type: integer } }, status: 201 }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that); no file; a file over 5 MB or of another content type (ParseFilePipe); or a file with a header and no data rows (flashcard.controller.ts:520)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:489 }
       BULK_ROW_LIMIT_EXCEEDED: { status: 422, note: "more than 1000 data rows; context.errors names row 1002", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:54 }
@@ -890,7 +890,7 @@ actions:
           masteredRatio: { type: number, minimum: 0, maximum: 1, note: "MASTERED progress rows of the ENROLLED and COMPLETED talebe over cardCount x enrolledCount, capped at 1; 0 when either is 0" }
           enrolledCount: { type: integer, note: "the course's enrollments with status ENROLLED or COMPLETED" }
     refusals:
-      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course (a talebe, a pending applicant, a stranger)", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:70 }
     note: >-
@@ -917,7 +917,7 @@ actions:
     result: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: Deck } }, status: 201 }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:89 }
       VALIDATION_ERROR: { status: 400, note: "title shorter than 5 or longer than 100, no or an unknown cardType, a weekId that is not a uuid, a description over 1000, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:40 }
@@ -957,7 +957,7 @@ actions:
         enrolledCount: { type: integer, note: "the course's enrollments with status ENROLLED or COMPLETED" }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a course id or a deckId that is not a uuid; the course id reaches the pipe only for the SYSTEM_ADMIN (everyone else is refused 403 by the guard first), the deckId (:109) for any caller who passed the guard", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:108 }
       VALIDATION_ERROR: { status: 400, note: "a bound is broken, a cardType is sent (it is fixed), or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
@@ -980,7 +980,7 @@ actions:
     result: { status: 204 }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a course id or a deckId that is not a uuid; the course id reaches the pipe only for the SYSTEM_ADMIN (everyone else is refused 403 by the guard first), the deckId (:130) for any caller who passed the guard", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:129 }
       DECK_NOT_FOUND: { status: 404, note: "the deck does not belong to this course (or is absent)", source: apps/tedrisat/src/flashcard/course-deck.service.ts:145 }
@@ -1015,7 +1015,7 @@ actions:
           newCount: { type: integer }
           dueCount: { type: integer }
     refusals:
-      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       AUTHZ_FORBIDDEN: { status: 403, note: "a pending applicant, a removed or barred talebe or a stranger holds course.view only", source: libs/common/src/authz/authz.guard.ts:92 }
       HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:148 }
     sideEffects:

@@ -10,7 +10,7 @@
 # The progress rows are deleted with SQL (sql.mjs, the stack's own Postgres container, scoped to the ids of the walk's own cards): no route deletes one, and a
 # deleted deck leaves its cards' progress rows behind (the domain's progress-orphans).
 # The walks open the course page by its address: the course is the walk's own and no page of the app lists it among a medrese's courses (its köşk's page does;
-# tedris.nav's entry kosk->course is walked by tedris.course.updateProgress).
+# tedris.nav's entry kosk->course is walked by tedris.course.grades).
 #
 # The main story (viaTab) is a round of marks that writes progress rows: "Bildim" writes rating EASY, "Bilemedim" HARD, through the server action rateFlashcard.
 # `effects.saveCardProgress` reads them back after every mark.

@@ -1,5 +1,5 @@
 # Homework, exams, questions, notes and evaluations (domain.md section 7, E). Every table hangs off Lesson with RESTRICT: the
-# course, week and session purges remove them first (course/course-purge.ts:101-293, archive/archive.repository.ts:764-798).
+# course, week and session purges remove them first (course/course-purge.ts:102-297, archive/archive.repository.ts:765-802).
 # All timestamps here are with time zone. A user column holds a Keycloak sub and is no foreign key: it is marked `note: "Keycloak sub"`.
 schema: delurio-graph/0
 kind: domain
@@ -21,6 +21,26 @@ entities:
       - "none -> written: an ENROLLED or COMPLETED talebe with no ban and with course.view_details writes it (lesson-note.repository.ts:66)"
       - "written -> written: the author edits it (:98)"
       - "written -> none: the author deletes it (:112), and may still do so after being removed, barred or left pending while the course is open"
+
+  LessonView: # how far a talebe watched a celse's video (MDRS-248): one row per talebe and celse, its talebe the only reader and writer
+    source: apps/tedrisat/src/database/schema/lesson-view.schema.ts:26
+    key: [userId, lessonId]
+    required: [userId, lessonId, positionSeconds, createdAt, updatedAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      lessonId: { type: string, format: uuid, references: Lesson, note: "on delete restrict" }
+      positionSeconds: { type: integer, minimum: 0, default: 0, note: "where the player last was: where \"Kaldığın yer\" goes back to" }
+      durationSeconds: { type: [integer, "null"], minimum: 1, note: "the video's length as the player reported it; null until it did" }
+      completedAt: { type: [string, "null"], format: date-time, note: "set once, by the first report that ended the video or reached nine tenths of it, and kept by every later write" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    # Primary key (userId, lessonId). Checks lesson_views_position_not_negative and lesson_views_duration_positive (migration 0080).
+    lifecycle:
+      - "none -> started: an active talebe's first report from the watch page (lesson-view.repository.ts:117)"
+      - "started -> started: a later report moves the position"
+      - "started -> watched: the first report that ends the video or reaches nine tenths stamps completedAt, and works the Enrollment's progress out again in the same transaction (:115-116, :138-174)"
+      - "watched -> watched: a later report moves the position; the stamp stays (:132)"
+      - "started | watched -> none: the celse, its week or its course is purged (course/course-purge.ts:129-130, archive/archive.repository.ts:768-769, :803)"
 
   LessonQuestion: # a talebe's question on a session and the course team's single answer; answering again replaces it, with no history
     source: apps/tedrisat/src/database/schema/lesson-question.schema.ts:23
@@ -159,7 +179,7 @@ entities:
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
     lifecycle:
-      - "none -> planned: the row is created with the session save (course.repository.ts:1886); planning with a pattern of more than one session is 400 EXAM_ONE_SESSION"
+      - "none -> planned: the row is created with the session save (course.repository.ts:1889); planning with a pattern of more than one session is 400 EXAM_ONE_SESSION"
       - "planned -> reminded: the reminder poll claims an exam that starts within 24 hours, is neither cancelled nor hidden and has no remindedAt, and tells the enrolled talebe once (exam.repository.ts:466-535)"
       - "planned | reminded -> released: the course team releases the results (audit exam.release); once only, a second call changes nothing and tells nobody (exam.repository.ts:305)"
 

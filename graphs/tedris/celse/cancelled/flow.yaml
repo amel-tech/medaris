@@ -74,7 +74,7 @@ guards:
 
 failures:
   readingSession: { from: getSession, missing: [HTTP_400, COURSE_NOT_FOUND, LESSON_NOT_FOUND], unreadable: [] }
-# `unreadable` stands for any answer but those: the page maps every failure of the session read to the not-found page (public-reads.ts:49).
+# `unreadable` stands for any answer but those: the page maps every failure of the session read to the not-found page (public-reads.ts:50).
 
 # The main story: a talebe opens a celse the hoca cancelled with a note and a make-up, reads them, and follows the link to the make-up celse.
 main:
@@ -91,7 +91,7 @@ states:
       celse the answer has status CANCELLED, a null meetingUrl even for a content reader, the hoca's note as cancelReason (a content key, so
       only for a caller who may read the course), and the make-up as a reference (id, title, week, startsAt). The graph draws the one read.
     includes: ["the cancelled status, the note and the make-up come from the one answer", "the meeting link is never part of it: null for a cancelled celse, even to a reader of the content"]
-    source: apps/tedris/features/courses/public-reads.ts:92
+    source: apps/tedris/features/courses/public-reads.ts:93
     invoke: { action: getSession }
     on:
       DONE: { guard: "lesson == 'session'", target: cancelledShown, say: "the celse is cancelled and the caller reads its content" }
@@ -106,7 +106,7 @@ states:
         target: notFound
         starts: { flow: tedris.shell.systemPages }
         say: "any other failure is turned into null as well, so it is the same not-found page (CLS-01)"
-        source: apps/tedris/features/courses/public-reads.ts:49
+        source: apps/tedris/features/courses/public-reads.ts:50
 
   cancelledShown:
     title: Read the cancelled celse

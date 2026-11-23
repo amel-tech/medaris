@@ -344,7 +344,7 @@ states:
         - { guard: courseMade, target: planning, source: apps/nizam/features/courses/components/course-create-form.tsx:174, say: "the course exists: its celses are made next" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [forbiddenToast], source: apps/nizam/features/courses/components/course-create-form.tsx:151, say: "a toast says they may not do this; the form stays" }
       FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [unknownUserToast], source: apps/nizam/features/courses/components/course-create-form.tsx:151, say: "a toast says one of the hocas has no account; the form stays" }
-      FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [failedToast], source: apps/nizam/features/courses/present.ts:1231, say: "a toast says the action could not be completed, try again; the form stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [failedToast], source: apps/nizam/features/courses/present.ts:1242, say: "a toast says the action could not be completed, try again; the form stays" }
       # The breadcrumb's "Dersler" is a plain <a> that keeps its address while "Vazgeç" loses its: following it unloads the page mid-press,
       # and the calls the page would have made next are never made.
       BACK: { target: left_half_done, source: apps/nizam/features/courses/components/course-create-form.tsx:213, say: "they follow the breadcrumb's 'Dersler' while the course is being made: it is made, and the request's answer and the celses that come after it are never sent" }

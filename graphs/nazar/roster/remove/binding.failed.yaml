@@ -4,7 +4,7 @@
 #   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.failed.yaml --cover transitions --out <dir>
 # NOT RUN, and the least sure of the bindings: the deletion is the `before` of the state `submitting`, which the replay runs while the server
 # action is held, so the POST reaches the API after the course is gone. It assumes the guard answers 404 COURSE_NOT_FOUND for a missing
-# course (the domain says so, apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397); if it answers 403 the toast says "Bunu yapma
+# course (the domain says so, apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400); if it answers 403 the toast says "Bunu yapma
 # izniniz yok." and the walk ends in `formReady` with the other toast. A file of its own because that `before` would run in every walk of a
 # file that holds the other scenarios.
 #
