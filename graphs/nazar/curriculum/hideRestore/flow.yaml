@@ -346,6 +346,10 @@ states:
       FAIL.courseGone: { target: not_found, say: "the info toast stands for a moment and the read that follows is Next's 404", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65 }
       FAIL.forbidden: { guard: "not mayWeek", target: listed, effect: [weekRefused], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
       FAIL.other: { target: listed, effect: [weekFailed], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      # The window drops every way of closing while `pending` (curriculum-list.tsx:156): the press changes nothing and the call runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CANCEL: { target: hidingWeek, say: "they press Vazgeç, or Esc, while the call runs: nothing happens (F-C-course-a-26)", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:156 }
+      CLOSE: { target: hidingWeek, say: "they press the close icon while the call runs: nothing happens (F-C-course-a-26)", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:156 }
     source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:48
 
   hidingSession:
@@ -363,6 +367,10 @@ states:
       FAIL.courseGone: { target: not_found, say: "the info toast stands for a moment and the read that follows is Next's 404", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65 }
       FAIL.forbidden: { guard: "not maySession", target: listed, effect: [sessionRefused], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
       FAIL.other: { target: listed, effect: [sessionFailed], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      # The window drops every way of closing while `pending` (curriculum-list.tsx:156): the press changes nothing and the call runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CANCEL: { target: hidingSession, say: "they press Vazgeç, or Esc, while the call runs: nothing happens (F-C-course-a-26)", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:156 }
+      CLOSE: { target: hidingSession, say: "they press the close icon while the call runs: nothing happens (F-C-course-a-26)", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:156 }
     source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:49
 
   weekSettled:

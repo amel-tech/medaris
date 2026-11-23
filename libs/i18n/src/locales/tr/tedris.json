@@ -647,7 +647,8 @@
     "resourcesOwn": "Bu celse",
     "resourcesCourse": "Ders geneli",
     "rowRecording": "Kayıt var",
-    "download": " (indirilir)"
+    "download": " (indirilir)",
+    "examMultipleChoice": "Çoktan seçmeli"
   },
   "AccountPage": {
     "pageTitle": "Hesap",
@@ -727,7 +728,8 @@
       "deck_manage_course": "Ders destesini aç ve düzenle",
       "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
-      "permission_group_define": "İzin grubu tanımla"
+      "permission_group_define": "İzin grubu tanımla",
+      "exam_zeroth_read": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevapları toplu oku"
     },
     "permissionNotes": {
       "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
@@ -810,7 +812,8 @@
     "accountLabel": "Hesabım: {name}",
     "notifications": "Bildirimler",
     "homeLabel": "Medaris Tedris, ana sayfa",
-    "liveIntro": "{course} celsesi şu an canlı."
+    "liveIntro": "{course} celsesi şu an canlı.",
+    "exams": "Sınavlarım"
   },
   "SchedulePage": {
     "pageTitle": "Programım",

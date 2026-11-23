@@ -3,6 +3,10 @@
 #   - What it draws: the first read (list and counts), the list in day groups with "Yeni" badges, the two tabs, one row marked read from its
 #     menu or by opening its link, every row marked read at once, "Daha fazla göster", and the error boxes. The page is optimistic: a mark
 #     shows its result first and asks the API after; a refusal puts the list back and leaves an error toast that stays until it is closed.
+#   - While a call is out only the busy button is inert (and "Tümünü okundu say" once nothing is unread): presses made meanwhile are drawn where the call's answer leads
+#     (`duringStep`), a row's link leaves at once, and an open row menu is modal, so a press on the page behind only shuts it. One app
+#     behaviour is drawn as its own state: Okunmamış chosen on the first-read box and a retry that answers leave that tab unread
+#     and unasked (unreadStalled).
 #   - The bell that leads here belongs to tedris.shell.frame; it is drawn on this page too, because SHL-04 is about it: it never says how many
 #     rows are unread.
 #   - Where each row leads (a course, a celse, a deck, a köşk) is the exit it names; the destination pages are other flows'.
@@ -62,6 +66,9 @@ scope:
     - "the caption's source (a köşk's name some producers give) and the icon of each type, which is decorative"
     - "a type this build does not know, other than the two ban types: it reads \"Bildirim\" with no sentence and no icon of its own (notification-view.ts:123)"
     - "a request that never reaches Next (ACC-12): what the person sees is the optimistic change kept, not drawn and not verified"
+    - "the moment between a press made while a call is out and the call's answer: a tab, a row's \"…\", \"Tümünü okundu say\", \"Daha fazla göster\" and a toast's \"Kapat\" stay live during every call, act on the page at once, and what they ask of the API waits behind the call (Next runs one server action at a time); the graph draws the press where the call's answer leads (`duringStep`), so the end is drawn and the moment is not"
+    - "where such a press and the answer meet in the app's own state, the graph draws the plain end and not the app's: a refused row mark puts back the page from before it, a mark-all pressed meanwhile included (NOTIF-3); a read in flight that answers after a mark-all appends its rows as unread while the counts say 0; a \"Kapat\" pressed during a mark that is then refused closed the older toast, where the graph closes the new one; Okunmamış pressed during \"Yeniden dene\" leaves that tab on its skeleton in the app (unreadStalled), where the graph reads it; and a refused mark-all from unreadStalled puts the skeleton back, where the graph draws the tab's error box. From the code, not verified in a browser"
+    - "the failure sentence under \"Daha fazla göster\" after a row's menu or \"Tümünü okundu say\" is used from moreFailed: it stays in the app until the tab changes or a read answers; the graph draws it in moreFailed alone"
     - "the phone layout, where the bar is the phone's and the aside falls below the list"
     - "the loading skeleton of the page (loading.tsx, ACC-18)"
     - "e-mail for notices, which the design had a sentence and a button for and the page leaves out because MDRS-167 has no SMTP: needs.yaml"
@@ -234,9 +241,15 @@ states:
 
   sorting:
     title: See what the person holds
-    description: classification only; the page draws the list, or the empty sentence when there is no row, and the button is not drawn when counts.total is 0
+    description: >-
+      classification only; the page draws the list, or the empty sentence when there is no row, and the button is not drawn when
+      counts.total is 0. A retry that answers while the tab Okunmamış is selected (it was chosen on the error box) leaves that tab
+      unread and unasked: unreadStalled.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:162
     always:
+      - { guard: "onUnread and nothingHeld", target: unreadStalled, effect: [noneLeft], say: "the retry answered under Okunmamış, and counts.total is 0" }
+      - { guard: "onUnread and allReadHeld", target: unreadStalled, effect: [noneLeft], say: "the retry answered under Okunmamış, and counts.unread is 0" }
+      - { guard: onUnread, target: unreadStalled, effect: [someLeft], say: "the retry answered under Okunmamış, and at least one row is unread" }
       - { guard: nothingHeld, target: emptyAll, effect: [noneLeft], say: "counts.total is 0" }
       - { guard: allReadHeld, target: allRead, effect: [noneLeft], say: "rows exist and counts.unread is 0" }
       - { target: listed, effect: [someLeft], say: "at least one row is unread" }
@@ -283,13 +296,24 @@ states:
     by: human
     description: >-
       The kit's menu (Base UI) of the first unread row: a popup named by its "…" button, with one item, "Okundu say". It opens with the
-      pointer or the keyboard and Esc shuts it. The page behind stays as it was; the focus is taken by the popup (not verified in a browser).
+      pointer or the keyboard and Esc shuts it. The page behind stays as it was drawn, but Base UI's Menu is modal by default: a backdrop
+      covers the page, with a hole only for the open "…", so a press anywhere on the page behind only shuts the menu, and Tab leaves the
+      popup and shuts it too. The toaster lies above the backdrop (z-index 100). The focus is taken by the popup (not verified in a browser).
     source: libs/ui/src/mds/menu.tsx:64
     on:
       READ_ROW:
         - { guard: lastUnread, target: markingLast, effect: [noneLeft], say: "the item marks this row read: it was the last unread one, so the list and the counts show nothing unread at once", source: apps/tedris/features/notifications/components/notification-row.tsx:93 }
         - { guard: manyUnread, target: markingOne, say: "the item marks this row read: the badge and the menu leave the row and the counts go down by one, then the API is asked", source: apps/tedris/features/notifications/components/notification-row.tsx:93 }
       CLOSE_MENU: { target: listed, say: "Esc shuts the menu and changes nothing", source: libs/ui/src/mds/menu.tsx:64 }
+      # Base UI's Menu.Root is modal (the kit passes no `modal`): MenuPositioner draws an InternalBackdrop over the page, cut out only at the
+      # open trigger, and an outside press closes the menu. So each node of the page behind is drawn as pressed onto the backdrop.
+      READ_ALL: { target: listed, say: "a press on \"Tümünü okundu say\" lands on the menu's backdrop: the menu shuts and nothing is marked", source: libs/ui/src/mds/menu.tsx:48 }
+      OPEN_ALL: { target: listed, say: "a press on a tab lands on the backdrop: the menu shuts and the tab stays as it was", source: libs/ui/src/mds/menu.tsx:48 }
+      OPEN_UNREAD: { target: listed, say: "the same for Okunmamış: the menu shuts, nothing else", source: libs/ui/src/mds/menu.tsx:48 }
+      OPEN_ROW: { target: listed, say: "a press on a row's link lands on the backdrop: the menu shuts, nothing is marked and the page stays", source: libs/ui/src/mds/menu.tsx:48 }
+      OPEN_MENU: { target: listed, say: "the open \"…\" is the backdrop's one hole: pressed again it shuts its menu; another row's \"…\" is under the backdrop, and a press there shuts the menu too", source: libs/ui/src/mds/menu.tsx:49 }
+      LOAD_MORE: { target: listed, say: "a press on \"Daha fazla göster\" lands on the backdrop: the menu shuts and nothing is read", source: libs/ui/src/mds/menu.tsx:48 }
+      CLOSE_TOAST: { guard: toasted, target: listed, effect: [clearToast], say: "the toast lies above the backdrop: its \"Kapat\" closes it, and as the pressed button takes the focus the menu shuts on focus-out (a browser whose buttons take no focus on a press, Safari, would keep it open; not verified in a browser)", source: libs/ui/src/mds/toast.tsx:95 }
 
   markingOne:
     title: Mark one row read
@@ -300,25 +324,40 @@ states:
       stay as they were drawn. A refusal (a row that is gone, a bad id) puts the whole list back as it was before and leaves the error toast
       "Okundu olarak işaretlenemedi." (a snapshot of the page, NOTIF-3); the person must press again. After a mark from the menu the "…" that held the focus is
       gone and the focus falls to <body> (ACC-04, not verified in a browser). A session that is over sends the person to sign in.
+      The mark is a plain promise, not a transition, so nothing else on the page is busy: the tabs, "Tümünü okundu say", the other rows'
+      "…", "Daha fazla göster" and a toast's "Kapat" stay live. What they start waits behind this call (Next runs one server action at a
+      time), and the call's answer is applied anyway, so the graph handles their press where the answer leads (`duringStep`); a row's
+      link leaves at once.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:114
     invoke: { action: markNotificationRead }
     on:
       DONE: { guard: asked, target: listed, say: "the page stays as it was drawn and is read again behind the scenes", source: apps/tedris/features/notifications/components/notifications-page.tsx:120 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: refused, target: listed, effect: [rowToast], say: "the list is put back and the toast says the row stayed unread", source: apps/tedris/features/notifications/components/notifications-page.tsx:124 }
+      OPEN_ROW:
+        - { guard: toCourse, target: course_opened, say: "another row's link is live while the mark is out: it marks its own row if unread and the browser goes on at once; the answer of the mark in flight comes to a page that is gone (NOTIF-1)", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toCelse, target: celse_opened, say: "the same, to the celse page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toDeck, target: deck_opened, say: "the same, to the deck", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toKosk, target: kosk_opened, say: "the same, to the köşk's page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
 
   markingLast:
     title: Mark the last unread row read
     description: >-
       The same call as markingOne for the one row that was unread: the page already shows nothing unread (the badges are gone, the
       button "Tümünü okundu say" is disabled and the tab "Okunmamış" says 0) and the Okunmamış tab shows "Okunmamış bildirim yok". A refusal
-      puts the row back unread and the button back to enabled, with the toast.
+      puts the row back unread and the button back to enabled, with the toast. The tabs and a toast's "Kapat" stay live, as in
+      markingOne; a row's link leaves at once.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:114
     invoke: { action: markNotificationRead }
     on:
       DONE: { guard: asked, target: allRead, say: "nothing is unread and the page is read again behind the scenes", source: apps/tedris/features/notifications/components/notifications-page.tsx:120 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: refused, target: listed, effect: [someLeft, rowToast], say: "the row is unread again and the toast says so", source: apps/tedris/features/notifications/components/notifications-page.tsx:124 }
+      OPEN_ROW:
+        - { guard: toCourse, target: course_opened, say: "a row's link is live while the mark is out; every row is read now, so it only leaves, at once, and the mark's answer comes to a page that is gone (NOTIF-1)", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toCelse, target: celse_opened, say: "the same, to the celse page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toDeck, target: deck_opened, say: "the same, to the deck", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toKosk, target: kosk_opened, say: "the same, to the köşk's page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
 
   markingAll:
     title: Mark every row read
@@ -327,13 +366,24 @@ states:
       emptied and counts as loaded. The server action markAllNotificationsRead, POST /notifications/read-all with no `types`, is out; it
       sets the read time of every unread row of the person, rows beyond the first page included, and answers how many it changed. Success
       is silent (ACC-05; the catalog's "Tüm bildirimler okundu." is never used). A refusal puts the page back and leaves the toast
-      "Bildirimler okundu yapılamadı." with "Hiçbiri değişmedi. Yeniden dene.".
+      "Bildirimler okundu yapılamadı." with "Hiçbiri değişmedi. Yeniden dene.". The tabs and a toast's "Kapat" stay live, as in
+      markingOne; a row's link leaves at once.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:133
     invoke: { action: markAllNotificationsRead }
     on:
       DONE: { guard: asked, target: allRead, say: "nothing is unread and the page is read again behind the scenes", source: apps/tedris/features/notifications/components/notifications-page.tsx:139 }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.refused: { guard: refused, target: listed, effect: [someLeft, allToast], say: "the page is put back and the toast says none was marked", source: apps/tedris/features/notifications/components/notifications-page.tsx:143 }
+      # The rollback restores the whole page state but not `failed` (a separate useState that readAll never touches), so a press made from the
+      # Okunmamış tab's error box gets the box back. The same press from unreadStalled gets its skeleton back in the app, which this branch
+      # draws as the box: the graph cannot tell the two apart (both leave the tab unread and unasked).
+      FAIL.refused:
+        - { guard: "refused and onUnread and unreadSeen == 'no'", target: unreadFailed, effect: [someLeft, allToast], say: "pressed from the Okunmamış tab's error box: the tab goes back to never read, `failed` still names it, so the box is drawn again under the toast", source: apps/tedris/features/notifications/components/notifications-page.tsx:143 }
+        - { guard: refused, target: listed, effect: [someLeft, allToast], say: "the page is put back and the toast says none was marked", source: apps/tedris/features/notifications/components/notifications-page.tsx:143 }
+      OPEN_ROW:
+        - { guard: toCourse, target: course_opened, say: "a row's link is live while the mark is out; every row is read now, so it only leaves, at once, and the mark's answer comes to a page that is gone (NOTIF-1)", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toCelse, target: celse_opened, say: "the same, to the celse page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toDeck, target: deck_opened, say: "the same, to the deck", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toKosk, target: kosk_opened, say: "the same, to the köşk's page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
 
   allRead:
     title: The list, with nothing unread
@@ -374,7 +424,9 @@ states:
     description: >-
       The page switched to Okunmamış and the tab has not been read yet: GET /notifications?status=unread is out and a block of skeletons
       with aria-busy and no word stands where the rows will be (ACC-18). The tabs, the button and the aside are as before. The page asks
-      for the whole first page of this tab, whatever Tümü already shows.
+      for the whole first page of this tab, whatever Tümü already shows. The tabs, "Tümünü okundu say" and a toast's "Kapat" stay live
+      (only the busy buttons read `pending`); what they start waits behind this read, and its answer is applied anyway, so their press is
+      handled where the answer leads (`duringStep`). "Tümü" shows its kept rows at once and the answer fills the tab it left.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:82
     invoke: { action: listNotifications }
     on:
@@ -392,6 +444,9 @@ states:
     on:
       RETRY: { target: loadingUnread, say: "\"Yeniden dene\" reads the tab again", source: apps/tedris/features/notifications/components/notifications-page.tsx:186 }
       OPEN_ALL: { target: listed, effect: [showAll], say: "back to Tümü, whose rows were kept", source: apps/tedris/features/notifications/components/notifications-page.tsx:153 }
+      OPEN_UNREAD: { target: unreadFailed, say: "Okunmamış is the tab already selected: Base UI ignores a press on the active tab, and the box stays", source: libs/ui/src/mds/tabs.tsx:110 }
+      READ_ALL: { target: markingAll, effect: [noneLeft], say: "\"Tümünü okundu say\" is live above the box: every row is shown read at once, the tab counts as read and empty, so \"Okunmamış bildirim yok\" takes the box's place, and the API is asked", source: apps/tedris/features/notifications/components/notifications-page.tsx:133 }
+      CLOSE_TOAST: { guard: toasted, target: unreadFailed, effect: [clearToast], say: "the toast's \"Kapat\"; the box stays", source: libs/ui/src/mds/toast.tsx:95 }
       NAVIGATE: left
 
   loadingMore:
@@ -399,13 +454,20 @@ states:
     description: >-
       The button "Daha fazla göster" is busy (aria-disabled and aria-busy, and a hidden status "Yükleniyor": the kit's Button, loading) while
       GET /notifications?status=<tab>&cursor=<c> is out. The cursor is the one the API gave with the last page. The new rows are added
-      below, without duplicates, and the button stays only when the API gives a further cursor.
+      below, without duplicates, and the button stays only when the API gives a further cursor. The rest of the page stays live: the
+      tabs, "Tümünü okundu say", the rows' "…" and a toast's "Kapat"; what they start waits behind this read and its answer is applied
+      anyway (`duringStep`), and a row's link leaves at once.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:238
     invoke: { action: listNotifications }
     on:
       DONE: { guard: asked, target: listed, effect: [moreRead], say: "the rows are added; the button stays if a further page exists", source: apps/tedris/features/notifications/components/notifications-page.tsx:91 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.failed: { guard: refused, target: moreFailed, effect: [failedAgain], say: "a sentence says the read failed, under the button", source: apps/tedris/features/notifications/components/notifications-page.tsx:88 }
+      OPEN_ROW:
+        - { guard: toCourse, target: course_opened, say: "a row's link is live while the next rows are read: an unread row is marked too and the browser goes on at once (NOTIF-1)", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toCelse, target: celse_opened, say: "the same, to the celse page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toDeck, target: deck_opened, say: "the same, to the deck", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toKosk, target: kosk_opened, say: "the same, to the köşk's page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
 
   moreFailed:
     title: The next rows could not be read
@@ -413,9 +475,23 @@ states:
     description: >-
       Under "Daha fazla göster" a paragraph with role alert, "Bir sorun oluştu. Birazdan yeniden dene." (the same words as the box's); the
       rows already listed stay and the button works again. An invalid cursor, which the page cannot produce, is shown as the same sentence.
+      The rest of the page works as in listed. The sentence goes only when the tab changes or a read answers; the graph draws it here
+      alone (see scope.outOfView).
     source: apps/tedris/features/notifications/components/notifications-page.tsx:248
     on:
       LOAD_MORE: { target: loadingMore, say: "the button reads the same page again", source: apps/tedris/features/notifications/components/notifications-page.tsx:242 }
+      OPEN_MENU: { target: menuOpen, say: "the \"…\" of an unread row opens its menu", source: apps/tedris/features/notifications/components/notification-row.tsx:86 }
+      OPEN_ROW:
+        - { guard: toCourse, target: course_opened, say: "the row's link: an unread row is marked read first (optimistic) and the browser goes on at once", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toCelse, target: celse_opened, say: "the same, to the celse page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toDeck, target: deck_opened, say: "the same, to the deck", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+        - { guard: toKosk, target: kosk_opened, say: "the same, to the köşk's page", source: apps/tedris/features/notifications/components/notification-row.tsx:56 }
+      READ_ALL: { target: markingAll, effect: [noneLeft], say: "\"Tümünü okundu say\" shows every row read at once, then asks the API", source: apps/tedris/features/notifications/components/notifications-page.tsx:133 }
+      OPEN_UNREAD:
+        - { guard: "onAll and unreadSeen == 'no'", target: loadingUnread, effect: [showUnread], say: "the first visit to Okunmamış reads its first page; the sentence goes with the tab", source: apps/tedris/features/notifications/components/notifications-page.tsx:156 }
+        - { guard: "onAll and unreadSeen == 'yes'", target: listed, effect: [showUnread], say: "a later visit shows the page's own rows; the sentence goes with the tab", source: apps/tedris/features/notifications/components/notifications-page.tsx:156 }
+      OPEN_ALL: { guard: onUnread, target: listed, effect: [showAll], say: "back to Tümü; changeTab clears the failure, so the sentence goes", source: apps/tedris/features/notifications/components/notifications-page.tsx:155 }
+      CLOSE_TOAST: { guard: toasted, target: moreFailed, effect: [clearToast], say: "the toast's \"Kapat\"; the sentence stays", source: libs/ui/src/mds/toast.tsx:95 }
       NAVIGATE: left
 
   readFailed:
@@ -424,10 +500,14 @@ states:
     description: >-
       The h1, the subtitle, the tabs (with no counts) and the aside are drawn; where the rows would be there is a box, a section named by
       its h2 "Bildirimler yüklenemedi", with "Bir sorun oluştu. Birazdan yeniden dene." and the button "Yeniden dene". The button
-      "Tümünü okundu say" is not drawn. The page keeps the server's `null` and offers only the retry.
+      "Tümünü okundu say" is not drawn. The page keeps the server's `null` and offers only the retry. The tabs still work: the other
+      tab is selected and the same box is drawn under it, as the page has no rows to ask for (changeTab reads only when the page has a
+      state).
     source: apps/tedris/features/notifications/components/notifications-page.tsx:163
     on:
       RETRY: { target: retryingFirst, say: "\"Yeniden dene\" reads the list and the counts again", source: apps/tedris/features/notifications/components/notifications-page.tsx:170 }
+      OPEN_UNREAD: { guard: onAll, target: readFailed, effect: [showUnread], say: "Okunmamış is selected and the same box is drawn under it; nothing is read", source: apps/tedris/features/notifications/components/notifications-page.tsx:156 }
+      OPEN_ALL: { guard: onUnread, target: readFailed, effect: [showAll], say: "back to Tümü, the same box under it", source: apps/tedris/features/notifications/components/notifications-page.tsx:153 }
       RELOAD: { target: readingList, effect: [again], say: "the page is read again by the browser", source: apps/tedris/app/notifications/page.tsx:15 }
       NAVIGATE: left
 
@@ -437,13 +517,38 @@ states:
       The button "Yeniden dene" is busy (the kit's Button, loading, with its default hidden word "Yükleniyor") while the page reads the
       list and the counts again in two calls (loadNotifications("all") and loadNotificationCounts). Success draws the page as if it had
       opened with the answer and asks Next to read it again. A failure changes nothing visible and says nothing (ACC-03): the button
-      stops being busy and the box stays.
+      stops being busy and the box stays. The tabs stay live: a press selects the other tab at once and moves the box under it, and the
+      retry's answer is applied anyway, so the graph handles the press where the answer leads (`duringStep`). That is right for Tümü
+      and for a failure; a success after Okunmamış was pressed here leaves that tab on its skeleton in the app (unreadStalled), which
+      the graph, holding the press until the answer, draws as a read of the tab.
     source: apps/tedris/features/notifications/components/notifications-page.tsx:99
     invoke: { action: listNotifications }
     on:
       DONE: { guard: asked, target: sorting, say: "the page is drawn from the answers", source: apps/tedris/features/notifications/components/notifications-page.tsx:107 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.unreadable: { guard: refused, target: readFailed, effect: [failedAgain], say: "nothing is said (ACC-03)", source: apps/tedris/features/notifications/components/notifications-page.tsx:106 }
+
+  # An app behaviour worth a look, drawn as it is: retryFirst sets a fresh state whose Okunmamış tab is not loaded and starts no read
+  # for the selected tab, and changeTab started none while the page had no state, so nothing ever reads it.
+  unreadStalled:
+    title: The tab Okunmamış waits for a read nobody makes
+    by: human
+    description: >-
+      The first read failed, the person chose Okunmamış on the error box, and "Yeniden dene" then answered. The page now has its rows,
+      its counts, the tabs with their numbers and "Tümünü okundu say" (enabled while something is unread, not drawn when counts.total
+      is 0), but under Okunmamış it draws the skeleton block (aria-busy, no word: ACC-18) and nothing is asked: the tab is not loaded,
+      no read is out, and a press on the selected tab does nothing. Only Tümü, and then Okunmamış again, reads it; "Tümünü okundu say"
+      empties it. From the code (retryFirst, changeTab), not verified in a browser.
+    source: apps/tedris/features/notifications/components/notifications-page.tsx:194
+    on:
+      OPEN_ALL:
+        - { guard: nothingHeld, target: emptyAll, effect: [showAll], say: "Tümü, loaded by the retry: \"Bildirim yok\"", source: apps/tedris/features/notifications/components/notifications-page.tsx:153 }
+        - { guard: allReadHeld, target: allRead, effect: [showAll], say: "Tümü, loaded by the retry: the rows, all read", source: apps/tedris/features/notifications/components/notifications-page.tsx:153 }
+        - { target: listed, effect: [showAll], say: "Tümü, loaded by the retry: the rows; a later Okunmamış reads its tab", source: apps/tedris/features/notifications/components/notifications-page.tsx:153 }
+      OPEN_UNREAD: { target: unreadStalled, say: "Okunmamış is the tab already selected: Base UI ignores the press, and still nothing reads it", source: libs/ui/src/mds/tabs.tsx:110 }
+      READ_ALL: { guard: someLeft, target: markingAll, effect: [noneLeft], say: "\"Tümünü okundu say\" marks every row read at once and counts the tab as read and empty, so \"Okunmamış bildirim yok\" replaces the skeleton, then asks the API", source: apps/tedris/features/notifications/components/notifications-page.tsx:133 }
+      RELOAD: { target: readingList, effect: [again], say: "the page is read again, on Tümü", source: apps/tedris/app/notifications/page.tsx:15 }
+      NAVIGATE: left
 
   course_opened: { type: final, title: A row's link opens a course, leavesPage: true }
   celse_opened: { type: final, title: A row's link opens a celse, leavesPage: true }

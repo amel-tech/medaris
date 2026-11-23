@@ -345,6 +345,25 @@ states:
         - { guard: "entered == 'valid'", target: savingLink, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with an address the page accepts" }
         - { target: linkForm, effect: [saidLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç': the form goes and the focus falls to the page" }
+      # The row's buttons stay drawn and live while a form is open (no `disabled`): each start* call puts its own form in this one's
+      # place, and "Kayıt erişimi" and "İptal et" open their dialogs over the page (sessions-table.tsx:456-540).
+      OPEN_LINK:
+        - { guard: "maySetWays and link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantıyı güncelle': startLink puts the link form in this one's place, holding the link" }
+        - { guard: maySetWays, target: linkForm, effect: [openLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantı ekle': startLink puts the empty link form in this one's place" }
+      OPEN_TIME: { guard: maySetWays, target: timeForm, effect: [openTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:178, say: "they press a row's 'Tarihi değiştir': startTime puts the date and time form in this one's place" }
+      OPEN_IN_PERSON:
+        - { guard: "maySetWays and held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze' chosen" }
+        - { guard: "maySetWays and held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze değil' chosen" }
+        - { guard: maySetWays, target: inPersonForm, effect: [openInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayını güncelle': startStream puts the stream form in this one's place, holding the link" }
+        - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayın ekle': startStream puts the empty stream form in this one's place" }
+      # The dialog opens over the page and leaves `editing` as it is, so this form is still under it when the dialog closes; the flow
+      # does not follow that and goes back to listed (releaseDialog's CANCEL and savingRelease's outcomes).
+      OPEN_RELEASE:
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, holding the time the team set; this form stays under it" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, 'Hazır olunca hemen' chosen; this form stays under it" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:535, say: "they press a row's 'İptal et': the cancel dialog opens over the page; this form stays under it" }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:655
 
   savingLink:
@@ -380,6 +399,25 @@ states:
         - { guard: "entered == 'valid'", target: savingTime, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with a date and a time" }
         - { target: timeForm, effect: [saidTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with the date or the time missing: the sentence appears under Tarih and nothing is sent" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+      # The row's buttons stay drawn and live while a form is open (no `disabled`): each start* call puts its own form in this one's
+      # place, and "Kayıt erişimi" and "İptal et" open their dialogs over the page (sessions-table.tsx:456-540).
+      OPEN_LINK:
+        - { guard: "maySetWays and link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantıyı güncelle': startLink puts the link form in this one's place, holding the link" }
+        - { guard: maySetWays, target: linkForm, effect: [openLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantı ekle': startLink puts the empty link form in this one's place" }
+      OPEN_TIME: { guard: maySetWays, target: timeForm, effect: [openTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:178, say: "they press a row's 'Tarihi değiştir': startTime puts the date and time form in this one's place" }
+      OPEN_IN_PERSON:
+        - { guard: "maySetWays and held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze' chosen" }
+        - { guard: "maySetWays and held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze değil' chosen" }
+        - { guard: maySetWays, target: inPersonForm, effect: [openInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayını güncelle': startStream puts the stream form in this one's place, holding the link" }
+        - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayın ekle': startStream puts the empty stream form in this one's place" }
+      # The dialog opens over the page and leaves `editing` as it is, so this form is still under it when the dialog closes; the flow
+      # does not follow that and goes back to listed (releaseDialog's CANCEL and savingRelease's outcomes).
+      OPEN_RELEASE:
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, holding the time the team set; this form stays under it" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, 'Hazır olunca hemen' chosen; this form stays under it" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:535, say: "they press a row's 'İptal et': the cancel dialog opens over the page; this form stays under it" }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:673
 
   savingTime:
@@ -413,6 +451,25 @@ states:
       CHOOSE_NO: { target: inPersonForm, effect: [pickNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:637, say: "they choose 'Yüz yüze değil'" }
       SAVE: { target: savingInPerson, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:247, say: "they press 'Kaydet'" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+      # The row's buttons stay drawn and live while a form is open (no `disabled`): each start* call puts its own form in this one's
+      # place, and "Kayıt erişimi" and "İptal et" open their dialogs over the page (sessions-table.tsx:456-540).
+      OPEN_LINK:
+        - { guard: "maySetWays and link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantıyı güncelle': startLink puts the link form in this one's place, holding the link" }
+        - { guard: maySetWays, target: linkForm, effect: [openLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantı ekle': startLink puts the empty link form in this one's place" }
+      OPEN_TIME: { guard: maySetWays, target: timeForm, effect: [openTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:178, say: "they press a row's 'Tarihi değiştir': startTime puts the date and time form in this one's place" }
+      OPEN_IN_PERSON:
+        - { guard: "maySetWays and held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze' chosen" }
+        - { guard: "maySetWays and held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze değil' chosen" }
+        - { guard: maySetWays, target: inPersonForm, effect: [openInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayını güncelle': startStream puts the stream form in this one's place, holding the link" }
+        - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayın ekle': startStream puts the empty stream form in this one's place" }
+      # The dialog opens over the page and leaves `editing` as it is, so this form is still under it when the dialog closes; the flow
+      # does not follow that and goes back to listed (releaseDialog's CANCEL and savingRelease's outcomes).
+      OPEN_RELEASE:
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, holding the time the team set; this form stays under it" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, 'Hazır olunca hemen' chosen; this form stays under it" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:535, say: "they press a row's 'İptal et': the cancel dialog opens over the page; this form stays under it" }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:631
 
   savingInPerson:
@@ -450,6 +507,25 @@ states:
         - { target: streamForm, effect: [saidStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:221, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
       REMOVE_STREAM: { guard: "stream == 'set'", target: removingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:714, say: "they press 'Bağlantıyı kaldır': it clears the link at once, with no question" }
       CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+      # The row's buttons stay drawn and live while a form is open (no `disabled`): each start* call puts its own form in this one's
+      # place, and "Kayıt erişimi" and "İptal et" open their dialogs over the page (sessions-table.tsx:456-540).
+      OPEN_LINK:
+        - { guard: "maySetWays and link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantıyı güncelle': startLink puts the link form in this one's place, holding the link" }
+        - { guard: maySetWays, target: linkForm, effect: [openLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press a row's 'Bağlantı ekle': startLink puts the empty link form in this one's place" }
+      OPEN_TIME: { guard: maySetWays, target: timeForm, effect: [openTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:178, say: "they press a row's 'Tarihi değiştir': startTime puts the date and time form in this one's place" }
+      OPEN_IN_PERSON:
+        - { guard: "maySetWays and held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze' chosen" }
+        - { guard: "maySetWays and held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Yüz yüze değil' chosen" }
+        - { guard: maySetWays, target: inPersonForm, effect: [openInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press a row's 'Yüz yüze ayarı': the in-person form takes this one's place, 'Dersin ayarına uy' chosen" }
+      OPEN_STREAM:
+        - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayını güncelle': startStream puts the stream form in this one's place, holding the link" }
+        - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press a row's 'Canlı yayın ekle': startStream puts the empty stream form in this one's place" }
+      # The dialog opens over the page and leaves `editing` as it is, so this form is still under it when the dialog closes; the flow
+      # does not follow that and goes back to listed (releaseDialog's CANCEL and savingRelease's outcomes).
+      OPEN_RELEASE:
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, holding the time the team set; this form stays under it" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press a row's 'Kayıt erişimi': the dialog opens over the page, 'Hazır olunca hemen' chosen; this form stays under it" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:535, say: "they press a row's 'İptal et': the cancel dialog opens over the page; this form stays under it" }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:613
 
   savingStream:
@@ -523,6 +599,9 @@ states:
       FAIL.moved: { guard: "releaseAnswer == 'moved'", target: listed, effect: [closedGone], source: apps/nazar/features/recordings/components/release-dialog.tsx:84, say: "the error toast says the celse or its recording is gone, the dialog closes and the page is read again" }
       FAIL.forbidden: { guard: "releaseAnswer == 'forbidden'", target: releaseDialog, effect: [forbiddenToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "the error toast says they may not; the dialog stays open" }
       FAIL.failed: { guard: "releaseAnswer == 'failed'", target: releaseDialog, effect: [failedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "the error toast says the time could not be read or that something went wrong; the dialog stays open" }
+      # The dialog drops every way of closing while `pending` (release-dialog.tsx:112): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: savingRelease, source: apps/nazar/features/recordings/components/release-dialog.tsx:112, say: "they press 'Vazgeç' or the close icon, or Esc, while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
     source: apps/nazar/features/recordings/components/release-dialog.tsx:72
 
   not_found:

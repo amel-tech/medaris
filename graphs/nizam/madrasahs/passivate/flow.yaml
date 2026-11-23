@@ -251,6 +251,7 @@ states:
       FAIL.gone: { guard: "meanwhile == 'gone'", target: ready, effect: [goneToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "404 MADRASAH_NOT_FOUND: a sticky toast 'Bu kapsam artık yok.'" }
       FAIL.forbidden: { guard: "meanwhile == 'withdrawn'", target: ready, effect: [forbiddenToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "403 AUTHZ_FORBIDDEN: a sticky toast 'Bunu yapma izniniz yok.'" }
       FAIL.failed: { guard: "meanwhile == 'broken'", target: ready, effect: [failedToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "any other refusal: a sticky toast 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: deactivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press Vazgeç, the close icon or Esc while the call runs: nothing happens and nothing says so, the medrese is still made passive (onOpenChange is ignored while saving, F-W2-passivate-2)" }
     source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:82
 
   passivated:

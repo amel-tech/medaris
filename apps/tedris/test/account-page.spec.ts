@@ -22,6 +22,8 @@ const CATALOG = [
   "deck.manage_kosk",
   "course_nazir.assign_kosk",
   "course.partner_codes",
+  // A köşk nazımı holds it in their köşk by role default (MDRS-299).
+  "exam.zeroth_read",
   "user.lookup",
   "course.edit",
   "session.manage",

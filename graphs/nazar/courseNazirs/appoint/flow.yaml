@@ -349,6 +349,7 @@ states:
       FAIL.exists: { guard: "person == 'raced'", target: listed, effect: [existsToast], source: apps/nazar/features/course-nazirs/course-nazirs.ts:256, say: "COURSE_NAZIR_EXISTS: an error toast says the person is a ders nazırı already, the dialog closes and the list is read again, which now has the row (e2e course-nazirs#7)" }
       FAIL.exceeds: { guard: "person == 'overreach'", target: picked, effect: [exceedsToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "GRANT_EXCEEDS_GIVER: an error toast says she cannot give a code she does not hold; the dialog stays open (e2e course-nazirs#14)" }
       FAIL.refused: { guard: "person == 'refused'", target: picked, effect: [refusedToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "any other refusal: an error toast with the sentence of its code, or 'Bir şeyler ters gitti.'; the dialog stays open" }
+      CANCEL: { target: appointing, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:230, say: "Vazgeç, the close icon or Esc: nothing happens, the save goes on (CAPPOINT-1)" }
     source: apps/nazar/features/course-nazirs/actions.ts:33
 
   refused:

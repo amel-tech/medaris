@@ -422,6 +422,7 @@ states:
       the end field are disabled; "Vazgeç", the close icon and Esc do nothing meanwhile and look live (CAPPOINT-1).
     invoke: { action: createKoskGrant }
     on:
+      CANCEL: { target: appointing, source: apps/nizam/features/grants/components/grant-dialog.tsx:142, say: "Vazgeç, the close icon or Esc: nothing happens, the appointment goes on (CAPPOINT-1)" }
       DONE:
         - { guard: "person == 'fresh' and until == 'future'", target: listed, effect: [appointedEnd], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "a toast says 'Ders nazırı atandı' and '{name} ders nazırı oldu.', the dialog closes and the row says '2 izin', the end and who gave it" }
         - { guard: "person == 'fresh'", target: listed, effect: [appointedOpen], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "the same with no end: the row says 'Süresiz'" }
@@ -496,6 +497,7 @@ states:
       its giver and date), sets the post's end and writes `course_nazir.update`. 200 with the list as it is now. "Kaydet" is busy; the boxes and the end are disabled.
     invoke: { action: updateKoskGrant }
     on:
+      CANCEL: { target: saving, source: apps/nizam/features/grants/components/grant-dialog.tsx:142, say: "Vazgeç, the close icon or Esc: nothing happens, the save goes on (CAPPOINT-1)" }
       DONE:
         - { guard: "edit == 'saved' and boxes == 'three' and (until == 'future' or ends == 'set')", target: listed, effect: [editedThreeEnd], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "a toast says 'İzinler kaydedildi' and '{name} için izinler güncellendi.', the dialog closes and the row says '3 izin' and the end" }
         - { guard: "edit == 'saved' and boxes == 'three'", target: listed, effect: [editedThree], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "the same, with no end: 'Süresiz'" }
@@ -528,6 +530,7 @@ states:
       do nothing meanwhile and look live (CNDIS-3).
     invoke: { action: revokeKoskGrant }
     on:
+      CANCEL: { target: dismissing, source: apps/nizam/features/grants/components/revoke-dialog.tsx:74, say: "Vazgeç, the close icon or Esc: nothing happens, the dismissal goes on (CNDIS-3)" }
       DONE:
         - { guard: "revoke == 'saved' and start == 'handedOn'", target: listed, effect: [revokedKeep], source: apps/nizam/features/grants/components/revoke-dialog.tsx:60, say: "a toast says 'Görevden alındı' and '{name} artık {course} dersinin ders nazırı değil.'; the other post is still listed" }
         - { guard: "revoke == 'saved'", target: listed, effect: [revokedLast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:60, say: "the same: the row goes and the list says 'Henüz ders nazırı yok.' (e2e grants#8)" }

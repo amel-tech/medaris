@@ -352,6 +352,13 @@ states:
         - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters: the error says it is too long" }
       SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they go to the hoca search and type an address" }
       SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again: the name is still wrong, so it is refused again" }
+      REMOVE_A:
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the only hoca off" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the first of two off: the other is the imam" }
+      REMOVE_B:
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the last hoca off" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
@@ -368,6 +375,7 @@ states:
     on:
       SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type a hoca's address and press Enter, or leave the field" }
       SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again with no hoca: it is refused again" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
@@ -390,6 +398,12 @@ states:
         - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
+      # "Dersi aç" is not held back while a hoca is looked up (only the opening makes it busy, open-course-form.tsx:269): the press is acted on at once, with the hocas listed so far.
+      SUBMIT:
+        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' while the search runs, with something wrong: nothing is sent; the search's answer still lands in the form" }
+        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' while the search runs: the course is sent with the hocas listed so far, without the one being looked up" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
     source: apps/nazar/features/nazirs/actions.ts:43
 
   lookingAnother:
@@ -402,6 +416,12 @@ states:
     on:
       DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the second person is added: two rows, a radio each, the first the imam" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs" }
+      # "Dersi aç" is not held back while a hoca is looked up (only the opening makes it busy, open-course-form.tsx:269): the press is acted on at once, with the hocas listed so far.
+      SUBMIT:
+        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' while the search runs, with something wrong: nothing is sent; the search's answer still lands in the form" }
+        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' while the search runs: the course is sent with the hocas listed so far, without the one being looked up" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
     source: apps/nazar/features/nazirs/actions.ts:43
 
   opening:
@@ -424,6 +444,9 @@ states:
       FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says one of the hocas has no account; the form stays" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says they may not do this; the form stays" }
       FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [toastUp], source: apps/nazar/features/courses/courses.ts:393, say: "a toast says something went wrong, try again; the form stays (a naming-oneself refusal reads the same: OPEN-2)" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "'Vazgeç' is a plain link and is not held back while the course is made: Dersler opens; the request is not taken back, and what its answer does then is not verified" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the course is made: Dersler opens; the request is not taken back" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the course is made; the request is not taken back: the form is left and what was typed is lost (OPEN-1)" }
     source: apps/nazar/features/courses/components/open-course-form.tsx:115
 
   opened:

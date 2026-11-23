@@ -201,6 +201,8 @@ states:
         - { target: cards }
       FAIL.signedOut: sent_to_sign_in
       FAIL.failed: cardsFailed
+      PICK_DECK: { guard: severalDecks, target: readingCards, say: "another deck's chip stays live while the cards are read: the grid shows that deck and reads its cards; the first read goes on and keeps its answer for its own deck", source: apps/tedris/features/courses/components/course-deck-grid.tsx:119 }
+      OPEN_PROGRAMME: { target: courseOpened, say: "the tab Müfredat is chosen at once: Base UI keeps no hidden panel, so the deck tab is unmounted with the grid (the read's answer is not drawn) and comes back on \"Desteler\"", source: libs/ui/src/mds/tabs.tsx:140 }
       SHOW_LIST: list
 
   cardsFailed:
@@ -214,6 +216,7 @@ states:
       RETRY: readingCards
       SHOW_LIST: list
       PICK_DECK: { guard: severalDecks, target: readingCards }
+      OPEN_PROGRAMME: { target: courseOpened, say: "the tab Müfredat is chosen at once: Base UI keeps no hidden panel, so the deck tab is unmounted with the grid, and comes back on \"Desteler\"", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   noCards:
@@ -226,6 +229,7 @@ states:
     on:
       SHOW_LIST: list
       PICK_DECK: { guard: severalDecks, target: readingCards }
+      OPEN_PROGRAMME: { target: courseOpened, say: "the tab Müfredat is chosen at once: Base UI keeps no hidden panel, so the deck tab is unmounted with the grid, and comes back on \"Desteler\"", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   cards:
@@ -242,6 +246,7 @@ states:
       START_TEST: { target: test, effect: [newRound] }
       SHOW_LIST: list
       PICK_DECK: { guard: severalDecks, target: readingCards }
+      OPEN_PROGRAMME: { target: courseOpened, say: "the tab Müfredat is chosen at once: Base UI keeps no hidden panel, so the deck tab is unmounted with the grid, and comes back on \"Desteler\"", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   cardsTurned:
@@ -256,6 +261,7 @@ states:
       START_TEST: { target: test, effect: [newRound] }
       SHOW_LIST: list
       PICK_DECK: { guard: severalDecks, target: readingCards }
+      OPEN_PROGRAMME: { target: courseOpened, say: "the tab Müfredat is chosen at once: Base UI keeps no hidden panel, so the deck tab is unmounted with the grid, and comes back on \"Desteler\"", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   test:
@@ -273,6 +279,7 @@ states:
       SHOW_LIST: { target: list, effect: [newRound] }
       PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
       RESEND: { guard: hasUnsaved, target: test, effect: [sendAgain] }
+      OPEN_PROGRAMME: { target: courseOpened, effect: [newRound], say: "the tab Müfredat is chosen at once: the deck tab is unmounted with the grid, and the round and its unsaved marks go with it, as with \"Desteler\" (DECKTAB-2)", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   testTurned:
@@ -290,6 +297,7 @@ states:
       SHOW_LIST: { target: list, effect: [newRound] }
       PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
       RESEND: { guard: hasUnsaved, target: testTurned, effect: [sendAgain] }
+      OPEN_PROGRAMME: { target: courseOpened, effect: [newRound], say: "the tab Müfredat is chosen at once: the deck tab is unmounted with the grid, and the round and its unsaved marks go with it, as with \"Desteler\" (DECKTAB-2)", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   rating:
@@ -299,12 +307,17 @@ states:
       The mark is drawn at once (the buttons give way to the badge "Bildin" or "Bilemedin", the count moves, the focus stays on the card) and rateFlashcard sends it: the server action,
       PUT /flashcard/cards/progress with one element, rating EASY for "Bildim" and HARD for "Bilemedim" (self-test.ts:64-66). The API sets the card's status and when it is due next (HARD: back in a day;
       EASY: at least seven days) and the action revalidates the lists that count what waits. A rating that answers after the round ended or the deck changed is dropped (the generation counter, :74-76,137).
-      A failure keeps the mark and adds the card to the unsaved ones. Modelled as the write the mark makes; whether the round is complete is not known to the flow, so the last mark leaves it to chance (`round`).
+      A failure keeps the mark and adds the card to the unsaved ones. Nothing in the grid waits for the call: "Sınamayı bitir", the chips, "Desteler" and the
+      tabs act at once, and "Yeniden gönder" sends beside it. Modelled as the write the mark makes; whether the round is complete is not known to the flow, so the last mark leaves it to chance (`round`).
     invoke: { action: saveCardProgress }
     on:
       DONE: rated
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { target: rated, effect: [notSaved] }
+      STOP: { target: cards, effect: [newRound], say: "\"Sınamayı bitir\" stays live while the mark is sent: the round ends at once, and the rating's answer, when it comes, is dropped (the generation counter)", source: apps/tedris/features/courses/components/course-deck-grid.tsx:129 }
+      SHOW_LIST: { target: list, effect: [newRound], say: "\"Desteler\" stays live while the mark is sent: the grid is unmounted at once (DECKTAB-2); the call goes on, and a mark that then fails is told nowhere", source: apps/tedris/features/courses/components/course-decks-tab.tsx:55 }
+      PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound], say: "another deck's chip stays live while the mark is sent: the round ends at once and that deck is read; the rating's answer is dropped", source: apps/tedris/features/courses/components/course-deck-grid.tsx:119 }
+      OPEN_PROGRAMME: { target: courseOpened, effect: [newRound], say: "the tab Müfredat is chosen at once while the mark is sent: the deck tab is unmounted with the grid, and the round and its unsaved marks go with it, as with \"Desteler\" (DECKTAB-2)", source: libs/ui/src/mds/tabs.tsx:140 }
 
   rated:
     title: The round is complete, or not
@@ -331,6 +344,7 @@ states:
       SHOW_LIST: { target: list, effect: [newRound] }
       PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
       RESEND: { guard: hasUnsaved, target: summary, effect: [sendAgain] }
+      OPEN_PROGRAMME: { target: courseOpened, effect: [newRound], say: "the tab Müfredat is chosen at once: the deck tab is unmounted with the grid, and the round and its unsaved marks go with it, as with \"Desteler\" (DECKTAB-2)", source: libs/ui/src/mds/tabs.tsx:140 }
       NAVIGATE: left
 
   study_opened:

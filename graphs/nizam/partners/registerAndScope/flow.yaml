@@ -355,6 +355,17 @@ states:
     source: apps/nizam/features/partners/components/partners-view.tsx:264
     on:
       FIX_ADD: { target: listed, effect: [typedValid], say: "they correct what is wrong: the sentence goes", source: apps/nizam/features/partners/components/partners-view.tsx:328 }
+      SUBMIT_ADD:
+        - { guard: "typed == 'valid'", target: adding, effect: [clearToast], say: "they press Ekle again without a change, after the server's sentence: the form passes the page's check and is sent again", source: apps/nizam/features/partners/components/partners-view.tsx:271 }
+        - { guard: "typed == 'empty'", target: addProblem, effect: [saidEmpty, clearToast], say: "they press Ekle again with nothing typed: the same sentences, nothing is sent", source: apps/nizam/features/partners/components/partners-view.tsx:264 }
+        - { guard: "typed == 'badShape'", target: addProblem, effect: [saidBadShape, clearToast], say: "they press Ekle again: the same sentence under the client id, nothing is sent", source: apps/nizam/features/partners/present.ts:14 }
+        - { guard: "typed == 'noName'", target: addProblem, effect: [saidNoName, clearToast], say: "they press Ekle again: 'Bir ad yazın.' again, nothing is sent", source: apps/nizam/features/partners/present.ts:20 }
+      TURN_OFF: { guard: "row == 'on'", target: turningOff, effect: [pressOff], say: "they press the row's switch: the table is live beside the add form's sentence, the switch moves and the call goes; the sentence stays in the form, which the graph draws only here", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
+      TURN_ON: { guard: "row == 'off'", target: turningOn, effect: [pressOn], say: "they press the row's switch: it moves at once and the call goes; the sentence stays in the form, which the graph draws only here", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
+      CHOOSE_KOSKS:
+        - { guard: "hasRow and kosks == 'none'", target: kosksForm, effect: [openKosksNone], say: "they press 'Köşkleri seç': the dialog opens with no box ticked", source: apps/nizam/features/partners/components/partners-view.tsx:170 }
+        - { guard: "hasRow and kosks == 'some'", target: kosksForm, effect: [openKosksSome], say: "they press 'Köşkleri seç': the dialog opens with the partner's köşk ticked", source: apps/nizam/features/partners/components/partners-view.tsx:170 }
+      RENAME: { guard: hasRow, target: renameForm, effect: [openRename], say: "they press 'Adını değiştir': the dialog opens with the name", source: apps/nizam/features/partners/components/partners-view.tsx:179 }
       NAVIGATE: { target: left, say: "they follow the menu or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
 
   adding:

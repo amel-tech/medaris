@@ -138,6 +138,13 @@ const chiefGroups: NavGroup[] = [
         icon: "doc",
       },
       { id: "archive", label: "archive", path: "/arsiv", icon: "archive" },
+      // How the zeroth question of the online exams was answered (MDRS-299).
+      {
+        id: "zeroth-answers",
+        label: "zerothAnswers",
+        path: "/sifirinci-soru-cevaplari",
+        icon: "chart",
+      },
     ],
   },
   {
@@ -183,7 +190,7 @@ const medarisGroups: NavGroup[] = [
     "deck-requests",
     "permanent-bans",
   ]),
-  chiefOnly("audit", ["bans"]),
+  chiefOnly("audit", ["bans", "zeroth-answers"]),
 ];
 
 /**
@@ -253,6 +260,14 @@ const koskGroups: NavGroup[] = [
         path: "/kosks/:kosk/arsiv",
         icon: "archive",
       },
+      // The köşk's own exams: a köşk nazımı holds exam.zeroth_read there by
+      // role default (MDRS-299).
+      {
+        id: "zeroth-answers",
+        label: "zerothAnswers",
+        path: "/kosks/:kosk/sifirinci-soru-cevaplari",
+        icon: "chart",
+      },
     ],
   },
   {
@@ -303,6 +318,7 @@ const ITEM_PERMISSIONS: Record<string, readonly string[]> = {
   youtube: ["platform.youtube_manage"],
   "platform-settings": ["platform.policy_edit"],
   partners: ["platform.partner_manage"],
+  "zeroth-answers": ["exam.zeroth_read"],
 };
 
 /**

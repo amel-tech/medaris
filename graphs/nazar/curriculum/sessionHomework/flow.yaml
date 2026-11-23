@@ -58,7 +58,7 @@ scope:
     - "a celse added on this page has no id yet: the block then says 'Yeni celseye ödev vermek için önce müfredatı kaydedin.' and offers nothing (Curriculum.assignmentSaveFirst); a content-locked course read shows the block with 'Ders içeriğini görme izniniz olmadığı için celsenin ödevi gösterilmez…' and no control (assignmentLocked)"
     - "what a talebe then sees and does on the celse page: tedris.learn.homeworkHandIn for a homework of 'Dosya', tedris.learn.homeworkMemorize for one of 'Ezber' (the hoca's marks are given on Değerlendirme: nazar.evaluation.markRecited); the hand-ins the course team reviews: nazar.homework.review"
     - "downloading a homework file (the link in the list): nazar.files.download; locally every download answers 503 and brings the person back with 'Dosya indirilemedi'"
-    - "the moves of a person with unsaved edits in the block that this graph does not draw from a dirty description: a kind chip, the switch, a file's trash or the upload panel pressed while 'Açıklamada kaydedilmemiş değişiklik var.' stands behave as from a clean one, with the quirks HWSET-6 and the draft kept as typed; the same events are drawn from the clean block"
+    - "two open parts of the block at once: the upload panel opened while 'Açıklamada kaydedilmemiş değişiklik var.' stands, or a kind chip, the switch or a file's trash pressed while the panel is open, behave as they do alone; the graph stops at the exit several_parts. A chip, the switch or a trash pressed beside a description not yet stored is drawn: it acts as from the clean block, with the quirk HWSET-6 and the draft kept as typed"
     - "folding the details again ('Ayrıntıları gizle'): the block is only hidden, it keeps its draft and its panel"
     - "a file chosen of no bytes or of more than 25 MB, which the page refuses under the field before anything is sent (Files.problems.empty, Files.problems.tooLarge)"
     - "an ended session: any call sends the person to sign in and back (realm.auth.sessionEnded); a call that throws (a dropped network) says nothing (HWSET-9)"
@@ -320,11 +320,21 @@ states:
       stored by that button alone: nothing else stores it, neither "Kaydet" of the page nor leaving. The page's own Kaydet is off
       (the curriculum is not dirty) and, if it is pressed for some other edit, the editor starts anew on the saved course and the
       typed text is lost (HWSET-8). A kind chip pressed now sends the description as STORED, never the draft, and leaves the draft
-      in the field (HWSET-6). Not drawn from here: the chips, the switch, a file's trash and the upload panel (see `outOfView`).
+      in the field (HWSET-6). The chips, the switch and a file's trash act as from the clean block, the draft kept as typed; the
+      upload panel opened from here leads to the exit several_parts (see `outOfView`).
     by: human
     on:
       SAVE: { target: savingDescription, effect: [clearNote], say: "they press Açıklamayı kaydet" }
       UNDO: { target: on, effect: [typedBack], say: "they put the stored text back: the strings are equal, so the button is off again" }
+      # scope.outOfView: from a description not yet stored these behave as from the clean block, the draft kept as typed (HWSET-6);
+      # settled brings the block back here while the draft still differs.
+      KIND_RECITAL: { guard: "kind == 'file'", target: choosingRecital, effect: [clearNote], say: "they press Ezber", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      KIND_FILE: { guard: "kind == 'memorize'", target: choosingFile, effect: [clearNote], say: "they press Dosya", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      TURN_OFF:
+        - { guard: hasContent, target: confirmOff, effect: [clearNote], say: "they turn the switch off while there is a description or a file", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216" }
+        - { target: takingOff, effect: [clearNote], say: "they turn the switch off with neither: no question is asked (HWSET-1)", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:222" }
+      REMOVE_FILE: { guard: "files == 'some'", target: confirmFile, effect: [clearNote], say: "they press a file's trash", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:358" }
+      OPEN_UPLOAD: { target: several_parts, effect: [clearNote], say: "they press Dosya yükle: the panel opens beside the description that is not stored", source: apps/nazar/features/files/components/file-upload.tsx:157 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:286
 
@@ -395,6 +405,10 @@ states:
       FAIL.alreadyGone: { target: off, effect: [offNow] }
       FAIL.forbidden: { target: settled, effect: [refused] }
       FAIL.gone: { target: settled, effect: [gone] }
+      # The dialog drops every way of closing while `busy` (apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400): the press changes nothing and the call runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CANCEL: { target: takingOffAsked, say: "they press Vazgeç, or Esc, while the call runs: nothing happens", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400" }
+      CLOSE: { target: takingOffAsked, say: "they press the close icon while the call runs: nothing happens", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400" }
     source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:416
 
   takingOff:
@@ -436,6 +450,10 @@ states:
       FAIL.forbidden: { target: settled, effect: [refused] }
       FAIL.gone: { target: settled, effect: [gone] }
       FAIL.other: { target: settled, effect: [failed] }
+      # The dialog drops every way of closing while `busy` (apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400): the press changes nothing and the call runs on.
+      # Written as transitions back to this state, as a transition here always names a target.
+      CANCEL: { target: removingFile, say: "they press Vazgeç, or Esc, while the call runs: nothing happens", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400" }
+      CLOSE: { target: removingFile, say: "they press the close icon while the call runs: nothing happens", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:400" }
     source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:176
 
   picking:
@@ -452,6 +470,12 @@ states:
       SEND: { target: picking, effect: [askedForFile], say: "they press Yükle with nothing chosen" }
       PICK_FILE: { target: picked, effect: [pickedFile], say: "they choose a file" }
       CANCEL_UPLOAD: { target: settled, effect: [panelClosed], say: "they press Vazgeç" }
+      # The rest of the block stays live while the panel is open (`off` takes no upload: lesson-assignment-editor.tsx:97). A press changes
+      # the block beside the open panel, which this graph does not follow (the exit several_parts says what follows).
+      KIND_RECITAL: { guard: "kind == 'file'", target: several_parts, effect: [clearNote], say: "they press Ezber while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      KIND_FILE: { guard: "kind == 'memorize'", target: several_parts, effect: [clearNote], say: "they press Dosya while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      TURN_OFF: { target: several_parts, effect: [clearNote], say: "they turn the switch off while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216" }
+      REMOVE_FILE: { guard: "files == 'some'", target: several_parts, effect: [clearNote], say: "they press a file's trash while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:358" }
     source: apps/nazar/features/files/components/file-upload.tsx:170
 
   picked:
@@ -467,6 +491,12 @@ states:
       SEND: { target: uploading, effect: [sentFile, clearNote], say: "they press Yükle" }
       PICK_FILE: { target: picked, effect: [pickedFile], say: "they choose another file" }
       CANCEL_UPLOAD: { target: settled, effect: [panelClosed], say: "they press Vazgeç" }
+      # The rest of the block stays live while the panel is open (`off` takes no upload: lesson-assignment-editor.tsx:97). A press changes
+      # the block beside the open panel, which this graph does not follow (the exit several_parts says what follows).
+      KIND_RECITAL: { guard: "kind == 'file'", target: several_parts, effect: [clearNote], say: "they press Ezber while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      KIND_FILE: { guard: "kind == 'memorize'", target: several_parts, effect: [clearNote], say: "they press Dosya while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      TURN_OFF: { target: several_parts, effect: [clearNote], say: "they turn the switch off while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216" }
+      REMOVE_FILE: { guard: "files == 'some'", target: several_parts, effect: [clearNote], say: "they press a file's trash while the panel is open", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:358" }
     source: apps/nazar/features/files/components/file-upload.tsx:94
 
   uploading:
@@ -509,6 +539,16 @@ states:
     on:
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:254
+
+  several_parts:
+    title: Another part of the block is used while one is open
+    description: >-
+      The block takes the press as it takes it alone: a kind chip, the switch or a file's trash pressed while the upload panel is open,
+      or the panel opened while the description differs from what is stored. Each write runs as it does from the clean block, and the
+      panel and the typed description stay as they are beside it: the panel keeps its file until it is sent or closed, and the draft
+      stays until "Açıklamayı kaydet" (HWSET-8). The switch turned off takes the panel with it, as the whole block goes. The graph follows
+      one open part at a time (scope.outOfView) and stops here.
+    type: final
 
   not_found:
     title: The course is not there

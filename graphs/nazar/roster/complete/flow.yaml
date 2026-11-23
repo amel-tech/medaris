@@ -235,6 +235,7 @@ states:
     on:
       TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: libs/ui/src/mds/tabs.tsx:94 }
       TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_APPLICATIONS: { target: applications, say: "they press Başvurular, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234
 
@@ -257,6 +258,7 @@ states:
     on:
       TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: libs/ui/src/mds/tabs.tsx:94 }
       TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_ENROLLED: { target: enrolled, say: "they press Kayıtlı, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
       SORT:
         - { guard: "order == 'ascending'", target: enrolled, effect: [sortedDown], say: "they press the Talebe header: the rows are sorted Z to A", source: apps/nazar/features/enrolments/components/roster-table.tsx:229 }
         - { target: enrolled, effect: [sortedUp], say: "they press it again: A to Z", source: apps/nazar/features/enrolments/components/roster-table.tsx:229 }
@@ -304,6 +306,7 @@ states:
     on:
       TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: libs/ui/src/mds/tabs.tsx:94 }
       TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_COMPLETED: { target: completed, say: "they press Tamamlayanlar, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
       REOPEN: { guard: "reader == 'team' and done == 'some'", target: reopening, effect: [clearNote], say: "they press Yeniden aç on the row", source: apps/nazar/features/enrolments/components/roster-table.tsx:187 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:263

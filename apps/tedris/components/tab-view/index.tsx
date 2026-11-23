@@ -15,6 +15,7 @@ const ownsItsMain = (pathname: string) =>
   pathname.startsWith("/discover") ||
   pathname.startsWith("/my-courses") ||
   pathname.startsWith("/schedule") ||
+  pathname.startsWith("/my-exams") ||
   pathname.startsWith("/decks") ||
   pathname.startsWith("/account") ||
   pathname.startsWith("/notifications") ||

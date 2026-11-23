@@ -83,6 +83,7 @@ describe("codes and messages", () => {
       "platform.youtube_manage",
       "platform.policy_edit",
       "platform.partner_manage",
+      "exam.zeroth_read",
     ];
     for (const lang of ["tr", "en", "ar"] as const) {
       const catalog = (
@@ -101,8 +102,9 @@ describe("codes and messages", () => {
       }
       // The 18 course permissions of nizam/13, the owner's 1 October entry
       // "propose a köşk deck", `question.answer` (MDRS-150) and
-      // `submission.read` (MDRS-290), which a köşk or medrese may now grant.
-      expect(Object.keys(catalog.course)).toHaveLength(21);
+      // `submission.read` (MDRS-290) and `exam.prepare` (MDRS-299), which a
+      // köşk or medrese may now grant.
+      expect(Object.keys(catalog.course)).toHaveLength(22);
       expect(catalog.course.submission_read, lang).toBeTruthy();
       expect(catalog.courseShort.submission_read, lang).toBeTruthy();
     }

@@ -289,6 +289,38 @@ states:
         starts: { flow: nizam.courses.overview }
         say: "they follow a course's title"
         source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122
+      VIEW_COURSE:
+        guard: rowsShown
+        target: course_viewed_in_tedris
+        say: "they follow Dersi gör on a medrese's course: tedris's course page, in this tab"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301
+      # The header, the cards and the section's link are the same as in `listed`.
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/kosks/components/kosk-course-table.tsx:60
 
@@ -308,6 +340,28 @@ states:
         starts: { flow: nizam.courses.open }
         say: "they follow Ders aç"
         source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      # The header's link, the cards and the section's link are the same as in `listed`.
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/kosks/components/kosk-course-table.tsx:367
 
@@ -320,6 +374,33 @@ states:
     by: human
     on:
       RETRY: { target: reading, say: "they press Yeniden dene: the page is read again", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:47 }
+      # The header, the cards and the section's link stay above the Alert, and go where they go from `listed`.
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:166
 
@@ -354,6 +435,8 @@ states:
       DONE: afterHide
       FAIL.already: { target: afterHide, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42 }
       FAIL.other: { target: confirmHide, effect: [hideFailed], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46 }
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press Vazgeç, or Esc, while the hide runs: nothing happens, the hide goes on (onOpenChange is ignored while saving, NCL-1)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press the close icon: nothing happens, the hide goes on" }
     source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
 
   afterHide:
@@ -386,6 +469,40 @@ states:
       FAIL.level: { target: listed, effect: [restoreLevel], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:98 }
       FAIL.parentHidden: { target: listed, effect: [restoreParentHidden], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:90 }
       FAIL.other: { target: listed, effect: [restoreFailed], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:90 }
+      # The links of the page, plain <a> elements, stay live while the restore runs (only the pressed "Geri al" is busy): the browser leaves
+      # the page at once, and the restore already sent is the server's to finish or refuse (not verified), unseen.
+      OPEN_COURSE:
+        guard: "tab != 'hidden'"
+        target: course_overview_opened
+        starts: { flow: nizam.courses.overview }
+        say: "they follow a course's title while the restore runs"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab while the restore runs", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
     source: apps/nizam/features/kosks/components/kosk-course-table.tsx:82
 
   refused:

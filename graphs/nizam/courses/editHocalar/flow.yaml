@@ -370,6 +370,8 @@ states:
       FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says the course needs a hoca and an imam among them; the page itself never sends such a list" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says she may not; the dialog stays open (F-W4-hocalar-3)" }
       FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says it could not be done, try again; a course that is gone is this one too (F-W4-hocalar-9); the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:122, say: "they press Vazgeç, or Esc, while the list is saved: nothing happens, the save goes on (onOpenChange is ignored while saving, F-W4-hocalar-7)" }
+      CLOSE: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:122, say: "they press the close icon: nothing happens, the save goes on" }
     source: apps/nizam/features/courses/components/muderris-dialog.tsx:99
 
   saved:

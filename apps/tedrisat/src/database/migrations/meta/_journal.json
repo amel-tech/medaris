@@ -474,8 +474,50 @@
     {
       "idx": 67,
       "version": "7",
-      "when": 1794991437089,
-      "tag": "0072_lesson_views",
+      "when": 1795332062351,
+      "tag": "0072_online_exams",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795337416039,
+      "tag": "0073_madrasah_zeroth_question",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795338637004,
+      "tag": "0074_exam_format_multiple_choice",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795339582029,
+      "tag": "0075_exam_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795342938709,
+      "tag": "0076_course_zeroth_question",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795343947771,
+      "tag": "0077_exam_scoring_any_correct",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795345300815,
+      "tag": "0078_exam_duration_optional",
       "breakpoints": true
     }
   ]

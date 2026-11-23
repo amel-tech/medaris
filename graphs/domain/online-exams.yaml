@@ -1,0 +1,941 @@
+# Online multiple-choice exams (MDRS-299): the third format of an exam celse, built in apps/tedrisat/src/online-exam (PRs #408 to #431,
+# merged on 22 November 2026). Written graph-first on 21 November 2026 as planned-exams.yaml; rewritten from the code the same week, so
+# every entity and action below names its code, and the two that are not built yet say `planned`.
+#
+# The owner's words this API carries (each quoted where he gave it; a rule with no quote is a choice made in the code, said as such):
+#   - "Celsesiz taslak" (22 Nov, asked how a draft and its celse relate): a draft has no celse; publishing makes the celse, of format
+#     MULTIPLE_CHOICE, and taking it back to a draft deletes that celse.
+#   - The length: "sınav süresinin varsayılanı olmasın, zorunlu olsun ama boş kalsın o olmadan sınav yayına alınamasın" (22 Nov). A new
+#     draft has no length, and publishing refuses one without it (NO_DURATION).
+#   - The late window: "'sınava en geç başlama saati' de defaultta 10 dakika sonra olacak" (22 Nov, relayed from the medrese) and
+#     "belki 10 dk değil 20 dk seçecek hoca, bunun da mümkün olması gerekmez mi sence" (22 Nov). Publishing takes the window in minutes
+#     from the start it sets (latestStartMinutes, 10 when left out); a talebe starts until then and always gets the whole length.
+#   - The zeroth question: madrasah-wide, "şu an vize dönemindeyiz, soruyu her sınavda aynı soralım, finalde de soruyu değiştiririz her
+#     dersin sınavında o yeni soru sorulur" (22 Nov, relayed), and per course, "ders özelinde sıfırıncı soru mümkün olsun, medreseninki
+#     default olur ders özelinde değişebilir" (22 Nov). Publishing copies the course's own question, else the medrese's, into the exam.
+#     The hadith stays as written, with no source line ("Böyle kalsın", "Hayır", 22 Nov).
+#   - Tab switches: "tab değiştirme meselesinde sıfırlanıp baştan başlamayacak, sadece tab değişikliğini sayacağız" (22 Nov, relayed).
+#     A switch is counted with its time; the page counts another window taking the focus as well, from two seconds (my choice, #425).
+#   - Check boxes: "doğru cevaplardan herhangi birini işaretlemesi de yeterli olsun puanı tam alması için" (22 Nov): ANY_CORRECT, beside
+#     ALL_OR_NOTHING and IN_SHARES. That a wrong mark gives no points under ANY_CORRECT is my choice, so that marking every box never pays.
+#   - Topic numbers: "Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin kolayca"; and
+#     "konu silebilmek de lazım sadece ekleme var" (22 Nov). A topic that questions use is not deleted (my choice).
+#   - Results: those who prepare the exam see them, "görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada" (22
+#     Nov); each talebe's answers too, "talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım" (22 Nov). The release
+#     stays with the existing releaseExamResults.
+#   - The talebe's rank: "sınava şu kadar kişi girdi, senin puanın şu, bu kadar kişiden şu sıradasınız … aynı şekilde konu başına da bu
+#     sıralama olsun. eşit puan alanlar 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün" (22 Nov). Competition ranking
+#     (1, 2, 2, 4) and counting only finished attempts are my choices.
+#   - The zeroth answers' aggregate shows exact counts: "ben böyle bi karar vermedim, saçma bu zaten neden gizleyeyim tabi ki görünecek"
+#     (22 Nov). The first draft hid counts under five and called that his rule; it was not, and #427 removed it.
+#   - The clock stops while the connection is lost: "talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir"
+#     (21 Nov).
+#
+# Who may call what:
+#   - a talebe through course.view on the exam's course and an ENROLLED seat of their own (getMyExamResult also takes a COMPLETED
+#     seat); listMyExams needs only a token and reads the caller's own seats;
+#   - the course team with exam.prepare on the course (a hoca holds it as every course code; a ders nazırı by grant);
+#   - the medrese's zeroth question with madrasah.settings_edit; the aggregate with exam.zeroth_read (a Medaris nazımı by grant in the
+#     platform scope, a köşk nazımı in their köşk, the başnazım by bypass).
+#
+# Not built: copying an earlier exam of the course (copyOnlineExam), the team's Sınavlarım across courses (listMyTeachingExams), a
+# preview of the exam as the talebe sees it, and changing a scheduled exam in place (today it is taken back to a draft and published
+# again).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+entities:
+  CourseTopic: # one topic of a course's exams: a number and a short name, kept by the course and picked by its exams and questions
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:32
+    key: [id]
+    required: [id, courseId, number, name, nameKey, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      number: { type: integer, minimum: 1, maximum: 999, note: "shown before the name (\"3. Kıyas\") and typed to pick it; unique in the course; a new topic takes the next free number unless one is given" }
+      name: { type: string, minLength: 1, maxLength: 60, note: "one to three words (TOPIC_TOO_LONG past three)" }
+      nameKey: { type: string, note: "the name in Turkish lower case; unique in the course, so İcma and icma are one topic" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+
+  OnlineExam: # an online exam of a course: a draft with no celse, then published with the celse it makes
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:71
+    key: [id]
+    required: [id, courseId, title, version, createdBy, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      lessonId: { type: [string, "null"], format: uuid, unique: true, references: Lesson, note: "null while a draft; the celse publishing made, whose scheduledAt is the earliest start and whose LessonExam has format MULTIPLE_CHOICE and maxScore 100" }
+      title: { type: string, minLength: 1, maxLength: 200 }
+      durationMinutes: { type: [integer, "null"], minimum: 1, maximum: 2147483647, note: "no default and no upper bound; null until the team types it, and publishing refuses an exam without it (NO_DURATION, the owner 22 Nov)" }
+      instructions: { type: [string, "null"], maxLength: 4000, note: "the team's own words, read in the briefing" }
+      zerothQuestion: { type: [string, "null"], note: "the course's or the medrese's zeroth question as publishing copied it; a later change to theirs does not reach it" }
+      latestStartAt: { type: [string, "null"], format: date-time, note: "set at publish: the start plus latestStartMinutes (10 when left out)" }
+      publishedAt: { type: [string, "null"], format: date-time, note: "null while a draft" }
+      closedEarlyAt: { type: [string, "null"], format: date-time, note: "set by closeOnlineExamEarly" }
+      version: { type: integer, minimum: 1, maximum: 2147483647, note: "bumped by every write of the exam, its questions, its points and a topic delete that changes its pick; a write naming an older one is EXAM_STALE, and every write's answer carries the new one" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> draft: createOnlineExam, a title only"
+      - "draft -> scheduled | open: publishOnlineExam (later, or now); the celse and its LessonExam are made, the zeroth question copied"
+      - "scheduled -> draft: unpublishOnlineExam until it opens; the celse is deleted"
+      - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly"
+
+  ExamTopic: # a topic an exam has picked from its course's list
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:109
+    key: [examId, topicId]
+    required: [examId, topicId, position]
+    fields:
+      examId: { type: string, format: uuid, references: OnlineExam }
+      topicId: { type: string, format: uuid, references: CourseTopic }
+      position: { type: integer, minimum: 0 }
+
+  ZerothOption: # one option of the exam's copy of the zeroth question: none is correct and none carries points
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:130
+    key: [id]
+    required: [id, examId, position, text]
+    fields:
+      id: { type: string, format: uuid }
+      examId: { type: string, format: uuid, references: OnlineExam }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 300 }
+
+  ExamQuestion: # one multiple-choice question of an exam
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:150
+    key: [id]
+    required: [id, examId, position, text, answerMode, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      examId: { type: string, format: uuid, references: OnlineExam }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, maxLength: 4000, note: "empty while the question is incomplete" }
+      answerMode: { enum: [SINGLE, MULTIPLE], note: "SINGLE: one choice, and any correct option gets the points; MULTIPLE: check boxes" }
+      scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, ANY_CORRECT, "null"], note: "MULTIPLE only, with two correct options or more (QUESTION_MODE_INVALID otherwise); ANY_CORRECT: one correct mark and no wrong one is the whole points" }
+      ownPoints: { type: [integer, "null"], minimum: 1, maximum: 10000, note: "hundredths; null takes an equal, exact share of what the own points leave of 100" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+
+  ExamQuestionTopic: # a topic a question carries
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:185
+    key: [questionId, topicId]
+    required: [questionId, topicId]
+    fields:
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      topicId: { type: string, format: uuid, references: CourseTopic }
+
+  ExamOption: # one option of a question
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:202
+    key: [id]
+    required: [id, questionId, position, text, correct]
+    fields:
+      id: { type: string, format: uuid }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 1000 }
+      correct: { type: boolean, note: "never sent to a talebe before the exam has closed for everyone and its results are released" }
+
+  MadrasahZerothQuestion: # the medrese's zeroth question, edited in Medrese ayarları: every course's default
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:225
+    key: [madrasahId]
+    required: [madrasahId, text, updatedAt, updatedBy]
+    fields:
+      madrasahId: { type: string, format: uuid, references: Madrasah }
+      text: { type: string, minLength: 1, maxLength: 1000 }
+      updatedAt: { type: string, format: date-time }
+      updatedBy: { type: string, format: uuid }
+
+  MadrasahZerothOption: # one option of the medrese's zeroth question
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:237
+    key: [id]
+    required: [id, madrasahId, position, text]
+    fields:
+      id: { type: string, format: uuid }
+      madrasahId: { type: string, format: uuid, references: MadrasahZerothQuestion }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 300, note: "2 to 10 options, each different (my choice, #411)" }
+
+  CourseZerothQuestion: # a course's own zeroth question, over the medrese's; a köşk-only course needs it to publish
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:267
+    key: [courseId]
+    required: [courseId, text, updatedAt, updatedBy]
+    fields:
+      courseId: { type: string, format: uuid, references: Course }
+      text: { type: string, minLength: 1, maxLength: 1000 }
+      updatedAt: { type: string, format: date-time }
+      updatedBy: { type: string, format: uuid }
+
+  CourseZerothOption: # one option of a course's own zeroth question
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:279
+    key: [id]
+    required: [id, courseId, position, text]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: CourseZerothQuestion }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 300 }
+
+  ExamAttempt: # one talebe's sitting of an exam: their order, where they are, the time used and how it ended
+    source: apps/tedrisat/src/database/schema/exam-attempt.schema.ts:42
+    key: [id]
+    required: [id, examId, userId, questionOrder, optionOrder, usedSeconds, holderId, lastSeq, switches, startedAt]
+    fields:
+      id: { type: string, format: uuid }
+      examId: { type: string, format: uuid, references: OnlineExam, note: "one attempt per talebe and exam" }
+      userId: { type: string, format: uuid, sensitivity: personal }
+      questionOrder: { type: array, items: { type: string, format: uuid }, note: "drawn for this talebe when the attempt starts" }
+      optionOrder: { type: object, note: "each question's options in this talebe's order" }
+      currentQuestionId: { type: [string, "null"], format: uuid }
+      usedSeconds: { type: integer, minimum: 0, note: "counted only while the holding page calls (tickExamClock), at most 90 s a call; a lost connection uses none" }
+      countedAt: { type: [string, "null"], format: date-time }
+      holderId: { type: string, note: "the page that holds it; another tab or device takes it over with resumeExamAttempt" }
+      lastSeq: { type: integer, minimum: 0, note: "the highest page count written; a save at or under it writes nothing; 0 again at every resume" }
+      switches: { type: integer, minimum: 0 }
+      startedAt: { type: string, format: date-time }
+      finishedAt: { type: [string, "null"], format: date-time }
+      finishedBy: { enum: [TALEBE, TIME, CLOSED_EARLY, "null"] }
+      scoreHundredths: { type: [integer, "null"], note: "set when it ends; also written to the celse's ExamResult (rounded half up), unless the team entered one by hand" }
+
+  ExamAnswer: # a talebe's answer to one question, saved when it is chosen
+    source: apps/tedrisat/src/database/schema/exam-attempt.schema.ts:83
+    key: [attemptId, questionId]
+    required: [attemptId, questionId, optionIds, skipped, savedAt]
+    fields:
+      attemptId: { type: string, format: uuid, references: ExamAttempt }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      optionIds: { type: array, items: { type: string, format: uuid } }
+      skipped: { type: boolean }
+      savedAt: { type: string, format: date-time }
+
+  ZerothAnswer: # a talebe's answer to an exam's zeroth question, given on the briefing
+    source: apps/tedrisat/src/database/schema/exam-attempt.schema.ts:109
+    key: [examId, userId]
+    required: [examId, userId, optionId, answeredAt]
+    fields:
+      examId: { type: string, format: uuid, references: OnlineExam }
+      userId: { type: string, format: uuid, sensitivity: personal }
+      optionId: { type: string, format: uuid, references: ZerothOption }
+      answeredAt: { type: string, format: date-time }
+
+  TabSwitch: # a switch to another tab or window during an attempt, kept with its time for the team
+    source: apps/tedrisat/src/database/schema/exam-attempt.schema.ts:134
+    key: [id]
+    required: [id, attemptId, at]
+    fields:
+      id: { type: string, format: uuid }
+      attemptId: { type: string, format: uuid, references: ExamAttempt }
+      at: { type: string, format: date-time }
+
+actions:
+  # ----- the talebe ---------------------------------------------------------------------------------------------------------------
+
+  listMyExams:
+    summary: Sınavlarım, the talebe's exams across their courses
+    route: GET /me/exams
+    source: apps/tedrisat/src/online-exam/my-exams.controller.ts:46
+    needs: a token; the caller's own ENROLLED and COMPLETED seats (no AuthzGuard, scoped to the caller in the query, as Programım)
+    result:
+      status: 200
+      type: array
+      description: "each exam of every format with where it stands for the caller (UPCOMING, OPEN, IN_PROGRESS, TAKEN, RELEASED, MISSED), its course, lesson, times and length; a score only once released"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+
+  getExamBriefing:
+    summary: What the talebe reads before the exam, and where their attempt stands
+    route: GET /lessons/{id}/online-exam
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:75
+    needs: course.view on the lesson's course (resolver byLessonCourse) and an ENROLLED seat of the caller's own
+    result:
+      status: 200
+      type: object
+      required: [lessonId, courseId, title, courseTitle, durationMinutes, questionCount, startsAt, latestStartAt, window, zeroth, attempt]
+      properties:
+        title: { type: string }
+        courseTitle: { type: string }
+        durationMinutes: { type: integer }
+        questionCount: { type: integer }
+        startsAt: { type: string, format: date-time }
+        latestStartAt: { type: string, format: date-time }
+        instructions: { type: [string, "null"] }
+        window: { enum: [BEFORE, OPEN, CLOSED] }
+        zeroth: { type: object, description: "{ question, options: [{ id, text }], answeredOptionId }" }
+        attempt: { type: [object, "null"], description: "{ status, finishedAt, finishedBy } of the caller's attempt" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145, note: "the celse is no published online exam, or the caller holds no ENROLLED seat in its course" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks course.view on the course" }
+
+  answerZerothQuestion:
+    summary: Answer the zeroth question
+    route: PUT /lessons/{id}/online-exam/zeroth-answer
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:97
+    needs: as getExamBriefing; the exam is open and the caller has not started it
+    body:
+      type: object
+      additionalProperties: false
+      required: [optionId]
+      properties:
+        optionId: { type: string, format: uuid }
+    result: { status: 200, returns: ZerothAnswer }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:12, note: "before the start or after the late window" }
+      ZEROTH_ANSWER_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:116, note: "the attempt has started; the answer is kept as it was (my choice, #416)" }
+      ZEROTH_OPTION_NOT_FOUND: { status: 400, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:34, note: "not an option of this exam's zeroth question" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+      VALIDATION_ERROR: { status: 400, note: "optionId missing or not a uuid" }
+    sideEffects:
+      - "upserts the caller's ZerothAnswer"
+
+  startExamAttempt:
+    summary: Sınava başla
+    route: POST /lessons/{id}/online-exam/attempt
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:120
+    needs: as getExamBriefing; the zeroth question answered; between the start and the late window
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64, description: "the page's own id, kept in the tab (sessionStorage)" }
+    result: { status: 201, returns: ExamAttempt, note: "the questions and options in the caller's order, never which are correct; each question's points and mode; the seconds left" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ZEROTH_UNANSWERED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:22 }
+      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:12 }
+      EXAM_ALREADY_TAKEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:46, note: "the caller's attempt has ended; an exam is taken once" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+      VALIDATION_ERROR: { status: 400, note: "holderId missing or out of bounds" }
+    sideEffects:
+      - "creates the caller's ExamAttempt with its drawn order; an attempt in progress is taken over as resumeExamAttempt does"
+
+  resumeExamAttempt:
+    summary: Go on with an attempt in progress, here
+    route: POST /lessons/{id}/online-exam/attempt/resume
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:141
+    needs: as getExamBriefing; an attempt of the caller's in progress
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64 }
+    result: { status: 200, returns: ExamAttempt, note: "with the answers saved so far and the question the talebe was on; it counts no time" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58 }
+      ATTEMPT_ENDED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:82, note: "finished, timed out or closed early" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "the attempt's holder becomes this page and lastSeq 0; the page that held it before gets ATTEMPT_HELD_ELSEWHERE on its next call"
+
+  saveExamAnswer:
+    summary: Save an answer the moment it is chosen
+    route: PUT /lessons/{id}/online-exam/attempt/answers/{questionId}
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:166
+    needs: as getExamBriefing; the caller's attempt in progress, held by this page
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId, seq, optionIds, skipped]
+      properties:
+        holderId: { type: string }
+        seq: { type: integer, minimum: 1, description: "the page's count of its calls; one at or under the attempt's lastSeq writes nothing, so a late answer never replaces a later choice" }
+        optionIds: { type: array, items: { type: string, format: uuid } }
+        skipped: { type: boolean }
+        currentQuestionId: { type: string, format: uuid }
+    result: { status: 200, note: "{ written, secondsLeft }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:70 }
+      ATTEMPT_ENDED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:82 }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58 }
+      ANSWER_INVALID: { status: 400, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:92, note: "an option of another question, or several for a SINGLE question" }
+      QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:104 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "upserts the ExamAnswer and the attempt's current question"
+
+  tickExamClock:
+    summary: Count the time while the page holds the attempt
+    route: POST /lessons/{id}/online-exam/attempt/clock
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:189
+    needs: as saveExamAnswer
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string }
+    result: { status: 200, note: "{ secondsLeft, status }; the page calls it every 10 s; a call counts at most 90 s, so a lost connection uses no time; at 0 the attempt ends as TIME" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:70 }
+      ATTEMPT_ENDED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:82 }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58 }
+      VALIDATION_ERROR: { status: 400 }
+
+  recordTabSwitch:
+    summary: Count a switch to another tab or window
+    route: POST /lessons/{id}/online-exam/attempt/switch
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:213
+    needs: as saveExamAnswer
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string }
+    result: { status: 200, note: "{ switches }; nothing is erased and the exam goes on" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:70 }
+      ATTEMPT_ENDED: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:82 }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "a TabSwitch row with its time; the attempt's switches + 1"
+
+  finishExamAttempt:
+    summary: Sınavı bitir
+    route: POST /lessons/{id}/online-exam/attempt/finish
+    source: apps/tedrisat/src/online-exam/exam-attempt.controller.ts:235
+    needs: as saveExamAnswer
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string }
+    result: { status: 200, returns: ExamAttempt, note: "an attempt that has already ended answers 200 with how it ended (my choice, #416)" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:70 }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "the attempt ends as TALEBE and is scored; the score is written to the celse's ExamResult"
+
+  getMyExamResult:
+    summary: The talebe's own result of an online exam
+    route: GET /lessons/{id}/online-exam/my-result
+    source: apps/tedrisat/src/online-exam/my-exams.controller.ts:65
+    needs: course.view on the lesson's course and an ENROLLED or COMPLETED seat of the caller's own
+    result:
+      status: 200
+      type: object
+      description: >-
+        How and when the attempt ended. Once released: the score, the right, wrong and blank counts, the standing (taken, rank,
+        tiedWith) and each topic's percentage with its own standing, for the exam and across the course. Once the exam has closed for
+        everyone as well: each question with the caller's answer and the correct options.
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58, note: "the caller has no attempt of this exam" }
+      EXAM_NOT_FOUND: { status: 404, note: "no published online exam at this celse" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  # ----- the course team ----------------------------------------------------------------------------------------------------------
+
+  listMyTeachingExams:
+    planned: "MDRS-299: the team's Sınavlarım across courses is not built; each course has its Sınavlar page (listOnlineExams)"
+    summary: The team's Sınavlarım across the courses they prepare exams in
+    route: GET /me/teaching-exams
+    needs: a token; exam.prepare in each course listed
+    result: { status: 200, type: array }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      VALIDATION_ERROR: { status: 400, note: "planned: an unknown filter" }
+
+  listOnlineExams:
+    summary: A course's online exams, on its Sınavlar page
+    route: GET /courses/{id}/online-exams
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:108
+    needs: exam.prepare on the course
+    result: { status: 200, type: array, description: "each exam's title, status (DRAFT, SCHEDULED, OPEN, CLOSED), start, length and question count" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  createOnlineExam:
+    summary: Yeni sınav, a draft with its title
+    route: POST /courses/{id}/online-exams
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:128
+    needs: exam.prepare on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+    result: { status: 201, note: "{ id, version }: a draft with no celse, no length and no question" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit:online_exam.create"
+
+  getOnlineExamDraft:
+    summary: An exam as the team edits it, with what keeps it from being published
+    route: GET /online-exams/{examId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:147
+    needs: exam.prepare on the exam's course (resolver byOnlineExamCourse)
+    result:
+      status: 200
+      type: object
+      description: "settings, status, the course's topics (with picked and question counts), the questions with their options, points and lacks, the points total, the publish problems (NO_DURATION, NO_QUESTION, QUESTION, POINTS, NO_ZEROTH), the published times, and version"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  updateOnlineExam:
+    summary: Save the exam's settings (Ayarlar) or its picked topics
+    route: PATCH /online-exams/{examId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:168
+    needs: exam.prepare on the exam's course; a draft
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        durationMinutes: { type: [integer, "null"], minimum: 1, maximum: 2147483647, description: "null clears it" }
+        instructions: { type: [string, "null"], maxLength: 4000 }
+        topicIds: { type: array, items: { type: string, format: uuid } }
+    result: { status: 200, note: "the exam's new version" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12, note: "the version named is not the exam's" }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "the exam is published" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      TOPIC_NOT_FOUND: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:99, note: "a topic that is not the course's" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit:online_exam.update"
+
+  copyOnlineExam:
+    planned: "MDRS-299: copying an earlier exam of the course is not built"
+    summary: Önceki sınavdan kopyala
+    route: POST /online-exams/{examId}/copy
+    needs: exam.prepare on the course
+    result: { status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403 }
+      EXAM_COPY_NOT_ALLOWED: { status: 409, note: "planned: the draft has questions already, or the exam picked is not of this course" }
+      EXAM_STALE: { status: 409 }
+      EXAM_NOT_FOUND: { status: 404 }
+
+  addExamQuestion:
+    summary: Soru ekle (made on the question's first save)
+    route: POST /online-exams/{examId}/questions
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:238
+    needs: exam.prepare on the exam's course; a draft
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+    result: { status: 201, note: "{ question, version }: an empty question at the end" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12, note: "the version named is not the exam's" }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "the exam is published" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      TOPIC_NOT_FOUND: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:99, note: "a topic that is not the course's" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+
+  saveExamQuestion:
+    summary: Save a question's text, options, mode, scoring and topics
+    route: PUT /online-exams/{examId}/questions/{questionId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:262
+    needs: exam.prepare on the exam's course; a draft
+    body:
+      type: object
+      additionalProperties: false
+      required: [version, text, options, answerMode, topicIds]
+      properties:
+        version: { type: integer, minimum: 1 }
+        text: { type: string, maxLength: 4000 }
+        options: { type: array, items: { type: object, description: "{ text, correct }" } }
+        answerMode: { enum: [SINGLE, MULTIPLE] }
+        scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, ANY_CORRECT, "null"] }
+        topicIds: { type: array, items: { type: string, format: uuid } }
+    result: { status: 200, note: "{ question, version }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27 }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:111 }
+      QUESTION_MODE_INVALID: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:121, note: "MULTIPLE without a scoring or with fewer than two correct options, or a scoring on SINGLE" }
+      TOPIC_NOT_FOUND: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:99, note: "a topic not of the course, or deleted while the save waited" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit:exam_question.save; a topic the exam had not picked is picked"
+
+  removeExamQuestion:
+    summary: Sil, a question
+    route: DELETE /online-exams/{examId}/questions/{questionId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:283
+    needs: exam.prepare on the exam's course; a draft; ?version=
+    result: { status: 200, note: "{ version }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27 }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  setExamQuestionPoints:
+    summary: A question's own points, or back into the equal share
+    route: PUT /online-exams/{examId}/questions/{questionId}/points
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:313
+    needs: exam.prepare on the exam's course; a draft
+    body:
+      type: object
+      additionalProperties: false
+      required: [version, points]
+      properties:
+        version: { type: integer, minimum: 1 }
+        points: { type: [string, "null"], description: "0.01 to 100 with at most two decimals (comma or point); null shares again" }
+    result: { status: 200, note: "{ questions: [{ questionId, points, own }], total, version }: every question's points, exact shares shown with two decimals" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      POINTS_OVER_TOTAL: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:133, note: "the own points would pass 100; context.pointsLeft says how many are left" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27 }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400, note: "0, 0,00, above 100 or more than two decimals" }
+
+  listCourseTopics:
+    summary: The course's numbered topics
+    route: GET /courses/{id}/exam-topics
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:333
+    needs: exam.prepare on the course
+    result: { status: 200, type: array, returns: CourseTopic }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  createCourseTopic:
+    summary: Konu ekle
+    route: POST /courses/{id}/exam-topics
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:354
+    needs: exam.prepare on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        number: { type: integer, minimum: 1, maximum: 999 }
+    result: { status: 201, returns: CourseTopic }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      TOPIC_TOO_LONG: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:35, note: "more than three words" }
+      TOPIC_EXISTS: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:49 }
+      TOPIC_NUMBER_TAKEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:59 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit:course_topic.create"
+
+  renameCourseTopic:
+    summary: Rename or renumber a topic (the API has it; the page offers no control yet)
+    route: PATCH /courses/{id}/exam-topics/{topicId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:377
+    needs: exam.prepare on the course
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        number: { type: integer, minimum: 1, maximum: 999 }
+    result: { status: 200, returns: CourseTopic }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      TOPIC_TOO_LONG: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:35 }
+      TOPIC_EXISTS: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:49 }
+      TOPIC_NUMBER_TAKEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:59 }
+      TOPIC_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:71 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+
+  removeCourseTopic:
+    summary: A topic's remove control
+    route: DELETE /courses/{id}/exam-topics/{topicId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:398
+    needs: exam.prepare on the course
+    result: { status: 200, note: "{ exams: [{ id, version }] }: the exams whose pick it took off, with their new versions" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      TOPIC_IN_USE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:84, note: "questions carry it; context names them by exam and number (my choice: refused, not taken off them)" }
+      TOPIC_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:71 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "audit:course_topic.remove; the exams that picked it lose the pick and move on a version"
+
+  publishOnlineExam:
+    summary: Yayınla, now or at a day and time
+    route: POST /online-exams/{examId}/publish
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:193
+    needs: exam.prepare on the exam's course; a draft with no publish problem
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        startsAt: { type: string, format: date-time, description: "left out: now; seconds dropped" }
+        latestStartAt: { type: string, format: date-time, description: "wins over latestStartMinutes when given" }
+        latestStartMinutes: { type: integer, minimum: 0, maximum: 10080, description: "the late window after the start the server sets; left out, 10" }
+    result: { status: 200, note: "the exam as getOnlineExamDraft, now SCHEDULED or OPEN" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_READY: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:155, note: "context.problems: NO_DURATION, NO_QUESTION, QUESTION (number, lacks), POINTS (total), NO_ZEROTH" }
+      EXAM_TIME_PASSED: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:166, note: "a start in the past, or a latest start before the start" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "already published" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "a celse of the course at the start, lasting the length plus the late window, with its LessonExam (MULTIPLE_CHOICE, maxScore 100); the course's or the medrese's zeroth question copied into the exam; audit:online_exam.publish; the celse's own notifications"
+
+  unpublishOnlineExam:
+    summary: Taslağa al, until it opens
+    route: POST /online-exams/{examId}/unpublish
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:217
+    needs: exam.prepare on the exam's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+    result: { status: 200, note: "the exam, a draft again with all it had" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_PUBLISHED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:174 }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "it has opened" }
+      EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "deletes the celse it was published with (the talebe get the calendar CANCEL); audit:online_exam.unpublish"
+
+  closeOnlineExamEarly:
+    summary: Sınavı erken bitir
+    route: POST /online-exams/{examId}/close
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:94
+    needs: exam.prepare on the exam's course; the exam is open
+    result: { status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:9, note: "before it opens, or once it has closed" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "closedEarlyAt; every attempt in progress ends as CLOSED_EARLY and is scored; audit:online_exam.close"
+
+  getOnlineExamResults:
+    summary: Sonuçlar, the team's results of an exam
+    route: GET /online-exams/{examId}/results
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:56
+    needs: exam.prepare on the exam's course
+    result:
+      status: 200
+      type: object
+      description: "each seated talebe's state, score, right/wrong/blank counts, switches with their times, zeroth answer and topic standing; the counts and average; each topic's average; each question's full-points share and option counts; the zeroth counts; released, mayRelease, releasable"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145, note: "no published exam" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  getOnlineExamTalebeAnswers:
+    summary: One talebe's answers, question by question
+    route: GET /online-exams/{examId}/results/{userId}
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:74
+    needs: exam.prepare on the exam's course
+    result:
+      status: 200
+      type: object
+      description: "the talebe's name, state and how it ended, score, switches with their times, zeroth answer, and each question in the exam's order with its options, the correct ones, the talebe's choice, skipped or blank, and the points earned"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:17, note: "no seat or no attempt of this exam" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  # ----- the zeroth question ------------------------------------------------------------------------------------------------------
+
+  getMadrasahZerothQuestion:
+    summary: The medrese's zeroth question, in Medrese ayarları
+    route: GET /madrasahs/{id}/exam-zeroth-question
+    source: apps/tedrisat/src/online-exam/zeroth-question.controller.ts:70
+    needs: madrasah.settings_edit on the medrese
+    result: { status: 200, note: "{ text, options } or null" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  saveMadrasahZerothQuestion:
+    summary: Save the medrese's zeroth question
+    route: PUT /madrasahs/{id}/exam-zeroth-question
+    source: apps/tedrisat/src/online-exam/zeroth-question.controller.ts:89
+    needs: madrasah.settings_edit on the medrese
+    body:
+      type: object
+      additionalProperties: false
+      required: [text, options]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 1000 }
+        options: { type: array, minItems: 2, maxItems: 10, items: { type: string, minLength: 1, maxLength: 300 } }
+    result: { status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400, note: "fewer than two options, more than ten, or two the same" }
+    sideEffects:
+      - "audit:madrasah.zeroth_question.update, unless nothing changed; reaches only exams published after it"
+
+  getCourseZerothQuestion:
+    summary: Which zeroth question a course's exams ask
+    route: GET /courses/{id}/exam-zeroth-question
+    source: apps/tedrisat/src/online-exam/zeroth-question.controller.ts:112
+    needs: exam.prepare on the course
+    result: { status: 200, note: "{ own, madrasah, applies: COURSE | MADRASAH | NONE, inMadrasah }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  saveCourseZerothQuestion:
+    summary: Bu ders için değiştir
+    route: PUT /courses/{id}/exam-zeroth-question
+    source: apps/tedrisat/src/online-exam/zeroth-question.controller.ts:132
+    needs: exam.prepare on the course (my choice, #421)
+    body:
+      type: object
+      additionalProperties: false
+      required: [text, options]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 1000 }
+        options: { type: array, minItems: 2, maxItems: 10, items: { type: string, minLength: 1, maxLength: 300 } }
+    result: { status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit row, unless nothing changed; reaches only exams published after it"
+
+  removeCourseZerothQuestion:
+    summary: Medresenin sorusuna dön
+    route: DELETE /courses/{id}/exam-zeroth-question
+    source: apps/tedrisat/src/online-exam/zeroth-question.controller.ts:155
+    needs: exam.prepare on the course
+    result: { status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  listZerothAnswerCounts:
+    summary: Sıfırıncı soru cevapları, Medaris management's aggregate in nizam
+    route: GET /nizam/exam-zeroth-answers
+    source: apps/tedrisat/src/online-exam/zeroth-answers.controller.ts:53
+    needs: exam.zeroth_read in the platform scope, or in a köşk (narrowed to it); the başnazım by bypass
+    query:
+      type: object
+      required: [from, to]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        koskId: { type: string, format: uuid }
+        madrasahId: { type: string, format: uuid }
+        courseId: { type: string, format: uuid }
+    result: { status: 200, note: "each distinct question (its words and options letter for letter) with how many exams asked it, how many talebe answered, and the exact count per option; no name and no user id" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no exam.zeroth_read, or a köşk filter outside the caller's köşk" }
+      VALIDATION_ERROR: { status: 400, note: "a range whose start is after its end" }
+    sideEffects:
+      - "audit:exam.zeroth_read"
+
+  getZerothQuestionExams:
+    summary: One zeroth question's exams
+    route: GET /nizam/exam-zeroth-answers/{questionKey}
+    source: apps/tedrisat/src/online-exam/zeroth-answers.controller.ts:74
+    needs: as listZerothAnswerCounts
+    result: { status: 200, note: "the exams that asked it, with course, köşk, date and the exact count per option" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "as listZerothAnswerCounts" }
+      ZEROTH_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/zeroth-answers.errors.ts:5 }
+    sideEffects:
+      - "audit:exam.zeroth_read"
+
+invariants:
+  - id: online-exam-points-total-100
+    rule: >-
+      The points of an online exam's questions total 100: each question's own points, and an equal, exact share of what is left for the
+      questions that have none. An exam whose points do not total 100 is not published (POINTS).
+    holds: true
+    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:204
+
+  - id: online-exam-length-required
+    rule: An online exam is published only with a length; a new draft has none (NO_DURATION).
+    holds: true
+    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:210
+
+  - id: online-exam-order-is-the-talebe-s-own
+    rule: >-
+      Every attempt has an order of questions, and of each question's options, drawn for it alone when it starts; a resumed attempt
+      keeps its order.
+    holds: true
+    source: apps/tedrisat/src/database/schema/exam-attempt.schema.ts:42
+
+  - id: online-exam-correct-options-stay-hidden
+    rule: >-
+      No answer to a talebe says which options are correct, or how many, before the exam has closed for everyone and its results are
+      released.
+    holds: true
+    source: apps/tedrisat/src/online-exam/my-exams.service.ts
+
+  - id: online-exam-taken-once
+    rule: A talebe has at most one attempt of an exam; a finished attempt is not started again (EXAM_ALREADY_TAKEN).
+    holds: true
+    source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:46
+
+  - id: online-exam-fixed-once-published
+    rule: >-
+      A published exam's questions, options, points, topics, settings and zeroth question do not change (EXAM_LOCKED); it is taken back
+      to a draft only until it opens.
+    holds: true
+    source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27
+
+  - id: online-exam-clock-runs-connected
+    rule: >-
+      An attempt's time is used only while the page that holds it calls; the time lost to a dropped connection is not counted.
+    holds: true
+    source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:548
+    note: "The owner: \"talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir\"."
+
+  - id: zeroth-answers-never-traced
+    rule: An aggregate of the zeroth answers never carries a name, a user id or a single answer. Its counts are exact.
+    holds: true
+    source: apps/tedrisat/src/online-exam/zeroth-answers.service.ts

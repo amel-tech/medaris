@@ -68,7 +68,7 @@ nodes:
   previewFoot: { css: '[data-testid=plan-preview] p.mds-caption', hasText: '/saatiyle\.$/' }
 
   # --- the toasts are Sonner's: one <li data-sonner-toast> with the title in [data-title] and the description in [data-description] -------------
-  arrivalTitle: { css: '[data-sonner-toast] [data-title]', hasText: Ders açıldı, celseler eklenemedi }
+  arrivalTitle: { css: '[data-sonner-toast] [data-title]', hasText: 'Ders açıldı, celseler eklenemedi' }
   arrivalBody: { css: '[data-sonner-toast] [data-description]', hasText: açıldı ama celseler eklenemedi }
   toastFailedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Celseler oluşturulamadı }
   toastPatternBody: { css: '[data-sonner-toast] [data-description]', hasText: Bu tekrar düzeni geçerli bir celse üretmiyor }

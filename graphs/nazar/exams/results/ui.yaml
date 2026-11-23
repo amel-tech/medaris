@@ -1,0 +1,217 @@
+# The screens of nazar.exams.results: the exam's Sonuçlar page and each talebe's answers page. BUILT (MDRS-299, #417, #423). No node
+# carries a `source`: the graph is `proposed`. "Sınavı erken bitir" is on this page in the code (it is drawn in nazar.exams.publish,
+# where the plan put it). The keys are the plan's (`planned.Exams.*`).
+schema: delurio-graph/0
+kind: ui
+id: nazar.exams.results
+flow: nazar.exams.results
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Ara sınav
+  course: Fıkıh Usulü I
+  when: 28 Kas Cum 21:00
+  seats: "24"
+  started: "21"
+  inProgress: "0"
+  finished: "21"
+  missed: "3"
+  average: "71,40"
+  name: Zeynep Örnek
+  score: "82,50"
+  right: "33"
+  wrong: "12"
+  blank: "5"
+  switches: "1"
+  topic: Mücmel ve müfesser
+  percent: "64"
+  questions: "8"
+  number: "12"
+  textStart: Aşağıdakilerden hangisi âmm lafza örnektir?
+  rightPercent: "38"
+  option: Hâs lafız
+  chosen: "9"
+  startedAt: 28 Kas 21:04
+  finishedAt: 28 Kas 21:57
+  at: 28 Kas 21:20
+  answer: Hâs lafız
+  correct: Âmm lafız
+  got: "0,00"
+  points: "2,00"
+  zerothQuestion: Bu hadisi ne zaman öğrendiniz?
+  zerothOption: Bu derste
+  zerothCount: "7"
+  zerothPercent: "33"
+  releasedAt: 29 Kas 10:15
+  releasedBy: Ahmet Örnek
+
+nodes:
+  # --- the page, its breadcrumb and its head ---------------------------------------------------------------------------------------
+  resultsPage: { type: page, component: Page, role: main, in: [empty, overview, talebeDetail, topicDetail, questionDetail, confirmRelease, releasing] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
+  crumbs: { type: list, component: List, role: navigation, name: { key: SessionPlan.breadcrumbLabel }, in: [empty, overview, talebeDetail, topicDetail, questionDetail, confirmRelease, releasing] } # "Sayfa yolu", as the other sub-pages of nazar
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [empty, overview, talebeDetail, topicDetail, questionDetail], emits: NAVIGATE } # to Sınavlarım (nazar.exams.mine)
+  crumbCurrent: { type: text, component: Text, text: { key: planned.Exams.resultsTitle }, in: [empty, overview, talebeDetail, topicDetail, questionDetail, confirmRelease, releasing] } # aria-current=page, not a link
+  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [empty, overview, talebeDetail, topicDetail, questionDetail, confirmRelease, releasing] } # h1
+  examMeta: { type: text, component: Text, text: { key: planned.Exams.resultsMeta, params: { course: exam.course, when: exam.when } }, in: [empty, overview, confirmRelease, releasing] }
+  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [empty, overview, confirmRelease, releasing] } # the third format, beside Yazılı and Şifahi
+  statusBadge: { type: status, component: Status, text: { oneOf: [planned.Exams.statusOpen, planned.Exams.statusClosed] }, in: [empty, overview, confirmRelease, releasing] } # "Yayında" while talebe can start it or are in it, "Bitti" after
+  liveNote: { type: text, component: Text, role: note, text: { key: planned.Exams.liveNote }, in: [empty, overview], when: stillOpen } # the page is read again while the exam is open (rule live-refresh)
+
+  # --- the refusals --------------------------------------------------------------------------------------------------------------
+  forbiddenMain: { type: page, component: Page, role: main, in: [forbidden, notFound] }
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden] } # as the page's own PageProblem draws it in nazar: a neutral Alert is a status
+  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.notFoundTeamTitle }, text: { key: planned.Exams.notFoundTeam }, in: [notFound] }
+
+  # --- no attempt yet -------------------------------------------------------------------------------------------------------------
+  emptyNote: { type: text, component: Text, text: { key: planned.Exams.noAttemptYet }, in: [empty] }
+
+  # --- the counts and the release ------------------------------------------------------------------------------------------------
+  countsLine: { type: text, component: Text, text: { key: planned.Exams.countsLine, params: { seats: counts.seats, started: counts.started, inProgress: counts.inProgress, finished: counts.finished, missed: counts.missed } }, in: [empty, overview, confirmRelease, releasing] } # one sentence, every count in numbers and words
+  averageLine: { type: text, component: Text, text: { key: planned.Exams.averageLine, params: { average: counts.average } }, in: [overview, confirmRelease, releasing] }
+  releaseHint: { type: text, component: Text, role: note, text: { key: planned.Exams.releaseHint }, in: [overview, confirmRelease, releasing], when: notReleased }
+  releaseButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Evaluation.release }, in: [overview, releasing], when: releasable, disabledIn: [releasing], emits: RELEASE } # Değerlendirme's own words; on while the exam is still open (rule release-while-open)
+  releasedBadge: { type: status, component: Status, text: { key: Evaluation.released }, in: [overview], when: "results == 'opened'" } # "Sonuçlar açık", Değerlendirme's badge
+  releasedLine: { type: text, component: Text, text: { key: planned.Exams.releasedLine, params: { releasedAt: release.releasedAt, releasedBy: release.releasedBy } }, in: [overview], when: "results == 'opened'" } # when and by whom
+
+  # --- Talebeler ------------------------------------------------------------------------------------------------------------------
+  talebeRegion: { type: page, component: Page, role: region, name: { labelledBy: talebeTitle }, in: [empty, overview, confirmRelease, releasing] }
+  talebeTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.talebeTitle }, in: [empty, overview, confirmRelease, releasing] } # h2
+  sortField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.sortLabel }, in: [overview], emits: SORT } # by name, where they are, score, right, wrong, blank or switches; the order is the page's, nothing is read again
+  talebeTable: { type: list, component: List, role: table, name: { labelledBy: talebeTitle }, in: [empty, overview, confirmRelease, releasing] } # every talebe with a seat in the course, those who never started too
+  colName: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTalebe }, in: [empty, overview, confirmRelease, releasing] }
+  colState: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colState }, in: [empty, overview, confirmRelease, releasing] }
+  colScore: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colScore }, in: [overview, confirmRelease, releasing] }
+  colRight: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colRight }, in: [overview, confirmRelease, releasing] }
+  colWrong: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colWrong }, in: [overview, confirmRelease, releasing] }
+  colBlank: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colBlank }, in: [overview, confirmRelease, releasing] }
+  colSwitches: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colSwitches }, in: [overview, confirmRelease, releasing] }
+  colZeroth: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.zerothTitle }, in: [overview, confirmRelease, releasing] }
+  rowName: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.name, params: { name: row.name } }, in: [empty, overview, confirmRelease, releasing], repeat: results.talebe }
+  rowState: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.stateNotStarted, planned.Exams.stateInProgress, planned.Exams.stateFinished, planned.Exams.stateTimeUp, planned.Exams.stateClosedEarly, Evaluation.absentExam] }, in: [empty, overview, confirmRelease, releasing], repeat: results.talebe } # "Başlamadı" while it is open, "Girmedi" once it has closed; "Süre doldu" for an attempt the time ended, scored on its saved answers
+  rowScore: { type: text, component: Text, role: cell, text: { oneOf: [composed.Exams.score, planned.Exams.noScore] }, in: [overview, confirmRelease, releasing], repeat: results.talebe } # "82,50", two decimals; "—" until the attempt ends
+  rowRight: { type: text, component: Text, role: cell, text: { key: composed.Exams.right, params: { right: row.right } }, in: [overview, confirmRelease, releasing], repeat: results.talebe }
+  rowWrong: { type: text, component: Text, role: cell, text: { key: composed.Exams.wrong, params: { wrong: row.wrong } }, in: [overview, confirmRelease, releasing], repeat: results.talebe }
+  rowBlank: { type: text, component: Text, role: cell, text: { key: composed.Exams.blank, params: { blank: row.blank } }, in: [overview, confirmRelease, releasing], repeat: results.talebe }
+  rowSwitches: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.switchCount, planned.Exams.noSwitch] }, in: [overview, confirmRelease, releasing], repeat: results.talebe } # "1 kez", or "Yok"
+  rowZeroth: { type: text, component: Text, role: cell, text: { oneOf: [composed.Exams.zerothOption, planned.Exams.noZeroth] }, in: [overview, confirmRelease, releasing], repeat: results.talebe } # the option chosen, never marked right or wrong
+  openTalebe: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openTalebeLabel, params: { name: row.name } }, text: { key: planned.Exams.openDetail }, in: [overview], repeat: results.talebe.started, emits: OPEN_TALEBE } # only on a row that has an attempt
+
+  # --- Konular --------------------------------------------------------------------------------------------------------------------
+  topicsRegion: { type: page, component: Page, role: region, name: { labelledBy: topicsTitle }, in: [overview, confirmRelease, releasing] }
+  topicsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.topicsTitle }, in: [overview, confirmRelease, releasing] } # h2
+  topicsTable: { type: list, component: List, role: table, name: { labelledBy: topicsTitle }, in: [overview, confirmRelease, releasing] }
+  colTopic: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTopic }, in: [overview, confirmRelease, releasing] }
+  colAverage: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colAverage }, in: [overview, confirmRelease, releasing] }
+  colQuestions: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colQuestions }, in: [overview, confirmRelease, releasing] }
+  topicName: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.topic, params: { topic: row.topic } }, in: [overview, confirmRelease, releasing], repeat: results.topics }
+  topicPercent: { type: text, component: Text, role: cell, text: { key: planned.Exams.percent, params: { percent: row.percent } }, in: [overview, confirmRelease, releasing], repeat: results.topics } # "%64": the share of the topic's points the class got
+  topicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, text: { key: planned.Exams.percent, params: { percent: row.percent } }, in: [overview, confirmRelease, releasing], repeat: results.topics } # repeats the cell beside it; never the only place the figure is
+  topicQuestions: { type: text, component: Text, role: cell, text: { key: planned.Exams.questionTotal, params: { questions: row.questions } }, in: [overview, confirmRelease, releasing], repeat: results.topics }
+  openTopic: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openTopicLabel, params: { topic: row.topic } }, text: { key: planned.Exams.openDetail }, in: [overview], repeat: results.topics, emits: OPEN_TOPIC }
+
+  # --- Sorular --------------------------------------------------------------------------------------------------------------------
+  questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [overview, confirmRelease, releasing] }
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.questionsTitle }, in: [overview, confirmRelease, releasing] } # h2
+  questionsTable: { type: list, component: List, role: table, name: { labelledBy: questionsTitle }, in: [overview, confirmRelease, releasing] } # in the preparer's order
+  colQuestion: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colQuestion }, in: [overview, confirmRelease, releasing] }
+  colRightShare: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colRightShare }, in: [overview, confirmRelease, releasing] }
+  questionStart: { type: text, component: Text, role: rowheader, text: { key: planned.Exams.questionStart, params: { number: row.number, textStart: row.textStart } }, in: [overview, confirmRelease, releasing], repeat: results.questions } # may be Arabic (rule arabic-runs)
+  questionRight: { type: text, component: Text, role: cell, text: { key: planned.Exams.percent, params: { percent: row.rightPercent } }, in: [overview, confirmRelease, releasing], repeat: results.questions } # the share of talebe who got all its points
+  openQuestion: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openQuestionLabel, params: { number: row.number } }, text: { key: planned.Exams.openDetail }, in: [overview], repeat: results.questions, emits: OPEN_QUESTION }
+
+  # --- Sıfırıncı soru ---------------------------------------------------------------------------------------------------------------
+  zerothRegion: { type: page, component: Page, role: region, name: { labelledBy: zerothTitle }, in: [overview, confirmRelease, releasing] }
+  zerothTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothTitle }, in: [overview, confirmRelease, releasing] } # h2
+  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [overview, confirmRelease, releasing] } # dir="rtl", lang="ar" and the Arabic font on this element itself (rule arabic-runs)
+  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [overview, confirmRelease, releasing] }
+  zerothQuestion: { type: text, component: Text, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: exam.zerothQuestion } }, in: [overview, confirmRelease, releasing] } # the preparer's question
+  zerothNoScore: { type: text, component: Text, role: note, text: { key: planned.Exams.zerothNoScore }, in: [overview, confirmRelease, releasing] }
+  zerothCounts: { type: list, component: List, role: list, name: { labelledBy: zerothTitle }, in: [overview, confirmRelease, releasing] }
+  zerothCount: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount, params: { zerothOption: row.zerothOption, zerothCount: row.zerothCount, zerothPercent: row.zerothPercent } }, in: [overview, confirmRelease, releasing], repeat: results.zeroth.options } # the team's own talebe, so no count is hidden here
+
+  # --- a talebe's attempt -------------------------------------------------------------------------------------------------------
+  talebeDetailRegion: { type: page, component: Page, role: region, name: { labelledBy: talebeDetailTitle }, in: [talebeDetail] }
+  talebeDetailTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.name, params: { name: attempt.name } }, in: [talebeDetail] } # h2
+  attemptTimes: { type: text, component: Text, text: { key: planned.Exams.attemptTimes, params: { startedAt: attempt.startedAt, finishedAt: attempt.finishedAt } }, in: [talebeDetail] }
+  attemptHow: { type: status, component: Status, text: { oneOf: [planned.Exams.stateFinished, planned.Exams.stateTimeUp, planned.Exams.stateClosedEarly, planned.Exams.stateInProgress] }, in: [talebeDetail] }
+  attemptScore: { type: text, component: Text, text: { key: planned.Exams.scoreLine, params: { score: attempt.score } }, in: [talebeDetail] }
+  switchesTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.colSwitches }, in: [talebeDetail] } # h3 "Sekme değişimi"
+  switchesLine: { type: text, component: Text, text: { oneOf: [planned.Exams.switchesLine, planned.Exams.noSwitchLine] }, in: [talebeDetail] }
+  switchesList: { type: list, component: List, role: list, name: { labelledBy: switchesTitle }, in: [talebeDetail] }
+  switchItem: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.switchItem, params: { at: switch.at } }, in: [talebeDetail], repeat: attempt.switches } # each switch and its time
+  attemptZeroth: { type: text, component: Text, text: { oneOf: [planned.Exams.zerothAnswerLine, planned.Exams.noZeroth] }, in: [talebeDetail] }
+  attemptQuestions: { type: list, component: List, role: list, name: { key: planned.Exams.attemptQuestionsLabel }, in: [talebeDetail] } # in the order this talebe got
+  attemptQuestion: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.questionStart, params: { number: q.number, textStart: q.textStart } }, in: [talebeDetail], repeat: attempt.questions }
+  attemptAnswer: { type: text, component: Text, text: { oneOf: [planned.Exams.answerLine, planned.Exams.leftBlank] }, in: [talebeDetail], repeat: attempt.questions }
+  attemptCorrect: { type: text, component: Text, text: { key: planned.Exams.correctLine, params: { correct: q.correct } }, in: [talebeDetail], repeat: attempt.questions }
+  attemptGot: { type: text, component: Text, text: { key: planned.Exams.gotLine, params: { got: q.got, points: q.points } }, in: [talebeDetail], repeat: attempt.questions }
+  backFromTalebe: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResults }, in: [talebeDetail], emits: BACK }
+
+  # --- a topic --------------------------------------------------------------------------------------------------------------------
+  topicDetailRegion: { type: page, component: Page, role: region, name: { labelledBy: topicDetailTitle }, in: [topicDetail] }
+  topicDetailTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.topic, params: { topic: topicView.topic } }, in: [topicDetail] } # h2
+  topicDetailAverage: { type: text, component: Text, text: { key: planned.Exams.topicAverageLine, params: { percent: topicView.percent } }, in: [topicDetail] }
+  topicDetailQuestions: { type: list, component: List, role: list, name: { key: planned.Exams.topicQuestionsLabel }, in: [topicDetail] }
+  topicDetailQuestion: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.questionStart, params: { number: q.number, textStart: q.textStart } }, in: [topicDetail], repeat: topicView.questions }
+  topicTalebeTable: { type: list, component: List, role: table, name: { key: planned.Exams.topicTalebeLabel }, in: [topicDetail] } # from the weakest in the topic to the strongest
+  colTopicTalebe: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTalebe }, in: [topicDetail] }
+  colTopicPercent: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colTopicPercent }, in: [topicDetail] }
+  topicTalebeName: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.name, params: { name: row.name } }, in: [topicDetail], repeat: topicView.talebe }
+  topicTalebePercent: { type: text, component: Text, role: cell, text: { key: planned.Exams.percent, params: { percent: row.percent } }, in: [topicDetail], repeat: topicView.talebe }
+  backFromTopic: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResults }, in: [topicDetail], emits: BACK }
+
+  # --- a question ---------------------------------------------------------------------------------------------------------------
+  questionDetailRegion: { type: page, component: Page, role: region, name: { labelledBy: questionDetailTitle }, in: [questionDetail] }
+  questionDetailTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.questionNumber, params: { number: questionView.number } }, in: [questionDetail] } # h2 "12. soru"
+  questionDetailText: { type: text, component: Text, text: { key: composed.Exams.textStart, params: { textStart: questionView.textStart } }, in: [questionDetail] } # the whole text; may be Arabic
+  optionsTable: { type: list, component: List, role: table, name: { key: planned.Exams.optionCountsLabel }, in: [questionDetail] }
+  colOption: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colOption }, in: [questionDetail] }
+  colChosen: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colChosen }, in: [questionDetail] }
+  optionText: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.option, params: { option: row.option } }, in: [questionDetail], repeat: questionView.options }
+  optionCorrect: { type: status, component: Status, text: { key: planned.Exams.correctBadge }, in: [questionDetail], repeat: questionView.options.correct } # "Doğru cevap", in words: never a colour alone
+  optionChosen: { type: text, component: Text, role: cell, text: { key: planned.Exams.chosenCount, params: { chosen: row.chosen } }, in: [questionDetail], repeat: questionView.options }
+  questionBlank: { type: text, component: Text, text: { key: planned.Exams.blankLine, params: { blank: questionView.blank } }, in: [questionDetail] }
+  backFromQuestion: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResults }, in: [questionDetail], emits: BACK }
+
+  # --- the question before the release ------------------------------------------------------------------------------------------
+  releaseDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.releaseConfirmTitle }, text: { key: planned.Exams.releaseConfirmBody }, in: [confirmRelease] } # the focus goes to "Vazgeç" when it opens and back to the release button when it closes (rule focus-not-decided)
+  releaseStillIn: { type: text, component: Text, text: { key: planned.Exams.releaseStillIn, params: { inProgress: counts.inProgress } }, in: [confirmRelease], when: stillOpen }
+  releaseConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.releaseConfirm }, in: [confirmRelease], emits: CONFIRM }
+  releaseCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: planned.Exams.cancel }, in: [confirmRelease], emits: CANCEL }
+
+  # --- the toasts: a success is a status, a failure an alert dialog that stays until closed, as Değerlendirme's are ------------------
+  toastReleased: { type: status, component: Status, role: status, text: { key: Evaluation.releasedToast }, in: [overview], when: "toast == 'released'" }
+  toastReleaseRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Evaluation.releaseFailed }, text: { key: Problems.actionForbidden }, in: [overview], when: "toast == 'refused'" }
+  toastReleaseFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Evaluation.releaseFailed }, text: { key: Problems.actionGeneric }, in: [overview], when: "toast == 'failed'" }
+
+edges:
+  - { labelledBy: [talebeRegion, talebeTitle] }
+  - { labelledBy: [talebeTable, talebeTitle] }
+  - { labelledBy: [topicsRegion, topicsTitle] }
+  - { labelledBy: [topicsTable, topicsTitle] }
+  - { labelledBy: [questionsRegion, questionsTitle] }
+  - { labelledBy: [questionsTable, questionsTitle] }
+  - { labelledBy: [zerothRegion, zerothTitle] }
+  - { labelledBy: [zerothCounts, zerothTitle] }
+  - { labelledBy: [switchesList, switchesTitle] }
+  - { labelledBy: [talebeDetailRegion, talebeDetailTitle] }
+  - { labelledBy: [topicDetailRegion, topicDetailTitle] }
+  - { labelledBy: [questionDetailRegion, questionDetailTitle] }
+  - { triggers: [openTalebe, talebeDetail] }
+  - { triggers: [openTopic, topicDetail] }
+  - { triggers: [openQuestion, questionDetail] }
+  - { triggers: [releaseButton, confirmRelease] }
+  - { triggers: [releaseConfirm, releasing] }
+
+rules:
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; a detail view moves the focus to its h2 and 'Sonuçlara dön' gives it back to the row's 'Ayrıntı'; the release question opens on 'Vazgeç' and returns the focus to the release button, or to the badge that replaces it. The graph says nothing of the focus because nothing is built." }
+  - { id: release-while-open, rule: "Drawn, not decided by the owner: 'Sonuçları talebelere aç' is on while the exam is still open, as Değerlendirme's button is (releaseExamResults checks no time). The question then says how many talebe are still in it; a talebe who finishes after the release reads their score at once, and the answers with the correct ones only once the exam has closed for everyone (getMyExamResult). Holding the button until the exam closes is the other way." }
+  - { id: release-asks-first, rule: "The release asks once, with what it does and that it cannot be undone (need release-the-results). Değerlendirme releases with one press today (nazar.evaluation.examScores, finding F-D1-28); the two should end up the same." }
+  - { id: live-refresh, rule: "While the exam is open the page reads getOnlineExamResults again from time to time (REFRESH) and says so in a note; how often is not decided. A refresh never moves the focus or the scroll, and it does not announce each change (a screen reader would hear every row); the counts sentence is not a live region." }
+  - { id: figures-as-text, rule: "Every figure is said in numbers and words: the counts in one sentence, the average as 'Sınıf ortalaması: 71,40 / 100', a topic's share as '%64' in its cell; the bar beside it only repeats the cell and is named with the same figure. A correct option says 'Doğru cevap' in words. Scores have two decimals and a comma, as Turkish writes them." }
+  - { id: zeroth-no-score, rule: "The zeroth answer is shown as the option chosen and its counts, with a note that it has no right or wrong answer and no part in the score: no colour, no tick and no cross marks one. The team reads its own talebe's answers; Medaris management reads them only in aggregate (nizam.exams.zerothAnswers), where a count under five is hidden." }
+  - { id: arabic-runs, rule: "The hadith is drawn as the talebe sees it: 'مَنْ غَشَّنَا فَلَيْسَ مِنَّا' and its meaning 'Bizi aldatan bizden değildir.'; the Arabic text and the meal are for the owner to confirm. An Arabic run, the hadith and any Arabic in a question or an option, gets dir=\"rtl\", lang=\"ar\", the Arabic font and its 1.9 leading on the element itself, never on a shared ancestor (the design system's rule)." }
+  - { id: planned-words, rule: "Every key `planned.Exams.*` and `Changes.note` is a proposal for the owner to review; Evaluation.*, Problems.* and SessionPlan.breadcrumbLabel are the app's own." }

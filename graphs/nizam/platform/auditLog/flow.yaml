@@ -256,6 +256,7 @@ states:
       TYPE_NOBODY: { target: reading, effect: [typedNobody], say: "they type a name nobody has", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
       CLEAR_PERSON: { guard: "person != 'none'", target: reading, effect: [clearedPerson], say: "they erase the text", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
       ANY_KIND: { guard: "kind != 'all'", target: reading, effect: [anyKind], say: "\"Ne yaptı\" is set back to \"Tümü\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:225 }
+      EXPORT: { target: exportingEmpty, say: "they press \"Dışa aktar\" with no row on the page: the browser asks for the file of the same filters", source: apps/nizam/features/platform-admin/components/audit-view.tsx:194 }
       NAVIGATE: { target: left, say: "they go to another page (the menu, or the address)", source: apps/nizam/app/denetim-kaydi/page.tsx:24 }
   loadFailed:
     title: The log could not be read
@@ -305,6 +306,16 @@ states:
     invoke: { action: webExportAuditLog }
     on:
       DONE: { target: listedMore, say: "the file is in the browser's downloads; the page is as it was", source: apps/nizam/app/api/audit-log/export/route.ts:41 }
+
+  exportingEmpty:
+    title: Download the file of no row
+    description: >-
+      The same download from the page whose filters fit no row: the file holds the header line alone, and tedrisat writes its `audit.export` row
+      with a count of 0 (not verified on the stack). The state draws the page as it was.
+    source: apps/nizam/app/api/audit-log/export/route.ts:16
+    invoke: { action: webExportAuditLog }
+    on:
+      DONE: { target: empty, say: "the file is in the browser's downloads; the page is as it was", source: apps/nizam/app/api/audit-log/export/route.ts:41 }
 
   exportingBad:
     title: Download the file from a log that did not load

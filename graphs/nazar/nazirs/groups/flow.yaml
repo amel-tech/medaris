@@ -338,6 +338,7 @@ states:
       TICK_COURSE:
         - { guard: "picked == 'madrasah' or picked == 'both'", target: createForm, effect: [pickedBoth], say: "they tick a course permission beside a medrese one" }
         - { target: createForm, effect: [pickedCourse], say: "they tick a course permission" }
+      SCOPE_MADRASAH: { target: createForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:320, say: "they press 'Medrese', which is chosen already: nothing changes" }
       SCOPE_COURSE:
         - { guard: "picked == 'madrasah'", target: createFormCourse, effect: [scopeToCourse, pickedNone], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the medrese boxes go off and the ticked one is unticked" }
         - { guard: "picked == 'both'", target: createFormCourse, effect: [scopeToCourse, pickedCourse], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the medrese boxes go off and are unticked, the course one stays" }
@@ -364,6 +365,7 @@ states:
     on:
       TYPE_NAME: { target: createFormCourse, effect: [typedName], say: "they type the group's name" }
       TICK_COURSE: { target: createFormCourse, effect: [pickedCourse], say: "they tick a course permission" }
+      SCOPE_COURSE: { target: createFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:320, say: "they press 'Ders', which is chosen already: nothing changes" }
       SCOPE_MADRASAH: { target: createForm, effect: [scopeToMadrasah], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Medrese' again: the medrese boxes are on, still unticked" }
       SUBMIT:
         - { guard: ready, target: creatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:216, say: "they press 'Grubu kaydet' with a name and a permission" }
@@ -393,6 +395,8 @@ states:
       FAIL.taken: { guard: "answer == 'taken'", target: createForm, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "'Bu adla başka bir grup var. Başka bir ad seçin.' under the name; the dialog stays and nothing is announced (F-B-5)" }
       FAIL.forbidden: { guard: "answer == 'refused'", target: createForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup kaydedilemedi: Bunu yapma izniniz yok.'; the dialog stays" }
       FAIL.other: { guard: "answer == 'failed' or answer == 'gone'", target: createForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup kaydedilemedi: Bir şeyler ters gitti.'; the dialog stays" }
+      CANCEL: { target: creating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press Vazgeç: nothing happens, the save goes on (GROUPS-2)" }
+      CLOSE: { target: creating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press the close icon or Esc: nothing happens, the save goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/actions.ts:225
 
   creatingCourse:
@@ -404,6 +408,8 @@ states:
       FAIL.taken: { guard: "answer == 'taken'", target: createFormCourse, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "the taken name is said under the field" }
       FAIL.forbidden: { guard: "answer == 'refused'", target: createFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
       FAIL.other: { guard: "answer == 'failed' or answer == 'gone'", target: createFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      CANCEL: { target: creatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press Vazgeç: nothing happens, the save goes on (GROUPS-2)" }
+      CLOSE: { target: creatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press the close icon or Esc: nothing happens, the save goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/actions.ts:225
 
   editForm:
@@ -421,6 +427,7 @@ states:
         - { guard: "edits == 'codes'", target: editForm, say: "they change the name too" }
         - { target: editForm, effect: [renamed], say: "they type another name" }
       TICK_COURSE: { target: editForm, effect: [changedCodes], say: "they tick another course permission" }
+      SCOPE_MADRASAH: { target: editForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:320, say: "they press 'Medrese', which is chosen already: nothing changes" }
       SCOPE_COURSE: { target: editFormCourse, effect: [scopeToCourse, changedCodes], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the group's medrese permissions go off and are unticked" }
       DELETE_GROUP:
         - { guard: "held == 'used'", target: askDelete, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group people hold: the question names how many, with no answer chosen" }
@@ -445,6 +452,7 @@ states:
         - { guard: "edits == 'codes'", target: editFormCourse, say: "they change the name too" }
         - { target: editFormCourse, effect: [renamed], say: "they type another name" }
       TICK_COURSE: { target: editFormCourse, effect: [changedCodes], say: "they tick another course permission" }
+      SCOPE_COURSE: { target: editFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:320, say: "they press 'Ders', which is chosen already: nothing changes" }
       SCOPE_MADRASAH: { target: editForm, effect: [scopeToMadrasah], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Medrese': the medrese boxes are on, unticked" }
       DELETE_GROUP:
         - { guard: "held == 'used'", target: askDelete, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group people hold" }
@@ -475,6 +483,8 @@ states:
         - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, the dialog closes, the list is read again" }
       FAIL.forbidden: { guard: "answer == 'refused'", target: editForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
       FAIL.other: { guard: "answer == 'failed'", target: editForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      CANCEL: { target: updating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press Vazgeç: nothing happens, the save goes on (GROUPS-2)" }
+      CLOSE: { target: updating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press the close icon or Esc: nothing happens, the save goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/actions.ts:240
 
   updatingCourse:
@@ -489,6 +499,8 @@ states:
         - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, the dialog closes" }
       FAIL.forbidden: { guard: "answer == 'refused'", target: editFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
       FAIL.other: { guard: "answer == 'failed'", target: editFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      CANCEL: { target: updatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press Vazgeç: nothing happens, the save goes on (GROUPS-2)" }
+      CLOSE: { target: updatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:258, say: "they press the close icon or Esc: nothing happens, the save goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/actions.ts:240
 
   askEdit:
@@ -546,6 +558,8 @@ states:
         - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, both dialogs close" }
       FAIL.forbidden: { guard: "answer == 'refused'", target: askEditChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the question stays" }
       FAIL.other: { guard: "answer == 'failed'", target: askEditChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the question stays" }
+      CANCEL: { target: updatingAsked, source: apps/nazar/features/nazirs/components/group-dialog.tsx:403, say: "they press Vazgeç in the question: nothing happens, the save goes on (GROUPS-2)" }
+      CLOSE: { target: updatingAsked, source: apps/nazar/features/nazirs/components/group-dialog.tsx:403, say: "they press its close icon or Esc: nothing happens, the save goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/components/group-dialog.tsx:243
 
   askDelete:
@@ -621,6 +635,8 @@ states:
       FAIL.other:
         - { guard: "(answer == 'failed' or answer == 'taken') and held == 'used'", target: askDeleteChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
         - { guard: "answer == 'failed' or answer == 'taken'", target: askDeleteUnused, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
+      CANCEL: { target: deleting, source: apps/nazar/features/nazirs/components/group-dialog.tsx:403, say: "they press Vazgeç in the question: nothing happens, the delete goes on (GROUPS-2)" }
+      CLOSE: { target: deleting, source: apps/nazar/features/nazirs/components/group-dialog.tsx:403, say: "they press its close icon or Esc: nothing happens, the delete goes on (GROUPS-2)" }
     source: apps/nazar/features/nazirs/actions.ts:258
 
   not_found:

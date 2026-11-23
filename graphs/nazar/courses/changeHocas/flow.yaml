@@ -289,6 +289,8 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says she may not; the dialog stays open" }
       FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says what is wrong with the list; the dialog stays open" }
       FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says something went wrong, try again; the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:97, say: "Vazgeç: nothing happens, the list is still saved (HOCAS-5)" }
+      CLOSE: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:97, say: "the close icon, or Esc: nothing happens, the list is still saved (HOCAS-5)" }
     source: apps/nazar/features/courses/components/change-muderris.tsx:65
 
   saved:

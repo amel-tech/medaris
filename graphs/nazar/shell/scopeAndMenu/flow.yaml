@@ -219,6 +219,11 @@ states:
       that opens is the scope's own page and writes the cookie. Choosing the row of the scope the person is on loads it again.
     on:
       ESCAPE: { target: kept, say: "Esc closes the popup", source: apps/nazar/features/shell/components/scope-picker.tsx:127 }
+      OPEN_PICKER: { guard: pickerMenu, target: kept, say: "a second press on the picker's button: the popup closes", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PANO: { target: kept, say: "a click on Pano while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_NOTIFICATIONS: { target: kept, say: "a click on Bildirimler while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PAGE: { target: kept, say: "a click on another entry of the menu while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PERSON: { target: kept, say: "a click on the person's row while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
       CHOOSE_MEDRESE: { guard: hasMedrese, target: wide, effect: [toMedrese], say: "they choose the medrese: its Pano opens and the cookie names it", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
       CHOOSE_COURSE: { target: wide, effect: [toCourse], say: "they choose a course: its Genel bakış opens and the cookie names it", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
       NAVIGATE: { target: left, say: "they leave" }
@@ -290,6 +295,12 @@ states:
       whole page load leaves it on the document's start.
     on:
       ESCAPE: { target: sheet, say: "Esc closes the popup only", source: apps/nazar/features/shell/components/scope-picker.tsx:127 }
+      OPEN_PICKER: { guard: pickerMenu, target: sheet, say: "a second press on the picker's button: the popup closes", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PANO: { target: sheet, say: "a click on Pano while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_NOTIFICATIONS: { target: sheet, say: "a click on Bildirimler while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PAGE: { target: sheet, say: "a click on another entry of the menu while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      PICK_PERSON: { target: sheet, say: "a click on the person's row while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
+      CLOSE_SHEET: { target: sheet, say: "a click on the sheet's Kapat while the picker is open only closes it: the menu is modal, and a backdrop over the page takes the click", source: apps/nazar/features/shell/components/scope-picker.tsx:126 }
       CHOOSE_MEDRESE: { guard: hasMedrese, target: medrese_opened, say: "they choose the medrese", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
       CHOOSE_COURSE: { target: course_opened, say: "they choose a course", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
       NAVIGATE: { target: left, say: "they leave" }

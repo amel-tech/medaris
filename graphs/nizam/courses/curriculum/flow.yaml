@@ -52,7 +52,7 @@ scope:
     Kaydet, the toasts of a save, an upload and a refused download, the file link, and the five links that leave
   world: open
   outOfView:
-    - "one unsaved change at a time: the model lets the person begin a change only from a form that has none (`clean`), then fill it, save it or take it back; two changes at once behave as each does alone, and the buttons of the other changes are on the page the whole time, but the graph draws their press only from `clean`"
+    - "one unsaved change at a time, tracked: the model follows the first change made from a form that has none (`clean`), its filling, its save and its taking back. A further change (a week, a celse or a link row added, a week copied, a celse hidden) is drawn from `edited` and `invalid` too, as `also`: the graph keeps of it only whether Kaydet refuses it (a row with no title or name) or takes it, not what it stores, and it draws no way to fill the row it added. After it, the errors under the fields that `invalid` lists are those of the tracked change only"
     - "a course of one kind of resource row at a time: the model keeps one row on the course (a link or a file) and up to two links on the first celse; more rows behave the same. A file row on a celse, which the upload dialog of a celse adds, is not counted (its dialog and refusals are the course's)"
     - "the other errors under a field: 'Ders adı en az iki harften oluşmalı.', a celse's date, time and length ('Celse tarihini girin.', 'Celse saatini girin.', 'Süre 1 ile 1440 dakika arasında olmalı.') and a resource's name and address. They have the shape of the ones drawn and are shown the same way, after the first Kaydet, under the field, not announced; after a refused Kaydet the form keeps `sent` until a save or Vazgeç, so a row added later shows its error at once"
     - "an error inside a week that is folded: the first week that has not ended opens by itself, a week that is added or copied opens, a stored week after it is folded, and its errors are invisible there (F-W4-2); the walk keeps its blanks in the open week"
@@ -62,7 +62,8 @@ scope:
     - "an upload fetch that cannot be sent at all ('Dosya gönderilemedi. Bağlantınızı denetleyip yeniden deneyin.') and the proxy's own refusals (an id that is no uuid, a body that is not multipart): `failed: rejected` stands for every refusal that is not the store's or the file's"
     - "the pages that name this one in their buttons: 'Celse planla', 'Ders ayarları', 'Derse dön' and a celse's 'Düzenle' of other pages all arrive here through /edit (F-W4-1, F-X-19); nizam.courses.overview owns those buttons, and /edit is a redirect (nav: courseEdit)"
     - "who else reaches the page: the başnazım (SYSTEM_ADMIN) sees the same page with the same buttons (mayEditCourse, features/kosks/kosk-abilities.ts:70); a köşk nazımı of another köşk, a Medaris nazımı who manages no köşk and a talebe are refused before it (the köşk layout and readCourseScope). The walk is the köşk nazımı's"
-    - "a hold of the form while a save is in flight: the fields and the row buttons stay live (NCURR-2); only Kaydet and Vazgeç change, and the walk does not type then"
+    - "a hold of the form while a save is in flight: the fields and the row buttons stay live (NCURR-2); only Kaydet and Vazgeç change, and the walk does not type then. A row button pressed then acts at once, and a save that goes through replaces the form with its answer, so what it added is gone; the graph draws the press after the save (`duringStep`), where a refused save keeps it"
+    - "a file downloaded, or an upload dialog closed, over a form whose errors show: the page comes back as `edited`, where the errors that still show are not listed"
 
 decisions:
   D1:
@@ -144,6 +145,13 @@ context:
       none: "the first celse has no stored resource"
       one: "the first celse has one stored link row"
       two: "the first celse has two stored link rows"
+  also:
+    values: [none, taken, blank]
+    initial: none
+    say:
+      none: "the form holds no change besides the one `form` names"
+      taken: "the form also holds a further change that Kaydet takes (a week copied, a celse hidden), which the graph does not track"
+      blank: "the form also holds a further row with no title or no name (a week, a celse or a link row added), so Kaydet refuses it"
   stale:
     values: [still, changed]
     initial: still
@@ -192,6 +200,8 @@ context:
 guards:
   # a title or an address Kaydet refuses (curriculumErrors, features/courses/present.ts:941)
   blanks: "form in ['titleCleared', 'linkBad', 'weekBlank', 'sessionBlank', 'courseLinkBlank', 'lessonLinkBlank']"
+  # a title or a name Kaydet refuses, in the tracked change or in a further one
+  hasBlank: "blanks or also == 'blank'"
   isStale: "stale == 'changed'"
   notStale: "stale == 'still'"
   # a celse with no id yet: its "Dosya yükle" is off and says to save first (lesson-resources-editor.tsx:229, :234)
@@ -229,38 +239,41 @@ effects:
   lessonLinkFilled: { set: { form: lessonLinkNamed } }
   lessonLinkRemoved: { set: { form: lessonLinkGone, last: nothing } }
   lessonMoved: { set: { form: moved, last: nothing } }
+  # a further change, made while another is in the form (outOfView): Kaydet takes it, or it holds a row with no title or name
+  alsoTaken: { set: { also: taken, last: nothing } }
+  alsoBlank: { set: { also: blank, last: nothing } }
   # a row added on this page and taken out again leaves nothing to save
   rowDropped: { set: { form: clean } }
   # Vazgeç: the stored values are put back (the file the page holds as saved, an uploaded one too, stays)
-  putBack: { set: { form: clean, last: nothing } }
+  putBack: { set: { also: none, form: clean, last: nothing } }
   clearToast: { set: { last: nothing } }
   # Kaydet refused with a blank: nothing is sent, the form and the toasts are as they were (a read of the API shows it)
   blankRefused: { set: { last: nothing } }
   # someone else's save
   savedElsewhere: { set: { stale: changed } }
   # a save: what the form held is now stored, and the page holds the answer
-  savedRenamed: { set: { form: clean, stale: still, last: saved } }
-  savedRetitled: { set: { form: clean, stale: still, last: saved } }
-  savedLinkSet: { set: { form: clean, stale: still, last: saved } }
-  savedWeekNamed: { set: { form: clean, stale: still, last: saved } }
-  savedSessionNamed: { set: { form: clean, stale: still, last: saved } }
-  savedCopied: { set: { form: clean, stale: still, last: saved } }
-  savedSessionHidden: { set: { form: clean, stale: still, last: saved } }
-  savedWeekHidden: { set: { form: clean, stale: still, last: saved } }
-  savedCourseLink: { set: { form: clean, stale: still, last: saved, courseRows: link } }
-  savedCourseLinkGone: { set: { form: clean, stale: still, last: saved, courseRows: none } }
-  savedCourseFileGone: { set: { form: clean, stale: still, last: saved, courseRows: none } }
-  savedLessonOne: { set: { form: clean, stale: still, last: saved, lessonRows: one } }
-  savedLessonTwo: { set: { form: clean, stale: still, last: saved, lessonRows: two } }
-  savedLessonDownToOne: { set: { form: clean, stale: still, last: saved, lessonRows: one } }
-  savedLessonDownToNone: { set: { form: clean, stale: still, last: saved, lessonRows: none } }
-  savedMoved: { set: { form: clean, stale: still, last: saved } }
+  savedRenamed: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedRetitled: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedLinkSet: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedWeekNamed: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedSessionNamed: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedCopied: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedSessionHidden: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedWeekHidden: { set: { also: none, form: clean, stale: still, last: saved } }
+  savedCourseLink: { set: { also: none, form: clean, stale: still, last: saved, courseRows: link } }
+  savedCourseLinkGone: { set: { also: none, form: clean, stale: still, last: saved, courseRows: none } }
+  savedCourseFileGone: { set: { also: none, form: clean, stale: still, last: saved, courseRows: none } }
+  savedLessonOne: { set: { also: none, form: clean, stale: still, last: saved, lessonRows: one } }
+  savedLessonTwo: { set: { also: none, form: clean, stale: still, last: saved, lessonRows: two } }
+  savedLessonDownToOne: { set: { also: none, form: clean, stale: still, last: saved, lessonRows: one } }
+  savedLessonDownToNone: { set: { also: none, form: clean, stale: still, last: saved, lessonRows: none } }
+  savedMoved: { set: { also: none, form: clean, stale: still, last: saved } }
   conflicted: { set: { last: conflict } }
   refused: { set: { last: refused } }
   failedSave: { set: { last: failed } }
   # a page read from the start: the stored course, with no edit and no toast
   fileRead: { set: { courseRows: file } }
-  reloaded: { set: { form: clean, stale: still, last: nothing, pick: none, failed: none } }
+  reloaded: { set: { also: none, form: clean, stale: still, last: nothing, pick: none, failed: none } }
   # the upload dialog
   courseUploadOpened: { set: { panel: course, pick: none, failed: none, last: nothing } }
   lessonUploadOpened: { set: { panel: lesson, pick: none, failed: none, last: nothing } }
@@ -277,10 +290,10 @@ effects:
   uploadGone: { set: { failed: gone } }
   uploadFileRefused: { set: { pick: wrongType, failed: none } }
   # a refused download comes back to the page by a 303, read anew: the form is the stored one again
-  fileDeniedBack: { set: { last: fileForbidden, form: clean, stale: still } }
-  fileGoneBack: { set: { last: fileGone, form: clean, stale: still } }
-  fileUnavailableBack: { set: { last: fileUnavailable, form: clean, stale: still } }
-  fileFailedBack: { set: { last: fileFailed, form: clean, stale: still } }
+  fileDeniedBack: { set: { also: none, last: fileForbidden, form: clean, stale: still } }
+  fileGoneBack: { set: { also: none, last: fileGone, form: clean, stale: still } }
+  fileUnavailableBack: { set: { also: none, last: fileUnavailable, form: clean, stale: still } }
+  fileFailedBack: { set: { also: none, last: fileFailed, form: clean, stale: still } }
 
 failures:
   opened:
@@ -497,13 +510,13 @@ states:
         say: "they type a name and an address in the first celse's new link row, below the one stored"
         source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:160
       REMOVE_COURSE:
-        guard: courseNewRow
+        guard: "courseNewRow and also == 'none'"
         target: clean
         effect: [rowDropped]
         say: "they press Kaynağı çıkar on the link row they added: the row goes, nothing differs any more"
         source: apps/nizam/features/courses/components/resources-editor.tsx:142
       REMOVE_LESSON:
-        guard: lessonNewRow
+        guard: "lessonNewRow and also == 'none'"
         target: clean
         effect: [rowDropped]
         say: "they press Kaynağı çıkar on the celse's link row they added: the row goes, nothing differs any more"
@@ -524,8 +537,20 @@ states:
         target: downloading
         say: "they follow the file's link with edits on the page: a refusal reloads the page and the edits go (NCURR-3)"
         source: apps/nizam/features/courses/components/resource-file-parts.tsx:48
+      # A further change while this one is in the form: each button is live and adds to the form (outOfView, `also`).
+      ADD_WEEK: { target: edited, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:427 }
+      ADD_SESSION: { target: edited, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:781 }
+      ADD_COURSE_LINK: { target: edited, effect: [alsoBlank], say: "they press Kaynak ekle in Bağlı kaynaklar with a change in the form: an empty link row joins it", source: apps/nizam/features/courses/components/resources-editor.tsx:217 }
+      ADD_LESSON_LINK: { target: edited, effect: [alsoBlank], say: "they press Kaynak ekle in the first celse's list with a change in the form: an empty link row joins it", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:222 }
+      COPY_WEEK:
+        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: edited, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+        - { target: edited, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+      HIDE_SESSION:
+        - { guard: "form in ['titleCleared', 'linkBad', 'linkSet']", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse they were changing: the row leaves the draft with its change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { guard: "also == 'none'", target: edited, effect: [alsoTaken], say: "they press Gizle on another celse with a change in the form: it leaves the draft beside it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { target: edited, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
       SAVE:
-        - { guard: blanks, target: invalid, effect: [blankRefused], say: "they press Kaydet with a blank title or a bad link: only the field errors show", source: apps/nizam/features/courses/components/curriculum-editor.tsx:234 }
+        - { guard: hasBlank, target: invalid, effect: [blankRefused], say: "they press Kaydet with a blank title or a bad link: only the field errors show", source: apps/nizam/features/courses/components/curriculum-editor.tsx:234 }
         - { target: saving, effect: [clearToast], say: "they press Kaydet", source: apps/nizam/features/courses/components/curriculum-editor.tsx:238 }
       CANCEL: { target: clean, effect: [putBack], say: "they press Vazgeç: the stored values are put back", source: apps/nizam/features/courses/components/curriculum-editor.tsx:170 }
       COURSE_CHANGED:
@@ -595,6 +620,24 @@ states:
         effect: [lessonLinkFilled]
         say: "they type a name and an address in the celse's new link row, below the one stored: the errors go"
         source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:160
+      # A further change while this one is in the form: each button is live and adds to the form (outOfView, `also`).
+      ADD_WEEK: { target: invalid, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:427 }
+      ADD_SESSION: { target: invalid, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:781 }
+      ADD_COURSE_LINK: { target: invalid, effect: [alsoBlank], say: "they press Kaynak ekle in Bağlı kaynaklar with a change in the form: an empty link row joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/resources-editor.tsx:217 }
+      ADD_LESSON_LINK: { target: invalid, effect: [alsoBlank], say: "they press Kaynak ekle in the first celse's list with a change in the form: an empty link row joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:222 }
+      COPY_WEEK:
+        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: invalid, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+        - { target: invalid, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+      HIDE_SESSION:
+        - { guard: "form in ['titleCleared', 'linkBad'] and also != 'blank'", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft with its error", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { guard: "form in ['titleCleared', 'linkBad']", target: invalid, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft, and the other row's error stays", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { guard: "also == 'none'", target: invalid, effect: [alsoTaken], say: "they press Gizle on another celse: it leaves the draft beside the refused change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { target: invalid, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+      REMOVE_COURSE: { guard: "courseNewRow and also == 'none'", target: clean, effect: [rowDropped], say: "they press Kaynağı çıkar on the empty link row they added: the row goes with its errors, nothing differs any more", source: apps/nizam/features/courses/components/resources-editor.tsx:142 }
+      REMOVE_LESSON: { guard: "lessonNewRow and also == 'none'", target: clean, effect: [rowDropped], say: "they press Kaynağı çıkar on the celse's empty link row they added: the row goes with its errors, nothing differs any more", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:142 }
+      OPEN_COURSE_UPLOAD: { guard: "courseRows != 'link'", target: uploadDialog, effect: [courseUploadOpened], say: "they press Dosya yükle in Bağlı kaynaklar with the errors on the page: the file is stored at once, the edits are not", source: apps/nizam/features/courses/components/resource-file-parts.tsx:185 }
+      OPEN_LESSON_UPLOAD: { target: uploadDialog, effect: [lessonUploadOpened], say: "they press Dosya yükle in the first celse's list with the errors on the page", source: apps/nizam/features/courses/components/resource-file-parts.tsx:185 }
+      DOWNLOAD: { guard: "courseRows == 'file'", target: downloading, say: "they follow the file's link with the errors on the page: a refusal reloads the page and the edits go (NCURR-3)", source: apps/nizam/features/courses/components/resource-file-parts.tsx:48 }
       SAVE: { target: invalid, effect: [blankRefused], say: "they press Kaydet again: the same errors, nothing sent", source: apps/nizam/features/courses/components/curriculum-editor.tsx:234 }
       CANCEL: { target: clean, effect: [putBack], say: "they press Vazgeç: the stored values are put back and the errors go", source: apps/nizam/features/courses/components/curriculum-editor.tsx:170 }
       COURSE_CHANGED:
@@ -649,6 +692,11 @@ states:
       FAIL.conflict: { guard: isStale, target: edited, effect: [conflicted], say: "the stored course moved on since the page read it: nothing is written, and the page keeps its edits and its old version", source: apps/nizam/features/courses/components/curriculum-editor.tsx:246 }
       FAIL.forbidden: { target: edited, effect: [refused], say: "the API says the caller may not: an error toast, the form as it was", source: apps/nizam/features/courses/components/curriculum-editor.tsx:246 }
       FAIL.other: { target: edited, effect: [failedSave], say: "any other refusal: an error toast, the form as it was", source: apps/nizam/features/courses/components/curriculum-editor.tsx:246 }
+      # The links, plain <a> elements, stay live while the course is sent: the browser leaves the page at once, and the PUT already sent is
+      # the server's to finish or refuse (not verified); no page is left to say which.
+      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
+      SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
+      SESSIONS: { target: sessions_opened, say: "they follow Celseler while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
     source: apps/nizam/features/courses/components/curriculum-editor.tsx:239
 
   removeFile:
@@ -718,6 +766,8 @@ states:
       FAIL.fileRefused: { target: uploadDialog, effect: [uploadFileRefused], say: "the file itself is refused: a sentence under the field", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.rejected: { guard: "files == 'refused'", target: uploadDialog, effect: [uploadRejected], say: "the call is refused: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.gone: { target: uploadDialog, effect: [uploadGone], say: "the course is not there: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
+      CANCEL: { target: uploadingCourse, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press Vazgeç, or Esc, while the course's file is on its way: nothing happens, the upload goes on (the dialog refuses to close while busy, NCURR-4)" }
+      CLOSE: { target: uploadingCourse, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press the close icon: nothing happens, the upload goes on" }
     source: apps/nizam/features/courses/components/resource-file-parts.tsx:152
 
   uploadingLesson:
@@ -736,6 +786,8 @@ states:
       FAIL.fileRefused: { target: uploadDialog, effect: [uploadFileRefused], say: "the file itself is refused: a sentence under the field", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.rejected: { guard: "files == 'refused'", target: uploadDialog, effect: [uploadRejected], say: "the call is refused: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
       FAIL.gone: { target: uploadDialog, effect: [uploadGone], say: "the celse or the course is not there: an alert in the dialog", source: apps/nizam/features/courses/components/resource-file-parts.tsx:159 }
+      CANCEL: { target: uploadingLesson, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press Vazgeç, or Esc, while the celse's file is on its way: nothing happens, the upload goes on (the dialog refuses to close while busy, NCURR-4)" }
+      CLOSE: { target: uploadingLesson, source: apps/nizam/features/courses/components/resource-file-parts.tsx:193, say: "they press the close icon: nothing happens, the upload goes on" }
     source: apps/nizam/features/courses/components/resource-file-parts.tsx:152
 
   downloading:
@@ -807,11 +859,11 @@ assertions:
     say: The dirty line, Vazgeç and Kaydet are on only when the form differs from what is stored.
     source: apps/nizam/features/courses/components/curriculum-editor.tsx:293
   - id: invalid-means-a-blank
-    never: "state == 'invalid' and not blanks"
+    never: "state == 'invalid' and not hasBlank"
     say: The field errors show only where a title is blank or a link is bad.
     source: apps/nizam/features/courses/components/curriculum-editor.tsx:234
   - id: nothing-blank-is-sent
-    never: "state == 'saving' and blanks"
+    never: "state == 'saving' and hasBlank"
     say: A week or celse without a title, a bad link and a resource row without a name or address are never sent; Kaydet shows the field errors instead.
     source: apps/nizam/features/courses/components/curriculum-editor.tsx:234
   - id: a-conflict-is-a-stale-save

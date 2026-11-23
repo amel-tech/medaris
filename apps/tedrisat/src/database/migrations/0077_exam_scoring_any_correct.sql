@@ -1,0 +1,1 @@
+ALTER TYPE "public"."exam_scoring" ADD VALUE 'ANY_CORRECT';

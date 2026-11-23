@@ -259,6 +259,9 @@ states:
       DONE: { guard: "answer not in ['forbidden', 'failed']", target: cancellingAfterMakeUp, say: "the new celse exists; the cancel follows at the version the batch left", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:97 }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [makeUpFailed], say: "\"Bunu yapma izniniz yok.\" under the title of the toast", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:88 }
       FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [makeUpFailed], say: "the pattern's sentence or \"Bir şeyler ters gitti.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:88 }
+      # The dialog drops every way of closing while `pending` (cancel-dialog.tsx:143): the press changes nothing and the call runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: makingUp, say: "they press 'Vazgeç' or the close icon, or Esc, while the call is made: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:143 }
     source: apps/nazar/features/sessions/components/cancel-dialog.tsx:84
 
   cancellingAlone:
@@ -281,6 +284,9 @@ states:
       FAIL.moved: { guard: aloneStale, target: settled, effect: [cancelFailed], say: "\"Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfa yenilendi; yeniden deneyin.\": the dialog closes and the page is read again", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [cancelFailed], say: "\"Bunu yapma izniniz yok.\": the dialog stays open", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:109 }
       FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [cancelFailed], say: "\"Bir şeyler ters gitti. Biraz sonra yeniden deneyin.\": the dialog stays open", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:109 }
+      # The dialog drops every way of closing while `pending` (cancel-dialog.tsx:143): the press changes nothing and the call runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: cancellingAlone, say: "they press 'Vazgeç' or the close icon, or Esc, while the call is made: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:143 }
     source: apps/nazar/features/sessions/components/cancel-dialog.tsx:101
 
   cancellingAfterMakeUp:
@@ -303,6 +309,9 @@ states:
       FAIL.already: { guard: "answer == 'already'", target: settled, effect: [afterMakeUpFailed], say: "\"Bu celse zaten iptal edilmiş.\": the dialog closes, the make-up stands", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
       FAIL.taken: { guard: "answer == 'taken'", target: settled, effect: [afterMakeUpFailed], say: "\"Bu celse başka bir celsenin telafisi olarak zaten bağlı.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
       FAIL.invalid: { guard: "answer == 'invalid'", target: settled, effect: [afterMakeUpFailed], say: "\"Telafi olarak seçilen celse bu dersin yaşayan, iptal edilmemiş bir canlı celsesi değil.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
+      # The dialog drops every way of closing while `pending` (cancel-dialog.tsx:143): the press changes nothing and the call runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: cancellingAfterMakeUp, say: "they press 'Vazgeç' or the close icon, or Esc, while the call is made: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:143 }
     source: apps/nazar/features/sessions/components/cancel-dialog.tsx:101
 
   settled:
@@ -344,6 +353,7 @@ states:
       reader says the title and "Hafta n · Telafi celsesi"). It is the one place in the app that moves the focus on purpose. The page is
       otherwise as in the state before.
     on:
+      FOLLOW_MAKEUP: { guard: makeUpWanted, target: madeUpFocused, say: "they follow \"Telafisi: <when>\" again: showSession scrolls to the make-up's row and gives its name cell the focus once more", source: apps/nazar/features/sessions/components/sessions-table.tsx:373 }
       NAVIGATE: { target: left, say: "they follow the menu to another page" }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:296
 

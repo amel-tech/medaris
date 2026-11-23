@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.2.20](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.19...tedrisat-v0.2.20) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 late window in minutes from the opening ([#431](https://github.com/amel-tech/medaris/issues/431)) ([49ef2fd](https://github.com/amel-tech/medaris/commit/49ef2fdd5d433ec1339035f5446632125ffb5737))
+
+## [0.2.19](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.18...tedrisat-v0.2.19) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nizam-web, common, services, i18n:** MDRS-299 zeroth answers in aggregate ([#420](https://github.com/amel-tech/medaris/issues/420)) ([20a19d9](https://github.com/amel-tech/medaris/commit/20a19d9be6f3f9433b99f1004315fe25bea6c932))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 Sınavlarım, result, rank, list colors ([#418](https://github.com/amel-tech/medaris/issues/418)) ([472fc3c](https://github.com/amel-tech/medaris/commit/472fc3c69f57963790e29ad9ee516b20988a81de))
+
+
+### Bug Fixes
+
+* **tedrisat, nizam-web, services, i18n:** MDRS-299 zeroth answers show exact counts ([#427](https://github.com/amel-tech/medaris/issues/427)) ([f0905f5](https://github.com/amel-tech/medaris/commit/f0905f57e4b0715bb3162c30af7f4eb25ff37818))
+
+## [0.2.18](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.17...tedrisat-v0.2.18) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 online exam results and the early close ([#417](https://github.com/amel-tech/medaris/issues/417)) ([5467790](https://github.com/amel-tech/medaris/commit/54677903e818addc94f1cf3e843649f4f84d6154))
+* **tedrisat, nazar-web, tedris-web, services, i18n:** MDRS-299 course zeroth, length, A−/A+ ([#421](https://github.com/amel-tech/medaris/issues/421)) ([9a60a80](https://github.com/amel-tech/medaris/commit/9a60a80e40c844d5efec26d4d842d9c3d7955c9c))
+
+## [0.2.17](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.16...tedrisat-v0.2.17) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 exam settings, and [#412](https://github.com/amel-tech/medaris/issues/412)'s review fixes ([#413](https://github.com/amel-tech/medaris/issues/413)) ([5269910](https://github.com/amel-tech/medaris/commit/526991043b38ae9f1bc86ad4a1ccf8e2ead1f91e))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 publish an online exam with its celse ([#415](https://github.com/amel-tech/medaris/issues/415)) ([aefea23](https://github.com/amel-tech/medaris/commit/aefea23e752caca52970fe25dddbed64ab447f3c))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 a talebe takes a published online exam ([#416](https://github.com/amel-tech/medaris/issues/416)) ([91c2bec](https://github.com/amel-tech/medaris/commit/91c2bec41be7fd24a2b17d2abf4bb062fbdebaa2))
+
+## [0.2.16](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.15...tedrisat-v0.2.16) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 answer mode, own points, topic deletion ([#412](https://github.com/amel-tech/medaris/issues/412)) ([5e17fbe](https://github.com/amel-tech/medaris/commit/5e17fbe9ace86054917243555cfa7adfc31a3821))
+* **tedrisat, nazar-web, services, i18n:** MDRS-299 the medrese's zeroth question ([#411](https://github.com/amel-tech/medaris/issues/411)) ([a388d3a](https://github.com/amel-tech/medaris/commit/a388d3aaebac609efd91df2730fbd08e6e46941f))
+
+## [0.2.15](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.14...tedrisat-v0.2.15) (2026-11-22)
+
+
+### Features
+
+* **tedrisat, nazar-web, common, services:** MDRS-299 hocas prepare online exam questions ([#408](https://github.com/amel-tech/medaris/issues/408)) ([140084e](https://github.com/amel-tech/medaris/commit/140084e9119b06e991f1e49a5b55e90b0b8f2314))
+
+
+### Bug Fixes
+
+* **deps, tedrisat, ci:** clear [#385](https://github.com/amel-tech/medaris/issues/385) and the 12 code scanning alerts that need a code change ([#397](https://github.com/amel-tech/medaris/issues/397)) ([311dcae](https://github.com/amel-tech/medaris/commit/311dcaedf54f28308082e39fd4ffaf821b1fda44))
+
 ## [0.2.14](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.13...tedrisat-v0.2.14) (2026-11-16)
 
 

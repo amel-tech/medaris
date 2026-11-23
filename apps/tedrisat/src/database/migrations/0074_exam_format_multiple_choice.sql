@@ -1,0 +1,1 @@
+ALTER TYPE "public"."exam_format" ADD VALUE 'MULTIPLE_CHOICE';

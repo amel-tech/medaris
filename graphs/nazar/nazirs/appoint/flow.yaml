@@ -284,6 +284,7 @@ states:
       FAIL.unknownAccount: { guard: "person == 'vanished'", target: picked, effect: [unknownToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "MADRASAH_NAZIR_UNKNOWN_ACCOUNT: an error toast says the account was not found" }
       FAIL.forbidden: { guard: "person == 'refused'", target: picked, effect: [forbiddenToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "AUTHZ_FORBIDDEN: an error toast says they may not do this" }
       FAIL.failed: { guard: "person == 'unwell'", target: picked, effect: [failedToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "anything else: an error toast says something went wrong" }
+      CANCEL: { target: appointing, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:137, say: "Vazgeç, the close icon or Esc: nothing happens, the appointment goes on (APPOINT-1)" }
     source: apps/nazar/features/nazirs/actions.ts:63
 
   refused:

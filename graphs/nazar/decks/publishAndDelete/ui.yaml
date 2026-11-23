@@ -31,7 +31,9 @@ nodes:
   # --- the page ---------------------------------------------------------------------------------------------------------
   deckPage: { type: page, component: Page, role: main, in: [draft, published, saving, publishing, unpublishing, deleting], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
   forbiddenPage: { type: page, component: Page, role: main, in: [forbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the same <main>, with the alert alone in it
-  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.backLink }, in: [draft, published, saving, publishing, unpublishing, deleting], emits: BACK, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
+  # duringStep: a next/link that no write disables (deck-detail-page.tsx:76), so it is followed at once while a save, a publish or a
+  # delete runs; the write goes on.
+  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.backLink }, in: [draft, published, saving, publishing, unpublishing, deleting], emits: BACK, duringStep: true, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
   deckTitle: { type: text, component: Heading, role: heading, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-detail-page.tsx:82 } # h1 (level 1), the deck's own title with lang="auto", which is no language tag (F-D1-14)
   stateDraft: { type: text, component: Text, text: { key: Decks.draftState }, in: [draft, saving, publishing, deleting], when: "deck == 'draft'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:85 }
   statePublished: { type: text, component: Text, text: { key: Decks.published }, in: [published, saving, unpublishing], when: "deck == 'published'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:85 }
