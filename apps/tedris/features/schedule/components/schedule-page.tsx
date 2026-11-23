@@ -63,7 +63,8 @@ const ScheduleRow = ({
   const platform = session.meetingUrl
     ? resolveMeetingPlatform(session.meetingUrl)
     : null;
-  const href = `/courses/${session.courseId}/lessons/${session.id}`;
+  // MDRS-299: an online exam leads to its exam page, where it is taken.
+  const href = `/courses/${session.courseId}/lessons/${session.id}${session.isOnlineExam ? "/sinav" : ""}`;
 
   return (
     <li className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 py-4 border-be border-neutral-subtle last:border-be-0 max-md:grid-cols-[3.5rem_minmax(0,1fr)]">
@@ -125,7 +126,7 @@ const ScheduleRow = ({
               host={hostOf(session.meetingUrl)}
             />
           </p>
-        ) : state === "ended" ? null : (
+        ) : state === "ended" || session.isOnlineExam ? null : (
           // MDRS-283: a stream or the in-person mark covers a celse without
           // a link; the row says which, as the join card does. An ended row
           // has no link either way and says nothing of one.
@@ -147,9 +148,20 @@ const ScheduleRow = ({
               <>
                 <span className="mds-badge mds-badge--live">
                   <span className="mds-badge__dot" aria-hidden="true" />
-                  {t("SessionPage.liveLabel")}
+                  {t(
+                    session.isOnlineExam
+                      ? "SchedulePage.examOpen"
+                      : "SessionPage.liveLabel"
+                  )}
                 </span>
-                {session.meetingUrl ? (
+                {session.isOnlineExam ? (
+                  <Link
+                    className="mds-btn mds-btn--small mds-btn--primary"
+                    href={href}
+                  >
+                    {t("SchedulePage.examEnter")}
+                  </Link>
+                ) : session.meetingUrl ? (
                   <a
                     className="mds-btn mds-btn--small mds-btn--primary mds-join__link"
                     href={session.meetingUrl}

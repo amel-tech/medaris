@@ -117,6 +117,12 @@ export interface ScheduleSessionResponse {
      * @memberof ScheduleSessionResponse
      */
     isExam: boolean;
+    /**
+     * The celse is a published online exam (MDRS-299): it is taken on its exam page (`/courses/:courseId/lessons/:id/sinav`) and has no meeting link.
+     * @type {boolean}
+     * @memberof ScheduleSessionResponse
+     */
+    isOnlineExam: boolean;
 }
 
 
@@ -140,6 +146,7 @@ export function instanceOfScheduleSessionResponse(value: object): value is Sched
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('hasLiveStream' in value) || value['hasLiveStream'] === undefined) return false;
     if (!('isExam' in value) || value['isExam'] === undefined) return false;
+    if (!('isOnlineExam' in value) || value['isOnlineExam'] === undefined) return false;
     return true;
 }
 
@@ -168,6 +175,7 @@ export function ScheduleSessionResponseFromJSONTyped(json: any, ignoreDiscrimina
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'],
         'isExam': json['isExam'],
+        'isOnlineExam': json['isOnlineExam'],
     };
 }
 
@@ -197,6 +205,7 @@ export function ScheduleSessionResponseToJSONTyped(value?: ScheduleSessionRespon
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],
         'isExam': value['isExam'],
+        'isOnlineExam': value['isOnlineExam'],
     };
 }
 

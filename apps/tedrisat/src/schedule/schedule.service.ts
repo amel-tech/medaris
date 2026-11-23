@@ -124,6 +124,7 @@ const toResponse = (row: IScheduledSession, now: Date) => {
     inPerson: row.inPerson,
     hasLiveStream: row.hasLiveStream,
     isExam: row.isExam,
+    isOnlineExam: row.isOnlineExam,
   };
   return response;
 };
