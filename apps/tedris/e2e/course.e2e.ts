@@ -109,9 +109,11 @@ test.describe("tedris/05: a visitor with no account", () => {
     expect(body.madrasah.name).toBe(fixture.madrasahName);
   });
 
-  test("answers a draft with the not-found page", async ({ page }) => {
-    const response = await page.goto(`/courses/${fixture.draftId}`);
-    expect(response?.status()).toBe(404);
+  test("sends a visitor of a draft to sign in, as the course cannot be read without one (MDRS-248)", async ({
+    page,
+  }) => {
+    await page.goto(`/courses/${fixture.draftId}`);
+    await expect(page).toHaveURL(/auth\/signin|auth\.medaris\.app/);
   });
 
   test("'giriş yap' leads to the sign-in, which hands over to Keycloak", async ({
