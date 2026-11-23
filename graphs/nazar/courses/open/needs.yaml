@@ -101,7 +101,7 @@ needs:
       - node: hocaListed
       - node: searching
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:107
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:112
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
       - test: apps/nazar/e2e/open-course.e2e.ts
@@ -160,7 +160,7 @@ needs:
       - node: unvanB
       - state: form
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:208
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:213
 
   - id: policies-fix-the-boxes
     need: >-

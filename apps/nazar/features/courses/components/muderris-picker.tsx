@@ -55,6 +55,8 @@ type Search = "idle" | "searching" | "none" | "failed" | "listed" | "full";
  *
  * Given `onSearchingChange`, the picker says when a search starts and ends, so
  * a form can hold its submit back until the person searched for is listed.
+ * `disabled` holds the whole list (the search, "Çıkar", the imam and the
+ * unvan) while the form that owns it is saved.
  */
 export function MuderrisPicker({
   team,
@@ -68,6 +70,7 @@ export function MuderrisPicker({
   inputRef,
   unvan,
   onSearchingChange,
+  disabled = false,
 }: {
   team: Team;
   dispatch: (action: TeamAction) => void;
@@ -90,6 +93,8 @@ export function MuderrisPicker({
   };
   /** told `true` while an address is being looked up, `false` once it is answered */
   onSearchingChange?: (searching: boolean) => void;
+  /** while the form is saved: the list stays as it was sent */
+  disabled?: boolean;
 }) {
   const t = useTranslations("nazar");
   const legendId = useId();
@@ -213,6 +218,7 @@ export function MuderrisPicker({
               name: member.name,
             })}
             value={unvan.valueOf(id)}
+            disabled={disabled}
             onChange={(value) => value && unvan.onChange(id, value)}
             options={unvans}
           />
@@ -222,7 +228,7 @@ export function MuderrisPicker({
             variant="ghost"
             size="small"
             className={removal === "icon" ? "mds-icon-btn" : undefined}
-            disabled={!canRemove(team, keepOne)}
+            disabled={disabled || !canRemove(team, keepOne)}
             aria-label={t("Team.removeLabel", { name: member.name })}
             iconLeft={
               removal === "icon" ? <Icon name="close" size="sm" /> : undefined
@@ -253,7 +259,7 @@ export function MuderrisPicker({
           placeholder={t("Team.placeholder")}
           leading={<Icon name="search" size="sm" />}
           value={email}
-          disabled={searching}
+          disabled={searching || disabled}
           aria-busy={searching || undefined}
           onChange={(event) => {
             setEmail(event.target.value);
@@ -279,6 +285,7 @@ export function MuderrisPicker({
         {choosing ? (
           <RadioGroup
             value={team.imam}
+            disabled={disabled}
             onValueChange={(value) =>
               dispatch({ type: "imam", userId: String(value) })
             }

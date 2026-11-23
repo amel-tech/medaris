@@ -596,6 +596,50 @@ describe("'Hocaları değiştir' (nazir 17)", () => {
     });
   });
 
+  it("holds the list while it is saved, so what is saved is what is shown", async () => {
+    lookupPerson.mockResolvedValue(found);
+    let answer: (value: unknown) => void = () => {};
+    replaceMuderris.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await search("a.kilicarslan@example.com");
+    expect(dialog().textContent).toContain("3 hoca");
+    await click(save());
+    await settle(20);
+
+    expect(replaceMuderris).toHaveBeenCalledExactlyOnceWith("m-1", "c-1", {
+      muderrisUserIds: ["u-1", "u-2", "u-9"],
+      imamUserId: "u-1",
+    });
+    expect(emailField().disabled).toBe(true);
+    const other = byLabel(
+      "Çıkar: Abdülhamit Karaosmanoğlu"
+    ) as HTMLButtonElement;
+    expect(other.disabled).toBe(true);
+    expect(
+      (byLabel("Çıkar: Mehmet Emin Işıkoğlu") as HTMLButtonElement).disabled
+    ).toBe(true);
+    const radio = dialog().querySelector(
+      '[role=radio][aria-label="Dersin imamı: Abdülhamit Karaosmanoğlu"]'
+    );
+    expect(radio?.hasAttribute("data-disabled")).toBe(true);
+    await click(other);
+    await click(radio as Element);
+    expect(dialog().textContent).toContain("3 hoca");
+    expect(radio?.getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(20);
+    expect(other.disabled).toBe(false);
+    expect(emailField().disabled).toBe(false);
+    expect(radio?.hasAttribute("data-disabled")).toBe(false);
+  });
+
   it("says so when the person is already listed, when no account has the address and when the directory is down", async () => {
     await open();
     lookupPerson.mockResolvedValue({

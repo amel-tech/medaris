@@ -302,16 +302,16 @@ states:
         - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:193, say: "they type a name of 2 to 200 characters" }
         - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character; nothing is said until the button is pressed" }
         - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters; nothing is said until the button is pressed" }
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they type a hoca's e-mail address and press Enter, or leave the field" }
-      SEARCH_ANOTHER: { guard: "team == 'a'", target: lookingAnother, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they search for a second hoca by another address" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type a hoca's e-mail address and press Enter, or leave the field" }
+      SEARCH_ANOTHER: { guard: "team == 'a'", target: lookingAnother, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they search for a second hoca by another address" }
       REMOVE_A:
-        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the only hoca off: the list is empty again (this form allows it)" }
-        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the first of two off: the other is the imam" }
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the only hoca off: the list is empty again (this form allows it)" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the first of two off: the other is the imam" }
       REMOVE_B:
-        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the second of two off: the first is the imam" }
-        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the last hoca off" }
-      PICK_IMAM: { guard: "team == 'ab' and imam == 'a'", target: form, effect: [imamIsB], source: apps/nazar/features/courses/components/muderris-picker.tsx:282, say: "they choose the second hoca as the imam (open-course#4); choosing the first again is the same move the other way and is not drawn" }
-      CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nazar/features/courses/components/muderris-picker.tsx:208, say: "they choose an unvan for the first hoca (sent as muderrisUnvans; the select's value is not drawn)" }
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the last hoca off" }
+      PICK_IMAM: { guard: "team == 'ab' and imam == 'a'", target: form, effect: [imamIsB], source: apps/nazar/features/courses/components/muderris-picker.tsx:289, say: "they choose the second hoca as the imam (open-course#4); choosing the first again is the same move the other way and is not drawn" }
+      CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nazar/features/courses/components/muderris-picker.tsx:213, say: "they choose an unvan for the first hoca (sent as muderrisUnvans; the select's value is not drawn)" }
       TOGGLE_CLOSED:
         - { guard: "not closedLocked and not closedOn", target: form, effect: [closedChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:233, say: "they check 'Kapalı ders'" }
         - { guard: "not closedLocked and closedOn", target: form, effect: [closedUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:233, say: "they uncheck it" }
@@ -351,14 +351,14 @@ states:
         - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:193, say: "they type a good name: its error goes at once" }
         - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character: the error now says it is too short" }
         - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters: the error says it is too long" }
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they go to the hoca search and type an address" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they go to the hoca search and type an address" }
       SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:105, say: "they press 'Dersi aç' again: the name is still wrong, so it is refused again" }
       REMOVE_A:
-        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the only hoca off" }
-        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the first of two off: the other is the imam" }
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the only hoca off" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the first of two off: the other is the imam" }
       REMOVE_B:
-        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the second of two off: the first is the imam" }
-        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:230, say: "they take the last hoca off" }
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the last hoca off" }
       OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:253, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:268, say: "they press 'Vazgeç'" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
@@ -374,7 +374,7 @@ states:
       not the search field's description, so the reason is never read to someone on the field (F-A-5; open-course#2 a2, a6). The name is
       right here, so only the hoca search, Vazgeç and the breadcrumb are drawn as moves.
     on:
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they type a hoca's address and press Enter, or leave the field" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type a hoca's address and press Enter, or leave the field" }
       SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:105, say: "they press 'Dersi aç' again with no hoca: it is refused again" }
       OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:253, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:268, say: "they press 'Vazgeç'" }
@@ -395,10 +395,10 @@ states:
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedFirst], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the person is added at once, the field is emptied and a hidden status says '<name> listeye eklendi'; a lone hoca is the imam" }
-        - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:122, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
-        - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:136, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:136, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+        - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedFirst], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added at once, the field is emptied and a hidden status says '<name> listeye eklendi'; a lone hoca is the imam" }
+        - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:268, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
       OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:253, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
@@ -413,7 +413,7 @@ states:
       "Dersi aç" is off until the answer is in, as in `looking`.
     invoke: { action: lookupUser }
     on:
-      DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the second person is added: two rows, a radio each, the first the imam" }
+      DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the second person is added: two rows, a radio each, the first the imam" }
       CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:268, say: "they press 'Vazgeç' while the search runs" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
       OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:253, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }

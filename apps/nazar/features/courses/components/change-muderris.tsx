@@ -32,9 +32,10 @@ import { MuderrisPicker } from "./muderris-picker";
  * started and is complete: at least one account, and an imam where there are
  * several, so the reason is written under the list at once. It is off too
  * while an address is looked up, so the list is not sent without that hoca.
- * The scrim does not close the dialog. The list is sent whole: the API gives
- * the accounts that leave no role, and leaves a müderris with no account as it
- * is.
+ * While the list is saved it is held (the search, "Çıkar", the imam), so what
+ * is saved is what is shown. The scrim does not close the dialog. The list is
+ * sent whole: the API gives the accounts that leave no role, and leaves a
+ * müderris with no account as it is.
  */
 export function ChangeMuderris({
   madrasahId,
@@ -133,6 +134,7 @@ export function ChangeMuderris({
         keepOne
         inputRef={searchRef}
         onSearchingChange={setLooking}
+        disabled={pending}
       />
     </Dialog>
   );
