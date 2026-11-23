@@ -241,3 +241,23 @@ needs:
     note: >-
       Drawn on the nodes submit, cancel, accessForm and accessTitle, which the code has: they are not evidence, so that a replay
       still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-unlisted-course-opens-by-its-link
+    need: >-
+      The course team can keep a course off every list and search, so that only the signed-in people given its link open it; while it
+      is unlisted every enrolment waits for approval, and the approval box says so and cannot be switched off.
+    evidence:
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:175
+      - source: apps/tedrisat/src/course/course.service.ts:988
+      - test: apps/nazar/test/course-settings.spec.ts
+        name: "sends 'Listelenmeyen ders' when it changes, either way (MDRS-248)"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is listed and unlisted by its köşk manager, and by no stranger"
+    missing: >-
+      not drawn yet: the box "Listelenmeyen ders" (MDRS-248, #401) is in the form and in no state or node of this flow, nor is what it does to the approval box; the code exists and the specs named cover it
+    note: |-
+      Drawn on the states of the form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      The box is course-settings-form.tsx:175-184, open whenever the form is (controls.ts: no policy holds it); while it is ticked
+      the approval box is ticked and shut and says "Listelenmeyen derste her kayıt onaya düşer; ders listelenene kadar bu ayar
+      değiştirilemez." (:212-224). The API asks course.settings for the change (course.service.ts:988-993). Not walked.

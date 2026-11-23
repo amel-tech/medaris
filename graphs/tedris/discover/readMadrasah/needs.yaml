@@ -194,3 +194,18 @@ needs:
     note: >-
       Drawn on the state readingMadrasah, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
       §13 leaves out what only missing needs name).
+
+  - id: an-unlisted-course-is-not-on-the-medrese-page
+    need: >-
+      A course its team keeps off the lists is not among the medrese's courses on its page, nor in its count; the people given its
+      link open it.
+    evidence:
+      - source: apps/tedrisat/src/madrasah/madrasah.repository.ts:1172
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is not on its medrese's page, nor on a follower's shelf"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state or node of this flow; the code exists and the API e2e spec covers it
+    note: |-
+      Drawn on the states readByVisitor and readByMember, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      The medrese's overview leaves it out in the API (getMadrasahOverview, madrasah.repository.ts:1172). Not walked.

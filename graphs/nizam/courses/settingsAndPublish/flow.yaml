@@ -69,7 +69,7 @@ scope:
     - "the dialog 'Hocaları düzenle' and everything in it (the e-mail search, the imam, the unvan, the refusals): nizam.courses.editHocalar. Only the section's heading, its list and its button are drawn here"
     - "the köşk's own settings page 'Köşk ayarları', which the sentence under the policy box links to: nizam.kosks.editAndHide (the same two policies, the same refusal for a platform policy that is on, F-W3-3)"
     - "the list of courses 'Dersler' that 'Dersi gizle' ends on, its toast 'Ders gizlendi', the 'Arşiv' and 'Geri al': nizam.courses.list and nizam.moderation.restoreArchived. Here the page ends at the exit `dersler_opened`"
-    - "the public page that 'Tanıtım sayfasını gör' opens in a new tab: tedris.course.readProgramme for a published course, tedris.course.draftPreview for a draft (the link is drawn for a draft too: DRAFT-1)"
+    - "the public page that 'Tanıtım sayfasını gör' opens in a new tab: tedris.course.readProgramme for a published course, tedris.course.draftPreview for a draft (the link is drawn for a draft too: DRAFT-1; a person with no Tedris session is sent to sign in and back there since #401)"
     - "the course overview that the breadcrumb's course name links to, and the sub-pages of the course (Müfredat, Celseler, Talebeler): nizam.courses.overview, nizam.courses.curriculum, nizam.courses.manageSessions, nizam.courses.roster"
     - "the 404 and 403 screens 'Bu bölüm için izniniz yok' for a course of another köşk, an unknown id, or a nazım of this köşk who may not edit the course (the page's `forbidden()` and `notFound()`), and the page's own failure face 'Ders bilgisi okunamadı' with 'Yeniden dene' (CourseLoadFailed): nizam.shell.noAccessAndNotFound. Here the person with no nazım role is the exit `no_access`, which is e2e courses#20"
     - "the way back of each press: untick 'Kapalı ders' or 'Celseler yüz yüze yapılır', choose İstanbul again, choose 'Örnek ders yok' after a saved sample, tick 'Kayıt onayı gereksin' again, untick the policy box: the same transitions the other way, each drawn one way only (`closeIt`, `dropApproval` and the others hold a control to one press), so that a walk of a world presses the same controls whichever way the checker finds to Kaydet"
@@ -296,7 +296,7 @@ states:
       PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:372 }
       HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle", source: apps/nizam/features/courses/components/course-settings-page.tsx:426 }
       OPEN_PUBLIC:
-        - { guard: isDraft, target: readFixed, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a draft is not there for her (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
+        - { guard: isDraft, target: readFixed, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is sent to sign in and back to the preview since #401 (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
         - { target: readFixed, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nizam/features/courses/components/course-settings-page.tsx:258
@@ -322,7 +322,7 @@ states:
       UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:365 }
       PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:372 }
       OPEN_PUBLIC:
-        - { guard: isDraft, target: readLimited, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a draft is not there for her (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
+        - { guard: isDraft, target: readLimited, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is sent to sign in and back to the preview since #401 (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
         - { target: readLimited, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nizam/features/courses/reads.ts:48
@@ -348,7 +348,7 @@ states:
       HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle", source: apps/nizam/features/courses/components/course-settings-page.tsx:426 }
       RELOAD: { guard: "world == 'saves'", target: reloading, effect: [reloadedSaved], say: "they reload the page: it is read again with what the API now holds", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29" }
       OPEN_PUBLIC:
-        - { guard: isDraft, target: clean, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is a visitor and a draft is not there for her (DRAFT-1)", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
+        - { guard: isDraft, target: clean, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is a visitor, sent to sign in and back to the preview since #401 (DRAFT-1)", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
         - { target: clean, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab (tedris.course.readProgramme) and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:205 }
       NAVIGATE: { target: left, say: "they follow the menu, a breadcrumb or a link" }
     source: apps/nizam/features/courses/components/course-settings-page.tsx:186

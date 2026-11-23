@@ -43,7 +43,8 @@ scope:
   outOfView:
     - "the bar around the page (Keşfet, the theme switch, \"Giriş yap\", \"Kayıt ol\") and the phone's sheet: tedris.shell.frame (SHL-04, SHL-10, SHL-11); and how a visitor gets here from `/`, two redirects (SHL-05): tedris.shell.home"
     - "the search box, the medrese filter, the pager, the empty list and the failed read of Keşfet: tedris.discover.browse (DSC-13, DSC-14, DSC-19)"
-    - "the köşk page's other cases (an unlisted köşk is a 404 to a visitor, a köşk with no course, the failed read with no h1, DSC-09): tedris.discover.readKosk; the medrese page's (a medrese with no course, a failed read drawn as a 404, DSC-10): tedris.discover.readMadrasah; an unknown id: tedris.shell.systemPages"
+    - "the köşk page's other cases (an unlisted köşk is a 404 to a visitor, a köşk with no course, the failed read with no h1, DSC-09): tedris.discover.readKosk; the medrese page's (a medrese with no course, a failed read drawn as a 404, DSC-10): tedris.discover.readMadrasah; an unknown köşk or medrese id: tedris.shell.systemPages"
+    - "a course address the API gives a visitor no course for, which no page of this path links to but a shared link can name: an unlisted course (MDRS-248, #401) or a course of an unlisted köşk, a draft, a hidden course, an unknown id. The course segment's layout sends the visitor to sign in with the course as the page to come back to (loadCourseOrLeave, load-course.ts:26-34), and signed in an unlisted course opens (tedris.course.apply) and the rest are the not-found page (tedris.shell.systemPages, arrival missingCourse). Not drawn here: the need an-unlisted-course-opens-by-its-link says so"
     - "the follow button and the way to ask for a köşk, which a signed-in person has and a visitor does not: tedris.discover.followKosk, tedris.discover.applyForKosk (drawn here only as nodes the visitor never gets)"
     - "the course page of a signed-in person in any of its states, and what the card does after \"Başvurmak için giriş yap\" brings the person back: tedris.course.apply, tedris.course.readProgramme"
     - "the celse page and its watch page, which a visitor cannot open (the proxy sends them to sign in, with the celse as the page to come back to): tedris.celse.locked; a deck's page, which no page of a visitor's path links to (a link, a shared address): tedris.decks.visitorPublicDeck"
@@ -193,7 +194,9 @@ states:
     source: apps/tedris/features/courses/components/course-page.tsx:237
     description: >-
       The page `/courses/<id>` for a person with no token (the page's state `visitor`, features/courses/course-view.ts:21), public
-      (lib/public-paths.ts:32). A draft is a 404 to everyone the API does not let in. The header: the cover, the title as the h1,
+      (lib/public-paths.ts:32). It is drawn only for a course the API gives a caller with no token: a course it does not (a draft, a
+      hidden or an unlisted one, a course of an unlisted köşk) sends the visitor to sign in before the page (load-course.ts:31-32),
+      never to a 404 (scope.outOfView). The header: the cover, the title as the h1,
       the description, the medrese and the köşk as links with "N hafta", "N celse" and "N saat", the hoca line. The aside: the card
       "Derse kayıt" with the span of the weeks and one fact, "Kayıt onay gerektirmez: kaydolunca ders içerikleri sana açılır." or
       "Kayıt onaya bağlı: başvurunu ders kadrosu değerlendirir." (it reads only the course's own settings and an unlisted köşk,

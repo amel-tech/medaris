@@ -13,7 +13,7 @@
 #   - Who: the hoca (a müderris of the course). The card's buttons are drawn only for a caller who holds course.edit and
 #     course.publish (controls.ts:55); the API asks the same (course.service.ts:957-1000), so a status change by anyone else is a 403.
 #   - Findings it carries: F-D2c-7 (the key that makes edits survive), F-D2c-13 (the busy label), F-D2c-14 (stale e2e locators),
-#     DRAFT-1 (the link for a draft), and two new ones, PUB-1 (the link's address still has the language segment MDRS-248 took out)
+#     DRAFT-1 (the link for a draft; its 404 is gone since #401, its name is not), and two new ones, PUB-1 (the link's address still has the language segment MDRS-248 took out)
 #     and PUB-2 (Vazgeç and Kapat stay enabled while the call runs and do nothing). See ui.yaml `rules`.
 #   - e2e: course-settings#4 (a1 to a7, and a8 as the behaviour; its locators are stale, F-D2c-14), #5 (a1 to a5, and a6 to a10 as the
 #     API's own answer through the binding's effects; the reload is not drawn), #6 (a1, a2). Not carried here: #6 a3 to a10, which
@@ -67,11 +67,13 @@ decisions:
   D2:
     question: >-
       Should "Tanıtım sayfasını gör" be drawn for a draft? A draft has no public page: the link opens Tedris, where a person with
-      only a Nazar session is a visitor and is told "Sayfa bulunamadı" (DRAFT-1 of tedris.course.draftPreview).
+      only a Nazar session is a visitor. Until #401 she was told "Sayfa bulunamadı" (DRAFT-1 of tedris.course.draftPreview); since MDRS-248's unlisted course (#401) Tedris sends a person with no session there to sign in and back (load-course.ts:26-34),
+      so she reaches the preview while her Keycloak session lasts (not walked). What is left is the name.
     recommend: >-
       For a draft, name it "Önizlemeyi gör" and send the person through Tedris's own sign-in with the course as the way back
       (/auth/signin?callbackUrl=/courses/<id>), which Keycloak answers without a form while their session lasts; leave the
-      published link as it is. The API must keep answering 404 to a visitor.
+      published link as it is. The API must keep answering 404 to a visitor. The sign-in half is what Tedris now does itself for every
+      visitor (#401); the name is still to change.
     affects: [draft, draftEdited]
 
 context:
@@ -249,7 +251,7 @@ states:
       The card says "Taslak" and "Ders taslak: yalnız ders kadrosuna, köşk nazımına ve Medaris yönetimine görünür." with
       "Yayımla"; the caption of the published card is gone. "Yayımla" does not ask: publishing is undone with Taslağa çek, and
       nothing is lost. The header link is still there; for a draft it opens a page Tedris refuses to a person with no session
-      there (DRAFT-1, decision D2). When this step follows a draft, the opener of the question is the same button, reading
+      there, and since MDRS-248's unlisted course (#401) Tedris sends a person with no session there to sign in and back (load-course.ts:26-34), so she meets the preview once signed in (DRAFT-1, decision D2). When this step follows a draft, the opener of the question is the same button, reading
       "Yayımla" now (React keeps one Button for both branches, course-publish-card.tsx:97-108), so the focus the question gave
       back stays on it (from the code; not verified in a browser).
     by: human
@@ -259,7 +261,7 @@ states:
       OPEN_PUBLIC:
         target: draft
         starts: { flow: tedris.course.draftPreview }
-        say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is a visitor and a draft is not there for her (DRAFT-1); one who is signed in there reads the preview"
+        say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab; a person with no Tedris session there is a visitor and is sent to sign in and back (#401), and one who is signed in reads the preview (DRAFT-1)"
         source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
       NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
     source: apps/nazar/features/course-settings/components/course-publish-card.tsx:102

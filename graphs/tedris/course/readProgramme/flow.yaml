@@ -182,7 +182,7 @@ states:
     invoke: { action: getCourse }
     on:
       DONE: { guard: "read == 'ok'", target: arriving }
-      FAIL.gone: { guard: "read == 'gone'", target: not_found_page, starts: { flow: tedris.shell.systemPages, given: { arrival: "'missingIntro'", person: "'member'" } }, say: "the layout answers the not-found page before the page streams", source: apps/tedris/features/courses/load-course.ts:33 }
+      FAIL.gone: { guard: "read == 'gone'", target: not_found_page, starts: { flow: tedris.shell.systemPages, given: { arrival: "'missingCourse'", person: "'member'" } }, say: "the layout answers the not-found page before the page streams", source: apps/tedris/features/courses/load-course.ts:33 }
       FAIL.unreadable: { guard: "read == 'failed'", target: error_page, starts: { flow: tedris.shell.systemPages, given: { arrival: "'pageThrows'", person: "'member'" } }, say: "the read throws in the layout, so the root's error boundary draws", source: apps/tedris/app/error.tsx:12 }
 
   arriving:
@@ -344,8 +344,9 @@ states:
     type: final
     leavesPage: true
     description: >-
-      A 400, 403 or 404 (no such course, a draft this person may not open, an unlisted köşk to a visitor) is `null`, and the layout
-      calls notFound(): a real 404 before any byte of the page. tedris.shell.systemPages draws it.
+      A 400, 403 or 404 (no such course, a draft or a hidden course this person may not open) is `null`, and the layout
+      calls notFound(): a real 404 before any byte of the page (load-course.ts:33; this flow's person is signed in, and a visitor
+      would be sent to sign in instead, :31-32). tedris.shell.systemPages draws it.
 
   error_page:
     title: The error page

@@ -149,6 +149,12 @@ MDRS-248 (#402) "İlerlemeni güncelle" penceresini kaldırdı; ders ilerlemesi 
 - **PROGRESS-1** · orta · arayüz — Koltuğu sonradan biten talebenin ilerleme kaydı 403 ile reddediliyor ve "Biraz sonra yeniden dene" deniyor; neden bilindiği hâlde yeniden denemek boşuna. (`tedris.course.updateProgress`, emekli; `progress-dialog.tsx` silindi)
 - **PROGRESS-3** · orta · arayüz — Kayıttan sonra pencere kapanınca odak hiçbir yere gitmiyor, açan "İlerlemeni güncelle" düğmesine dönmüyor; klavye ve ekran okuyucu kullanıcısı sayfanın başından başlıyor. (`tedris.course.updateProgress`, emekli)
 
+## MDRS-248 ile kodda düzelen (23 Kasım 2026)
+
+MDRS-248'in listelenmeyen dersi (#401) ders sayfasında oturumu olmayan ziyaretçiyi, API ona ders vermediğinde "Sayfa bulunamadı" yerine giriş sayfasına gönderip derse geri getiriyor (`apps/tedris/features/courses/load-course.ts:26-34`). Bu, aşağıdaki bulgunun Tedris tarafını düzeltiyor: yalnız Nazar oturumu olan hoca Keycloak oturumu sürdükçe önizlemeye ulaşıyor (koddan ve birim testinden okundu, yürütülmedi). Bağlantının adı ("Tanıtım sayfasını gör") `nazar.courseSettings.publish`'in D2 kararında açık. Yukarıdaki sayılar bunu da işlemedi.
+
+- **DRAFT-1** · orta · karar · bu dalda kodda düzeldi, yürütülmedi — Yalnız Nazar oturumu olan hoca Tedris'te ziyaretçi sayılıyor; taslak "Sayfa bulunamadı" veriyordu ve Nazar'daki "Tanıtım sayfasını gör" olmayan bir sayfayı vaat ediyor. (`tedris.course.draftPreview`, `nazar.courseSettings.publish`; `apps/nazar/features/course-settings/course-settings.ts:164`)
+
 ## tedris
 
 | Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
@@ -256,7 +262,6 @@ MDRS-248 (#402) "İlerlemeni güncelle" penceresini kaldırdı; ders ilerlemesi 
 - **CRS-APPLY-1** · orta · API — Kayıt kartı yalnız dersin ve köşkün ayarına bakıyor; platform ya da medrese onay istiyorsa da "Kayıt onay gerektirmez" yazıyor, tıklayınca "Başvurun alındı" çıkıyor. (`tedris.course.apply`; `page.tsx:93-95`)
 - **DECKTAB-1** · orta · arayüz — Desteler okunamayınca sayfa "Bu derse bağlı bir deste yok." diyor ve yeniden dene düğmesi yok; hata boş liste gibi gösteriliyor, kayıtlar sekmesi ise hatayı söylüyor. (`tedris.course.deckTab`; `apps/tedris/features/courses/public-reads.ts:118-123`)
 - **DECKTAB-2** · orta · arayüz — "Desteler" görünümüne geçince kart ızgarası bellekten atılıyor; okunan kartlar, çevrilenler ve devam eden turun işaretleri sorulmadan kayboluyor. (`tedris.course.deckTab`; `apps/tedris/features/courses/components/course-decks-tab.tsx:59-63`)
-- **DRAFT-1** · orta · karar — Yalnız Nazar oturumu olan hoca Tedris'te ziyaretçi sayılıyor; taslak "Sayfa bulunamadı" veriyor ve Nazar'daki "Tanıtım sayfasını gör" olmayan bir sayfayı vaat ediyor. (`tedris.course.draftPreview`, `nazar.courseSettings.publish`; `apps/nazar/features/course-settings/course-settings.ts:164`)
 - **DSC-04** · orta · arayüz — Başvuru geri çekilince ya da dersten ayrılınca düğme yok oluyor ve odak sayfa gövdesine düşüyor; bildirim de yok, klavye ve ekran okuyucu kullanıcısı sonucu bilmiyor. (`tedris.course.leave`, `tedris.learning.myCourses`)
 - **GRADES-1** · orta · arayüz — Uygulamada Notlarım'a giden yol yok; "sınav sonucunu Notlarım'da görebilirsin" bildirimi celse sayfasını açıyor, orada ne sonuç ne bağlantı var. (`tedris.course.grades`; `apps/tedris/features/notifications/notification-view.ts:65-68`)
 - **GRADES-2** · orta · arayüz — Notlar okunamayınca Notlarım sekmesi sessizce listeden kalkıyor, adresteki sekme isteği de Müfredat'a düşüyor; talebe notların olmadığını mı okunamadığını mı anlayamıyor. (`tedris.course.grades`; `apps/tedris/features/courses/public-reads.ts:50-57`)

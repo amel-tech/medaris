@@ -38,11 +38,18 @@ needs:
 
   - id: missing-record-says-so
     need: >-
-      A course, köşk, medrese, deck or celse the API does not know, and a draft the person may not read, show the same page as an
-      unknown address, and tell a visitor no more than a member.
+      A course, köşk, medrese, deck or celse the API does not know, and a draft the person may not read, show a signed-in person the
+      same page as an unknown address, and tell a visitor no more than a member: a köşk or a medrese shows them the same page, and a
+      course of any of these kinds asks them to sign in and brings them back, as an unlisted course they may open does.
     evidence:
       - state: notFound
+      - state: sign_in_opened
       - source: apps/tedris/features/courses/load-course.ts:33
+      - source: apps/tedris/features/courses/load-course.ts:31
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "sends a signed-out visitor to sign in and back, as an unlisted course needs"
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "answers 404 to a signed-in caller the API gave no course"
       - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27"
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "a course the API answers 404 for falls onto it"
@@ -54,6 +61,9 @@ needs:
       the scenarios visitorMissingCourse, memberMissingCourse and memberMissingCelse are bound and were not walked course#3 (a
       visitor opens a draft) has one assertion, the 404 status, which no graph carries; a replay does not read a navigation's
       status.
+      Since MDRS-248's unlisted course (#401) a visitor of a course is no longer shown this page: the course segment's layout
+      (loadCourseOrLeave, load-course.ts:26-34) sends them to sign in whenever the API gives them no course, so visitorMissingCourse
+      now ends at sign_in_opened, and course#3, which still expects a 404 for a visitor of a draft, no longer matches the code.
 
   - id: way-home-fits-the-person
     need: >-
@@ -69,7 +79,8 @@ needs:
       - scenario: memberUnknownAddress
     note: |-
       system-pages.e2e.ts system-pages#7 (a4: a member to /home); SP-04 says the visitor is tested by none
-      memberUnknownAddress: the member's half; the visitor's (scenario visitorMissingCourse) is bound and was not walked
+      memberUnknownAddress: the member's half; the visitor's way home is from a missing köşk or medrese since #401 (a visitor of a
+      course is sent to sign in), and no scenario binds it
 
   - id: a-visitor-is-not-told-what-exists
     need: >-

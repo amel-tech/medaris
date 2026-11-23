@@ -140,7 +140,9 @@ needs:
       For a draft, the header link opens the preview the course's staff may read, and does not tell them "Sayfa bulunamadı": it is
       named for what it opens and sends the person through Tedris's own sign-in with the course as the way back (DRAFT-1, decision
       D2).
-    missing: no Linear issue; DRAFT-1, D2
+    missing: >-
+      no Linear issue; D2: the link is still named "Tanıtım sayfasını gör" for a draft; its other half is done in Tedris since #401
+      (DRAFT-1: a visitor is sent to sign in and back, load-course.ts:26-34); code exists in part
     note: >-
       Drawn on the states draft and draftEdited and on the node viewPublic, which the code has: they are not evidence, so that a
       replay still walks them (SPEC.md §13 leaves out what only missing needs name).

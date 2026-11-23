@@ -50,7 +50,8 @@ actions:
     summary: The courses of a köşk, or its hidden ones with archived=true
     description: >-
       The shelf of a köşk's courses (the köşk page, the nazım's Dersler list). Without archived: the köşk's shown courses that are
-      published; the köşk's nazım also gets its DRAFT courses. With archived=true: the köşk's hidden courses (the Arşiv view), for its
+      published and not unlisted (isUnlisted, MDRS-248: course.repository.ts:248); the köşk's nazım also gets its DRAFT and unlisted
+      courses. With archived=true: the köşk's hidden courses (the Arşiv view), for its
       nazım and SYSTEM_ADMIN only. Each item carries the course fields and weekCount, lessonCount, resourceCount, muderris[], the
       caller's own enrollment (null with no token or no seat), madrasah {id, name} or null and nextSessionAt.
     needs: >-
@@ -106,6 +107,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean, note: "taken on creation with only course.open_standalone" }
         isClosed: { type: boolean, note: "taken on creation with only course.open_standalone" }
+        isUnlisted: { type: boolean, default: false, note: "MDRS-248: in no list or search but the köşk managers' shelf; opened by its link to signed-in callers only; every enrolment waits for approval. Creation asks no settings gate for it (assertMayChangeSettings runs on PATCH and PUT only, course.service.ts:934, :1054)" }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean, note: "yüz yüze: a label only; never null" }
         imamUserId: { type: string, format: uuid, references: User }
@@ -252,7 +254,10 @@ actions:
       The body also carries the caller's own enrollment (or null), muderris[], resources[] and madrasah {id, name} or null.
     needs: >-
       course.view on the course (@AuthzPublic: a caller with no token is decided as ANONYMOUS, who holds course.view; every signed-in
-      caller holds it); the content is cut by course.view_details inside CourseService.present.
+      caller holds it); the content is cut by course.view_details inside CourseService.present. A caller with no token is answered
+      COURSE_NOT_FOUND for a DRAFT, a hidden or an unlisted course (MDRS-248) and for a course of an unlisted köşk, by the anonymous
+      resolver (tedrisat-role-resolver.service.ts:186-193) and again by getDetail (course.service.ts:323-330); an unlisted course opens
+      by its link to any signed-in caller.
     result: { status: 200, returns: Course }
     refusals:
       COURSE_NOT_FOUND:
@@ -308,8 +313,9 @@ actions:
       course's version. The body returned is the course re-read with audit:false.
     needs: >-
       course.edit on the course (a müderris of the course, the köşk's nazım, a medrese's başmüderris, a grantee); then, for the fields
-      carried: status that differs from stored needs course.publish; requiresApproval or isClosed needs course.settings;
-      requiresApproval:false needs setting.approval_off; isClosed:false needs setting.course_open.
+      carried: status that differs from stored needs course.publish; requiresApproval, isClosed or isUnlisted needs course.settings
+      (course.service.ts:976-993; no policy holds isUnlisted, MDRS-248); requiresApproval:false needs setting.approval_off;
+      isClosed:false needs setting.course_open.
     body:
       type: object
       properties:
@@ -326,6 +332,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean }
         isClosed: { type: boolean }
+        isUnlisted: { type: boolean, note: "MDRS-248, \"Listelenmeyen ders\": needs course.settings" }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean, note: "never null; absent leaves the mark as it is" }
     result: { status: 200, returns: Course }
@@ -388,6 +395,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean }
         isClosed: { type: boolean }
+        isUnlisted: { type: boolean }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean }
         version: { type: integer, minimum: 0, note: "the version the editor loaded; a stale one is COURSE_VERSION_CONFLICT" }
@@ -653,7 +661,8 @@ actions:
     summary: Apply to a course, or take a seat in it
     description: >-
       Takes no body: the name and e-mail kept on the seat are snapshots of the token (name, else given and family name, else
-      preferred_username; email). The seat is PENDING when any of these holds: the course requires approval; its köşk is unlisted
+      preferred_username; email). The seat is PENDING when any of these holds: the course requires approval; the course is unlisted
+      (isUnlisted, MDRS-248: course.service.ts:1634-1638); its köşk is unlisted
       (isPrivate); the köşk's own policy alwaysRequireApproval; the platform policy ALWAYS_REQUIRE_APPROVAL; the course's medrese has
       policyAlwaysApproval. Otherwise it is ENROLLED. A course's own setting can never loosen a policy above it. A caller who already
       has a row of any status but REVOKED gets that row back unchanged (the insert is ON CONFLICT DO NOTHING): a PENDING row stays

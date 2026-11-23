@@ -251,3 +251,20 @@ needs:
     note: >-
       Drawn on the state list, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
       out what only missing needs name).
+
+  - id: an-unlisted-course-is-not-in-kesfet
+    need: >-
+      A course its team keeps off the lists is in none of Keşfet's lists: not under its medrese's card and not in its köşk's count of
+      courses; the people given its link open it.
+    evidence:
+      - source: apps/tedrisat/src/madrasah/madrasah.repository.ts:1061
+      - source: apps/tedrisat/src/kosk/kosk.repository.ts:93
+      - test: apps/tedrisat/test/e2e/discover.e2e.spec.ts
+        name: "leaves out an unlisted course of a listed köşk (MDRS-248)"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state or node of this flow; the code exists and the API e2e spec covers it
+    note: |-
+      Drawn on the state list, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      exploreMadrasahs leaves it out of a medrese's courses and its count (madrasah.repository.ts:1061), and the köşk card's "N
+      ders" is kosk.repository.ts:93-95's count, which leaves it out too. Not walked.

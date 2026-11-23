@@ -253,3 +253,21 @@ needs:
     note: >-
       Drawn on the state koskShown and on the node courseCount, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-unlisted-course-is-not-on-the-kosk-page
+    need: >-
+      A course its team keeps off the lists is not on the köşk's page and not in its count of courses, for anyone but the köşk's
+      managers, whose shelf holds it; the people given its link open it.
+    evidence:
+      - source: apps/tedrisat/src/course/course.repository.ts:248
+      - source: apps/tedrisat/src/kosk/kosk.repository.ts:93
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is on no shelf of its listed köşk but its manager's, nor in the köşk's course count"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state or node of this flow; the code exists and the API e2e spec covers it
+    note: |-
+      Drawn on the state koskShown and on the node courseCount, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      The list and the count leave it out in the API (course.repository.ts:248, kosk.repository.ts:93-95). The managers' shelf
+      holds it with no mark that it is unlisted (kosk-page.tsx draws no word for it), as nazim-sees-which-course-is-a-draft says
+      of a draft. Not walked.

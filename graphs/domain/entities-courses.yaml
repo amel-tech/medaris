@@ -9,7 +9,7 @@ id: medaris.api
 entities:
   Course: # a course (ders) of one köşk, optionally of one medrese
     source: apps/tedrisat/src/database/schema/course.schema.ts:56
-    required: [id, koskId, authorId, title, level, coverHue, durationWeeks, status, grantsCertificate, requiresApproval, isClosed, inPerson, timeZone, version, createdAt, updatedAt]
+    required: [id, koskId, authorId, title, level, coverHue, durationWeeks, status, grantsCertificate, requiresApproval, isClosed, isUnlisted, inPerson, timeZone, version, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
       koskId: { type: string, format: uuid, references: Kosk, note: "on delete restrict" }
@@ -27,6 +27,7 @@ entities:
       grantsCertificate: { type: boolean, default: false }
       requiresApproval: { type: boolean, default: false, note: "every self-enrollment waits for approval" }
       isClosed: { type: boolean, default: false, note: "a kapalı ders: its content and recordings are never opened to everyone. It does not block enrollment" }
+      isUnlisted: { type: boolean, default: false, note: "a listelenmeyen ders (MDRS-248, migration 0079): in no list or search but its köşk managers' shelf, opened by its link to signed-in callers only (no token: 404), and every enrolment waits for approval. Not hidden: a hidden course is not found even by its link" }
       coverLabel: { type: [string, "null"], note: "the short word printed on the cover" }
       inPerson: { type: boolean, default: false, note: "yüz yüze: a label only, no address and no seats; each session may override it through Lesson.inPersonOverride" }
       timeZone: { type: string, default: Europe/Istanbul, note: "an IANA zone; sessions are authored in it" }
@@ -176,7 +177,7 @@ entities:
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
     lifecycle:
-      - "none -> pending: a self-enrollment lands PENDING when the course requires approval, or its köşk is unlisted, or the köşk's alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the medrese's policyAlwaysApproval is on (forcesApproval); else it lands ENROLLED. A held REVOKED row refuses it (409 ENROLLMENT_STATE_CONFLICT), a barred talebe too (course.service.ts:1544-1582)"
+      - "none -> pending: a self-enrollment lands PENDING when the course requires approval, or it is unlisted (MDRS-248), or its köşk is unlisted, or the köşk's alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the medrese's policyAlwaysApproval is on (forcesApproval); else it lands ENROLLED. A held REVOKED row refuses it (409 ENROLLMENT_STATE_CONFLICT), a barred talebe too (course.service.ts:1544-1582)"
       - "none -> enrolled: a self-enrollment that needs no approval; a bulk add (audit enrollment.bulk_add); a partner enrollment (audit enrollment.partner_add)"
       - "pending | revoked -> enrolled: the course team approves; refused for a COMPLETED row and for a barred talebe (course.service.ts:1659-1685)"
       - "pending -> none: the course team rejects, with an optional reason (audit enrollment.reject), or the talebe withdraws"

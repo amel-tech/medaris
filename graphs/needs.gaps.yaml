@@ -3,10 +3,11 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1292 missing needs in 181 flows, of 2756 needs in 182 flows (counted by script from the needs.yaml files, 23 Nov 2026, after
-# tedris.course.updateProgress was retired with MDRS-248; `check` prints the same 1292 of 2756). 219 name a Linear issue first, the most
-# MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12), MDRS-141 (11), MDRS-246 (11),
-# MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1073 have no Linear issue.
+# 1299 missing needs in 181 flows, of 2764 needs in 182 flows (counted by script from the needs.yaml files, 23 Nov 2026, after
+# tedris.course.updateProgress was retired and the unlisted course of MDRS-248 was noted; `check` prints the same 1299 of 2764). 219 name
+# a Linear issue first, the most MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12),
+# MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1080 have no Linear issue, 8 of them the unlisted course's
+# "not drawn yet": its code and tests exist, and no state or node of the flow draws it.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
 # `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 675 (counted by the same script, 23 Nov 2026;
@@ -180,6 +181,7 @@ gaps:
     - zone-list-usable
     - focus-after-save
     - cards-have-own-kaydet-names
+    - an-unlisted-course-opens-by-its-link
   nazar.courseSettings.hocaTitles:
     - a-refused-save-says-what-is-stored
     - a-save-keeps-the-place-and-says-it
@@ -663,6 +665,7 @@ gaps:
     - a-hidden-course-says-so
     - the-page-has-its-own-skeleton
     - the-zone-list-is-usable
+    - an-unlisted-course-opens-by-its-link
   nizam.decks.koskDecks:
     - the-page-links-to-the-archive
     - edit-the-cards-on-the-design-system
@@ -1240,6 +1243,7 @@ gaps:
     - kontenjan-per-gender  # MDRS-284
     - gender-required-before-a-seat  # MDRS-284
     - admission-rules  # MDRS-138
+    - an-unlisted-course-waits-for-approval
   tedris.course.deckTab:
     - decks-read-failure-is-told
     - a-round-survives-a-change-of-view
@@ -1248,7 +1252,6 @@ gaps:
   tedris.course.draftPreview:
     - preview-says-when-no-celse-is-dated
     - back-to-the-draft-in-nazar
-    - staff-from-nazar-reach-the-draft
     - preview-tab-names-the-draft
     - preview-sample-row-leads-nowhere
   tedris.course.grades:
@@ -1365,6 +1368,7 @@ gaps:
     - an-unknown-medrese-in-the-address-is-not-shown-as-an-id
     - loading-is-announced
     - the-notice-region-has-a-turkish-name
+    - an-unlisted-course-is-not-in-kesfet
   tedris.discover.followKosk:
     - hidden-kosk-cannot-be-followed
     - follow-keeps-focus-and-says-its-state-once
@@ -1375,17 +1379,20 @@ gaps:
     - loading-says-so
     - not-found-has-a-main
     - nazim-sees-which-course-is-a-draft
+    - an-unlisted-course-is-not-on-the-kosk-page
   tedris.discover.readMadrasah:
     - outage-is-not-a-404
     - approval-notice-is-true
     - head-id-is-not-public
     - address-by-handle  # MDRS-294
+    - an-unlisted-course-is-not-on-the-medrese-page
   tedris.discover.visitorPath:
     - registration-returns-to-the-page
     - medrese-notice-is-true
     - programme-names-a-week-once
     - sample-row-does-not-say-completed
     - loading-is-heard
+    - an-unlisted-course-opens-by-its-link
   tedris.exams.mine:
     - reached-from-the-course-too  # MDRS-299
     - readable-by-keyboard-and-screen-reader  # MDRS-299
@@ -1482,6 +1489,7 @@ gaps:
     - a-visitor-takes-one-hop
     - an-in-person-celse-is-called-so
     - the-page-has-its-own-title
+    - an-unlisted-course-is-not-offered-to-followers
   tedris.shell.systemPages:
     - outage-is-not-a-missing-page
     - error-page-keeps-the-system-frame
