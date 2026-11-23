@@ -189,6 +189,11 @@ describe("the exam page (MDRS-299)", () => {
     expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");
     expect(radio(host, "Elif").getAttribute("aria-checked")).toBe("false");
     expect(host.textContent).not.toContain("Kaydediliyor…");
+    // The latest answer is held: the page says so (MDRS-299).
+    expect(host.textContent).toContain("Cevabın kaydedildi.");
+    // The points in Turkish numbers, with two decimals.
+    expect(host.textContent).toContain("50,00 puan");
+    expect(host.textContent).not.toContain("50.00");
   });
 
   it("asks for the zeroth answer before the start", async () => {
@@ -526,5 +531,15 @@ describe("the exam page (MDRS-299)", () => {
       (again.querySelector("[data-text-scale]") as HTMLElement).dataset
         .textScale
     ).toBe("1.5");
+  });
+});
+
+describe("a question's points (MDRS-299)", () => {
+  it("are written in the locale's numbers with two decimals", async () => {
+    const { pointsText } = await import("~/features/online-exams/take-model");
+    expect(pointsText("25.00", "tr")).toBe("25,00");
+    expect(pointsText("33.33", "tr")).toBe("33,33");
+    expect(pointsText("2", "tr")).toBe("2,00");
+    expect(pointsText("25.00", "en")).toBe("25.00");
   });
 });
