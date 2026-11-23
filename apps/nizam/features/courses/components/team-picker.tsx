@@ -8,8 +8,10 @@ import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
 import { useTranslations } from "next-intl";
 import {
+  type Dispatch,
   type KeyboardEvent,
   type RefObject,
+  type SetStateAction,
   useId,
   useMemo,
   useRef,
@@ -30,7 +32,11 @@ import {
 
 interface Props {
   value: TeamState;
-  onChange: (team: TeamState) => void;
+  /**
+   * A state setter: every change is made to the team as it is then, so a
+   * person removed while a search runs stays removed when it finds someone.
+   */
+  onChange: Dispatch<SetStateAction<TeamState>>;
   disabled?: boolean;
   /** shown under the list while it is empty and the form was sent */
   error?: string;
@@ -46,6 +52,11 @@ interface Props {
    * ayarları, so "Müderrisleri değiştir" leaves it out.
    */
   withUnvan?: boolean;
+  /**
+   * Told when a search starts and when it ends, so a form around the picker
+   * is not sent while the hoca it looks up is not on the list yet.
+   */
+  onSearchingChange?: (searching: boolean) => void;
 }
 
 /**
@@ -65,6 +76,7 @@ export function TeamPicker({
   listFirst = false,
   name = "imam",
   withUnvan = false,
+  onSearchingChange,
 }: Props) {
   const t = useTranslations("nizam.CourseTeamPicker");
   const unvans = useMemo(() => unvanOptions(t("untitled")), [t]);
@@ -82,7 +94,9 @@ export function TeamPicker({
     if (!isEmailLike(wanted) || searched.current === wanted) return;
     searched.current = wanted;
     setState({ kind: "searching" });
+    onSearchingChange?.(true);
     const result = await lookupUserByEmail(wanted);
+    onSearchingChange?.(false);
     if (searched.current !== wanted) return;
     if (redirectIfUnauthenticated(result)) return;
     if (result.kind === "found") {
@@ -92,13 +106,12 @@ export function TeamPicker({
       if (known) {
         setState({ kind: "already" });
       } else {
-        onChange(
-          addMember(value, {
-            userId: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-          })
-        );
+        const found = {
+          userId: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+        };
+        onChange((current) => addMember(current, found));
         setAnnounce(t("chosen", { name: result.user.name }));
         setState({ kind: "idle" });
       }
@@ -187,7 +200,10 @@ export function TeamPicker({
                     checked={isImam}
                     disabled={disabled}
                     onChange={() =>
-                      onChange({ ...value, imamUserId: m.userId })
+                      onChange((current) => ({
+                        ...current,
+                        imamUserId: m.userId,
+                      }))
                     }
                     aria-label={t("imamRadio", { name: m.name })}
                   />
@@ -218,7 +234,9 @@ export function TeamPicker({
                     disabled={disabled}
                     options={unvans}
                     onChange={(choice) =>
-                      onChange(setMemberUnvan(value, m.userId, choice))
+                      onChange((current) =>
+                        setMemberUnvan(current, m.userId, choice)
+                      )
                     }
                   />
                 ) : null}
@@ -227,7 +245,9 @@ export function TeamPicker({
                   className="mds-btn mds-btn--small mds-btn--ghost"
                   aria-label={t("removeLabel", { name: m.name })}
                   disabled={disabled}
-                  onClick={() => onChange(removeMember(value, m.userId))}
+                  onClick={() =>
+                    onChange((current) => removeMember(current, m.userId))
+                  }
                 >
                   {t("remove")}
                 </button>

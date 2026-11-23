@@ -37,7 +37,7 @@ needs:
       - node: newRowDraft
       - source: apps/tedrisat/src/course/course.controller.ts:188
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:124
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:127
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
     note: >-
@@ -55,7 +55,7 @@ needs:
       - node: startDateError
       - node: daysError
       - node: submit
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:127
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:131
       - source: apps/nizam/features/courses/present.ts:95
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 1: a form with nothing in it sends nothing and names what is missing"
@@ -94,7 +94,7 @@ needs:
       - node: hocaListed
       - node: searching
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nizam/features/courses/components/team-picker.tsx:80
+      - source: apps/nizam/features/courses/components/team-picker.tsx:92
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
       - test: apps/nizam/e2e/courses.e2e.ts
@@ -137,7 +137,7 @@ needs:
       - node: unvanB
       - state: form
       - source: apps/tedrisat/src/course/course.controller.ts:188
-      - source: apps/nizam/features/courses/components/team-picker.tsx:212
+      - source: apps/nizam/features/courses/components/team-picker.tsx:228
 
   - id: removing-a-hoca-is-said
     need: >-
@@ -165,7 +165,7 @@ needs:
       - node: summaryNone
       - node: summaryEmpty
       - source: apps/nizam/features/courses/present.ts:1199
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:425
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:439
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
 
@@ -192,7 +192,7 @@ needs:
       - node: inPersonDesc
       - state: opening
       - source: apps/tedrisat/src/course/course.controller.ts:188
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:455
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:469
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 4: 'Hemen yayımla' with a closed course and a cover caption opens it published"
 
@@ -207,7 +207,7 @@ needs:
       - node: newRowDraft
       - node: newRowPublished
       - source: apps/tedrisat/src/course/course.controller.ts:188
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:487
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:501
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
       - test: apps/nizam/e2e/courses.e2e.ts
@@ -221,7 +221,7 @@ needs:
       - node: approvalBox
       - node: approvalFixed
       - node: approvalDesc
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:470
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:484
 
   - id: accept-a-request-by-opening-its-course
     need: >-
@@ -234,7 +234,7 @@ needs:
       - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
       - source: apps/tedrisat/src/course-request/course-request.controller.ts:113
       - source: "apps/nizam/app/kosks/[id]/courses/new/page.tsx:39"
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:163
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:167
     note: Also drawn as the assertion the-request-is-answered-after-its-course.
 
   - id: a-request-answer-that-failed-is-told-truly
@@ -305,7 +305,7 @@ needs:
       - state: not_found
       - state: readFailed
       - source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:114
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241
       - source: "apps/nizam/app/kosks/[id]/courses/new/page.tsx:35"
       - test: apps/nizam/e2e/kosk-view.e2e.ts
         name: "nizam/23 — 'Ders aç' opens the new-course form"

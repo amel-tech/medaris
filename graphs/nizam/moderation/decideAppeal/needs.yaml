@@ -101,7 +101,7 @@ needs:
       - node: toastAccepted
       - node: toastAcceptedBody
       - source: apps/tedrisat/src/appeal/appeal.controller.ts:139
-      - source: apps/nizam/features/appeals/components/appeals-view.tsx:115
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:122
       - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
     note: |-
       apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API half (the request goes back to PENDING), against a real Postgres; not a
@@ -150,7 +150,7 @@ needs:
       - node: reasonRequired
       - source: apps/tedrisat/src/appeal/appeal.controller.ts:158
       - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
-      - source: apps/nizam/features/appeals/components/appeals-view.tsx:131
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:138
       - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
     note: |-
       apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API half (the note is required and kept), against a real Postgres; not a web
@@ -200,7 +200,7 @@ needs:
       - node: toastAnswered
       - node: toastGone
       - node: toastErrorTitle
-      - source: apps/nizam/features/appeals/components/appeals-view.tsx:107
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:114
       - source: apps/nizam/features/appeals/present.ts:8
       - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
     note: |-
@@ -228,7 +228,7 @@ needs:
       - node: decidedOutcomeAccepted
       - node: decisionNoteAlert
       - source: apps/tedrisat/src/appeal/appeal.controller.ts:116
-      - source: apps/nizam/features/appeals/components/appeals-view.tsx:90
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:95
     note: "replay: rejects, opens, rejectedBefore, acceptedBefore (bound, not walked yet)"
 
   - id: only-those-allowed-decide
@@ -260,7 +260,7 @@ needs:
       - node: loadAlert
       - node: retry
       - node: toastLoadFailed
-      - source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:254
     note: >-
       replay: unreadable (bound through the throttle helper of nazar.shell.errorStates, not walked yet); the failed read of the
       answered tab cannot be made on the local stack

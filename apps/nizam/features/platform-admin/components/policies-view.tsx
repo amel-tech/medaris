@@ -54,7 +54,8 @@ export function PoliciesView({ initial }: Props) {
   const [items, setItems] = useState<PlatformPolicyResponse[]>(
     initial?.policies.items ?? []
   );
-  const [busy, setBusy] = useState<string | null>(null);
+  // The switches whose write is on its way: each is off until its own answer.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   // `initial` is a fresh server read after router.refresh() ("Tekrar dene"):
   // the state seeded from the first render must follow it.
   const [seen, setSeen] = useState(initial);
@@ -63,22 +64,32 @@ export function PoliciesView({ initial }: Props) {
     setItems(initial?.policies.items ?? []);
   }
 
+  // Each switch moves, and moves back, on its own: a refusal of one puts back
+  // that switch alone, and an answer takes only its own row, so another
+  // switch's move, written or still on its way, is not undone on the screen.
   const toggle = async (key: string, enabled: boolean) => {
-    const before = items;
-    setItems(withPolicy(items, key, enabled));
-    setBusy(key);
+    const before = items.find((p) => p.key === key)?.enabled ?? !enabled;
+    setItems((current) => withPolicy(current, key, enabled));
+    setBusy((current) => new Set(current).add(key));
     const result = await setPlatformPolicy(key as PlatformPolicyKey, enabled);
-    setBusy(null);
+    setBusy((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
     if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
-      setItems(before);
+      setItems((current) => withPolicy(current, key, before));
       toast.error(t("saveFailed"), {
         description: t(failureKey(result.errorBody) as never),
         duration: Number.POSITIVE_INFINITY,
       });
       return;
     }
-    setItems(result.data.items);
+    const stored = result.data.items.find((p) => p.key === key);
+    setItems((current) =>
+      current.map((p) => (p.key === key && stored ? stored : p))
+    );
     toast.success(t(enabled ? "turnedOn" : "turnedOff"), {
       description: t(`policies.${key}.title` as never),
     });
@@ -163,7 +174,7 @@ export function PoliciesView({ initial }: Props) {
                       label={t(`policies.${p.key}.title` as never)}
                       description={t(`policies.${p.key}.body` as never)}
                       checked={p.enabled}
-                      disabled={busy === p.key}
+                      disabled={busy.has(p.key)}
                       onCheckedChange={(next) => void toggle(p.key, next)}
                     />
                     {p.ownScopes.length > 0 ? (

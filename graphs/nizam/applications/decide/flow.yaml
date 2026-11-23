@@ -222,7 +222,7 @@ states:
       Not a screen: after a read, a tab switch or a decision the page shows the list with an application selected, or says that
       nothing is there. A decision takes the row off the waiting list on the page itself and selects the next one; it does not read
       the list again, so an application filed after the page opened is not on it until a reload.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:405
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:413
     always:
       - { guard: waitingEmpty, target: empty, say: "no application waits: 'Karar bekleyen köşk başvurusu yok.'" }
       - { guard: decidedEmpty, target: empty, say: "nothing was answered yet: 'Karara bağlanmış başvuru yok.'" }
@@ -237,9 +237,9 @@ states:
       the page opened failed (the retry, the decided tab) a toast of the same title stays on until it is closed. While the decided tab
       cannot be read the tabs are not drawn at all, so the person cannot go back to the waiting tab (APPDEC-4); only the button or a
       reload is left. Not walkable on the stack: nothing makes tedrisat's read fail on request.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:372
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:380
     on:
-      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:375, say: "they press Tekrar dene: the tab being shown is read again" }
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:383, say: "they press Tekrar dene: the tab being shown is read again" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   retrying:
@@ -248,11 +248,11 @@ states:
       loadKoskApplications(tab), a server action that calls GET /nizam/kosk-applications with the tab's status; the alert stays
       while it runs (the page draws it for as long as `failed` is set). On success the list is kept, both counts are replaced and
       the first row of the tab is selected.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:85
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:89
     invoke: { action: listKoskApplications }
     on:
-      DONE: { target: shown, source: apps/nizam/features/platform-admin/components/applications-view.tsx:104, say: "the list is there: the alert goes" }
-      FAIL.unavailable: { target: unreadable, effect: [loadFailed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:98, say: "again nothing: a toast that stays and the alert" }
+      DONE: { target: shown, source: apps/nizam/features/platform-admin/components/applications-view.tsx:110, say: "the list is there: the alert goes" }
+      FAIL.unavailable: { target: unreadable, effect: [loadFailed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:104, say: "again nothing: a toast that stays and the alert" }
 
   empty:
     title: Nothing is listed
@@ -260,24 +260,28 @@ states:
     description: >-
       The h1, the intro and the tabs, then one sentence: "Karar bekleyen köşk başvurusu yok." on the waiting tab, "Karara bağlanmış
       başvuru yok." on the answered one. The counts are in the tabs. A toast of the last decision may still be on.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:405
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:413
     on:
-      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they open Karara bağlanan" }
-      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they go back to Bekleyen: the list read first is still held, no read" }
+      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they open Karara bağlanan" }
+      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they go back to Bekleyen: the list read first is still held, no read" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   loadingTab:
     title: The answered tab is read
     description: >-
       The first time the tab Karara bağlanan is opened (and again after any decision, which throws the held answered list away,
-      applications-view.tsx:147) the page reads GET /nizam/kosk-applications?status=DECIDED through a server action and shows three
+      applications-view.tsx:155) the page reads GET /nizam/kosk-applications?status=DECIDED through a server action and shows three
       skeleton rows meanwhile (`aria-busy`, no live region). A second visit with no decision between them finds the list held and
-      skips this step (not drawn). The read also replaces both tab counts.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:85
+      skips this step (not drawn). The read also replaces both tab counts. Bekleyen pressed meanwhile shows the waiting list at once, and
+      the read, when it lands, is dropped (each read carries a ticket, applications-view.tsx:87-99, and a tab switch takes a new one,
+      :122): it fills nothing and selects nothing, so no answered application's contact details are read under the waiting tab (APPDEC-7,
+      fixed).
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:89
     invoke: { action: listKoskApplications }
     on:
-      DONE: { target: shown, source: apps/nizam/features/platform-admin/components/applications-view.tsx:105, say: "the answered applications are there; the first (newest) is selected" }
-      FAIL.unavailable: { target: unreadable, effect: [loadFailed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:98, say: "the read failed: the error replaces the tabs and a toast stays on (APPDEC-4)" }
+      DONE: { target: shown, source: apps/nizam/features/platform-admin/components/applications-view.tsx:111, say: "the answered applications are there; the first (newest) is selected" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:122, say: "they go back to Bekleyen before the read is back: the waiting list shows at once, and the read is dropped when it lands" }
+      FAIL.unavailable: { target: unreadable, effect: [loadFailed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:104, say: "the read failed: the error replaces the tabs and a toast stays on (APPDEC-4)" }
 
   selecting:
     title: The selected application's detail is read
@@ -287,13 +291,13 @@ states:
       telephone to the audit log (`kosk_application.contact_read`) before it answers (F-W3-7, APPDEC-2). The list and the
       detail's header (eyebrow, name, status badge) are drawn at once; the rest of the panel is two skeleton blocks (`aria-busy`)
       until the answer comes. The buttons are not drawn until it does.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:123
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:131
     invoke: { action: getKoskApplication }
     on:
       DONE:
-        - { guard: "tab == 'waiting'", target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:133, say: "a waiting application: its detail and its two buttons" }
-        - { target: decidedDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:133, say: "an answered application: its detail and no buttons" }
-      FAIL.unavailable: { target: detailUnreadable, source: apps/nizam/features/platform-admin/components/applications-view.tsx:136, say: "the detail could not be read: 'Başvurunun ayrıntıları okunamadı.'" }
+        - { guard: "tab == 'waiting'", target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:141, say: "a waiting application: its detail and its two buttons" }
+        - { target: decidedDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:141, say: "an answered application: its detail and no buttons" }
+      FAIL.unavailable: { target: detailUnreadable, source: apps/nizam/features/platform-admin/components/applications-view.tsx:144, say: "the detail could not be read: 'Başvurunun ayrıntıları okunamadı.'" }
 
   detailUnreadable:
     title: The detail could not be read
@@ -303,11 +307,11 @@ states:
       no retry button and pressing the selected row again changes nothing (the same id): only another row, a tab or a reload
       reads again (APPDEC-4's neighbour; the buttons are not drawn, so the application cannot be decided from here). Not walkable
       on the stack.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:302
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:310
     on:
-      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:207, say: "they press another row" }
-      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they open Karara bağlanan" }
-      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they go back to Bekleyen" }
+      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:215, say: "they press another row" }
+      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they open Karara bağlanan" }
+      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they go back to Bekleyen" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   waitingDetail:
@@ -323,18 +327,18 @@ states:
       and "Reddet". A toast of the last decision may be on. Choosing a row changes the panel with no announcement and moves no
       focus (F-W3-5); the page has no initial focus (no code sets one). After a failed approval the application is still here
       and nothing says that its köşk exists (F-W3-8).
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:339
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:347
     on:
-      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:207, say: "they press another row: the contact details of that applicant are read and audited" }
-      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they open Karara bağlanan" }
+      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:215, say: "they press another row: the contact details of that applicant are read and audited" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they open Karara bağlanan" }
       TAB_WAITING: { target: waitingDetail, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab already selected: Base UI's tab ignores a press on the active tab, and nothing changes" }
       OPEN_KOSK:
         target: koskForm
         effect: [clearNote]
         starts: { flow: nizam.kosks.open, given: { fromApplication: "true" } }
-        source: apps/nizam/features/platform-admin/components/applications-view.tsx:343
+        source: apps/nizam/features/platform-admin/components/applications-view.tsx:351
         say: "they press Köşkü aç: the köşk form opens over the page with the application's name and description and the applicant as nazım"
-      REJECT: { target: rejectForm, effect: [openedReject], source: apps/nizam/features/platform-admin/components/applications-view.tsx:344, say: "they press Reddet: the reject form opens" }
+      REJECT: { target: rejectForm, effect: [openedReject], source: apps/nizam/features/platform-admin/components/applications-view.tsx:352, say: "they press Reddet: the reject form opens" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
   decidedDetail:
@@ -345,10 +349,10 @@ states:
       adds the outcome and the answer's time, and there are no buttons. A refused one adds an alert "Ret gerekçesi" with the reason
       the applicant reads. An accepted one says nothing of the köşk it opened: the API sends `koskId` and the page drops it, so
       the reader cannot go from the application to the köşk (APPDEC-3).
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:349
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:357
     on:
-      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:207, say: "they press another row" }
-      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:115, say: "they go back to Bekleyen" }
+      SELECT_OTHER: { target: selecting, effect: [clearNote], source: apps/nizam/features/platform-admin/components/applications-view.tsx:215, say: "they press another row" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/platform-admin/components/applications-view.tsx:121, say: "they go back to Bekleyen" }
       TAB_DECIDED: { target: decidedDetail, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Karara bağlanan, the tab already selected: Base UI's tab ignores a press on the active tab, and nothing changes" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
 
@@ -362,7 +366,7 @@ states:
       flow. Two things leave it for this page: the form's own "Vazgeç", close icon or Escape, which closes it and changes
       nothing (event FORM_CLOSED), and a köşk made (event KOSK_MADE): the form closes at once, its toast "Köşk açıldı" is shown,
       and the page then sends the approval.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:421
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:429
     on:
       KOSK_MADE: { target: approving, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:118, say: "the form made the köşk; this page calls the approval with its id" }
       FORM_CLOSED: { target: waitingDetail, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "Vazgeç, the close icon or Escape: nothing was made; the focus goes back to Köşkü aç (Base UI; not verified)" }
@@ -378,14 +382,14 @@ states:
       applicant (a notice with the köşk's name and no target: F-3). Anything but success leaves the köşk in place. Decided or gone:
       the row leaves and the toast says why. Forbidden, or any other refusal: the application stays and still says "Karar
       bekliyor", and nothing says the köşk exists (F-W3-8); a second "Köşkü aç" would make a second köşk.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:164
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:172
     invoke: { action: approveKoskApplication }
     on:
-      DONE: { guard: "answer == 'done'", target: shown, effect: [approved], source: apps/nizam/features/platform-admin/components/applications-view.tsx:172, say: "the application is accepted: a toast, the row leaves, the counts move and the next application is selected" }
-      FAIL.decided: { guard: "answer == 'decided'", target: shown, effect: [answered], source: apps/nizam/features/platform-admin/components/applications-view.tsx:169, say: "someone answered it first: the row leaves and the toast 'Karar kaydedilemedi' says so; the köşk was made all the same" }
-      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [gone], source: apps/nizam/features/platform-admin/components/applications-view.tsx:169, say: "the application is not there: the row leaves and the toast says so" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: waitingDetail, effect: [forbidden], source: apps/nizam/features/platform-admin/components/applications-view.tsx:169, say: "a toast 'Bu işlem için izniniz yok.'; the application stays; the köşk exists (F-W3-8)" }
-      FAIL.other: { guard: "answer == 'failed'", target: waitingDetail, effect: [failed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:169, say: "a toast 'İşlem tamamlanamadı.'; the application stays; the köşk exists (F-W3-8)" }
+      DONE: { guard: "answer == 'done'", target: shown, effect: [approved], source: apps/nizam/features/platform-admin/components/applications-view.tsx:180, say: "the application is accepted: a toast, the row leaves, the counts move and the next application is selected" }
+      FAIL.decided: { guard: "answer == 'decided'", target: shown, effect: [answered], source: apps/nizam/features/platform-admin/components/applications-view.tsx:177, say: "someone answered it first: the row leaves and the toast 'Karar kaydedilemedi' says so; the köşk was made all the same" }
+      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [gone], source: apps/nizam/features/platform-admin/components/applications-view.tsx:177, say: "the application is not there: the row leaves and the toast says so" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: waitingDetail, effect: [forbidden], source: apps/nizam/features/platform-admin/components/applications-view.tsx:177, say: "a toast 'Bu işlem için izniniz yok.'; the application stays; the köşk exists (F-W3-8)" }
+      FAIL.other: { guard: "answer == 'failed'", target: waitingDetail, effect: [failed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:177, say: "a toast 'İşlem tamamlanamadı.'; the application stays; the köşk exists (F-W3-8)" }
 
   rejectForm:
     title: The reject form, the button off
@@ -400,7 +404,7 @@ states:
     on:
       FILL_REASON: { target: rejectFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they write a reason: the button goes on" }
       LEAVE_FIELD: { target: rejectForm, effect: [leftEmpty], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114, say: "they leave the field empty: 'Bir gerekçe yazın.' appears under it" }
-      CANCEL: { target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:438, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Reddet (Base UI; not verified)" }
+      CANCEL: { target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:446, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Reddet (Base UI; not verified)" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   rejectFormReady:
@@ -414,7 +418,7 @@ states:
     on:
       FILL_REASON: { target: rejectFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they change the reason" }
       SUBMIT: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:65, say: "they press Reddet" }
-      CANCEL: { target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:438, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
+      CANCEL: { target: waitingDetail, source: apps/nizam/features/platform-admin/components/applications-view.tsx:446, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   rejecting:
@@ -425,14 +429,14 @@ states:
       field stays editable. The answer is written once, with its audit row, and the applicant is told with the reason. A success
       or a "decided"/"gone" answer closes the dialog and the row leaves (the page calls `settle`); the other refusals keep it open
       with an error toast.
-    source: apps/nizam/features/platform-admin/components/applications-view.tsx:178
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:186
     invoke: { action: rejectKoskApplication }
     on:
-      DONE: { guard: "answer == 'done'", target: shown, effect: [rejected], source: apps/nizam/features/platform-admin/components/applications-view.tsx:186, say: "refused: a toast, the dialog closes, the row leaves and the next application is selected" }
-      FAIL.decided: { guard: "answer == 'decided'", target: shown, effect: [answered], source: apps/nizam/features/platform-admin/components/applications-view.tsx:183, say: "someone answered it first: the dialog closes, the row leaves, the toast says so (e2e: none)" }
-      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [gone], source: apps/nizam/features/platform-admin/components/applications-view.tsx:183, say: "the application is not there: the dialog closes, the row leaves, the toast says so" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [forbidden], source: apps/nizam/features/platform-admin/components/applications-view.tsx:184, say: "a toast 'Bu işlem için izniniz yok.'; the dialog stays open with the reason as it was" }
-      FAIL.other: { guard: "answer == 'failed'", target: rejectFormReady, effect: [failed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:184, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
+      DONE: { guard: "answer == 'done'", target: shown, effect: [rejected], source: apps/nizam/features/platform-admin/components/applications-view.tsx:194, say: "refused: a toast, the dialog closes, the row leaves and the next application is selected" }
+      FAIL.decided: { guard: "answer == 'decided'", target: shown, effect: [answered], source: apps/nizam/features/platform-admin/components/applications-view.tsx:191, say: "someone answered it first: the dialog closes, the row leaves, the toast says so (e2e: none)" }
+      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [gone], source: apps/nizam/features/platform-admin/components/applications-view.tsx:191, say: "the application is not there: the dialog closes, the row leaves, the toast says so" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [forbidden], source: apps/nizam/features/platform-admin/components/applications-view.tsx:192, say: "a toast 'Bu işlem için izniniz yok.'; the dialog stays open with the reason as it was" }
+      FAIL.other: { guard: "answer == 'failed'", target: rejectFormReady, effect: [failed], source: apps/nizam/features/platform-admin/components/applications-view.tsx:192, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
 
   no_access:
     title: The reader may not decide applications
@@ -447,7 +451,7 @@ states:
     leavesPage: true
 
 assertions:
-  - { id: buttons-only-for-a-waiting-application, never: "(state == 'koskForm' or state == 'approving' or state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and tab == 'decided'", say: "Only a waiting application can be opened as a köşk or refused: an answered one has no buttons", source: apps/nizam/features/platform-admin/components/applications-view.tsx:339 }
+  - { id: buttons-only-for-a-waiting-application, never: "(state == 'koskForm' or state == 'approving' or state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and tab == 'decided'", say: "Only a waiting application can be opened as a köşk or refused: an answered one has no buttons", source: apps/nizam/features/platform-admin/components/applications-view.tsx:347 }
   - { id: no-refusal-without-a-reason, never: "state == 'rejecting' and reason != 'typed'", say: "A refusal is sent only with a reason written: the button stays off while the reason is blank", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 }
-  - { id: empty-means-nothing-listed, never: "state == 'empty' and tab == 'waiting' and queue == 'some'", say: "The empty line of the waiting tab shows only when nothing waits", source: apps/nizam/features/platform-admin/components/applications-view.tsx:405 }
-  - { id: a-detail-follows-a-list, never: "state == 'decidedDetail' and tab == 'waiting'", say: "An answered application is shown only on the answered tab", source: apps/nizam/features/platform-admin/components/applications-view.tsx:349 }
+  - { id: empty-means-nothing-listed, never: "state == 'empty' and tab == 'waiting' and queue == 'some'", say: "The empty line of the waiting tab shows only when nothing waits", source: apps/nizam/features/platform-admin/components/applications-view.tsx:413 }
+  - { id: a-detail-follows-a-list, never: "state == 'decidedDetail' and tab == 'waiting'", say: "An answered application is shown only on the answered tab", source: apps/nizam/features/platform-admin/components/applications-view.tsx:357 }

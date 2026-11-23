@@ -355,7 +355,7 @@ states:
       nizam.courses.manageSessions. The sticky toast of `fromOpen` is dismissed by the change of page. The focus is the new document's (focus-not-set).
     on:
       NAVIGATE: { target: left, say: "they follow the menu" }
-    source: apps/nizam/features/courses/components/sessions-view.tsx:482
+    source: apps/nizam/features/courses/components/sessions-view.tsx:486
 
   switched:
     title: The pattern changed after it was whole

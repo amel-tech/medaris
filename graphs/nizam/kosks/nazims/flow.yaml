@@ -263,9 +263,9 @@ states:
       text with no live region (F-UI-W3-1), and "Ekle" stays off.
     source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
     on:
-      SEARCH: { guard: "chosen == 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they type a person's e-mail address and press Enter, or leave the field" }
-      SEARCH_ANOTHER: { guard: "chosen != 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they type another address: one or more people can be added in one go" }
-      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:173, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
+      SEARCH: { guard: "chosen == 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they type a person's e-mail address and press Enter, or leave the field" }
+      SEARCH_ANOTHER: { guard: "chosen != 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they type another address: one or more people can be added in one go" }
+      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:180, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
       TYPE_FUTURE_END: { guard: "end != 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:160, say: "they type an end ahead" }
       TYPE_PAST_END: { guard: "end != 'past'", target: settle, effect: [endPast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:146, say: "they type an end in the past: 'Bitiş zamanı şu andan sonra olmalı.' appears under the field at once" }
       CANCEL: { target: listed, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "Vazgeç, the close icon or Escape: the dialog closes and nothing is added; the focus goes back to 'Köşk nazımı ekle'" }
@@ -278,8 +278,8 @@ states:
       The same dialog with "Ekle" on. Somebody is chosen and the end is empty or ahead; pressing it sends everybody chosen.
     source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124
     on:
-      SEARCH_ANOTHER: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they look up another person" }
-      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:173, say: "they remove the chosen person: the button goes off" }
+      SEARCH_ANOTHER: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they look up another person" }
+      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:180, say: "they remove the chosen person: the button goes off" }
       TYPE_FUTURE_END: { guard: "end != 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:160, say: "they type an end ahead" }
       TYPE_PAST_END: { guard: "end != 'past'", target: settle, effect: [endPast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:146, say: "they type an end in the past: the button goes off" }
       SUBMIT: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:83, say: "they press 'Ekle'" }
@@ -298,11 +298,11 @@ states:
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup in ['found', 'again'] and chosen == 'none'", target: settle, effect: [chose], source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "the person is added to the chosen list, the field is cleared and the live region says who" }
-        - { guard: "lookup == 'found' and chosen != 'none'", target: settle, effect: [choseAnother], source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "a second person is added to the list (the API takes up to ten; the page does not count, KNZ-4)" }
-        - { guard: "lookup == 'again' and chosen != 'none'", target: settle, effect: [foundAgain], source: apps/nizam/features/kosks/components/nazim-picker.tsx:68, say: "the same person again: 'Bu kişi zaten seçildi.' and nobody is added" }
-        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/kosks/components/nazim-picker.tsx:82, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/kosks/components/nazim-picker.tsx:84, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+        - { guard: "lookup in ['found', 'again'] and chosen == 'none'", target: settle, effect: [chose], source: apps/nizam/features/kosks/components/nazim-picker.tsx:83, say: "the person is added to the chosen list, the field is cleared and the live region says who" }
+        - { guard: "lookup == 'found' and chosen != 'none'", target: settle, effect: [choseAnother], source: apps/nizam/features/kosks/components/nazim-picker.tsx:83, say: "a second person is added to the list (the API takes up to ten; the page does not count, KNZ-4)" }
+        - { guard: "lookup == 'again' and chosen != 'none'", target: settle, effect: [foundAgain], source: apps/nizam/features/kosks/components/nazim-picker.tsx:74, say: "the same person again: 'Bu kişi zaten seçildi.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/kosks/components/nazim-picker.tsx:89, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/kosks/components/nazim-picker.tsx:91, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
       CANCEL: { target: listed, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they close the dialog while the search runs; its answer is dropped" }
 
   adding:

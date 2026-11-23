@@ -475,7 +475,7 @@ states:
       the audit log (F-W3-14). The scrim does not close it. The button is drawn for the editor, who cannot do this (F-W3-4).
     source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
     on:
-      SEARCH: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they type a person's e-mail address and press Enter" }
+      SEARCH: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they type a person's e-mail address and press Enter" }
       CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they press Vazgeç, or Esc" }
       CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon" }
 
@@ -485,11 +485,11 @@ states:
       The server action lookupUserByEmail, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1
       account) and tedrisat audits every search. The field is disabled while it runs. Taken as found here: an address with no
       account, one already chosen and a directory that does not answer are nizam.kosks.nazims' states.
-    source: apps/nizam/features/kosks/components/nazim-picker.tsx:64
+    source: apps/nizam/features/kosks/components/nazim-picker.tsx:70
     invoke: { action: lookupUser }
     on:
       CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon while it searches: nothing is saving, so the dialog closes and the answer is dropped" }
-      DONE: { target: addReady, source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "the person is chosen and the field is cleared" }
+      DONE: { target: addReady, source: apps/nizam/features/kosks/components/nazim-picker.tsx:83, say: "the person is chosen and the field is cleared" }
       CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they close the dialog while it searches; the answer is dropped" }
 
   addReady:
