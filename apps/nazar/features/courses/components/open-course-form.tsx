@@ -47,8 +47,10 @@ export interface KoskChoice {
  * limits, with the sentence that says whose it is; the API applies the policies
  * whatever is sent. Each hoca chosen gets a select of the unvan they will carry
  * in the course, "Hoca (unvansız)" until another is chosen (owner,
- * 2026-10-15); only the ones given an unvan are sent. A course that opens is a
- * draft, and the page goes back to the list with a toast.
+ * 2026-10-15); only the ones given an unvan are sent. While the course is
+ * opened the form is held, so the course opened is the one the page shows. A
+ * course that opens is a draft, and the page goes back to the list with a
+ * toast.
  */
 export function OpenCourseForm({
   madrasahId,
@@ -159,6 +161,7 @@ export function OpenCourseForm({
             name="kosk"
             bordered
             value={koskId}
+            disabled={pending}
             onChange={(value) => setDraft({ ...draft, koskId: value })}
             options={kosks.map((kosk) => ({
               value: kosk.id,
@@ -190,6 +193,7 @@ export function OpenCourseForm({
             required
             autoComplete="off"
             value={draft.title}
+            disabled={pending}
             onChange={(event) =>
               setDraft({ ...draft, title: event.target.value })
             }
@@ -212,6 +216,7 @@ export function OpenCourseForm({
           keepOne={false}
           unvan={unvan}
           onSearchingChange={setLooking}
+          disabled={pending}
         />
       </div>
 
@@ -229,7 +234,7 @@ export function OpenCourseForm({
             label={t("OpenCourse.closed.label")}
             description={t("OpenCourse.closed.help")}
             checked={closed}
-            disabled={locks.closed}
+            disabled={locks.closed || pending}
             onCheckedChange={(checked) =>
               setDraft({ ...draft, closed: checked })
             }
@@ -240,7 +245,7 @@ export function OpenCourseForm({
             label={t("OpenCourse.approval.label")}
             description={t("OpenCourse.approval.help")}
             checked={approval}
-            disabled={locks.approval}
+            disabled={locks.approval || pending}
             onCheckedChange={(checked) =>
               setDraft({ ...draft, approval: checked })
             }

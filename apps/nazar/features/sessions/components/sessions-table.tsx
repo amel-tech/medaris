@@ -623,6 +623,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -665,6 +666,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -681,6 +683,7 @@ export function SessionsTable({
                       type="date"
                       name="date"
                       value={editing.date}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, date: event.target.value })
                       }
@@ -691,6 +694,7 @@ export function SessionsTable({
                       type="time"
                       name="time"
                       value={editing.time}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, time: event.target.value })
                       }

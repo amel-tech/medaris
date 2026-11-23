@@ -506,9 +506,9 @@ entries:
   - { from: medreseCourses, to: medreseCoursesYeni, how: link, label: Courses.open, when: "'madrasah.course_open' in held", source: apps/nazar/features/courses/components/courses-page.tsx:118 }
   - { from: medreseCourses, to: medreseArchive, how: link, label: Courses.hiddenNote.link, source: apps/nazar/features/courses/components/courses-page.tsx:155 }
   - { from: medreseCourses, to: dersOverview, how: link, label: a course in the list, data: true, source: apps/nazar/features/courses/components/courses-table.tsx:80 } # every listed course opens by its address
-  - { from: medreseCoursesYeni, to: medreseCourses, how: link, label: OpenCourse.cancel, back: true, source: apps/nazar/features/courses/components/open-course-form.tsx:268 }
-  - { from: medreseCoursesYeni, to: medreseSettings, how: link, label: Nav.medrese.settings, data: true, source: apps/nazar/features/courses/components/open-course-form.tsx:254 } # in the sentence that says a policy locks a box
-  - { from: medreseCoursesTalep, to: medreseCourses, how: link, label: Offsite.cancel, back: true, source: apps/nazar/features/offsite/components/offsite-form.tsx:191 }
+  - { from: medreseCoursesYeni, to: medreseCourses, how: link, label: OpenCourse.cancel, back: true, source: apps/nazar/features/courses/components/open-course-form.tsx:273 }
+  - { from: medreseCoursesYeni, to: medreseSettings, how: link, label: Nav.medrese.settings, data: true, source: apps/nazar/features/courses/components/open-course-form.tsx:259 } # in the sentence that says a policy locks a box
+  - { from: medreseCoursesTalep, to: medreseCourses, how: link, label: Offsite.cancel, back: true, source: apps/nazar/features/offsite/components/offsite-form.tsx:193 }
   - { from: medreseSettings, to: medreseCourses, how: link, label: Settings.coursesLink, source: apps/nazar/features/settings/components/settings-page.tsx:191 }
   - { from: medreseSettings, to: tedrisMadrasah, how: link, label: Settings.viewPage, source: apps/nazar/features/settings/components/settings-page.tsx:84 }
 

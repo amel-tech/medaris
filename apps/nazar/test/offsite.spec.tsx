@@ -410,6 +410,35 @@ describe("the form", () => {
     expect(trigger.textContent).toContain("Beyazıt Köşkü");
   });
 
+  it("holds the name and the reason while the request is sent, so a refusal shows what was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    sendOffsiteRequest.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await fill("Maksûd şerhi", "Neden.");
+    await click(submit());
+    await settle(20);
+    expect(field("title").disabled).toBe(true);
+    expect(field("reason").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(sendOffsiteRequest).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-3",
+      title: "Maksûd şerhi",
+      reason: "Neden.",
+    });
+    expect(field("title").disabled).toBe(false);
+    expect(field("reason").disabled).toBe(false);
+    expect(field("title").value).toBe("Maksûd şerhi");
+  });
+
   it("reads the köşks again when the one chosen is gone", async () => {
     sendOffsiteRequest.mockResolvedValue({
       success: false,

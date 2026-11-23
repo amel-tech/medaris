@@ -80,7 +80,7 @@ needs:
       - node: noKoskBack
       - state: courses_opened
       - source: apps/nazar/features/courses/components/courses-page.tsx:114
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:191
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:193
       - test: apps/nazar/e2e/offsite.e2e.ts
         name: "nazir/09 — Dersler leads to the form, which has the canvas's fields and says what happens after"
     note: "replay: sends enters through the nav; the exits are walked by --cover transitions (bound, not walked yet)"

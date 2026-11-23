@@ -58,7 +58,7 @@ needs:
       - node: radioCourse
       - node: attendanceInPerson
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
-      - source: apps/nazar/features/sessions/components/sessions-table.tsx:631
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:632
       - test: apps/nazar/test/sessions-page.spec.tsx
         name: "holds the choice while it is written, so a refusal shows the choice that was sent"
 

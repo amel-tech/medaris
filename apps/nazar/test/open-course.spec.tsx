@@ -599,6 +599,61 @@ describe("'Dersi aç'", () => {
     });
   });
 
+  it("holds the whole form while the course is opened, so the course opened is the one shown", async () => {
+    lookupPerson
+      .mockResolvedValueOnce(ISIKOGLU)
+      .mockResolvedValueOnce(KILICARSLAN);
+    let answer: (value: unknown) => void = () => {};
+    openCourse.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await typeInto(titleField(), "Maksûd şerhi");
+    await search(ISIKOGLU);
+    await search(KILICARSLAN);
+    await click(submit());
+    await settle(20);
+
+    expect(openCourse).toHaveBeenCalledOnce();
+    expect(titleField().disabled).toBe(true);
+    expect(emailField().disabled).toBe(true);
+    const held = (element: Element | null) =>
+      element?.hasAttribute("data-disabled") === true ||
+      element?.getAttribute("aria-disabled") === "true" ||
+      (element as HTMLButtonElement | null)?.disabled === true;
+    expect(held(byLabel("Çıkar: Mehmet Emin Işıkoğlu"))).toBe(true);
+    expect(held(byLabel("Dersin imamı: Ayşe Nur Kılıçarslan"))).toBe(true);
+    expect(held(unvanSelect("Mehmet Emin Işıkoğlu"))).toBe(true);
+    expect(held(checkbox("Kapalı ders"))).toBe(true);
+    expect(held(checkbox("Kayıt onayı gereksin"))).toBe(true);
+    const kosk = form().querySelector("[role=radio]:not([aria-label])");
+    expect(held(kosk)).toBe(true);
+    // a press on a held control changes nothing on the screen
+    await click(byLabel("Çıkar: Mehmet Emin Işıkoğlu"));
+    await click(choice("Kapalı ders"));
+    expect(form().textContent).toContain("Mehmet Emin Işıkoğlu");
+    expect(checkbox("Kapalı ders").getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(openCourse).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-1",
+      title: "Maksûd şerhi",
+      muderrisUserIds: ["u-1", "u-2"],
+      imamUserId: "u-1",
+      closedCourse: false,
+      requiresApproval: false,
+    });
+    expect(titleField().disabled).toBe(false);
+    expect(held(checkbox("Kapalı ders"))).toBe(false);
+    expect(held(byLabel("Çıkar: Mehmet Emin Işıkoğlu"))).toBe(false);
+  });
+
   it("goes back to the list with 'Vazgeç', without sending anything", async () => {
     await mount();
     const cancel = buttonIn(form(), "Vazgeç");
