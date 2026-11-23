@@ -813,7 +813,10 @@
     "notifications": "Notifications",
     "homeLabel": "Medaris Tedris, home",
     "liveIntro": "{course} is live now.",
-    "exams": "My exams"
+    "exams": "My exams",
+    "examOpenIntro": "The {course} exam is open now.",
+    "examPage": "Exam page",
+    "examEnter": "Take the exam"
   },
   "SchedulePage": {
     "pageTitle": "My schedule",
@@ -844,7 +847,9 @@
     "loadErrorTitle": "Your schedule could not be loaded",
     "loadError": "Your sessions could not be read right now.",
     "retry": "Try again",
-    "exam": "Exam"
+    "exam": "Exam",
+    "examOpen": "Exam open",
+    "examEnter": "Take the exam"
   },
   "Decks": {
     "title": "Decks",

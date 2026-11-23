@@ -70,7 +70,7 @@ needs:
       - node: answerNote
       - state: acceptHandOver
       - state: handed_over.open_course
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241
       - source: apps/nizam/features/platform-admin/present.ts:292
       - source: apps/tedrisat/src/course-request/course-request.controller.ts:113
       - test: apps/nizam/e2e/platform-admin.e2e.ts
@@ -104,7 +104,7 @@ needs:
       - node: reasonRequired
       - source: apps/tedrisat/src/course-request/course-request.controller.ts:132
       - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:113
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:120
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/39 — Reddet needs a reason and moves the request to Karara bağlanan (criteria 3, 4)"
     note: "replay: rejects, opens (bound, not walked yet)"
@@ -136,7 +136,7 @@ needs:
       - node: toastAnswered
       - node: toastGone
       - node: toastErrorTitle
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:118
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125
       - source: apps/nizam/features/platform-admin/present.ts:43
     note: >-
       replay: answered, gone (races.binding.yaml, bound, not walked yet); the gone one adds one to the answered count by mistake
@@ -161,7 +161,7 @@ needs:
       - node: decidedOutcomeAccepted
       - node: rejectReasonAlert
       - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/39 — Reddet needs a reason and moves the request to Karara bağlanan (criteria 3, 4)"
     note: |-
@@ -178,7 +178,7 @@ needs:
       - node: loadAlert
       - node: retry
       - node: toastLoadFailed
-      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:262
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:269
     note: "replay: unreadable (bound, not walked yet); the failed read of the answered tab cannot be made on the local stack"
 
   - id: a-failed-read-keeps-the-tabs

@@ -57,7 +57,7 @@ needs:
       - node: dayChip
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
       - source: apps/tedrisat/src/course/lesson.controller.ts:300
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:200
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:204
     note: "replay: weekly (end by date, 3 celses), weeklyCount (4 celses); the effect reads the lessons and weeks in the database"
 
   - id: plan-one-celse
@@ -69,7 +69,7 @@ needs:
       - node: modeSingle
       - node: dateField
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:403
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:414
     note: "replay: single"
 
   - id: read-the-preview-before-making
@@ -84,7 +84,7 @@ needs:
       - node: previewCount
       - node: previewFailedAlert
       - source: apps/tedrisat/src/course/lesson.controller.ts:300
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:691
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:712
     note: >-
       replay: weekly (formReady), previewRefused (previewFailed: a pattern of Monday and Saturday over a Tuesday and a Wednesday)
 
@@ -98,7 +98,7 @@ needs:
       - node: linksNote
       - node: previewRowCaption
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:314
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:323
     note: "replay: weekly (LINKS_FIRST in the main story)"
 
   - id: plan-an-exam
@@ -115,7 +115,7 @@ needs:
       - node: retakeBox
       - node: examSubmit
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:421
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:432
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "the müderris plans an exam with Sınav in the same flow"
     note: |-
@@ -164,7 +164,7 @@ needs:
       - node: linkError
       - node: scoreError
       - node: placeError
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:164
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:168
       - test: apps/nazar/test/plan-page.spec.tsx
     note: |-
       Also drawn as the assertion a-refused-form-is-not-sent.
@@ -183,10 +183,13 @@ needs:
       - node: toastForbidden
       - node: toastFailed
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/nazar/features/sessions/components/plan-form.tsx:218
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:222
       - test: apps/nazar/test/plan-page.spec.tsx
+      - test: apps/nazar/test/plan-page.spec.tsx
+        name: "holds every field and choice while the celses are made, so a refusal shows what was sent"
     note: |-
       apps/nazar/test/plan-page.spec.tsx: "stays on the form and says why when the API refuses, and for a caller who may not"
+      The form is held while the write runs (plan-form.tsx:123), so the form she is left with is the one that was sent.
       replay: binding.forbiddenWrite.yaml (answer: forbidden); patternRefused and failed cannot be made locally (the API cannot be
       made to refuse a pattern it just previewed)
 

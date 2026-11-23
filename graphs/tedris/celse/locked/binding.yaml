@@ -23,7 +23,7 @@
 #                    must bring the browser back to the celse, where it checks the stranger's card (session#1 only asserts /signin/)
 # Not walked, and why:
 #   - `passive` and `barred` (CLS-02): they need an enrolled talebe whose scope is passive (a medrese or köşk switched to inactive) or who is
-#     barred; both change a seeded scope or need a ban, and the button's effect there is read from the code (lesson-locked.tsx:98).
+#     barred; both change a seeded scope or need a ban, and the button's effect there is read from the code (lesson-locked.tsx:100).
 #   - the refusals of the button (`gone`, `conflict`, `failed`) and `signedOut`: the stack cannot make tedrisat refuse an application of a
 #     talebe who may apply. The `open` approval (the page drawn as the whole celse) needs a course that takes anyone: another course, which
 #     the main story would make a second time; it is the same call and the same refresh, and `session_opened` is tedris.celse.attend's page.

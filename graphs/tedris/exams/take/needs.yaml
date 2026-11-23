@@ -17,7 +17,7 @@ needs:
       - state: briefing
       - node: briefingFacts
       - node: startButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:767
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:822
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says in the briefing what A− and A+ do, and draws them"
     note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
@@ -33,7 +33,7 @@ needs:
       - node: hadithArabic
       - node: zerothOptions
       - node: startHint
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:811
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:866
       - test: apps/tedris/test/exam-take.spec.ts
         name: "asks for the zeroth answer before the start"
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
@@ -116,8 +116,8 @@ needs:
       - state: question
       - node: radioOptions
       - node: checkOptions
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:624
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:639
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:675
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:692
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
         name: "saves every answer by the page's count, and only what fits the question"
     note: >-
@@ -132,7 +132,8 @@ needs:
     evidence:
       - state: question
       - node: savedLine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:225
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:241
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:607
       - test: apps/tedris/test/exam-take.spec.ts
         name: "shows a choice at once, and a late answer to an earlier save does not take it back"
     note: "Owner: \"her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek direk 'sınav bitti tüm cevapları tek seferde gönder' demeye gerek yok\"."
@@ -146,8 +147,8 @@ needs:
       - state: question
       - node: offlineAlert
       - node: notSavedLine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:572
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:563
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:622
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
     note: >-
@@ -162,7 +163,7 @@ needs:
     evidence:
       - state: question
       - node: timer
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:543
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:589
     note: "Owner: \"sınav ekranında geri sayım olacak\"."
 
   - id: the-last-five-minutes-stand-out
@@ -172,7 +173,7 @@ needs:
     evidence:
       - state: question
       - node: lastFive
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:547
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:593
     note: "Owner: \"son 5 dk kala geri sayım mesela kırmızı olacak ki anlaşılsın\"."
 
   - id: the-time-running-out-ends-it
@@ -198,7 +199,7 @@ needs:
     evidence:
       - state: question
       - node: questionList
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:675
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:728
       - test: apps/tedris/test/exam-take.spec.ts
         name: "colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
@@ -209,8 +210,8 @@ needs:
       - state: question
       - node: previousButton
       - node: nextButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:655
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:668
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:708
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:721
 
   - id: skip-a-question
     need: >-
@@ -219,7 +220,7 @@ needs:
     evidence:
       - state: question
       - node: skipButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:657
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:710
     note: "Owner: \"soruyu atla seçeneği olacak\"."
 
   - id: the-skipped-come-back-after-the-last
@@ -229,7 +230,7 @@ needs:
     evidence:
       - state: skippedTurn
       - node: skippedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:512
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:529
     note: "Owner: \"son soruya gelindiğinde atlanan sorulara dönülecek\"."
 
   - id: finish-asks-once
@@ -241,7 +242,7 @@ needs:
       - state: finished
       - node: finishButton
       - node: finishDialog
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:718
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:771
     note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
 
   - id: resume-after-a-lost-connection
@@ -253,7 +254,7 @@ needs:
       - state: offline
       - state: resuming
       - node: resumedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:406
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:423
       - test: apps/tedris/test/exam-take.spec.ts
         name: "sends the choices kept before a reload once the attempt is taken back"
     note: >-
@@ -289,7 +290,7 @@ needs:
       - state: notingSwitch
       - node: factSwitch
       - node: switchedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:774
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:829
 
   - id: one-place-at-a-time
     need: >-
@@ -368,8 +369,8 @@ needs:
       - state: finished
       - node: resultWhere
       - node: toMine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:876
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:878
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:931
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:933
 
   - id: the-text-size-can-change
     need: >-
@@ -380,7 +381,7 @@ needs:
       - node: textSmallerButton
       - node: textBiggerButton
       - node: factTextSize
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:528
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:647
       - test: apps/tedris/test/exam-take.spec.ts
         name: "zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload"
       - test: apps/tedris/test/exam-take.spec.ts
@@ -412,7 +413,7 @@ needs:
       lost.
     evidence:
       - state: offline
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:563
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
       - test: apps/tedris/test/exam-take.spec.ts

@@ -299,7 +299,7 @@ states:
     description: >-
       An alertdialog named by its title, with the week's title above it. The paragraph says "<week> ve içindeki <n> celse dersten
       kalkar; talebeler görmez. Hiçbir şey silinmez; gizleyen kademe ya da üstü Arşiv’den geri alır." The focus starts on "Vazgeç"
-      (Base UI's alert dialog, libs/ui/src/mds/alert-dialog.tsx:64), is trapped, and the scrim does not close it. "Gizle" is a
+      (Base UI's alert dialog, libs/ui/src/mds/alert-dialog.tsx:70), is trapped, and the scrim does not close it. "Gizle" is a
       primary button, not a destructive one. The dialog is controlled by the list's state and has no trigger element, so where the
       focus returns when it closes without a hide is Base UI's fallback to the element that had it (F-C-course-a-25; not measured
       here).

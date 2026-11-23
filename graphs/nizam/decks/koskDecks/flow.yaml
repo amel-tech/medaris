@@ -383,15 +383,15 @@ states:
       A toast of a refused open may be up (F-W5-3: it stays until closed).
     by: human
     on:
-      TYPE_NAME: { target: formScratch, effect: [typedName], say: "they type a name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
-      CLEAR_NAME: { guard: "name == 'filled'", target: formScratch, effect: [clearedName], say: "they empty the name again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
-      CHOOSE_HADEETH: { target: formScratch, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
-      CHOOSE_VOCABULARY: { target: formScratch, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      TYPE_NAME: { target: formScratch, effect: [typedName], say: "they type a name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:154 }
+      CLEAR_NAME: { guard: "name == 'filled'", target: formScratch, effect: [clearedName], say: "they empty the name again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:154 }
+      CHOOSE_HADEETH: { target: formScratch, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
+      CHOOSE_VOCABULARY: { target: formScratch, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
       SUBMIT:
         - { guard: nameBlank, target: formInvalid, say: "they press 'Desteyi aç' with the name empty: the page refuses it before anything is sent (e2e deck-review#8)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
         - { target: submitting, effect: [clearNote], say: "they press 'Desteyi aç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80 }
       BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
-      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç': nothing is saved", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç': nothing is saved", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
       NAVIGATE: { target: left, say: "they follow a link of the shell" }
     source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:50
 
@@ -403,15 +403,15 @@ states:
       Everything else is as in the empty form. The nazım may change them; opening the deck sends the proposal's id with them.
     by: human
     on:
-      TYPE_NAME: { target: formProposal, effect: [typedName], say: "they change the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
-      CLEAR_NAME: { guard: "name == 'filled'", target: formProposal, effect: [clearedName], say: "they empty the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
-      CHOOSE_HADEETH: { target: formProposal, effect: [chosenHadeeth], say: "they choose 'Hadis' (e2e deck-review#7)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
-      CHOOSE_VOCABULARY: { target: formProposal, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      TYPE_NAME: { target: formProposal, effect: [typedName], say: "they change the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:154 }
+      CLEAR_NAME: { guard: "name == 'filled'", target: formProposal, effect: [clearedName], say: "they empty the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:154 }
+      CHOOSE_HADEETH: { target: formProposal, effect: [chosenHadeeth], say: "they choose 'Hadis' (e2e deck-review#7)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
+      CHOOSE_VOCABULARY: { target: formProposal, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
       SUBMIT:
         - { guard: nameBlank, target: formInvalid, say: "they press 'Desteyi aç' after emptying the name: refused", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
         - { target: submitting, effect: [clearNote], say: "they press 'Desteyi aç': the deck is opened and the proposal accepted in one write (e2e deck-review#7)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80 }
       BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
-      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
       NAVIGATE: { target: left, say: "they follow a link of the shell" }
     source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:127
 
@@ -426,11 +426,11 @@ states:
       TYPE_NAME:
         - { guard: fromProposal, target: formProposal, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
         - { target: formScratch, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
-      CHOOSE_HADEETH: { target: formInvalid, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card; the name is still empty, so the error stays", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
-      CHOOSE_VOCABULARY: { target: formInvalid, effect: [chosenVocabulary], say: "they choose 'Kelime': the error stays with the empty name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      CHOOSE_HADEETH: { target: formInvalid, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card; the name is still empty, so the error stays", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
+      CHOOSE_VOCABULARY: { target: formInvalid, effect: [chosenVocabulary], say: "they choose 'Kelime': the error stays with the empty name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:183 }
       SUBMIT: { target: formInvalid, say: "they press 'Desteyi aç' again: the same refusal, the focus goes to the field again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
       BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
-      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
       NAVIGATE: { target: left, say: "they follow a link of the shell" }
     source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74
 
@@ -439,7 +439,8 @@ states:
     description: >-
       openKoskDeck is a Server Action: POST /kosks/{id}/decks with {title, description, cardType} and, from a proposal, its id (deck-review.service.ts:219-245). The deck is born private to
       nobody but the köşk's talebe, authored by the person, with no card; the proposal is marked ACCEPTED in the same transaction, and nobody is told (KDECK-2). "Desteyi aç" is busy
-      (aria-disabled, aria-busy, a hidden status "Yükleniyor" from the kit's default) and "Vazgeç" loses its address; the fields stay editable. A success is a toast "Deste açıldı" and a
+      (aria-disabled, aria-busy, a hidden status "Yükleniyor" from the kit's default) and "Vazgeç" loses its address; the name, the description and the card type are held until the answer (kosk-deck-form.tsx:153, :167,
+      :182; fixed 23 Nov 2026: they stayed editable, and a choice then was not in the payload already sent). A success is a toast "Deste açıldı" and a
       push to the list, which is read again. A refusal is a toast "Deste açılamadı" with the sentence of its code, over the form as it was (F-W5-3).
     invoke: { action: createKoskDeck }
     on:

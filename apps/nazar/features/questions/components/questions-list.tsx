@@ -246,6 +246,7 @@ const QuestionCard = ({
               <Button
                 variant="ghost"
                 size="small"
+                disabled={saving}
                 onClick={() => {
                   setError(null);
                   setEditing(false);

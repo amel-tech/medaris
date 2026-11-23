@@ -439,15 +439,15 @@ entries:
   - { from: account, to: signOut, how: link, label: a link in account-page.tsx, source: apps/nizam/features/account/components/account-page.tsx:264 }
   - { from: signIn, to: start, how: link, label: Auth.backHome, source: apps/nizam/features/auth/auth-entry.tsx:103 }
   - { from: signOut, to: start, how: button, label: a button in sign-out-confirm.tsx, source: apps/nizam/features/auth/sign-out-confirm.tsx:34 }
-  - { from: courseNew, to: courseSessionsNew, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:187 }
-  - { from: courseNew, to: koskCourses, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:194 }
-  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:507 }
-  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:304 }
-  - { from: courseSettings, to: koskCourses, how: button, label: a button in course-settings-page.tsx, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:468 }
+  - { from: courseNew, to: courseSessionsNew, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:191 }
+  - { from: courseNew, to: koskCourses, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:198 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:527 }
+  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:308 }
+  - { from: courseSettings, to: koskCourses, how: button, label: a button in course-settings-page.tsx, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:475 }
   - { from: courseSessionsNew, to: courseSessions, how: button, label: a button in session-plan-form.tsx, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
   - { from: courseSessionsNew, to: courseSessions, how: link, label: SessionPlan.cancel, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:392 }
   - { from: koskDeckNew, to: koskDecks, how: button, label: a button in kosk-deck-form.tsx, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
-  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
   - { from: koskDecks, to: legacyDeckCards, how: link, label: KoskDecksPage.editCardsLabel, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221 }
   - { from: legacyDecks, to: legacyDeckCards, how: button, label: a button in useDecksColumns.tsx, data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
   - { from: courseOverview, to: courseSessions, how: link, label: CourseOverview.allSessions, data: true, source: apps/nizam/features/kosks/components/course-overview.tsx:371 }

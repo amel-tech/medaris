@@ -427,7 +427,7 @@ states:
       TYPE_REASON: { target: settle, effect: [typedReason], say: "they write the reason", source: apps/nizam/features/applications/components/remove-dialog.tsx:126 }
       TYPE_BLANK: { guard: "reason != 'blank'", target: settle, effect: [typedBlank], say: "they type only a space: the button stays off (students#5)", source: apps/nizam/features/applications/components/remove-dialog.tsx:57 }
       CANCEL: { target: enrolled, say: "Vazgeç, the close icon or Escape: nothing is sent; the focus goes back to the row's button (Base UI; not verified)", source: apps/nizam/features/applications/components/remove-dialog.tsx:88 }
-      SCRIM: { target: form, say: "they click the scrim: the dialog stays and keeps what was typed (students#6)", source: libs/ui/src/mds/dialog.tsx:130 }
+      SCRIM: { target: form, say: "they click the scrim: the dialog stays and keeps what was typed (students#6)", source: libs/ui/src/mds/dialog.tsx:137 }
       NAVIGATE: { target: left, say: "they leave the page by its address" }
     source: apps/nizam/features/applications/components/remove-dialog.tsx:86
 
@@ -441,7 +441,7 @@ states:
       SUBMIT: { target: removing, source: apps/nizam/features/applications/components/remove-dialog.tsx:58, say: "they press 'Dersten çıkar' in the dialog" }
       ERASE_REASON: { target: settle, effect: [erasedReason], say: "they empty the reason: the button goes off", source: apps/nizam/features/applications/components/remove-dialog.tsx:126 }
       CANCEL: { target: enrolled, say: "Vazgeç, the close icon or Escape", source: apps/nizam/features/applications/components/remove-dialog.tsx:88 }
-      SCRIM: { target: formReady, say: "they click the scrim: the dialog stays", source: libs/ui/src/mds/dialog.tsx:130 }
+      SCRIM: { target: formReady, say: "they click the scrim: the dialog stays", source: libs/ui/src/mds/dialog.tsx:137 }
       NAVIGATE: { target: left, say: "they leave the page by its address" }
     source: apps/nizam/features/applications/components/remove-dialog.tsx:101
 

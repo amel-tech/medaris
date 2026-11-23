@@ -10,7 +10,7 @@
 #   - "N celse oluştur" is natively off and says "0 celse oluştur" until the preview holds a celse, with no word on what is missing (F-X-3). The
 #     pattern's own messages (no day, no date) are therefore not said to a person who has not pressed anything; they are drawn once any press
 #     was refused, because `sent` is never reset (session-plan-form.tsx:75, 130), and then only "En az bir gün seçin." is a role=alert. nazar's
-#     F-C-course-a-09 says these can never be said: with its `sent` (plan-form.tsx:176) they can, after one refused press;
+#     F-C-course-a-09 says these can never be said: with its `sent` (plan-form.tsx:180) they can, after one refused press;
 #   - a title or a first-celse link that is wrong is said under its field when the button is pressed, announced to no one, with the focus left
 #     on the button (F-W4-15, F-X-2; PLAN-1 on nazar);
 #   - the preview and the count are not a live region (F-W4-13); the page nowhere says which course it plans for, and its tab is "Celse planla"
@@ -355,7 +355,7 @@ states:
       nizam.courses.manageSessions. The sticky toast of `fromOpen` is dismissed by the change of page. The focus is the new document's (focus-not-set).
     on:
       NAVIGATE: { target: left, say: "they follow the menu" }
-    source: apps/nizam/features/courses/components/sessions-view.tsx:482
+    source: apps/nizam/features/courses/components/sessions-view.tsx:486
 
   switched:
     title: The pattern changed after it was whole

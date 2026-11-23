@@ -69,7 +69,7 @@ scope:
     - "the deck as a reader sees it once it is public: tedris.decks.readAndCopy, tedris.decks.visitorPublicDeck, tedris.decks.explore"
     - "the köşk's own decks and the proposals of its müderrises, which are a different review: nizam.decks.koskDecks"
     - "'Daha fazla göster', which draws only past twelve rows of a tab (DECK_PAGE_SIZE, present.ts:21) and which no seed reaches: the next page is merged by id (present.ts:32)"
-    - "a request with a description (the paragraph under the details, deck-requests-view.tsx:405); the decks this flow's walks make have none"
+    - "a request with a description (the paragraph under the details, deck-requests-view.tsx:418); the decks this flow's walks make have none"
     - "an ended session: every call sends the person to sign in (realm.auth.signIn) instead of drawing an error"
     - "a dropped network on a decision call: the busy state is never cleared (the same as the other pages): not verified"
 
@@ -269,7 +269,7 @@ states:
         - { guard: "read == 'ok' and link == 'gone'", target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:86, say: "?secili= names one that is not among them: the first waiting request is selected, in silence (DECKREV-2)" }
         - { guard: "read == 'ok'", target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:86, say: "no ?secili=: the oldest waiting request is selected" }
       FAIL.forbidden: { guard: "read == 'refused'", target: no_access, source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:32, say: "403: forbidden(), the screen 'Bu bölüm için izniniz yok'" }
-      FAIL.unavailable: { guard: "read == 'failed'", target: unreadable, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:485, say: "the read gave nothing: the frame, and an alert with 'Tekrar dene'" }
+      FAIL.unavailable: { guard: "read == 'failed'", target: unreadable, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:498, say: "the read gave nothing: the frame, and an alert with 'Tekrar dene'" }
 
   shown:
     title: Which page, the list or nothing?
@@ -278,7 +278,7 @@ states:
       decision takes the row off the waiting list on the page itself and selects the next one; it does not read the list again, so a request
       made after the page opened is not on it until a reload. Selecting a waiting request reads its cards (`selecting`); a request of the answered
       tab reads nothing, its row already holds everything the page shows.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:518
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:531
     always:
       - { guard: waitingEmpty, target: empty, say: "no request waits: 'Karar bekleyen deste yayın isteği yok.'" }
       - { guard: decidedEmpty, target: empty, say: "nothing was answered yet: 'Karara bağlanmış istek yok.'" }
@@ -295,9 +295,9 @@ states:
       (the retry, the answered tab) a toast of the same title stays on until it is closed. While the answered tab cannot be read the tabs are not
       drawn at all, so the person cannot go back to the waiting tab (DECKREV-3); only the button or a reload is left. Not walkable on the stack:
       nothing makes tedrisat's read fail on request.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:485
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:498
     on:
-      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:488, say: "they press Tekrar dene: the tab being shown is read again" }
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:501, say: "they press Tekrar dene: the tab being shown is read again" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   retrying:
@@ -305,12 +305,12 @@ states:
     description: >-
       loadDeckRequests(tab), a server action that calls GET /nizam/deck-publish-requests with the tab's status; the alert stays while it runs. On
       success both counts are replaced, the list is kept and its first row is selected.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:100
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:106
     invoke: { action: listDeckPublishRequests }
     on:
-      DONE: { target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:119, say: "the list is there: the alert goes" }
-      FAIL.unavailable: { target: unreadable, effect: [toastLoadFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:111, say: "again nothing: a toast that stays and the alert" }
-      RETRY: { target: retrying, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:488, say: "they press Tekrar dene again while the read runs: the button is not busy, and a second read is asked" }
+      DONE: { target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:127, say: "the list is there: the alert goes" }
+      FAIL.unavailable: { target: unreadable, effect: [toastLoadFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:119, say: "again nothing: a toast that stays and the alert" }
+      RETRY: { target: retrying, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:501, say: "they press Tekrar dene again while the read runs: the button is not busy, and a second read is asked" }
 
   empty:
     title: Nothing is listed
@@ -319,25 +319,28 @@ states:
       The h1, the intro, the notice and the tabs, then one sentence: "Karar bekleyen deste yayın isteği yok." on the waiting tab, "Karara bağlanmış istek
       yok." on the answered one. The counts are in the tabs. A toast of the last decision may still be on. The waiting tab also shows this line
       when the last request was answered on this page.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:518
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:531
     on:
-      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they open Karara bağlanan" }
-      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they go back to Bekleyen: the list read first is held, no read" }
+      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they open Karara bağlanan" }
+      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they go back to Bekleyen: the list read first is held, no read" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   loadingTab:
     title: The answered tab is read
     description: >-
       The first time "Karara bağlanan" is opened (and again after any decision on "Bekleyen", which throws the held answered list away,
-      deck-requests-view.tsx:206) the page reads GET /nizam/deck-publish-requests?status=DECIDED through a server action and shows three skeleton
+      deck-requests-view.tsx:219) the page reads GET /nizam/deck-publish-requests?status=DECIDED through a server action and shows three skeleton
       rows meanwhile (`aria-busy`, no live region). A second visit with no decision between them finds the list held and skips this step (not
-      drawn). The read also replaces both tab counts and selects the first (newest) answered request.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:100
+      drawn). The read also replaces both tab counts and selects the first (newest) answered request. Bekleyen pressed meanwhile shows the
+      waiting list at once, and the read, when it lands, is dropped (a ticket, deck-requests-view.tsx:101-116, and a tab switch takes a new
+      one, :168): it selects nothing, so no answered request's cards are read under Bekleyen (fixed 23 Nov 2026).
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:106
     invoke: { action: listDeckPublishRequests }
     on:
-      DONE: { target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:120, say: "the answered requests are there; the newest is selected" }
-      FAIL.unavailable: { target: unreadable, effect: [toastLoadFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:111, say: "the read failed: the error replaces the tabs and a toast stays on (DECKREV-3)" }
+      DONE: { target: shown, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:128, say: "the answered requests are there; the newest is selected" }
+      FAIL.unavailable: { target: unreadable, effect: [toastLoadFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:119, say: "the read failed: the error replaces the tabs and a toast stays on (DECKREV-3)" }
       TAB_DECIDED: { target: loadingTab, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Karara bağlanan, the tab shown while its list is read: nothing happens, the read goes on" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:168, say: "they go back to Bekleyen before the read is back: the waiting list shows at once, and the read is dropped when it lands" }
 
   selecting:
     title: The sample cards are read
@@ -347,19 +350,19 @@ states:
       writes the look to the audit log (`deck.private-read`, scope `sample`) before the cards leave (DECKREV-1). The list, the detail's header and
       its buttons are drawn at once, the grid is three skeleton blocks (`aria-busy`, no live region) until the answer comes; "Yayımla" and
       "Reddet" are on meanwhile (DECKREV-6). Only a waiting request reads: the answered tab sets the cards aside.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:166
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:176
     invoke: { action: readDeckPublishRequestCards }
     on:
-      DONE: { guard: cardsReadable, target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:177, say: "the sample is there (three cards, or the line that the deck has none)" }
-      FAIL.unavailable: { guard: cardsUnreadable, target: cardsFailed, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:180, say: "the cards could not be read: an error alert in the grid's place" }
+      DONE: { guard: cardsReadable, target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:188, say: "the sample is there (three cards, or the line that the deck has none)" }
+      FAIL.unavailable: { guard: cardsUnreadable, target: cardsFailed, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:191, say: "the cards could not be read: an error alert in the grid's place" }
       # The detail is live while its sample is read: the rows, the tabs, Bütün kartlar, Yayımla and Reddet all act at once (DECKREV-6), and a
-      # new selection or another tab drops the answer on its way (the effect's `current` flag, deck-requests-view.tsx:172-185).
+      # new selection or another tab drops the answer on its way (the effect's `current` flag, deck-requests-view.tsx:183-196).
       TAB_WAITING: { target: selecting, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab shown: nothing happens, the sample is still read" }
-      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they open Karara bağlanan before the sample is there: the sample's answer is dropped" }
-      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press another row before the sample is there: that row's cards are read, the first answer is dropped" }
-      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:419, say: "they press Bütün kartlar before the sample is there: every card is read beside it" }
-      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:437, say: "they press Yayımla before a card is shown (DECKREV-6)" }
-      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:443, say: "they press Reddet before a card is shown: the reason dialog opens" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they open Karara bağlanan before the sample is there: the sample's answer is dropped" }
+      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press another row before the sample is there: that row's cards are read, the first answer is dropped" }
+      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:432, say: "they press Bütün kartlar before the sample is there: every card is read beside it" }
+      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:450, say: "they press Yayımla before a card is shown (DECKREV-6)" }
+      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:456, say: "they press Reddet before a card is shown: the reason dialog opens" }
 
   waitingDetail:
     title: A waiting request is read
@@ -373,13 +376,13 @@ states:
       grid's place. A toast of the last decision may be on. Choosing a row changes the detail with no announcement and moves no focus (F-W5-5, F-W5-6);
       the page has no initial focus (nothing sets one). Where the owner took the request back after the list was read, the page does not know: the
       row stays, and the next press is answered with a notice (`answer: gone`).
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:411
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:424
     on:
-      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press another row: its cards are read and the look is recorded" }
-      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:188, say: "they press Bütün kartlar: every card is read, also on the record" }
-      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:437, say: "they press Yayımla: no question is asked" }
-      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:443, say: "they press Reddet: the reason dialog opens" }
-      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they open Karara bağlanan" }
+      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press another row: its cards are read and the look is recorded" }
+      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:199, say: "they press Bütün kartlar: every card is read, also on the record" }
+      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:450, say: "they press Yayımla: no question is asked" }
+      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:456, say: "they press Reddet: the reason dialog opens" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they open Karara bağlanan" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
       TAB_WAITING: { target: waitingDetail, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab shown: nothing happens (a Base UI tab ignores a press while it is selected)" }
 
@@ -390,13 +393,13 @@ states:
       The grid is replaced by an error alert "Kartlar okunamadı." (role alert) with no retry of its own: "Bütün kartlar" is still there (showAll stays false)
       and reads again, every other row reads its own. The request can be answered all the same (DECKREV-6). The stack reaches it only when the owner takes the request back after the list was read
       (404 DECK_REQUEST_NOT_FOUND, the deck is private again).
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:323
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:336
     on:
-      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press another row" }
-      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:188, say: "they press Bütün kartlar: every card is read" }
-      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:437, say: "they press Yayımla without a card shown (DECKREV-6)" }
-      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:443, say: "they press Reddet" }
-      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they open Karara bağlanan" }
+      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press another row" }
+      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:199, say: "they press Bütün kartlar: every card is read" }
+      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:450, say: "they press Yayımla without a card shown (DECKREV-6)" }
+      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:456, say: "they press Reddet" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they open Karara bağlanan" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
       TAB_WAITING: { target: cardsFailed, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab shown: nothing happens" }
 
@@ -406,19 +409,20 @@ states:
       readAll: loadRequestCards(id, true), GET .../{id}/cards?all=true. The grid goes back to three skeleton blocks; tedrisat writes a second audit row
       (`deck.private-read`, scope `all`, with the card count). On success the page shows every card and removes the button "Bütün kartlar" (the
       pressed button leaves the page, F-W5-5), and the caption "Bütün kartlar: N ezber kartı" stays; on failure the grid says "Kartlar okunamadı.".
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:188
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:199
     invoke: { action: readDeckPublishRequestCards }
     on:
-      DONE: { guard: cardsReadable, target: waitingDetail, effect: [allShown], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:193, say: "every card is shown; the button is gone" }
-      FAIL.unavailable: { guard: cardsUnreadable, target: cardsFailed, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:195, say: "the cards could not be read" }
-      # The same while every card is read, but readAll has no `current` flag (deck-requests-view.tsx:188-197): a row picked meanwhile gets its
-      # sample, and then the late answer puts the first request's every card under the second one's detail.
+      DONE: { guard: cardsReadable, target: waitingDetail, effect: [allShown], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:206, say: "every card is shown; the button is gone" }
+      FAIL.unavailable: { guard: cardsUnreadable, target: cardsFailed, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:208, say: "the cards could not be read" }
+      # The same while every card is read: readAll carries a ticket (deck-requests-view.tsx:201-204) and every new selection or tab takes a
+      # new one (:177), so a row picked meanwhile gets its sample and the late answer for the first request is dropped (fixed 23 Nov 2026:
+      # it once put the first request's every card under the second one's detail).
       TAB_WAITING: { target: readingAll, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab shown: nothing happens, the cards are still read" }
-      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they open Karara bağlanan before every card is there: the answer lands on a tab not shown" }
-      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press another row before every card is there: its sample is read, and the late answer for the first request then replaces it" }
-      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:419, say: "they press Bütün kartlar again: the button is not busy, and every card is read a second time" }
-      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:437, say: "they press Yayımla before every card is shown (DECKREV-6)" }
-      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:443, say: "they press Reddet before every card is shown: the reason dialog opens" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they open Karara bağlanan before every card is there: the answer is dropped when it lands" }
+      SELECT_OTHER: { target: selecting, effect: [pickRow], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press another row before every card is there: its sample is read, and the late answer for the first request is dropped" }
+      READ_ALL: { target: readingAll, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:432, say: "they press Bütün kartlar again: the button is not busy, and every card is read a second time" }
+      APPROVE: { target: approving, effect: [clearNote], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:450, say: "they press Yayımla before every card is shown (DECKREV-6)" }
+      REJECT: { target: rejectForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:456, say: "they press Reddet before every card is shown: the reason dialog opens" }
 
   approving:
     title: The publication is on its way
@@ -429,18 +433,18 @@ states:
       is written (DECKREV-4). A Medaris nazımı answering her own deck is refused 403 (invariant deck-reviewer-not-own-deck). A request that is not
       pending any more (answered, or taken back by the owner) is answered 409 or 404 and the row leaves with a notice, not an error; every other
       refusal leaves the row with an error toast that stays.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:230
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:243
     invoke: { action: approveDeckPublishRequest }
     on:
-      DONE: { guard: "answer == 'done'", target: handsBackPublished, effect: [toastPublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:240, say: "the deck is public: a toast, the row leaves, the counts move and the next request is selected" }
-      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastAnswered], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:221, say: "someone answered it first, or the owner took it back: the row leaves and the toast says so" }
-      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGone], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:221, say: "the request is not there: the row leaves and the toast says so" }
+      DONE: { guard: "answer == 'done'", target: handsBackPublished, effect: [toastPublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:253, say: "the deck is public: a toast, the row leaves, the counts move and the next request is selected" }
+      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastAnswered], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:234, say: "someone answered it first, or the owner took it back: the row leaves and the toast says so" }
+      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGone], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:234, say: "the request is not there: the row leaves and the toast says so" }
       FAIL.forbidden:
-        - { guard: cardsUnreadable, target: cardsFailed, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:224, say: "a toast 'Bu işlem için izniniz yok.'; the request stays" }
-        - { guard: "answer == 'forbidden'", target: waitingDetail, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:224, say: "a toast 'Bu işlem için izniniz yok.'; the request stays (her own deck, or a permission taken away)" }
+        - { guard: cardsUnreadable, target: cardsFailed, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:237, say: "a toast 'Bu işlem için izniniz yok.'; the request stays" }
+        - { guard: "answer == 'forbidden'", target: waitingDetail, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:237, say: "a toast 'Bu işlem için izniniz yok.'; the request stays (her own deck, or a permission taken away)" }
       FAIL.other:
-        - { guard: cardsUnreadable, target: cardsFailed, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:224, say: "a toast 'İşlem tamamlanamadı.'; the request stays" }
-        - { guard: "answer == 'failed'", target: waitingDetail, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:224, say: "a toast 'İşlem tamamlanamadı.'; the request stays" }
+        - { guard: cardsUnreadable, target: cardsFailed, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:237, say: "a toast 'İşlem tamamlanamadı.'; the request stays" }
+        - { guard: "answer == 'failed'", target: waitingDetail, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:237, say: "a toast 'İşlem tamamlanamadı.'; the request stays" }
       TAB_WAITING: { target: approving, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Bekleyen, the tab shown, while Yayımla runs: nothing happens, the decision goes on" }
 
   handsBackPublished:
@@ -465,7 +469,7 @@ states:
     on:
       FILL_REASON: { target: rejectFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they write a reason: the button goes on" }
       LEAVE_FIELD: { target: rejectForm, effect: [leftEmpty], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114, say: "they leave the field empty: 'Bir gerekçe yazın.' appears under it" }
-      CANCEL: { target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:547, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Reddet (Base UI; not verified)" }
+      CANCEL: { target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:560, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Reddet (Base UI; not verified)" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   rejectFormReady:
@@ -478,7 +482,7 @@ states:
     on:
       FILL_REASON: { target: rejectFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they change the reason" }
       SUBMIT: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:65, say: "they press Reddet" }
-      CANCEL: { target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:547, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
+      CANCEL: { target: waitingDetail, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:560, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   rejecting:
@@ -488,14 +492,14 @@ states:
       hidden status that says "Yükleniyor") and "Vazgeç" and the close icon stay on and do nothing; the field stays editable. The deck becomes REJECTED,
       stays private, keeps the reason, and its owner is told with the reason. No audit row is written (DECKREV-4). A success or an "answered"/"gone"
       answer closes the dialog and the row leaves (the page calls `settle`); the other refusals keep it open with an error toast.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:246
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:259
     invoke: { action: rejectDeckPublishRequest }
     on:
-      DONE: { guard: "answer == 'done'", target: handsBackRefused, effect: [toastRejected], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:254, say: "refused: a toast, the dialog closes, the row leaves and the next request is selected" }
-      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastAnswered], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:251, say: "someone answered it first: the dialog closes, the row leaves, the toast says so" }
-      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGone], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:251, say: "the request is not there: the dialog closes, the row leaves, the toast says so" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:252, say: "a toast 'Bu işlem için izniniz yok.'; the dialog stays open with the reason as it was" }
-      FAIL.other: { guard: "answer == 'failed'", target: rejectFormReady, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:252, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
+      DONE: { guard: "answer == 'done'", target: handsBackRefused, effect: [toastRejected], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:267, say: "refused: a toast, the dialog closes, the row leaves and the next request is selected" }
+      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastAnswered], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:264, say: "someone answered it first: the dialog closes, the row leaves, the toast says so" }
+      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGone], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:264, say: "the request is not there: the dialog closes, the row leaves, the toast says so" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [toastForbidden], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:265, say: "a toast 'Bu işlem için izniniz yok.'; the dialog stays open with the reason as it was" }
+      FAIL.other: { guard: "answer == 'failed'", target: rejectFormReady, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:265, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
 
   handsBackRefused:
     title: The author's page is told the request was refused
@@ -514,11 +518,11 @@ states:
       "İstendi" shows the time of the answer, not of the request (DECKREV-5). There are no sample cards. For the başnazım the panel adds the note "Yayından
       kaldırılan deste herkese açık listeden çıkar…" and the button "Yayından kaldır"; for a Medaris nazımı there is nothing under the details (the
       page hides the button, and the API would refuse her 403). A deck its owner took back to private is no longer in this list once the list is read again.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:449
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:462
     on:
-      SELECT_REFUSED: { target: decidedRejected, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press a refused row: nothing is read" }
-      UNPUBLISH: { guard: "reviewer == 'chief'", target: unpublishForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:456, say: "the başnazım presses Yayından kaldır: the reason dialog opens" }
-      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they go back to Bekleyen: the first waiting request is selected and its cards are read again (DECKREV-1)" }
+      SELECT_REFUSED: { target: decidedRejected, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press a refused row: nothing is read" }
+      UNPUBLISH: { guard: "reviewer == 'chief'", target: unpublishForm, effect: [openedDialog], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:469, say: "the başnazım presses Yayından kaldır: the reason dialog opens" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they go back to Bekleyen: the first waiting request is selected and its cards are read again (DECKREV-1)" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
       TAB_DECIDED: { target: decidedPublished, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Karara bağlanan, the tab shown: nothing happens" }
 
@@ -529,10 +533,10 @@ states:
       The panel of a refused request: its badge reads "Reddedildi" and, under the details, the neutral alert "Ret gerekçesi" with the reason the owner read.
       There are no buttons: a refused request is closed from here, and the owner asks again from their own page. "İstendi" shows the time of the
       answer (DECKREV-5).
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:462
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:475
     on:
-      SELECT_PUBLISHED: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:293, say: "they press a published row: nothing is read" }
-      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:159, say: "they go back to Bekleyen: the first waiting request is selected and its cards are read again (DECKREV-1)" }
+      SELECT_PUBLISHED: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:306, say: "they press a published row: nothing is read" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:167, say: "they go back to Bekleyen: the first waiting request is selected and its cards are read again (DECKREV-1)" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
       TAB_DECIDED: { target: decidedRejected, source: libs/ui/src/mds/tabs.tsx:110, say: "they press Karara bağlanan, the tab shown: nothing happens" }
 
@@ -547,7 +551,7 @@ states:
     on:
       FILL_REASON: { target: unpublishFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they write a reason: the button goes on" }
       LEAVE_FIELD: { target: unpublishForm, effect: [leftEmpty], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114, say: "they leave the field empty: 'Bir gerekçe yazın.' appears under it" }
-      CANCEL: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:553, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Yayından kaldır (Base UI; not verified)" }
+      CANCEL: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:566, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Yayından kaldır (Base UI; not verified)" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   unpublishFormReady:
@@ -559,7 +563,7 @@ states:
     on:
       FILL_REASON: { target: unpublishFormReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they change the reason" }
       SUBMIT: { target: unpublishing, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:65, say: "they press Yayından kaldır" }
-      CANCEL: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:553, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
+      CANCEL: { target: decidedPublished, source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:566, say: "Vazgeç, the close icon or Escape: the reason is thrown away" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   unpublishing:
@@ -570,13 +574,13 @@ states:
       row `deck.unpublish` with the title, the owner and the reason is written; the owner is told with the reason. The request leaves "Karara bağlanan",
       the answered count drops by one and the next answered request is selected, without a read. A deck that is not published any more (its owner took
       it back first) is answered 409 DECK_NOT_PUBLISHED and the row leaves with a notice.
-    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:261
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:274
     invoke: { action: unpublishDeck }
     on:
-      DONE: { guard: "answer == 'done'", target: handsBackPrivate, effect: [toastUnpublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:269, say: "the deck is private: a toast, the dialog closes, the row leaves and the next answered request is selected" }
-      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastNotPublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:266, say: "the deck is not published any more: the dialog closes, the row leaves, the toast says so" }
-      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGoneUnpublish], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:266, say: "the deck is not there: the dialog closes, the row leaves, the toast says so" }
-      FAIL.other: { guard: "answer == 'failed'", target: unpublishFormReady, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:266, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
+      DONE: { guard: "answer == 'done'", target: handsBackPrivate, effect: [toastUnpublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:282, say: "the deck is private: a toast, the dialog closes, the row leaves and the next answered request is selected" }
+      FAIL.answered: { guard: "answer == 'answered'", target: shown, effect: [toastNotPublished], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:279, say: "the deck is not published any more: the dialog closes, the row leaves, the toast says so" }
+      FAIL.gone: { guard: "answer == 'gone'", target: shown, effect: [toastGoneUnpublish], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:279, say: "the deck is not there: the dialog closes, the row leaves, the toast says so" }
+      FAIL.other: { guard: "answer == 'failed'", target: unpublishFormReady, effect: [toastFailed], source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:279, say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the reason as it was" }
 
   handsBackPrivate:
     title: The author's page is told the deck is private again
@@ -600,9 +604,9 @@ states:
     leavesPage: true
 
 assertions:
-  - { id: only-a-waiting-request-is-answered, never: "(state == 'approving' or state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and tab == 'decided'", say: "Only a waiting request can be published or refused: an answered one has no such button", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:411 }
+  - { id: only-a-waiting-request-is-answered, never: "(state == 'approving' or state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and tab == 'decided'", say: "Only a waiting request can be published or refused: an answered one has no such button", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:424 }
   - { id: only-the-chief-takes-a-deck-back, never: "(state == 'unpublishForm' or state == 'unpublishFormReady' or state == 'unpublishing') and reviewer != 'chief'", say: "Yayından kaldır is the başnazım's alone: the page hides it from a Medaris nazımı and the API refuses her", source: apps/nizam/features/deck-review/present.ts:152 }
   - { id: no-answer-without-a-reason, never: "(state == 'rejecting' or state == 'unpublishing') and reason != 'typed'", say: "A refusal or a take-back is sent only with a reason written: the button stays off while the reason is blank", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 }
-  - { id: only-a-waiting-request-reads-cards, never: "(state == 'selecting' or state == 'readingAll') and tab == 'decided'", say: "The cards are read for a waiting request only; the answered tab reads none", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:166 }
-  - { id: empty-means-nothing-listed, never: "state == 'empty' and tab == 'waiting' and requested", say: "The empty line of the waiting tab shows only when nothing waits", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:518 }
-  - { id: a-detail-follows-its-tab, never: "((state == 'decidedPublished' or state == 'decidedRejected') and tab == 'waiting') or ((state == 'waitingDetail' or state == 'cardsFailed') and tab == 'decided')", say: "An answered request is shown on the answered tab, a waiting one on the waiting tab", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:354 }
+  - { id: only-a-waiting-request-reads-cards, never: "(state == 'selecting' or state == 'readingAll') and tab == 'decided'", say: "The cards are read for a waiting request only; the answered tab reads none", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:176 }
+  - { id: empty-means-nothing-listed, never: "state == 'empty' and tab == 'waiting' and requested", say: "The empty line of the waiting tab shows only when nothing waits", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:531 }
+  - { id: a-detail-follows-its-tab, never: "((state == 'decidedPublished' or state == 'decidedRejected') and tab == 'waiting') or ((state == 'waitingDetail' or state == 'cardsFailed') and tab == 'decided')", say: "An answered request is shown on the answered tab, a waiting one on the waiting tab", source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:367 }

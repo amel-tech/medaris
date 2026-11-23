@@ -293,7 +293,7 @@ catalog:
   '@types/express': ^5.0.0
   '@types/multer': ^2.0.0 # ADR §D4: runtime → dev
   '@opentelemetry/sdk-node': ^0.222.0 # MDRS-21: closes GHSA prometheus-exporter crash (<0.217 vulnerable)
-  '@opentelemetry/exporter-trace-otlp-grpc': ^0.222.0
+  '@opentelemetry/exporter-trace-otlp-proto': ^0.222.0
   '@opentelemetry/auto-instrumentations-node': ^0.80.0 # MDRS-21: same prometheus-exporter advisory, <0.75 vulnerable
   '@opentelemetry/resources': ^2.11.0
   '@opentelemetry/semantic-conventions': ^1.36.0
@@ -320,10 +320,13 @@ catalog:
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══
-  next: ~16.4.2 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
+  next: ~16.4.6 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
   #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE);
   #               16.4.1 closes GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr
-  #               (critical RCEs) and GHSA-p3m5-59mp-jv5r (high, DoS)
+  #               (critical RCEs) and GHSA-p3m5-59mp-jv5r (high, DoS);
+  #               16.4.5 closes seven moderate ones (GHSA-mfr8-8qww-v76h,
+  #               GHSA-vc7v-qv4w-wrv8, GHSA-7qx7-33qx-rqx2, GHSA-f3mh-rxg3-f5g2,
+  #               GHSA-pc58-hwjq-p385, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf)
   react: ~19.2.8 # MDRS-21: ADR-001 §D8 named this "a one-line MDRS-21 bump"
   react-dom: ~19.2.8
   '@types/react': ^19

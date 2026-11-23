@@ -62,7 +62,6 @@ scope:
     - "an upload fetch that cannot be sent at all ('Dosya gönderilemedi. Bağlantınızı denetleyip yeniden deneyin.') and the proxy's own refusals (an id that is no uuid, a body that is not multipart): `failed: rejected` stands for every refusal that is not the store's or the file's"
     - "the pages that name this one in their buttons: 'Celse planla', 'Ders ayarları', 'Derse dön' and a celse's 'Düzenle' of other pages all arrive here through /edit (F-W4-1, F-X-19); nizam.courses.overview owns those buttons, and /edit is a redirect (nav: courseEdit)"
     - "who else reaches the page: the başnazım (SYSTEM_ADMIN) sees the same page with the same buttons (mayEditCourse, features/kosks/kosk-abilities.ts:70); a köşk nazımı of another köşk, a Medaris nazımı who manages no köşk and a talebe are refused before it (the köşk layout and readCourseScope). The walk is the köşk nazımı's"
-    - "a hold of the form while a save is in flight: the fields and the row buttons stay live (NCURR-2); only Kaydet and Vazgeç change, and the walk does not type then. A row button pressed then acts at once, and a save that goes through replaces the form with its answer, so what it added is gone; the graph draws the press after the save (`duringStep`), where a refused save keeps it"
     - "a file downloaded, or an upload dialog closed, over a form whose errors show: the page comes back as `edited`, where the errors that still show are not listed"
 
 decisions:
@@ -386,16 +385,16 @@ states:
     by: human
     goal: true
     on:
-      RENAME: { target: edited, effect: [renamed], say: "they type a new name in Ders adı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:350" }
-      RETITLE: { target: edited, effect: [retitled], say: "they type a new title into the first celse's Celse başlığı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:617" }
-      CLEAR_TITLE: { target: edited, effect: [titleCleared], say: "they empty the second celse's Celse başlığı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:617" }
-      SET_LINK: { target: edited, effect: [linkSet], say: "they type an https link into the second celse's Toplantı bağlantısı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:755" }
-      BAD_LINK: { target: edited, effect: [linkTyped], say: "they type an http link into the second celse's Toplantı bağlantısı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:755" }
-      ADD_WEEK: { target: edited, effect: [weekAdded], say: "they press Hafta ekle: the new week opens, scrolled to the top, with no title", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:427" }
-      ADD_SESSION: { target: edited, effect: [sessionAdded], say: "they press Celse ekle on the first week", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:781" }
-      COPY_WEEK: { target: edited, effect: [weekCopied], say: "they press Haftayı kopyala on the first week: a new week, seven days later, with no links", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:803" }
-      HIDE_SESSION: { target: edited, effect: [sessionHid], say: "they press Gizle on the second celse: the row leaves the draft at once, nothing asks", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:563" }
-      HIDE_WEEK: { target: edited, effect: [weekHid], say: "they press Haftayı gizle on the second week: the week leaves the draft at once, nothing asks", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:817" }
+      RENAME: { target: edited, effect: [renamed], say: "they type a new name in Ders adı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:357" }
+      RETITLE: { target: edited, effect: [retitled], say: "they type a new title into the first celse's Celse başlığı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:627" }
+      CLEAR_TITLE: { target: edited, effect: [titleCleared], say: "they empty the second celse's Celse başlığı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:627" }
+      SET_LINK: { target: edited, effect: [linkSet], say: "they type an https link into the second celse's Toplantı bağlantısı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:771" }
+      BAD_LINK: { target: edited, effect: [linkTyped], say: "they type an http link into the second celse's Toplantı bağlantısı", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:771" }
+      ADD_WEEK: { target: edited, effect: [weekAdded], say: "they press Hafta ekle: the new week opens, scrolled to the top, with no title", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:435" }
+      ADD_SESSION: { target: edited, effect: [sessionAdded], say: "they press Celse ekle on the first week", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:797" }
+      COPY_WEEK: { target: edited, effect: [weekCopied], say: "they press Haftayı kopyala on the first week: a new week, seven days later, with no links", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:819" }
+      HIDE_SESSION: { target: edited, effect: [sessionHid], say: "they press Gizle on the second celse: the row leaves the draft at once, nothing asks", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:573" }
+      HIDE_WEEK: { target: edited, effect: [weekHid], say: "they press Haftayı gizle on the second week: the week leaves the draft at once, nothing asks", source: "apps/nizam/features/courses/components/curriculum-editor.tsx:836" }
       ADD_COURSE_LINK:
         guard: "courseRows == 'none'"
         target: edited
@@ -446,7 +445,7 @@ states:
         say: "someone else saves the course (another editor, Ders ayarları); this page does not know"
         source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page" }
-      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
+      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:424 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
       SESSIONS: { target: sessions_opened, say: "they follow Celseler in the sub-nav", source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
       NAVIGATE: { target: left, say: "they follow the breadcrumb or the shell's menu", source: apps/nizam/features/courses/components/curriculum-editor.tsx:284 }
@@ -472,25 +471,25 @@ states:
         target: edited
         effect: [weekNamed]
         say: "they type a title in the new week's Hafta başlığı"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:487
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:495
       NAME_SESSION:
         guard: "form == 'sessionBlank'"
         target: edited
         effect: [sessionNamed]
         say: "they type a title in the new celse's Celse başlığı"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:617
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:627
       FIX_TITLE:
         guard: "form == 'titleCleared'"
         target: edited
         effect: [retitled]
         say: "they type a title in the second celse again"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:617
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:627
       FIX_LINK:
         guard: "form == 'linkBad'"
         target: edited
         effect: [linkSet]
         say: "they type an https link in place of the http one"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:755
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:771
       FILL_COURSE:
         guard: "form == 'courseLinkBlank'"
         target: edited
@@ -538,17 +537,17 @@ states:
         say: "they follow the file's link with edits on the page: a refusal reloads the page and the edits go (NCURR-3)"
         source: apps/nizam/features/courses/components/resource-file-parts.tsx:48
       # A further change while this one is in the form: each button is live and adds to the form (outOfView, `also`).
-      ADD_WEEK: { target: edited, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:427 }
-      ADD_SESSION: { target: edited, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:781 }
+      ADD_WEEK: { target: edited, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:435 }
+      ADD_SESSION: { target: edited, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:797 }
       ADD_COURSE_LINK: { target: edited, effect: [alsoBlank], say: "they press Kaynak ekle in Bağlı kaynaklar with a change in the form: an empty link row joins it", source: apps/nizam/features/courses/components/resources-editor.tsx:217 }
       ADD_LESSON_LINK: { target: edited, effect: [alsoBlank], say: "they press Kaynak ekle in the first celse's list with a change in the form: an empty link row joins it", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:222 }
       COPY_WEEK:
-        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: edited, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
-        - { target: edited, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: edited, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:819 }
+        - { target: edited, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:819 }
       HIDE_SESSION:
-        - { guard: "form in ['titleCleared', 'linkBad', 'linkSet']", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse they were changing: the row leaves the draft with its change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
-        - { guard: "also == 'none'", target: edited, effect: [alsoTaken], say: "they press Gizle on another celse with a change in the form: it leaves the draft beside it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
-        - { target: edited, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { guard: "form in ['titleCleared', 'linkBad', 'linkSet']", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse they were changing: the row leaves the draft with its change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
+        - { guard: "also == 'none'", target: edited, effect: [alsoTaken], say: "they press Gizle on another celse with a change in the form: it leaves the draft beside it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
+        - { target: edited, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
       SAVE:
         - { guard: hasBlank, target: invalid, effect: [blankRefused], say: "they press Kaydet with a blank title or a bad link: only the field errors show", source: apps/nizam/features/courses/components/curriculum-editor.tsx:234 }
         - { target: saving, effect: [clearToast], say: "they press Kaydet", source: apps/nizam/features/courses/components/curriculum-editor.tsx:238 }
@@ -560,7 +559,7 @@ states:
         say: "someone else saves the course; this page does not know"
         source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page: every edit is lost" }
-      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret: the edits are lost, only a caption warned", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
+      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret: the edits are lost, only a caption warned", source: apps/nizam/features/courses/components/curriculum-editor.tsx:424 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir: the edits are lost, nothing asks (F-W4-5)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
       SESSIONS: { target: sessions_opened, say: "they follow Celseler: the edits are lost, nothing asks (F-W4-5)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
       NAVIGATE: { target: left, say: "they follow the breadcrumb or the shell's menu: the edits are lost, nothing asks (F-W4-5)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:284 }
@@ -583,25 +582,25 @@ states:
         target: edited
         effect: [weekNamed]
         say: "they type a title in the new week: the error goes"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:487
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:495
       NAME_SESSION:
         guard: "form == 'sessionBlank'"
         target: edited
         effect: [sessionNamed]
         say: "they type a title in the new celse: the error goes"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:617
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:627
       FIX_TITLE:
         guard: "form == 'titleCleared'"
         target: edited
         effect: [retitled]
         say: "they type a title in the second celse again: the error goes"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:617
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:627
       FIX_LINK:
         guard: "form == 'linkBad'"
         target: edited
         effect: [linkSet]
         say: "they type an https link in place of the http one: the error goes"
-        source: apps/nizam/features/courses/components/curriculum-editor.tsx:755
+        source: apps/nizam/features/courses/components/curriculum-editor.tsx:771
       FILL_COURSE:
         guard: "form == 'courseLinkBlank'"
         target: edited
@@ -621,18 +620,18 @@ states:
         say: "they type a name and an address in the celse's new link row, below the one stored: the errors go"
         source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:160
       # A further change while this one is in the form: each button is live and adds to the form (outOfView, `also`).
-      ADD_WEEK: { target: invalid, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:427 }
-      ADD_SESSION: { target: invalid, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:781 }
+      ADD_WEEK: { target: invalid, effect: [alsoBlank], say: "they press Hafta ekle with a change in the form: a week with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:435 }
+      ADD_SESSION: { target: invalid, effect: [alsoBlank], say: "they press Celse ekle with a change in the form: a celse with no title joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/curriculum-editor.tsx:797 }
       ADD_COURSE_LINK: { target: invalid, effect: [alsoBlank], say: "they press Kaynak ekle in Bağlı kaynaklar with a change in the form: an empty link row joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/resources-editor.tsx:217 }
       ADD_LESSON_LINK: { target: invalid, effect: [alsoBlank], say: "they press Kaynak ekle in the first celse's list with a change in the form: an empty link row joins it, and its error shows at once (`sent` holds)", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:222 }
       COPY_WEEK:
-        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: invalid, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
-        - { target: invalid, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:803 }
+        - { guard: "also == 'blank' or form in ['titleCleared', 'sessionBlank']", target: invalid, effect: [alsoBlank], say: "they press Haftayı kopyala on the first week: the copy carries the week's blank title along, or joins a row with none", source: apps/nizam/features/courses/components/curriculum-editor.tsx:819 }
+        - { target: invalid, effect: [alsoTaken], say: "they press Haftayı kopyala on the first week with a change in the form: the copy joins it", source: apps/nizam/features/courses/components/curriculum-editor.tsx:819 }
       HIDE_SESSION:
-        - { guard: "form in ['titleCleared', 'linkBad'] and also != 'blank'", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft with its error", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
-        - { guard: "form in ['titleCleared', 'linkBad']", target: invalid, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft, and the other row's error stays", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
-        - { guard: "also == 'none'", target: invalid, effect: [alsoTaken], say: "they press Gizle on another celse: it leaves the draft beside the refused change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
-        - { target: invalid, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:563 }
+        - { guard: "form in ['titleCleared', 'linkBad'] and also != 'blank'", target: edited, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft with its error", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
+        - { guard: "form in ['titleCleared', 'linkBad']", target: invalid, effect: [sessionHid], say: "they press Gizle on the second celse, whose title or link was refused: the row leaves the draft, and the other row's error stays", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
+        - { guard: "also == 'none'", target: invalid, effect: [alsoTaken], say: "they press Gizle on another celse: it leaves the draft beside the refused change", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
+        - { target: invalid, effect: [clearToast], say: "they press Gizle on another celse, beside the further changes", source: apps/nizam/features/courses/components/curriculum-editor.tsx:573 }
       REMOVE_COURSE: { guard: "courseNewRow and also == 'none'", target: clean, effect: [rowDropped], say: "they press Kaynağı çıkar on the empty link row they added: the row goes with its errors, nothing differs any more", source: apps/nizam/features/courses/components/resources-editor.tsx:142 }
       REMOVE_LESSON: { guard: "lessonNewRow and also == 'none'", target: clean, effect: [rowDropped], say: "they press Kaynağı çıkar on the celse's empty link row they added: the row goes with its errors, nothing differs any more", source: apps/nizam/features/courses/components/lesson-resources-editor.tsx:142 }
       OPEN_COURSE_UPLOAD: { guard: "courseRows != 'link'", target: uploadDialog, effect: [courseUploadOpened], say: "they press Dosya yükle in Bağlı kaynaklar with the errors on the page: the file is stored at once, the edits are not", source: apps/nizam/features/courses/components/resource-file-parts.tsx:185 }
@@ -647,7 +646,7 @@ states:
         say: "someone else saves the course; this page does not know"
         source: apps/tedrisat/src/course/course.repository.ts:809
       RELOAD: { target: reread, effect: [reloaded], say: "they reload the page: every edit is lost" }
-      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
+      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret", source: apps/nizam/features/courses/components/curriculum-editor.tsx:424 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
       SESSIONS: { target: sessions_opened, say: "they follow Celseler", source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
       NAVIGATE: { target: left, say: "they follow the breadcrumb or the shell's menu", source: apps/nizam/features/courses/components/curriculum-editor.tsx:284 }
@@ -661,8 +660,9 @@ states:
       in list order, at the version the page read (an upload that answered the very next version moved it). A celse's own resources go only
       when the form changed them. A week, celse or resource left out is hidden (week, celse) or deleted for good (resource, with its file),
       never kept. "Kaydet" is busy (aria-disabled and aria-busy, never disabled; a hidden <output> says "Kaydediliyor…") and "Vazgeç" is
-      off; the fields, "Hafta ekle", "Celse ekle", "Kaynak ekle", "Gizle" and the rest stay live, and whatever is typed meanwhile is replaced
-      by the answer (NCURR-2). The result: 200 puts the stored course into the form (the weeks stay open: no remount), the toast "Müfredat
+      off; the fields, "Hafta ekle", "Celse ekle", "Kaynak ekle", "Gizle" and the rest are off too (a <fieldset disabled>,
+      curriculum-editor.tsx:335-339, and the tone radios' own `disabled`, :369), so nothing typed meanwhile can be replaced by the answer
+      (NCURR-2, fixed 23 Nov 2026); the links stay live. The result: 200 puts the stored course into the form (the weeks stay open: no remount), the toast "Müfredat
       kaydedildi" (6 s) and a router.refresh(); 409 COURSE_VERSION_CONFLICT is an error toast "Müfredat kaydedilemedi" with "Ders, bu
       sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin." and nothing is written (NCURR-1);
       AUTHZ_FORBIDDEN and the platform and müderris refusals are the toast with "Bu işlem için yetkiniz yok."; any other code the toast with
@@ -694,7 +694,7 @@ states:
       FAIL.other: { target: edited, effect: [failedSave], say: "any other refusal: an error toast, the form as it was", source: apps/nizam/features/courses/components/curriculum-editor.tsx:246 }
       # The links, plain <a> elements, stay live while the course is sent: the browser leaves the page at once, and the PUT already sent is
       # the server's to finish or refuse (not verified); no page is left to say which.
-      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:416 }
+      PLAN: { target: plan_opened, say: "they follow Haftalık celse üret while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:424 }
       SETTINGS: { target: settings_opened, say: "they follow Ders ayarları or Saat dilimini değiştir while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
       SESSIONS: { target: sessions_opened, say: "they follow Celseler while the course is sent: the page goes at once", source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
     source: apps/nizam/features/courses/components/curriculum-editor.tsx:239

@@ -17,7 +17,7 @@
 # `call` is not here: a server action answers 200 on the page's own address, so a walk through FAIL.failed would end with a mismatch on its status. The main
 # binding holds the busy states with it, the refused one does not.
 # Not bound, so the replay cannot reach them (reported): sent_to_sign_in (the stack cannot end the session in the middle of a write), a rejected call
-# (the network down), and a dialog closed while its write is out (MCARDS-4: the graph does not draw it).
+# (the network down). A dialog cannot be closed while its write is out since 23 Nov 2026 (MCARDS-4, fixed).
 schema: delurio-graph/0
 kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml

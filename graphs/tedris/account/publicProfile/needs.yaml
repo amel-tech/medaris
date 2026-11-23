@@ -67,7 +67,7 @@ needs:
   - id: no-link-to-a-hidden-page
     need: Nothing in any Medaris app links to a page that answers not found, so a person is not led to a dead end.
     evidence:
-      - source: apps/tedris/features/account/components/account-settings.tsx:372
+      - source: apps/tedris/features/account/components/account-settings.tsx:376
     note: >-
       walked: nothing but a unit spec (apps/tedris/test/public-profile-hidden.spec.ts "leaves the card and its link out of
       Hesap"). Hesap itself is drawn by tedris.account.profile.

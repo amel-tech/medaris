@@ -71,10 +71,9 @@ decisions:
     question: >-
       Should closing the dialog while the file is being sent stop the send, or be refused until it is answered?
     recommend: >-
-      Refuse the close while busy, as the kit's busy button already refuses a second press (button.tsx:62-76): today Vazgeç, the close icon and
-      Esc close the dialog, the request is not aborted, the cards are added all the same and a toast the person did not wait for says so; a
-      failure is lost (IMPEXP-5, the same family as DCK-30).
-    affects: [importing, abandoned]
+      Refuse the close while busy, as the kit's busy button already refuses a second press (button.tsx:62-76). Since 23 Nov 2026 the code
+      does so: Vazgeç and the close icon are disabled and Esc does nothing while the file is out (IMPEXP-5, fixed).
+    affects: [importing]
   D4:
     question: >-
       Which CSV does the product speak: a UTF-8 file with a byte-order mark and a comma, or whatever Excel writes where the person lives?
@@ -142,9 +141,6 @@ failures:
     from: webImportCards
     rowErrors: [BULK_VALIDATION_ERROR, BULK_ROW_LIMIT_EXCEEDED]
     rejected: [HTTP_400, HTTP_401, DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_429, INTERNAL_ERROR, HTTP_502]
-  abandoned:
-    from: webImportCards
-    refused: [BULK_VALIDATION_ERROR, BULK_ROW_LIMIT_EXCEEDED, HTTP_400, HTTP_401, DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_429, INTERNAL_ERROR, HTTP_502]
 
 # The main story, as decks#20 tells it and a little more: the author saves the deck, opens the import dialog, takes the template, presses
 # "İçe aktar" with nothing chosen, chooses a clean file and sends it.
@@ -218,13 +214,13 @@ states:
     source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:101
     on:
       CHOOSE_FILE:
-        - { guard: fieldErrorShown, target: dialog, effect: [choseAfterError], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:124, say: "they choose a file: \"Bir dosya seç.\" goes and the help line is back" }
-        - { target: dialog, effect: [chose], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:131, say: "they choose a file (or another one): any alert stays until the next send" }
+        - { guard: fieldErrorShown, target: dialog, effect: [choseAfterError], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:125, say: "they choose a file: \"Bir dosya seç.\" goes and the help line is back" }
+        - { target: dialog, effect: [chose], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:132, say: "they choose a file (or another one): any alert stays until the next send" }
       SUBMIT:
         - { guard: noFileChosen, target: dialog, effect: [askedForFile], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66, say: "\"İçe aktar\" with no file: nothing is sent and \"Bir dosya seç.\" stands under the field; the focus is not moved (DCK-06)" }
         - { target: importing, effect: [sending], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:67, say: "\"İçe aktar\" (or Enter in the form) with a file: the alerts are cleared and the file is sent" }
-      SAMPLE_XLSX: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136, say: "they follow \"Excel (.xlsx)\": the template comes as sample.xlsx, the dialog stays" }
-      SAMPLE_CSV: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:142, say: "they follow \"CSV (.csv)\": the template comes as sample.csv, the dialog stays" }
+      SAMPLE_XLSX: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:137, say: "they follow \"Excel (.xlsx)\": the template comes as sample.xlsx, the dialog stays" }
+      SAMPLE_CSV: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:143, say: "they follow \"CSV (.csv)\": the template comes as sample.csv, the dialog stays" }
       CANCEL: { target: cards, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"İçe aktar\"" }
 
   sampling:
@@ -243,8 +239,8 @@ states:
     on:
       DONE: { guard: served, target: dialog, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "the browser saves the template; the dialog is as it was, and the focus stays on the link" }
       FAIL.refused: { guard: refused, target: dialog, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "a refusal behind the link: the dialog says nothing (DCK-21 for the export is the same cause)" }
-      SAMPLE_XLSX: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136, say: "they follow \"Excel (.xlsx)\" while a template comes: the browser asks for another file beside it" }
-      SAMPLE_CSV: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:142, say: "they follow \"CSV (.csv)\" while a template comes: the browser asks for another file beside it" }
+      SAMPLE_XLSX: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:137, say: "they follow \"Excel (.xlsx)\" while a template comes: the browser asks for another file beside it" }
+      SAMPLE_CSV: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:143, say: "they follow \"CSV (.csv)\" while a template comes: the browser asks for another file beside it" }
       CANCEL: { target: cards, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104, say: "Vazgeç or the close icon while the template comes: the dialog closes at once, the download goes on in the browser" }
       SUBMIT:
         - { guard: noFileChosen, target: dialog, effect: [askedForFile], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66, say: "\"İçe aktar\" with no file while the template comes: nothing is sent and \"Bir dosya seç.\" stands under the field" }
@@ -264,8 +260,9 @@ states:
       rows is a 422 on row 1002, which the dialog words as a bad field (IMPEXP-2); and every row is validated, all bad rows reported together, before
       one row is written: so a refused file adds nothing. A cell that is a number, a date or a formula reaches the validator as a non-string and is
       told as "boş" (IMPEXP-4). The submit button is busy
-      (aria-disabled, aria-busy; the hidden output says "Yükleniyor") and the field stays as it is. Vazgeç, the close icon and Esc still close
-      the dialog (IMPEXP-5, decision D3). The two template links stay live too: a template asked for now comes beside the send and
+      (aria-disabled, aria-busy; the hidden output says "Yükleniyor") and the field stays as it is. Vazgeç and the close icon are disabled and
+      Esc does nothing until the answer (the dialog's dismissDisabled, import-cards-dialog.tsx:109), as closing would not stop the import
+      (IMPEXP-5, fixed; decision D3). The two template links stay live too: a template asked for now comes beside the send and
       changes nothing in the dialog, so the graph draws the press after the send's answer (`duringStep`).
     source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:62
     invoke: { action: webImportCards }
@@ -273,25 +270,6 @@ states:
       DONE: { guard: cleanFile, target: imported, effect: [cardsAdded], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:77, say: "201 { count }: a toast says how many cards were added, the list is read again and the dialog closes" }
       FAIL.rowErrors: { guard: rowsFile, target: dialog, effect: [rowsRefused], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:92, say: "422 with rows: the dialog stays with an alert that lists them, and nothing was added" }
       FAIL.rejected: { guard: fileTurnedDown, target: dialog, effect: [fileRefused], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:93, say: "any other status, a network error or a 422 the dialog cannot read: one alert, \"Dosya içe aktarılamadı\"; nothing says why (DCK-20)" }
-      CANCEL: { target: abandoned, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104, say: "Vazgeç, the close icon or Esc while the file is out: the dialog closes at once and the request goes on (IMPEXP-5)" }
-
-  abandoned:
-    title: The dialog was closed while the file was being sent
-    description: >-
-      The page is back with no dialog and the focus goes back to "İçe aktar", but the request of the closed dialog is still out: the
-      component keeps running its `submit` (nothing aborts it). When it is answered 201 the toast "Kartlar içe aktarıldı" appears over
-      the page and the list is read again, with the cards added after the person said Vazgeç; any refusal is lost, because the component
-      that would have shown it is gone, so the person is told nothing (IMPEXP-5). The page's two buttons are live meanwhile. "Dışa aktar"
-      saves the deck beside the request and changes nothing on the page, so the graph draws it after the answer (`duringStep`).
-      "İçe aktar" opens a new dialog at once; the old request is still out, and a 201 then also calls the page's close(), which shuts
-      the new dialog under the person (IMPEXP-5; that last step is not drawn).
-    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:77
-    invoke: { action: webImportCards }
-    on:
-      DONE: { guard: cleanFile, target: imported, effect: [cardsAdded], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:79, say: "201: the toast and the new rows come, though the person had closed the dialog" }
-      FAIL.refused: { guard: "not cleanFile", target: cards, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:96, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
-      # what a 201 of the old request does to this new dialog afterwards (onClose is the page's close(), deck-cards-page.tsx:54) is not drawn
-      OPEN_IMPORT: { target: dialog, effect: [reopened], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:94, say: "they press \"İçe aktar\" again while the old file is still out: a new dialog opens at once, with no file; the old request goes on" }
 
   imported:
     title: The cards are in the deck

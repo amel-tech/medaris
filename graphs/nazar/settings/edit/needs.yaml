@@ -54,8 +54,8 @@ needs:
       - node: cancel
       - node: submit
       - node: policyClosed
-      - source: apps/nazar/features/settings/components/settings-form.tsx:61
-      - source: apps/nazar/features/settings/components/settings-form.tsx:96
+      - source: apps/nazar/features/settings/components/settings-form.tsx:62
+      - source: apps/nazar/features/settings/components/settings-form.tsx:97
       - test: apps/nazar/e2e/settings.e2e.ts
         name: "nazir/04 — Kaydet waits for a change, and Vazgeç takes it back"
       - test: apps/nazar/test/settings-form.spec.tsx
@@ -75,7 +75,7 @@ needs:
       - node: policyClosed
       - node: policyApproval
       - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
-      - source: apps/nazar/features/settings/components/settings-form.tsx:77
+      - source: apps/nazar/features/settings/components/settings-form.tsx:78
       - source: apps/nazar/features/settings/actions.ts:16
       - test: apps/nazar/e2e/settings.e2e.ts
         name: "nazir/04 — Kaydet writes the name, the description and a policy, moves 'Son değişiklik', and it is still there after a reload (criteria 2, 3)"
@@ -98,7 +98,7 @@ needs:
       - node: nameInvalid
       - node: descriptionInvalid
       - source: apps/nazar/features/settings/settings.ts:66
-      - source: apps/nazar/features/settings/components/settings-form.tsx:68
+      - source: apps/nazar/features/settings/components/settings-form.tsx:69
       - test: apps/nazar/e2e/settings.e2e.ts
         name: "nazir/04 — a blank name is refused under its field and nothing is saved (criterion 1)"
       - test: apps/nazar/test/settings-form.spec.tsx
@@ -115,7 +115,7 @@ needs:
       - node: toastForbidden
       - node: toastFailed
       - source: apps/nazar/features/settings/settings.ts:107
-      - source: apps/nazar/features/settings/components/settings-form.tsx:86
+      - source: apps/nazar/features/settings/components/settings-form.tsx:87
       - test: apps/nazar/test/settings-form.spec.tsx
 
   - id: see-the-public-page

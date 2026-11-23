@@ -150,6 +150,7 @@ export function KoskDeckForm({
               value={values.title}
               maxLength={TITLE_MAX}
               required
+              disabled={saving}
               onChange={(e) =>
                 setValues((v) => ({ ...v, title: e.target.value }))
               }
@@ -163,18 +164,22 @@ export function KoskDeckForm({
               value={values.description}
               maxLength={DESCRIPTION_MAX}
               rows={4}
+              disabled={saving}
               onChange={(e) =>
                 setValues((v) => ({ ...v, description: e.target.value }))
               }
             />
           </Field>
 
+          {/* Held while the deck is sent: what is chosen then would not be in
+              the payload already on its way. */}
           <RadioGroup
             legend={t("typeLabel")}
             name="cardType"
             required
             bordered
             value={values.cardType}
+            disabled={saving}
             onChange={(next) =>
               setValues((v) => ({ ...v, cardType: next as FlashcardType }))
             }

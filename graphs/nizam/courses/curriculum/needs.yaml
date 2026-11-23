@@ -80,7 +80,7 @@ needs:
       - node: weekTitleField
       - node: sessionTitleField
       - source: apps/tedrisat/src/course/course.controller.ts:334
-      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:423
+      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:431
       - test: apps/nizam/test/course-views.spec.tsx
 
   - id: a-blank-stops-the-save
@@ -119,7 +119,7 @@ needs:
       - node: copyWeek
       - node: weeksSummary
       - source: apps/nizam/features/courses/present.ts:990
-      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:798
+      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:814
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 4: 'Haftayı kopyala' adds the week again seven days later and Kaydet keeps it"
 
@@ -129,7 +129,7 @@ needs:
       - state: edited
       - node: hideSession
       - source: apps/tedrisat/src/course/course.controller.ts:334
-      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:558
+      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:568
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 5: a hidden session is gone from the course after Kaydet"
 
@@ -141,7 +141,7 @@ needs:
       - state: edited
       - node: hideWeek
       - source: apps/tedrisat/src/course/course.controller.ts:334
-      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:812
+      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:831
       - test: apps/nizam/test/course-views.spec.tsx
 
   - id: hiding-says-what-it-does-and-keeps-the-place
@@ -303,10 +303,17 @@ needs:
     need: >-
       While Kaydet is sent the fields and the row buttons are locked, so what the answer puts into the form cannot overwrite what
       the person typed meanwhile.
-    missing: no Linear issue; NCURR-2
+    evidence:
+      - state: saving
+      - node: weekTitleField
+      - node: sessionTitleField
+      - node: addWeek
+      - source: apps/nizam/features/courses/components/curriculum-editor.tsx:337
+      - test: apps/nizam/test/course-pages-in-flight.spec.tsx
+        name: "has every field and row button off until the answer, then on again"
     note: >-
-      Drawn on the state saving and on the nodes saveBusy, weekTitleField, sessionTitleField and addWeek, which the code has: they
-      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Met on 23 Nov 2026 (NCURR-2): the form's sections are a <fieldset disabled> while the course is sent. Walked by no scenario
+      and no browser e2e test.
 
   - id: name-each-row-and-field
     need: >-

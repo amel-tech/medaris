@@ -152,7 +152,7 @@ needs:
     evidence:
       - state: listed
       - state: handed_over.leave_menu
-      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:67
+      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:68
       - source: apps/tedrisat/src/course/course.controller.ts:773
     note: |-
       Also drawn as the assertion only-a-card-has-a-menu.

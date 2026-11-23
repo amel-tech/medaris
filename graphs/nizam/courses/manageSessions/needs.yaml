@@ -34,7 +34,7 @@ needs:
       - node: pastRecording
       - source: apps/tedrisat/src/course/course.controller.ts:260
       - source: apps/nizam/features/courses/present.ts:500
-      - source: apps/nizam/features/courses/components/sessions-view.tsx:507
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:511
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 1: sessions are grouped, counted and ordered"
     note: "courses#16: a1, a2 and a4; a3, the order of four titles, is not carried (the walk's course has one celse ahead)"
@@ -87,7 +87,7 @@ needs:
       - node: radioCourse
       - node: attendanceInPerson
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
-      - source: apps/nizam/features/courses/components/sessions-view.tsx:574
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:578
     note: "walked: []: no e2e (the inventory says so); the replay has not run"
 
   - id: set-or-remove-the-stream
@@ -121,8 +121,8 @@ needs:
       - node: noActions
       - node: countsCancelled
       - source: apps/tedrisat/src/course/lesson.controller.ts:389
-      - source: apps/nizam/features/courses/components/sessions-view.tsx:260
-      - source: libs/ui/src/mds/alert-dialog.tsx:44
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:261
+      - source: libs/ui/src/mds/alert-dialog.tsx:46
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 3: 'İptal et' marks the session cancelled, hides its link and leaves it no action"
 
@@ -169,7 +169,7 @@ needs:
     need: >-
       A meeting link pasted by mistake can be removed from Celseler, as the stream's can, so that a celse goes back to "Eksik" and
       the talebe see no wrong link (D1, MANAGE-5).
-    missing: "no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions-view.tsx:219)"
+    missing: "no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions-view.tsx:220)"
     note: >-
       Drawn on the state linkForm and on the node linkError, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).
@@ -227,7 +227,7 @@ needs:
     need: >-
       The title of a celse in the list opens that celse's page in tedris, the one the talebe read, and says that it opens in a new
       tab (NMSESS-3, F-W4-12).
-    missing: no issue; the link is /courses/<id>/sessions/<celse>, which is the API's path (sessions-view.tsx:291)
+    missing: no issue; the link is /courses/<id>/sessions/<celse>, which is the API's path (sessions-view.tsx:295)
     note: >-
       Drawn on the nodes rowTitle and pastRowTitle, which the code has: they are not evidence, so that a replay still walks them
       (SPEC.md §13 leaves out what only missing needs name).

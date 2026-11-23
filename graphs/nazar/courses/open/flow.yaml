@@ -9,7 +9,8 @@
 #     hoca search, and the köşk problem moves nothing (F-A-6). The messages are plain text, not live regions, and the hoca list's
 #     error is not tied to the field that gets the focus (F-A-4, F-A-5, F-A-7).
 #   - the hoca is found by exact e-mail address, on Enter and also when the field is left; the field is disabled while it
-#     searches, so it loses the focus; every lookup is written to the audit log (OPEN-4, OPEN-5).
+#     searches, so it loses the focus; every lookup is written to the audit log (OPEN-4, OPEN-5). "Dersi aç" is off while a hoca is
+#     looked up, so a course is never opened without the hoca the person just asked for.
 #   - a medrese policy locks "Kapalı ders" or "Kayıt onayı gereksin" on, and the sentence beside them links to the settings, which
 #     takes the person off the form and drops everything typed (OPEN-1). A nazır who may open courses but not read the settings is
 #     told the policies "could not be read", though the cause is a refusal (F-A-8).
@@ -28,9 +29,9 @@ title: Open a course of the medrese
 summary: >-
   The başmüderris opens "Medrese dersi aç": she picks a köşk that hosts her medrese (the first is already chosen), names the
   course, finds each hoca by exact e-mail address, names the imam when there are several, may give a hoca an unvan, and sets
-  "Kapalı ders" and "Kayıt onayı gereksin" (a medrese policy locks either one on). The button is never off: pressed with something
-  wrong it says what under the field and moves the focus there. The course is opened as a draft and the page goes back to Dersler
-  with a toast. A köşk that took its right back, a hoca whose account is gone, a refused permission or a failure keep the form open
+  "Kapalı ders" and "Kayıt onayı gereksin" (a medrese policy locks either one on). The button is never off for a problem:
+  pressed with something wrong it says what under the field and moves the focus there; it is off only while a hoca is looked
+  up. The course is opened as a draft and the page goes back to Dersler with a toast. A köşk that took its right back, a hoca whose account is gone, a refused permission or a failure keep the form open
   with a toast; where no köşk hosts the medrese, or the person may not open courses, or the köşks could not be read, the page says so
   and draws no form.
 
@@ -42,7 +43,7 @@ scope:
   world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
   outOfView:
     - "the Dersler list's own filters, row menu and counters: nazar.courses.browse; the hoca change dialog: nazar.courses.changeHocas"
-    - "a list of three or more hocas, where taking the imam off leaves 'Dersin imamını seçin.' under the legend at once (Team.imamMissing, open-course-form.tsx:202; only one or two hocas are drawn: `team`)"
+    - "a list of three or more hocas, where taking the imam off leaves 'Dersin imamını seçin.' under the legend at once (Team.imamMissing, open-course-form.tsx:209; only one or two hocas are drawn: `team`)"
     - "the answers the page cannot send: COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED, MUDERRIS_DUPLICATE_USER and VALIDATION_ERROR have a toast each in courseErrorKey (courses.ts:374), but the form blocks all four first"
     - "the 20-hoca limit ('En fazla 20 hoca eklenebilir.', Team.full) and a hoca shown by name alone (only the change dialog draws one)"
     - "an ended session: the read and both server actions send the person to sign in (realm.auth.signIn) instead of drawing an error"
@@ -284,7 +285,7 @@ states:
     description: >-
       The page: the header, the köşk choice (the first listed köşk is chosen; no radio is marked required, F-A-7), the name field
       ("Ders adı", help "Talebeler bu adı görür; hocalar sonradan değiştirebilir."), the hoca search with the list of hocas below it,
-      and the card "Ders ayarları" with the two boxes, the policy sentence and the two buttons. "Dersi aç" is never off. Pressed with
+      and the card "Ders ayarları" with the two boxes, the policy sentence and the two buttons. "Dersi aç" is never off for a problem. Pressed with
       something wrong it sets `attempted` for good: from then on every problem is written under its field and goes the moment it is
       fixed (the name error after a fix: open-course#2 a5), and the focus goes to the name field, else to the hoca search (the
       states `formAtName` and `formAtSearch`); a köşk-only problem moves nothing (F-A-6). The errors are plain text, not live
@@ -296,46 +297,46 @@ states:
       sentence that says whose it is and a link to Medrese ayarları (OPEN-1). A toast of a refusal may be up; its text is under the
       state `opening`. The graph draws one or two hocas; the page takes up to 20.
     on:
-      PICK_KOSK: { guard: "hosting == 'two' and kosk != 'suleymaniye'", target: form, effect: [pickedSuleymaniye], source: apps/nazar/features/courses/components/open-course-form.tsx:159, say: "they choose the other köşk" }
+      PICK_KOSK: { guard: "hosting == 'two' and kosk != 'suleymaniye'", target: form, effect: [pickedSuleymaniye], source: apps/nazar/features/courses/components/open-course-form.tsx:165, say: "they choose the other köşk" }
       FILL_IN:
-        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:190, say: "they type a name of 2 to 200 characters" }
+        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:197, say: "they type a name of 2 to 200 characters" }
         - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character; nothing is said until the button is pressed" }
         - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters; nothing is said until the button is pressed" }
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type a hoca's e-mail address and press Enter, or leave the field" }
-      SEARCH_ANOTHER: { guard: "team == 'a'", target: lookingAnother, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they search for a second hoca by another address" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type a hoca's e-mail address and press Enter, or leave the field" }
+      SEARCH_ANOTHER: { guard: "team == 'a'", target: lookingAnother, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they search for a second hoca by another address" }
       REMOVE_A:
-        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the only hoca off: the list is empty again (this form allows it)" }
-        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the first of two off: the other is the imam" }
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the only hoca off: the list is empty again (this form allows it)" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the first of two off: the other is the imam" }
       REMOVE_B:
-        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the second of two off: the first is the imam" }
-        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the last hoca off" }
-      PICK_IMAM: { guard: "team == 'ab' and imam == 'a'", target: form, effect: [imamIsB], source: apps/nazar/features/courses/components/muderris-picker.tsx:270, say: "they choose the second hoca as the imam (open-course#4); choosing the first again is the same move the other way and is not drawn" }
-      CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nazar/features/courses/components/muderris-picker.tsx:196, say: "they choose an unvan for the first hoca (sent as muderrisUnvans; the select's value is not drawn)" }
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the last hoca off" }
+      PICK_IMAM: { guard: "team == 'ab' and imam == 'a'", target: form, effect: [imamIsB], source: apps/nazar/features/courses/components/muderris-picker.tsx:289, say: "they choose the second hoca as the imam (open-course#4); choosing the first again is the same move the other way and is not drawn" }
+      CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nazar/features/courses/components/muderris-picker.tsx:213, say: "they choose an unvan for the first hoca (sent as muderrisUnvans; the select's value is not drawn)" }
       TOGGLE_CLOSED:
-        - { guard: "not closedLocked and not closedOn", target: form, effect: [closedChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:229, say: "they check 'Kapalı ders'" }
-        - { guard: "not closedLocked and closedOn", target: form, effect: [closedUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:229, say: "they uncheck it" }
+        - { guard: "not closedLocked and not closedOn", target: form, effect: [closedChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:238, say: "they check 'Kapalı ders'" }
+        - { guard: "not closedLocked and closedOn", target: form, effect: [closedUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:238, say: "they uncheck it" }
       TOGGLE_APPROVAL:
-        - { guard: "not approvalLocked and not approvalOn", target: form, effect: [approvalChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:240, say: "they check 'Kayıt onayı gereksin'" }
-        - { guard: "not approvalLocked and approvalOn", target: form, effect: [approvalUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:240, say: "they uncheck it" }
+        - { guard: "not approvalLocked and not approvalOn", target: form, effect: [approvalChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they check 'Kayıt onayı gereksin'" }
+        - { guard: "not approvalLocked and approvalOn", target: form, effect: [approvalUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they uncheck it" }
       SUBMIT:
-        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' with something wrong: nothing is sent" }
-        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' with a köşk, a name and a hoca" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç': Dersler opens, nothing is made, what was typed is dropped without a question (OPEN-1)" }
+        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:107, say: "they press 'Dersi aç' with something wrong: nothing is sent" }
+        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:120, say: "they press 'Dersi aç' with a köşk, a name and a hoca" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "they press 'Vazgeç': Dersler opens, nothing is made, what was typed is dropped without a question (OPEN-1)" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
-    source: apps/nazar/features/courses/components/open-course-form.tsx:52
+    source: apps/nazar/features/courses/components/open-course-form.tsx:55
 
   refused:
     title: Where does the focus go after a refusal?
     description: >-
       Not a screen. After a refused press the form moves the focus to the name field if the name is wrong, else to the hoca search
       if no hoca is listed, and moves it nowhere if only the köşk is wrong (the focus stays on 'Dersi aç': F-A-6).
-    source: apps/nazar/features/courses/components/open-course-form.tsx:102
+    source: apps/nazar/features/courses/components/open-course-form.tsx:107
     always:
-      - { guard: titleBad, target: formAtName, source: apps/nazar/features/courses/components/open-course-form.tsx:103, say: "the name is wrong: it takes the focus" }
-      - { guard: teamBad, target: formAtSearch, source: apps/nazar/features/courses/components/open-course-form.tsx:105, say: "no hoca is listed: the search field takes the focus" }
-      - { target: form, source: apps/nazar/features/courses/components/open-course-form.tsx:107, say: "only the köşk is wrong: the focus is not moved" }
+      - { guard: titleBad, target: formAtName, source: apps/nazar/features/courses/components/open-course-form.tsx:108, say: "the name is wrong: it takes the focus" }
+      - { guard: teamBad, target: formAtSearch, source: apps/nazar/features/courses/components/open-course-form.tsx:110, say: "no hoca is listed: the search field takes the focus" }
+      - { target: form, source: apps/nazar/features/courses/components/open-course-form.tsx:112, say: "only the köşk is wrong: the focus is not moved" }
 
   formAtName:
     title: The form, the focus on the name
@@ -347,22 +348,22 @@ states:
       the form's moves are those of `form`.
     on:
       FILL_IN:
-        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:190, say: "they type a good name: its error goes at once" }
+        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:197, say: "they type a good name: its error goes at once" }
         - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character: the error now says it is too short" }
         - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters: the error says it is too long" }
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they go to the hoca search and type an address" }
-      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again: the name is still wrong, so it is refused again" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they go to the hoca search and type an address" }
+      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:107, say: "they press 'Dersi aç' again: the name is still wrong, so it is refused again" }
       REMOVE_A:
-        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the only hoca off" }
-        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the first of two off: the other is the imam" }
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the only hoca off" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the first of two off: the other is the imam" }
       REMOVE_B:
-        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the second of two off: the first is the imam" }
-        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the last hoca off" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:236, say: "they take the last hoca off" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "they press 'Vazgeç'" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
-    source: apps/nazar/features/courses/components/open-course-form.tsx:108
+    source: apps/nazar/features/courses/components/open-course-form.tsx:113
 
   formAtSearch:
     title: The form, the focus on the hoca search
@@ -373,37 +374,34 @@ states:
       not the search field's description, so the reason is never read to someone on the field (F-A-5; open-course#2 a2, a6). The name is
       right here, so only the hoca search, Vazgeç and the breadcrumb are drawn as moves.
     on:
-      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type a hoca's address and press Enter, or leave the field" }
-      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again with no hoca: it is refused again" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type a hoca's address and press Enter, or leave the field" }
+      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:107, say: "they press 'Dersi aç' again with no hoca: it is refused again" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "they press 'Vazgeç'" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
-    source: apps/nazar/features/courses/components/open-course-form.tsx:105
+    source: apps/nazar/features/courses/components/open-course-form.tsx:110
 
   looking:
     title: Look the first hoca up
     description: >-
       The server action lookupPerson, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account;
       a person who never opened the app is found too) and tedrisat writes the search to the audit log, found or not. The search field
-      is disabled and busy while it runs, so it loses the focus (OPEN-4); a hidden status says "Aranıyor". The rest of the form
-      stays live (not drawn). A person already on the list is not added again: the same address typed twice says "Bu kişi zaten
-      listede." A failure (no directory, no answer) is "Arama şu an yapılamıyor." Both messages are Field errors with no live region
+      is disabled and busy while it runs, so it loses the focus (OPEN-4); a hidden status says "Aranıyor". "Dersi aç" is natively
+      disabled until the answer is in (open-course-form.tsx:278), and a form sent by Enter is refused (:105), so the course is never
+      opened without the hoca being looked up; the rest of the form stays live (not drawn). A person already on the list is not
+      added again: the same address typed twice says "Bu kişi zaten listede." A failure (no directory, no answer) is "Arama şu an yapılamıyor." Both messages are Field errors with no live region
       (F-A-4).
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedFirst], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added at once, the field is emptied and a hidden status says '<name> listeye eklendi'; a lone hoca is the imam" }
-        - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:110, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
-        - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
-      # "Dersi aç" is not held back while a hoca is looked up (only the opening makes it busy, open-course-form.tsx:269): the press is acted on at once, with the hocas listed so far.
-      SUBMIT:
-        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' while the search runs, with something wrong: nothing is sent; the search's answer still lands in the form" }
-        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' while the search runs: the course is sent with the hocas listed so far, without the one being looked up" }
+        - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedFirst], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added at once, the field is emptied and a hidden status says '<name> listeye eklendi'; a lone hoca is the imam" }
+        - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
     source: apps/nazar/features/nazirs/actions.ts:43
 
   lookingAnother:
@@ -412,16 +410,13 @@ states:
       The same search for another address while one hoca is listed. The first search found its person, so this one is drawn as found
       too (`lookup` is one answer for the whole walk): a failed second search says what a failed first one says and is not drawn
       again. A found person is added after the first (the first stays the imam until another is chosen, and the two rows show a radio each).
+      "Dersi aç" is off until the answer is in, as in `looking`.
     invoke: { action: lookupUser }
     on:
-      DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the second person is added: two rows, a radio each, the first the imam" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs" }
-      # "Dersi aç" is not held back while a hoca is looked up (only the opening makes it busy, open-course-form.tsx:269): the press is acted on at once, with the hocas listed so far.
-      SUBMIT:
-        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' while the search runs, with something wrong: nothing is sent; the search's answer still lands in the form" }
-        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' while the search runs: the course is sent with the hocas listed so far, without the one being looked up" }
+      DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the second person is added: two rows, a radio each, the first the imam" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "they press 'Vazgeç' while the search runs" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the search runs; its answer is dropped" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy while the search runs: the form is left and what was typed is lost (OPEN-1)" }
     source: apps/nazar/features/nazirs/actions.ts:43
 
   opening:
@@ -430,24 +425,26 @@ states:
       The server action openCourse, POST /madrasahs/:id/courses with the köşk, the trimmed name, the hocas and the imam, the unvans
       chosen, and "closedCourse" and "requiresApproval" (a locked box sent on whatever the form shows); one transaction writes the
       draft (the API applies the medrese's policies whatever is sent), the hocas' course roles and an audit row. The button is busy
-      (aria-disabled, "Ders açılıyor" for a screen reader) and a second press does nothing. A success shows a toast and
+      (aria-disabled, "Ders açılıyor" for a screen reader) and a second press does nothing. The köşk, the name, the hocas (the
+      search, "Çıkar", the imam and the unvans) and the two boxes are natively disabled meanwhile (`disabled={pending}`), so the
+      course opened is the one the page shows and a refusal leaves the form as it was sent. A success shows a toast and
       goes to Dersler. A refusal keeps the form and shows an error toast (it stays until closed): "Ders açılamadı" with the reason.
       No try/catch surrounds the call: if the call itself fails outright the busy state never clears and nothing is said
       (F-A-10). `answer` is one answer for a whole walk: after a köşk's refusal the person may choose the other köşk and press again,
       and that second press is the `created` branch of another walk, not of this one.
     invoke: { action: openMadrasahCourse }
     on:
-      DONE: { guard: "answer == 'created'", target: opened, source: apps/nazar/features/courses/components/open-course-form.tsx:118, say: "the draft exists: a toast says so, the page goes to Dersler" }
+      DONE: { guard: "answer == 'created'", target: opened, source: apps/nazar/features/courses/components/open-course-form.tsx:123, say: "the draft exists: a toast says so, the page goes to Dersler" }
       FAIL.hostingRight:
-        - { guard: "answer == 'hostingRight' and hosting == 'two'", target: form, effect: [hostingGone], source: apps/nazar/features/courses/components/open-course-form.tsx:133, say: "the köşk took its right back: a toast says so, the page reads the köşks again, the köşk is off the list and no köşk is chosen, so 'Bir köşk seçin.' stands under the choice at once; everything else stays" }
+        - { guard: "answer == 'hostingRight' and hosting == 'two'", target: form, effect: [hostingGone], source: apps/nazar/features/courses/components/open-course-form.tsx:138, say: "the köşk took its right back: a toast says so, the page reads the köşks again, the köşk is off the list and no köşk is chosen, so 'Bir köşk seçin.' stands under the choice at once; everything else stays" }
         - { guard: "answer == 'hostingRight' and hosting == 'one'", target: noKosk, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-page.tsx:60, say: "the köşk was the only one: after the refresh no köşk is listed and the form is replaced by the 'no köşk' alert, with everything typed lost; the toast still tells the person to choose another (OPEN-6)" }
-      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says one of the hocas has no account; the form stays" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says they may not do this; the form stays" }
+      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:133, say: "a toast says one of the hocas has no account; the form stays" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:133, say: "a toast says they may not do this; the form stays" }
       FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [toastUp], source: apps/nazar/features/courses/courses.ts:393, say: "a toast says something went wrong, try again; the form stays (a naming-oneself refusal reads the same: OPEN-2)" }
-      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "'Vazgeç' is a plain link and is not held back while the course is made: Dersler opens; the request is not taken back, and what its answer does then is not verified" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:273, say: "'Vazgeç' is a plain link and is not held back while the course is made: Dersler opens; the request is not taken back, and what its answer does then is not verified" }
       BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler' while the course is made: Dersler opens; the request is not taken back" }
-      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy while the course is made; the request is not taken back: the form is left and what was typed is lost (OPEN-1)" }
-    source: apps/nazar/features/courses/components/open-course-form.tsx:115
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:258, say: "they follow 'Medrese ayarları' in the sentence about the policy while the course is made; the request is not taken back: the form is left and what was typed is lost (OPEN-1)" }
+    source: apps/nazar/features/courses/components/open-course-form.tsx:120
 
   opened:
     type: final
@@ -487,5 +484,5 @@ states:
 assertions:
   - { id: a-draft-has-a-name, never: "state == 'opening' and titleBad", say: "A course is never sent without a name of 2 to 200 characters", source: apps/nazar/features/courses/courses.ts:318 }
   - { id: a-draft-has-a-hoca, never: "state == 'opening' and team == 'none'", say: "A course is never sent without a hoca", source: apps/nazar/features/courses/courses.ts:318 }
-  - { id: a-draft-has-a-kosk, never: "state == 'opening' and kosk == 'none'", say: "A course is never sent without a köşk chosen from the list", source: apps/nazar/features/courses/components/open-course-form.tsx:76 }
-  - { id: a-locked-box-cannot-be-toggled, never: "(closedLocked and closedOn) or (approvalLocked and approvalOn)", say: "A box a policy locks is never switched by the person: the walk cannot check or uncheck it", source: apps/nazar/features/courses/components/open-course-form.tsx:228 }
+  - { id: a-draft-has-a-kosk, never: "state == 'opening' and kosk == 'none'", say: "A course is never sent without a köşk chosen from the list", source: apps/nazar/features/courses/components/open-course-form.tsx:80 }
+  - { id: a-locked-box-cannot-be-toggled, never: "(closedLocked and closedOn) or (approvalLocked and approvalOn)", say: "A box a policy locks is never switched by the person: the walk cannot check or uncheck it", source: apps/nazar/features/courses/components/open-course-form.tsx:237 }

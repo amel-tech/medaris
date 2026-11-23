@@ -21,7 +21,8 @@ import { attempt } from "../attempt";
  * design draws no picker, so this is one small dialog with a radio list (a
  * select's list would open behind the dialog's scrim); the source
  * deck is not touched. Without a deck of that kind to copy into it says so and
- * points at "Deste oluştur".
+ * points at "Deste oluştur". While the copy runs the choice and every way to
+ * close are off: closing would not stop it (READCOPY-1).
  */
 export function CopyCardDialog({
   card,
@@ -85,11 +86,12 @@ export function CopyCardDialog({
       }}
       form
       onSubmit={submit}
+      dismissDisabled={busy}
       eyebrow={t("cardN", { n: cardNumber })}
       title={t("copy")}
       footer={
         <>
-          <DialogClose>{t("cancel")}</DialogClose>
+          <DialogClose disabled={busy}>{t("cancel")}</DialogClose>
           {none ? (
             <Button href={`/decks/create`}>{t("create")}</Button>
           ) : (
@@ -117,6 +119,7 @@ export function CopyCardDialog({
               }
               bordered
               required
+              disabled={busy}
               value={target}
               onChange={setTarget}
               options={ownDecks.map((d) => ({ value: d.id, label: d.title }))}

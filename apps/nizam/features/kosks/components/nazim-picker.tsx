@@ -6,8 +6,10 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { useTranslations } from "next-intl";
 import {
+  type Dispatch,
   type KeyboardEvent,
   type RefObject,
+  type SetStateAction,
   useId,
   useRef,
   useState,
@@ -24,7 +26,11 @@ import { addNazim } from "../admin-present";
 interface Props {
   /** the accounts chosen so far */
   value: PickedUser[];
-  onChange: (users: PickedUser[]) => void;
+  /**
+   * A state setter: every change is made to the list as it is then, so a
+   * nazım removed while a search runs stays removed when it finds someone.
+   */
+  onChange: Dispatch<SetStateAction<PickedUser[]>>;
   disabled?: boolean;
   /** shown under the field while nobody is chosen and the form was sent */
   error?: string;
@@ -73,7 +79,8 @@ export function NazimPicker({
         setState({ kind: "already" });
         setEmail("");
       } else {
-        onChange(addNazim(value, result.user));
+        const found = result.user;
+        onChange((current) => addNazim(current, found));
         setAnnounce(t("chosen", { name: result.user.name }));
         setState({ kind: "idle" });
         setEmail("");
@@ -176,7 +183,9 @@ export function NazimPicker({
                   aria-label={t("remove", { name: person.name })}
                   disabled={disabled}
                   onClick={() =>
-                    onChange(value.filter((p) => p.id !== person.id))
+                    onChange((current) =>
+                      current.filter((p) => p.id !== person.id)
+                    )
                   }
                 >
                   <Icon name="close" size="sm" />

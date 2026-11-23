@@ -283,7 +283,7 @@ states:
         - { guard: "holdsForm and typed == 'blank'", target: listed, effect: [needAnswer], say: "\"Cevap boş olamaz.\" under the box and nothing is sent", source: "apps/nazar/features/questions/components/questions-list.tsx:128" }
         - { guard: holdsForm, target: sending, effect: [clearNote], say: "they press Cevapla, or Kaydet on a card being changed" }
       CHANGE: { guard: "phase == 'answered'", target: listed, effect: [openChange], say: "they press Cevabı değiştir: the answer is a form holding the stored answer; the field is not focused (F-D1-08)", source: "apps/nazar/features/questions/components/questions-list.tsx:198" }
-      CANCEL: { guard: "phase == 'changing'", target: listed, effect: [closeChange], say: "they press Vazgeç: the stored answer is shown again, whatever was typed", source: "apps/nazar/features/questions/components/questions-list.tsx:249" }
+      CANCEL: { guard: "phase == 'changing'", target: listed, effect: [closeChange], say: "they press Vazgeç: the stored answer is shown again, whatever was typed", source: "apps/nazar/features/questions/components/questions-list.tsx:250" }
       LOAD_MORE: { guard: moreLeft, target: loadingMore, effect: [clearMore], say: "they press Daha fazla göster", source: "apps/nazar/features/questions/components/questions-list.tsx:99" }
       QUESTION_DELETED: { guard: "question == 'kept'", target: listed, effect: [askerDeleted], say: "the talebe deletes the question in tedris; this page does not know", source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:259" }
       RELOAD: { guard: "phase == 'answered' and question == 'kept'", target: opened, say: "the page is read again: the answered card moves behind the waiting ones, and the Bekliyor badge is gone", source: "apps/nazar/features/questions/components/questions-page.tsx:27" }
@@ -295,7 +295,8 @@ states:
     description: >-
       The server action answerQuestion, PUT /questions/:questionId/answer with the text as typed (a blank is stopped before the call;
       the API trims it and keeps 1 to 4000 characters; the box's maxLength is 4000 too). The button is busy ("Gönderiliyor" through a
-      hidden status) and stays focusable. A 200 puts the API's question back in the card's place: the form goes, the answer, the
+      hidden status) and stays focusable; "Vazgeç" of a card being changed is disabled until the answer is back, so a refusal is shown in
+      the form it was sent from. A 200 puts the API's question back in the card's place: the form goes, the answer, the
       answerer, the time, the badge "Cevaplandı" and "Cevabı değiştir" come, and nothing says so (F-D1-08); the card does not move in
       the list until the page is read again. The answer replaces any earlier one with no history (ANSWER-2). A 404 LESSON_QUESTION_NOT_FOUND
       (the question is gone, or the caller may not answer it: the same answer for both) says "Bu soru artık yok ya da cevaplama izniniz

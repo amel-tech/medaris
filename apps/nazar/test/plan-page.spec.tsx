@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle, type as typeInto } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
@@ -358,6 +358,64 @@ describe("'N celse oluştur'", () => {
     await click(submit());
     await settle(80);
     expect(document.body.textContent).toContain("geçerli bir celse üretmiyor");
+  });
+
+  it("holds every field and choice while the celses are made, so a refusal shows what was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    createSessions.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await fillWeekly();
+    await click(submit());
+    await settle(20);
+
+    const radio = (label: string) =>
+      [...document.querySelectorAll("label.mds-choice")]
+        .find((l) => l.textContent?.includes(label))
+        ?.querySelector("[role=radio]");
+    const radioOff = (label: string) =>
+      radio(label)?.getAttribute("aria-disabled") === "true" ||
+      radio(label)?.hasAttribute("data-disabled") === true;
+    for (const label of ["Ders", "Sınav", "Tek seferlik", "Pzt", "Sal"]) {
+      expect((chip(label) as HTMLButtonElement).disabled, label).toBe(true);
+    }
+    for (const name of [
+      "startTime",
+      "duration",
+      "startDate",
+      "endDate",
+      "title",
+    ]) {
+      expect(field(name).disabled, name).toBe(true);
+    }
+    expect(
+      (document.querySelector("button[role=combobox]") as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+    expect(radioOff("Belirli sayıda celseden sonra")).toBe(true);
+    expect(radioOff("Yalnız ilk celseye ekle")).toBe(true);
+    await click(chip("Sal"));
+    await settle(20);
+    expect(chip("Sal").getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(createSessions).toHaveBeenCalledExactlyOnceWith(
+      "c-1",
+      expect.objectContaining({ weekdays: [1, 3], endDate: "2026-10-19" })
+    );
+    expect(chip("Pzt").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("Çar").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("Sal").getAttribute("aria-pressed")).toBe("false");
+    expect(field("endDate").value).toBe("2026-10-19");
+    expect((chip("Sal") as HTMLButtonElement).disabled).toBe(false);
+    expect(field("title").disabled).toBe(false);
   });
 });
 

@@ -299,7 +299,12 @@ export function CourseNazirDialog({
                 </bdi>
               ) : null}
             </span>
-            <Button variant="ghost" size="small" onClick={forget}>
+            <Button
+              variant="ghost"
+              size="small"
+              disabled={pending}
+              onClick={forget}
+            >
               {t("CourseNazirs.dialog.remove")}
             </Button>
           </div>
@@ -365,6 +370,7 @@ export function CourseNazirDialog({
               .ticked
           }
           disabled={(code) =>
+            pending ||
             !boxState(code, { grantable: context.grantable, held, chosen })
               .enabled
           }

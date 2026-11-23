@@ -623,6 +623,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -633,6 +634,7 @@ export function SessionsTable({
                   legend={t("Sessions.inPerson.legend")}
                   name="inPerson"
                   bordered
+                  disabled={busy}
                   value={editing.value}
                   onChange={(value) =>
                     setEditing({ ...editing, value: value as InPersonChoice })
@@ -664,6 +666,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -680,6 +683,7 @@ export function SessionsTable({
                       type="date"
                       name="date"
                       value={editing.date}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, date: event.target.value })
                       }
@@ -690,6 +694,7 @@ export function SessionsTable({
                       type="time"
                       name="time"
                       value={editing.time}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, time: event.target.value })
                       }

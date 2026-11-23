@@ -195,7 +195,7 @@ states:
     source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
     always:
       - { guard: "viewer == 'visitor'", target: sign_in_asked, say: "the proxy sends a person with no session to sign in, to come back to this address", source: apps/tedris/proxy.ts:17 }
-      - { guard: lockedSees, target: lockedPlayer, say: "the celse page is the locked card, which plays a sample celse's PUBLIC recording; the watch page's address redirects to it", source: apps/tedris/features/courses/components/lesson-locked.tsx:139 }
+      - { guard: lockedSees, target: lockedPlayer, say: "the celse page is the locked card, which plays a sample celse's PUBLIC recording; the watch page's address redirects to it", source: apps/tedris/features/courses/components/lesson-locked.tsx:149 }
       - { guard: "viewer == 'outsider'", target: detail_locked, say: "the celse page is the locked card; the watch page's address redirects to it", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
       - { guard: "recordingPlays and entry == 'celse'", target: celseCard, say: "the celse page offers the recording", source: apps/tedris/features/courses/components/session-action-card.tsx:233 }
       - { guard: "recordingPlays and viewer == 'talebe'", target: playerTalebe, say: "the watch page's address plays the recording", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34" }
@@ -330,7 +330,7 @@ states:
       görebilirsin." and "Kayıt başvurusu yap"). This is the only recording a person with no seat is ever sent, and only for a sample celse
       (isPreview) whose recording is PUBLIC; the watch page's address redirects here and never plays it. With the medrese's "Ders kayıtları herkese
       açılamaz" on, the recording is sent and drawn all the same (WATCH-3, the domain's recording-public-honours-medrese-policy). The rest of the page is tedris.celse.locked's.
-    source: apps/tedris/features/courses/components/lesson-locked.tsx:195
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:203
     on:
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -366,7 +366,7 @@ assertions:
   - id: a-locked-page-plays-only-what-tedrisat-sent
     never: "state == 'lockedPlayer' and lockedShows == 'nothing'"
     say: "The locked page plays a recording only when tedrisat sent one to a caller who may not read the content"
-    source: apps/tedris/features/courses/components/lesson-locked.tsx:139
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:149
   - id: only-an-enrolled-talebe-is-counted
     never: "state == 'reporting' and viewer != 'talebe'"
     say: "Only an enrolled talebe's watch page reports a position: the course team's has no counter, and the API would refuse it (LESSON_VIEW_FORBIDDEN)"

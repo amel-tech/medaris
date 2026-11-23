@@ -15,8 +15,9 @@
 #   LEAVE-4  (new, provisional id) the row reads a 404 or a 409 like any failure: "try again", the row stays, the page is not read again
 # E2E carried: discover#26 in part (a pending row taken back from Derslerim: the row is off the list; the e2e's reload and its title,
 # "at once", are not carried: LEAVE-1). The e2e cannot tell the two API calls apart, so the graph's `invoke` says which one runs.
-# Not carried: nothing in any e2e or unit spec touches "Dersten ayrıl" (apps/tedris/test/my-courses.spec.ts checks only the sections
-# and the dates of Derslerim), so the menu, the window and the toasts have no check of their own except this graph's replay.
+# Not carried: no e2e touches "Dersten ayrıl" (apps/tedris/test/my-courses.spec.ts checks only the sections and the dates of
+# Derslerim); one unit spec, apps/tedris/test/course-actions-menu.spec.ts, checks the window's Vazgeç before the leave is sent and
+# that nothing closes the window while it runs. The menu's other paths and the toasts have no check but this graph's replay.
 schema: delurio-graph/0
 kind: flow
 id: tedris.course.leave
@@ -141,7 +142,7 @@ states:
   courseMenu:
     title: The menu on the course page
     by: human
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:67
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:68
     description: >-
       Base UI's menu: a popup named by its trigger with one item, "Dersten ayrıl". The page behind is not inert and the focus
       is on the popup, not on the item (menu-focus-on-popup). Esc, pressing the button again or choosing the item closes it.
@@ -163,7 +164,7 @@ states:
       here with its toast: the error toast of the window (failed), or the row's own (withdrawFailed). The page sets no focus
       of its own on load (focus-not-set).
     on:
-      OPEN_MENU: { guard: viaCard, target: cardMenu, source: apps/tedris/features/courses/components/course-actions-menu.tsx:67 }
+      OPEN_MENU: { guard: viaCard, target: cardMenu, source: apps/tedris/features/courses/components/course-actions-menu.tsx:68 }
       WITHDRAW: { guard: viaRow, target: withdrawing, effect: [clearNotice], source: apps/tedris/features/courses/components/application-row.tsx:39 }
       TEAM_APPROVES: { guard: "viaRow and stillWaiting", target: listed, effect: [teamApproves], say: "the course team approves the application, in nazar or in nizam (nazar.roster.decide); this page does not know", source: apps/tedrisat/src/course/course.service.ts:1659 }
       NAVIGATE: left
@@ -171,7 +172,7 @@ states:
   cardMenu:
     title: The menu on a card of Derslerim
     by: human
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:67
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:68
     description: >-
       The same menu, named "Diğer işlemler: <course>". The page behind is not inert; the focus is on the popup. The menu is modal all the
       same (Base UI's default): an invisible backdrop covers the page but the trigger, so a press elsewhere, on the row's button too,
@@ -185,7 +186,7 @@ states:
   confirm:
     title: The window "Dersten ayrıl"
     by: human
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:79
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:80
     description: >-
       A modal alertdialog named by its title, with the course's title above it. It says which access ends (celses, meeting
       links, recordings and the course deck, and the celses leave the calendar) and that the cards copied into the talebe's own
@@ -207,33 +208,34 @@ states:
 
   leaving:
     title: Delete the seat
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:51
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:52
     description: >-
       The server action leaveCourse, DELETE /courses/:id/enrollment, which deletes the caller's own ENROLLED or PENDING row, and
       with it the progress (LEAVE-3). "Dersten ayrıl" is busy and disabled with a hidden status "Yükleniyor"; "Vazgeç" and
-      the close button stay live and closing the window does not stop the call (they are `duringStep`: their press is drawn where the
-      call's outcome leads, none of which shows the window; the moment between, the window closed while the call runs, is not drawn). A session that is over sends the person to
-      sign in and back, and draws no toast. Otherwise the window closes first and the toast follows. Success: "Dersten
+      the close button are disabled and Esc does nothing (the window's dismissDisabled, course-actions-menu.tsx:88), because
+      closing would not stop the call: the window stays until the answer, so nobody sees it close and believes they stayed. A
+      session that is over sends the person to sign in and back, and draws no toast. Otherwise the window closes first and the
+      toast follows. Success: "Dersten
       ayrıldınız." and the page is read again. A 404 or a 409 (the row went, or is COMPLETED or REVOKED now): "Kaydının durumu
       değişmiş. Sayfa yenilendi, güncel hâline bak." and the page is read again, which draws what the enrolment is now. Any
       other refusal (a ban) says "İşlem tamamlanamadı. Biraz sonra yeniden dene." and the page stays as it was.
     invoke: { action: leaveCourse }
     on:
       DONE:
-        - { guard: onCourse, target: apply_card, effect: [toastLeft], starts: { flow: tedris.course.apply }, say: "the card is replaced by the apply card, which tedris.course.apply draws", source: apps/tedris/features/courses/components/course-actions-menu.tsx:61 }
-        - { guard: keeps, target: seat_left, effect: [toastLeft], source: apps/tedris/features/courses/components/course-actions-menu.tsx:61 }
-        - { target: nothing_left, effect: [toastLeft], source: apps/tedris/features/courses/components/course-actions-menu.tsx:61 }
+        - { guard: onCourse, target: apply_card, effect: [toastLeft], starts: { flow: tedris.course.apply }, say: "the card is replaced by the apply card, which tedris.course.apply draws", source: apps/tedris/features/courses/components/course-actions-menu.tsx:62 }
+        - { guard: keeps, target: seat_left, effect: [toastLeft], source: apps/tedris/features/courses/components/course-actions-menu.tsx:62 }
+        - { target: nothing_left, effect: [toastLeft], source: apps/tedris/features/courses/components/course-actions-menu.tsx:62 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.gone:
-        - { guard: onCourse, target: apply_card, effect: [toastConflict], starts: { flow: tedris.course.apply }, say: "no row is left, so the page read again is the apply card", source: apps/tedris/features/courses/components/course-actions-menu.tsx:55 }
-        - { guard: keeps, target: seat_left, effect: [toastConflict], source: apps/tedris/features/courses/components/course-actions-menu.tsx:55 }
-        - { target: nothing_left, effect: [toastConflict], source: apps/tedris/features/courses/components/course-actions-menu.tsx:55 }
+        - { guard: onCourse, target: apply_card, effect: [toastConflict], starts: { flow: tedris.course.apply }, say: "no row is left, so the page read again is the apply card", source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
+        - { guard: keeps, target: seat_left, effect: [toastConflict], source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
+        - { target: nothing_left, effect: [toastConflict], source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
       FAIL.settled:
-        - { guard: onCourse, target: course_read_again, effect: [toastConflict], starts: { flow: tedris.course.readProgramme }, say: "the row is COMPLETED or REVOKED, which the page read again draws as its own card", source: apps/tedris/features/courses/components/course-actions-menu.tsx:55 }
-        - { target: seat_left, effect: [toastConflict], say: "the course is still on the page, in another section", source: apps/tedris/features/courses/components/course-actions-menu.tsx:55 }
+        - { guard: onCourse, target: course_read_again, effect: [toastConflict], starts: { flow: tedris.course.readProgramme }, say: "the row is COMPLETED or REVOKED, which the page read again draws as its own card", source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
+        - { target: seat_left, effect: [toastConflict], say: "the course is still on the page, in another section", source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
       FAIL.other:
-        - { guard: onCourse, target: courseCard, effect: [toastFailed], source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
-        - { target: listed, effect: [toastFailed], source: apps/tedris/features/courses/components/course-actions-menu.tsx:56 }
+        - { guard: onCourse, target: courseCard, effect: [toastFailed], source: apps/tedris/features/courses/components/course-actions-menu.tsx:57 }
+        - { target: listed, effect: [toastFailed], source: apps/tedris/features/courses/components/course-actions-menu.tsx:57 }
 
   withdrawing:
     title: Take the application back, with the leave call
@@ -319,8 +321,8 @@ assertions:
   - id: asks-only-for-a-seat
     never: "state == 'confirm' and place == 'application'"
     say: "the confirmation window belongs to the card's menu; the application row never opens it"
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:79
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:80
   - id: a-stale-answer-leaves-the-page-read-again
     never: "state == 'listed' and notice == 'conflict'"
     say: "a stale answer (404 or 409) reads the page again and never leaves the person on the page they left with the enrolment toast"
-    source: apps/tedris/features/courses/components/course-actions-menu.tsx:58
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:59

@@ -207,6 +207,36 @@ describe("'Medrese nazırı ata' (nazir 05)", () => {
     expect(document.querySelector("[data-testid=chosen-nazir]")).toBeNull();
     expect(emailField().value).toBe("");
   });
+
+  it("keeps the person chosen while the appointment is on its way: 'Seçimi kaldır' is off until it answers", async () => {
+    lookupPerson.mockResolvedValue(found);
+    let answer: (value: unknown) => void = () => {};
+    appointNazir.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await search("a.erzurumluoglu@example.com");
+    const remove = () =>
+      dialog().querySelector(
+        "[aria-label='Seçimi kaldır: Abdullah Talha Erzurumluoğlu']"
+      ) as HTMLButtonElement;
+    expect(remove().disabled).toBe(false);
+
+    await click(buttonIn(dialog(), "Ata"));
+    await settle(20);
+    expect(remove().disabled).toBe(true);
+    await click(remove());
+    const chosen = document.querySelector("[data-testid=chosen-nazir]");
+    expect(chosen?.textContent).toContain("Abdullah Talha Erzurumluoğlu");
+
+    answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    await settle(60);
+    // the person the refusal is about is still the one shown, and can be taken out now
+    expect(appointNazir).toHaveBeenCalledExactlyOnceWith("m-1", "u-9");
+    expect(remove().disabled).toBe(false);
+  });
 });
 
 describe("'Görevden al' (nazir 15)", () => {

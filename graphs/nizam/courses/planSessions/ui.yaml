@@ -109,8 +109,8 @@ nodes:
   previewFoot: { type: text, component: Text, text: { key: SessionPlan.previewFoot, params: { zone: zone } }, in: [form, previewing, formReady, previewFailed, creating], source: apps/nizam/features/courses/components/session-plan-form.tsx:448 }
 
   # --- the toasts (Sonner: one <li data-sonner-toast>, title and description inside; an error toast stays until it is closed) ----------
-  arrivalTitle: { type: status, component: Status, text: { key: CourseCreate.sessionsFailed }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:182 } # put up by Ders aç before it moved the person here; it stays over the planner and says no reason (F-W4-open-2)
-  arrivalBody: { type: status, component: Status, text: { key: CourseCreate.sessionsFailedBody, params: { name: name } }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:184 }
+  arrivalTitle: { type: status, component: Status, text: { key: CourseCreate.sessionsFailed }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:186 } # put up by Ders aç before it moved the person here; it stays over the planner and says no reason (F-W4-open-2)
+  arrivalBody: { type: status, component: Status, text: { key: CourseCreate.sessionsFailedBody, params: { name: name } }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:188 }
   toastFailedTitle: { type: status, component: Status, text: { key: SessionPlan.failed }, in: [formReady], when: "toast != 'none'", source: apps/nizam/features/courses/components/session-plan-form.tsx:145 } # an error toast: it stays, polite not assertive, and its region is named by the library's English default (F-X-5)
   toastPatternBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.invalidPattern }, in: [formReady], when: "toast == 'patternRefused'", source: apps/nizam/features/courses/present.ts:1242 }
   toastForbiddenBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.forbidden }, in: [formReady], when: "toast == 'forbidden'", source: apps/nizam/features/courses/present.ts:1242 }
@@ -125,8 +125,8 @@ nodes:
 
   # --- the page it lands on: Celseler, with the toast of the plan (the table is nizam.courses.manageSessions) ------------------------------
   landedPage: { type: page, component: Page, role: main, in: [landed], source: libs/ui/src/mds/app-shell.tsx:41 }
-  landedTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.title }, in: [landed], source: apps/nizam/features/courses/components/sessions-view.tsx:482 } # h1
-  landedUpcoming: { type: text, component: Heading, role: heading, text: { key: Sessions.upcomingTitle }, in: [landed], source: apps/nizam/features/courses/components/sessions-view.tsx:510 } # h2: the new celses are listed here
+  landedTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.title }, in: [landed], source: apps/nizam/features/courses/components/sessions-view.tsx:486 } # h1
+  landedUpcoming: { type: text, component: Heading, role: heading, text: { key: Sessions.upcomingTitle }, in: [landed], source: apps/nizam/features/courses/components/sessions-view.tsx:514 } # h2: the new celses are listed here
   toastCreatedTitle: { type: status, component: Status, text: { key: SessionPlan.created }, in: [landed], source: apps/nizam/features/courses/components/session-plan-form.tsx:151 } # fired just before router.push, so it survives the change of page; closes by itself after 6 seconds
   toastCreatedBody: { type: status, component: Status, text: { key: SessionPlan.createdBody, params: { count: count } }, in: [landed], source: apps/nizam/features/courses/components/session-plan-form.tsx:152 }
 

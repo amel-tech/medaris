@@ -585,11 +585,11 @@ entries:
   - { from: koskCourses, to: courseOverview, how: link, label: KoskCourses.columns.course, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:124 }
   - { from: koskCourses, to: courseCurriculum, how: link, label: KoskCourses.edit, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:275 }
   - { from: koskCourses, to: tedris, how: link, label: KoskCourses.view, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301 }
-  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:213 }
-  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:507 }
-  - { from: courseNew, to: koskCourses, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:194 }
-  - { from: courseNew, to: courseSessionsNew, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:187 }
-  - { from: courseRequests, to: courseNew, how: button, label: CourseRequestsPage.accept, data: true, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:219 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:527 }
+  - { from: courseNew, to: koskCourses, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:198 }
+  - { from: courseNew, to: courseSessionsNew, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:191 }
+  - { from: courseRequests, to: courseNew, how: button, label: CourseRequestsPage.accept, data: true, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241 }
   - { from: courseOverview, to: koskCourses, how: link, label: CourseOverview.courses, back: true, source: apps/nizam/features/kosks/components/course-overview.tsx:260 }
   - { from: courseOverview, to: nazar, how: link, label: CourseOverview.openInNazar, when: "variant == 'chief'", source: apps/nizam/features/kosks/components/course-overview.tsx:280 }
   - { from: courseOverview, to: courseEdit, how: link, label: CourseOverview.editSyllabus, source: apps/nizam/features/kosks/components/course-overview.tsx:294 }
@@ -602,24 +602,24 @@ entries:
   - { from: courseCurriculum, to: koskCourses, how: link, label: Curriculum.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/curriculum-editor.tsx:284 }
   - { from: courseCurriculum, to: courseSessions, how: link, label: Curriculum.sessionsLink, source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
   - { from: courseCurriculum, to: courseSettings, how: link, label: Curriculum.settingsLink, source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
-  - { from: courseCurriculum, to: courseSettings, how: link, label: Curriculum.changeZone, source: apps/nizam/features/courses/components/curriculum-editor.tsx:413 }
-  - { from: courseCurriculum, to: courseSessionsNew, how: link, label: Curriculum.generate, source: apps/nizam/features/courses/components/curriculum-editor.tsx:418 }
-  - { from: courseSessions, to: koskCourses, how: link, label: Sessions.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/sessions-view.tsx:477 }
-  - { from: courseSessions, to: courseSessionsNew, how: link, label: Sessions.plan, source: apps/nizam/features/courses/components/sessions-view.tsx:494 }
-  - { from: courseSessions, to: tedris, how: link, label: Sessions.columns.session, data: true, source: apps/nizam/features/courses/components/sessions-view.tsx:291 }
+  - { from: courseCurriculum, to: courseSettings, how: link, label: Curriculum.changeZone, source: apps/nizam/features/courses/components/curriculum-editor.tsx:421 }
+  - { from: courseCurriculum, to: courseSessionsNew, how: link, label: Curriculum.generate, source: apps/nizam/features/courses/components/curriculum-editor.tsx:426 }
+  - { from: courseSessions, to: koskCourses, how: link, label: Sessions.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/sessions-view.tsx:481 }
+  - { from: courseSessions, to: courseSessionsNew, how: link, label: Sessions.plan, source: apps/nizam/features/courses/components/sessions-view.tsx:498 }
+  - { from: courseSessions, to: tedris, how: link, label: Sessions.columns.session, data: true, source: apps/nizam/features/courses/components/sessions-view.tsx:295 }
   - { from: courseSessionsNew, to: courseSessions, how: link, label: SessionPlan.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:168 }
   - { from: courseSessionsNew, to: courseSessions, how: link, label: SessionPlan.cancel, back: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:392 }
   - { from: courseSessionsNew, to: courseSessions, how: button, label: SessionPlan.submit, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
-  - { from: courseSettings, to: koskCourses, how: link, label: CourseSettings.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:196 }
-  - { from: courseSettings, to: tedris, how: link, label: CourseSettings.viewPublic, source: apps/nizam/features/courses/components/course-settings-page.tsx:207 }
-  - { from: courseSettings, to: koskCourses, how: button, label: CourseSettings.hide, source: apps/nizam/features/courses/components/course-settings-page.tsx:468 }
+  - { from: courseSettings, to: koskCourses, how: link, label: CourseSettings.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:200 }
+  - { from: courseSettings, to: tedris, how: link, label: CourseSettings.viewPublic, source: apps/nizam/features/courses/components/course-settings-page.tsx:211 }
+  - { from: courseSettings, to: koskCourses, how: button, label: CourseSettings.hide, source: apps/nizam/features/courses/components/course-settings-page.tsx:475 }
 
   # ---- köşk decks, legacy deck pages, notifications ----
   - { from: koskDecks, to: koskDeckNew, how: link, label: KoskDecksPage.open, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:266 }
   - { from: koskDecks, to: koskDeckNew, how: link, label: KoskDecksPage.accept, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:313 }
   - { from: koskDecks, to: legacyDeckCards, how: link, label: KoskDecksPage.editCards, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:224 }
   - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.breadcrumbRoot, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
-  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
   - { from: legacyDecks, to: legacyDeckCards, how: button, label: "the row's eye icon, which has no accessible name (F-P0-10)", data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
   # A ban notice is written for the köşk's nazımlar and for every Medaris nazımı, never for the başnazım (ban.service.ts:346-385,
   # ban.repository.ts:435-456 nazimRecipients: TRIAGE-1, TRIAGE-2), and its title is a link to the köşk's Yasaklamalar whoever holds it

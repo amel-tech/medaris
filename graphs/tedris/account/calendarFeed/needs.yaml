@@ -95,8 +95,11 @@ needs:
       - state: returned
       - state: masked
       - source: apps/tedris/features/courses/components/calendar-subscription.tsx:283
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:291
       - test: apps/tedris/e2e/schedule.e2e.ts
         name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+      - test: apps/tedris/test/calendar-subscription.spec.ts
+        name: "while the link is renewed, Vazgeç, Kapat and Esc are off, so nobody believes the old link still works"
 
   - id: renewing-replaces-the-link-and-the-old-one-stops
     need: >-

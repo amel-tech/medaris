@@ -118,7 +118,7 @@ context:
     say: { none: "no error toast is up", unknownUser: "an error toast says an account was not found", forbidden: "an error toast says she may not", invalid: "an error toast says the list is wrong", other: "an error toast says something went wrong" }
 
 guards:
-  # `ready` is `disabled={!ready}` of the "Kaydet" button (change-muderris.tsx:58-59, 114): the list is complete (an account, and an imam
+  # `ready` is `disabled={!ready}` of the "Kaydet" button (change-muderris.tsx:62-63, 118): the list is complete (an account, and an imam
   # where there are several) and differs from where it started
   ready: "changed and list in ['guestAndOne', 'lone', 'pair', 'trio']"
   # what a search the model draws can lead to: an account is added only up to the model's size, and a hoca who is already listed needs an account
@@ -203,7 +203,7 @@ states:
     always:
       - { guard: ready, target: formReady, say: "the list is complete and has changed: the button is on" }
       - { target: form, say: "the list has not changed, or is not complete: the button is off" }
-    source: apps/nazar/features/courses/components/change-muderris.tsx:58
+    source: apps/nazar/features/courses/components/change-muderris.tsx:62
 
   form:
     title: The dialog, "Kaydet" off
@@ -219,7 +219,7 @@ states:
       the field's own error, not announced (F-A-4).
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': the other account is the imam now" }
       REMOVE_OTHER:
@@ -227,16 +227,16 @@ states:
         - { guard: "list == 'pairNoImam'", target: settle, effect: [otherLeftPairNoImam], source: apps/nazar/features/courses/team.ts:57, say: "they press an account's 'Çıkar' while the imam is missing: the account left is the imam" }
       PICK_IMAM:
         - { guard: "list in ['pair', 'pairNoImam']", target: settle, effect: [imamChosenOfTwo], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
-      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:109, say: "Vazgeç: the list is thrown away, nothing is saved" }
-      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:104, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
-    source: apps/nazar/features/courses/components/change-muderris.tsx:94
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:98
 
   formReady:
     title: The dialog, "Kaydet" on
     description: The same dialog with "Kaydet" on; pressing it sends the whole list.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they look up another hoca" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they look up another hoca" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [imamLeftTrio], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': none is the imam, the button goes off" }
@@ -246,10 +246,10 @@ states:
       PICK_IMAM:
         - { guard: "list in ['pair', 'pairNoImam']", target: settle, effect: [imamChosenOfTwo], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
         - { guard: "list == 'trio'", target: settle, effect: [imamChosenOfThree], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
-      SAVE: { target: saving, effect: [clearToast], source: apps/nazar/features/courses/components/change-muderris.tsx:61, say: "they press 'Kaydet'" }
-      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:109, say: "Vazgeç: the list is thrown away, nothing is saved" }
-      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:104, say: "the close icon, or Esc: the list is thrown away" }
-    source: apps/nazar/features/courses/components/change-muderris.tsx:110
+      SAVE: { target: saving, effect: [clearToast], source: apps/nazar/features/courses/components/change-muderris.tsx:65, say: "they press 'Kaydet'" }
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc: the list is thrown away" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:114
 
   looking:
     title: Look the person up
@@ -258,20 +258,21 @@ states:
       tedrisat writes the search to the audit log, found or not. The field is `disabled` and aria-busy while it runs, so it loses the
       focus (HOCAS-3); the hidden output says "Aranıyor". A person found who is not on the list is added to it and the field is
       cleared, the output says "{name} listeye eklendi" (HOCAS-2); a person already on the list, no account, or a directory that
-      does not answer is the field's own error, which is not announced (F-A-4). The rest of the dialog stays live; "Kaydet" is not
-      drawn here, where it keeps the state it had.
+      does not answer is the field's own error, which is not announced (F-A-4). "Kaydet" is natively disabled while the search runs
+      (the picker's `onSearchingChange`, change-muderris.tsx:118, and `submit` refuses a form sent with Enter, :67), so the list is
+      not saved without the hoca being looked up; the rest of the dialog stays live.
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and list == 'guest'", target: settle, effect: [addedToGuest], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added after the name-only hoca and is the imam; the model stops here" }
-        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added; there are two accounts now and the imam stays who it was" }
-        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added; there are three accounts" }
-        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:111, say: "'Bu kişi zaten listede.' under the field and nobody is added" }
-        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.' under the field" }
-      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:109, say: "they close the dialog while the search runs: its answer is dropped" }
-      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:104, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
-    source: apps/nazar/features/courses/components/muderris-picker.tsx:105
+        - { guard: "lookup == 'found' and list == 'guest'", target: settle, effect: [addedToGuest], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added after the name-only hoca and is the imam; the model stops here" }
+        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added; there are two accounts now and the imam stays who it was" }
+        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added; there are three accounts" }
+        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:128, say: "'Bu kişi zaten listede.' under the field and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.' under the field" }
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "they close the dialog while the search runs: its answer is dropped" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
+    source: apps/nazar/features/courses/components/muderris-picker.tsx:122
 
   saving:
     title: The list is on its way
@@ -279,19 +280,21 @@ states:
       The server action replaceMuderris calls PUT /madrasahs/:id/courses/:courseId/muderrises with the whole list of accounts and the
       imam (a hoca with no account is not sent and is left as it is). The API gives the accounts that leave no MUDERRIS role, writes
       the audit row `course.muderris.update` only when the list or the imam changed, and moves the course's version. "Kaydet" is busy
-      (aria-disabled, "Kaydediliyor" in its hidden output); Vazgeç and the close icon stay on and do nothing (HOCAS-5). A call that
-      fails outright is not caught (F-A-10).
+      (aria-disabled, "Kaydediliyor" in its hidden output); Vazgeç and the close icon stay on and do nothing (HOCAS-5). The search
+      field, the imam's radios and every "Çıkar" are natively disabled meanwhile (the picker's `disabled`,
+      change-muderris.tsx:137): a success closes the dialog, so a change made then would be lost, and the list saved is the list
+      shown. A call that fails outright is not caught (F-A-10).
     invoke: { action: setMadrasahCourseMuderris }
     on:
-      DONE: { guard: "answer == 'saved'", target: saved, source: apps/nazar/features/courses/components/change-muderris.tsx:71, say: "the list is saved" }
-      FAIL.gone: { guard: "answer == 'gone'", target: course_gone, source: apps/nazar/features/courses/components/change-muderris.tsx:86, say: "the course is gone: a toast says so, the dialog closes and the list is read again" }
-      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: settle, effect: [unknownUserToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says an account was not found; the dialog stays open" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says she may not; the dialog stays open" }
-      FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says what is wrong with the list; the dialog stays open" }
-      FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nazar/features/courses/components/change-muderris.tsx:81, say: "an error toast says something went wrong, try again; the dialog stays open" }
-      CANCEL: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:97, say: "Vazgeç: nothing happens, the list is still saved (HOCAS-5)" }
-      CLOSE: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:97, say: "the close icon, or Esc: nothing happens, the list is still saved (HOCAS-5)" }
-    source: apps/nazar/features/courses/components/change-muderris.tsx:65
+      DONE: { guard: "answer == 'saved'", target: saved, source: apps/nazar/features/courses/components/change-muderris.tsx:75, say: "the list is saved" }
+      FAIL.gone: { guard: "answer == 'gone'", target: course_gone, source: apps/nazar/features/courses/components/change-muderris.tsx:90, say: "the course is gone: a toast says so, the dialog closes and the list is read again" }
+      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: settle, effect: [unknownUserToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says an account was not found; the dialog stays open" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says she may not; the dialog stays open" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says what is wrong with the list; the dialog stays open" }
+      FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says something went wrong, try again; the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:101, say: "Vazgeç: nothing happens, the list is still saved (HOCAS-5)" }
+      CLOSE: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:101, say: "the close icon, or Esc: nothing happens, the list is still saved (HOCAS-5)" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:69
 
   saved:
     type: final
@@ -324,6 +327,6 @@ states:
     leavesPage: true
 
 assertions:
-  - { id: only-a-complete-list-is-sent, never: "state == 'saving' and list == 'pairNoImam'", say: "A list with several accounts and no imam is never sent: Kaydet is off and the page says 'Dersin imamını seçin.'.", source: apps/nazar/features/courses/components/change-muderris.tsx:58 }
-  - { id: only-a-changed-list-is-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nazar/features/courses/components/change-muderris.tsx:59 }
+  - { id: only-a-complete-list-is-sent, never: "state == 'saving' and list == 'pairNoImam'", say: "A list with several accounts and no imam is never sent: Kaydet is off and the page says 'Dersin imamını seçin.'.", source: apps/nazar/features/courses/components/change-muderris.tsx:62 }
+  - { id: only-a-changed-list-is-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nazar/features/courses/components/change-muderris.tsx:63 }
   - { id: never-without-an-account, never: "state == 'saving' and list == 'guest'", say: "A list with no account on it is never sent: the API refuses an empty list and the last account's 'Çıkar' is off.", source: apps/nazar/features/courses/team.ts:105 }

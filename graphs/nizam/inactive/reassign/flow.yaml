@@ -267,7 +267,7 @@ states:
     by: human
     description: >-
       A form dialog over the page, named by its title ("Köşk nazımı ata", "Başmüderris ata" or "Hoca ata"), with the scope's name above
-      it and one intro for the kind. The scrim does not close it (a form dialog never does, libs/ui/src/mds/dialog.tsx:71), so a
+      it and one intro for the kind. The scrim does not close it (a form dialog never does, libs/ui/src/mds/dialog.tsx:74), so a
       stray click loses nothing. The focus starts on the close icon (F-W2-12). The person's address is searched on Enter and when
       the field is left (F-W2-3, F-X-14). The end field is a native datetime-local that is not required: an end in the past, or one
       half typed, is said under it and turns the button off. The button is natively off and says nothing of why (F-X-3).
@@ -280,7 +280,7 @@ states:
         - { guard: "endAt == 'unfinished'", target: settle, effect: [endUnfinished], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:157, say: "they half type the picker and leave it: 'Bitiş tarihini ve saatini tamamlayın.' and the button goes off" }
       REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
       CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "Vazgeç, the close icon or Escape: the window closes and nothing is assigned; the focus goes back to the row's button (not verified in a browser)" }
-      CLICK_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens, and nothing typed is lost" }
+      CLICK_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens, and nothing typed is lost" }
 
   formReady:
     title: The "… ata" window, the button on
@@ -296,7 +296,7 @@ states:
       REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: the button goes off" }
       SUBMIT: { target: saving, effect: [clearToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:69, say: "they press the button" }
       CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "Vazgeç, the close icon or Escape: the window closes and nothing is assigned" }
-      CLICK_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens" }
+      CLICK_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens" }
 
   looking:
     title: Look the person up

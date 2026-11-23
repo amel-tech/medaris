@@ -230,7 +230,7 @@ needs:
       - state: looking
       - node: cancel
       - node: closeIcon
-      - source: libs/ui/src/mds/dialog.tsx:71
+      - source: libs/ui/src/mds/dialog.tsx:74
       - source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106
       - test: apps/nizam/e2e/inactive.e2e.ts
         name: "nizam/14 — 'Vazgeç' changes nothing, and the scrim does not close the window"
