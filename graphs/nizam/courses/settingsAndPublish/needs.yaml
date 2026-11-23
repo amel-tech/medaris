@@ -133,7 +133,7 @@ needs:
     note: |-
       Drawn on the nodes neverPublicBox and neverPublicDesc, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).
-      SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:857-867)
+      SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:861-871)
 
   - id: the-policy-saves-with-its-own-word
     need: >-
@@ -153,8 +153,8 @@ needs:
       - state: readFixed
       - node: approvalBox
       - node: approvalFixedDesc
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:252
-      - source: apps/nizam/features/courses/present.ts:1184
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:262
+      - source: apps/nizam/features/courses/present.ts:1195
       - test: apps/nizam/test/course-views.spec.tsx
       - test: apps/nizam/test/course-settings-in-person.spec.tsx
     note: |-
@@ -216,7 +216,7 @@ needs:
       - node: publishedBody2
       - node: statusPublished
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:361
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:377
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 3: 'Taslağa çek' makes the course a draft, and it can be published again"
       - test: apps/nizam/test/course-views.spec.tsx
@@ -233,7 +233,7 @@ needs:
       - node: unpublishNoteCount
       - node: unpublishNote
       - source: apps/tedrisat/src/course/course.controller.ts:543
-      - source: apps/nizam/features/courses/components/course-settings-page.tsx:344
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:360
     note: "replay: saves (two enrolled talebe, written, not run); `count: unread` cannot be made on the stack"
 
   - id: the-warning-says-who-loses-the-course
@@ -313,7 +313,7 @@ needs:
     evidence:
       - node: viewPublic
       - source: apps/nizam/features/courses/components/course-settings-page.tsx:209
-    note: no e2e of nizam names it; SETPUB-9 and DRAFT-1 are the gaps
+    note: no e2e of nizam names it; SETPUB-9 is the gap (DRAFT-1, the draft's not-found page, is gone since #401 sends a visitor to sign in)
 
   - id: a-new-tab-is-said
     need: The link that opens a new tab says so in its name.
@@ -391,3 +391,23 @@ needs:
       Drawn on the state choosingZone and on the node optBerlin, which the code has: they are not evidence, so that a replay still
       walks them (SPEC.md §13 leaves out what only missing needs name).
       F-D2c-17 of nazar: libs/utils/src/time-zone.ts is the same util
+
+  - id: an-unlisted-course-opens-by-its-link
+    need: >-
+      The köşk's nazım can keep a course off every list and search, so that only the signed-in people given its link open it; while
+      it is unlisted every enrolment waits for approval, and the approval box says so and cannot be switched off.
+    evidence:
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:230
+      - source: apps/tedrisat/src/course/course.service.ts:988
+      - test: apps/nizam/test/course-present.spec.ts
+        name: "reads and sends 'Listelenmeyen ders' only when it changed (MDRS-248)"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is listed and unlisted by its köşk manager, and by no stranger"
+    missing: >-
+      not drawn yet: the box "Listelenmeyen ders" (MDRS-248, #401) is in the page and in no state or node of this flow, nor is what it does to the approval box; the code exists and the specs named cover it
+    note: |-
+      Drawn on the states of the settings card, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      The box is course-settings-page.tsx:230-239, disabled only while saving; while it is ticked the approval box is ticked and
+      shut with the sentence "Listelenmeyen derste her kayıt onaya düşer; ders listelenene kadar bu ayar değiştirilemez."
+      (:258-271). The API asks course.settings for the change (course.service.ts:988-993). Not walked.

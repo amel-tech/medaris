@@ -304,7 +304,7 @@ states:
       saveSettings calls PATCH /madrasahs/:id/settings with only what differs (settingsPatch): the trimmed name, the description
       (null when emptied), and only the policies that changed. One transaction locks the medrese, writes the name and description,
       upserts all three policy columns with updatedAt and updatedBy (the caller), and writes the audit row madrasah.settings.update
-      with the changes (apps/tedrisat/src/madrasah/madrasah.repository.ts:1395-1450). "alwaysApproval" is read at once by every new
+      with the changes (apps/tedrisat/src/madrasah/madrasah.repository.ts:1397-1452). "alwaysApproval" is read at once by every new
       enrolment of the medrese's courses; "closedCourseRequired" makes a course the medrese opens closed and refuses a save that
       opens it again; "noPublicRecordings" is stored and nothing reads it (policy-no-public-recordings-inert). "Kaydet" is busy
       (aria-disabled, aria-busy, a hidden output "Kaydediliyor"), "Vazgeç" is off, and so are the name, the description and the

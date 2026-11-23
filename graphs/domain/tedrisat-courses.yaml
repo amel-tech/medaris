@@ -24,9 +24,9 @@
 # path id that is not a uuid is HTTP_400 from ParseUUIDPipe, which runs after the guards, so on a route that needs a course
 # permission a caller who lacks it is told AUTHZ_FORBIDDEN first and on byExistingCourse routes the guard itself says 404.
 # The shared sites S1-S4 and S11 are COURSE_NOT_FOUND (domain.yaml): CourseService.getDetail raises S1 (course.service.ts:306: absent),
-# S2 (:321: no token and the course is hidden or a DRAFT; not reachable from a route that needs a token), S3 (:348: hidden, and the
+# S2 (:328: no token and the course is hidden or a DRAFT; not reachable from a route that needs a token), S3 (:352: hidden, and the
 # caller holds none of course.hide, madrasah.course_hide, platform.course_hide; a read also opens it to a non-müderris holding
-# course.view_unpublished) and S4 (:362: a DRAFT, and the caller holds neither course.edit nor course.view_unpublished). The guard's
+# course.view_unpublished) and S4 (:366: a DRAFT, and the caller holds neither course.edit nor course.view_unpublished). The guard's
 # closure adds a fifth: a course of a hidden köşk is COURSE_NOT_FOUND to everyone but holders of course.hide or platform.kosk_edit
 # (tedrisat-role-resolver.service.ts:102), and S11 (course.controller.ts:111) is the existence check of the byExistingCourse routes.
 #
@@ -38,7 +38,7 @@
 #   - The calendar feed carries a DRAFT course only for the nazım of its köşk, not for a müderris (calendar-feed.repository.ts:183-188).
 #   - GET /courses/{id} writes course.content_read only for a reader who holds course.view_details (a stranger gets the locked body and
 #     no audit row), and only when that reader is not a müderris of the course or an enrolled talebe with no other role in the chain.
-#   - A whole-course PUT that leaves `weeks` or `resources` out drops them all (course.repository.ts:540-542 defaults both to []),
+#   - A whole-course PUT that leaves `weeks` or `resources` out drops them all (course.repository.ts:543-545 defaults both to []),
 #     whereas leaving `muderris` out leaves the team alone.
 schema: delurio-graph/0
 kind: domain
@@ -50,7 +50,8 @@ actions:
     summary: The courses of a köşk, or its hidden ones with archived=true
     description: >-
       The shelf of a köşk's courses (the köşk page, the nazım's Dersler list). Without archived: the köşk's shown courses that are
-      published; the köşk's nazım also gets its DRAFT courses. With archived=true: the köşk's hidden courses (the Arşiv view), for its
+      published and not unlisted (isUnlisted, MDRS-248: course.repository.ts:248); the köşk's nazım also gets its DRAFT and unlisted
+      courses. With archived=true: the köşk's hidden courses (the Arşiv view), for its
       nazım and SYSTEM_ADMIN only. Each item carries the course fields and weekCount, lessonCount, resourceCount, muderris[], the
       caller's own enrollment (null with no token or no seat), madrasah {id, name} or null and nextSessionAt.
     needs: >-
@@ -106,6 +107,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean, note: "taken on creation with only course.open_standalone" }
         isClosed: { type: boolean, note: "taken on creation with only course.open_standalone" }
+        isUnlisted: { type: boolean, default: false, note: "MDRS-248: in no list or search but the köşk managers' shelf; opened by its link to signed-in callers only; every enrolment waits for approval. Creation asks no settings gate for it (assertMayChangeSettings runs on PATCH and PUT only, course.service.ts:934, :1054)" }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean, note: "yüz yüze: a label only; never null" }
         imamUserId: { type: string, format: uuid, references: User }
@@ -182,8 +184,8 @@ actions:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.open_standalone is not held on the köşk" }
       KOSK_NOT_FOUND:
         status: 404
-        note: "no such köşk: the guard's resolver says it first (tedrisat-role-resolver.service.ts:355), the service again after it"
-        source: apps/tedrisat/src/course/course.service.ts:891
+        note: "no such köşk: the guard's resolver says it first (tedrisat-role-resolver.service.ts:358), the service again after it"
+        source: apps/tedrisat/src/course/course.service.ts:895
       SELF_GRANT_REFUSED:
         status: 403
         note: >-
@@ -196,14 +198,14 @@ actions:
         note: >-
           A müderris row has an unvan but no userId ("An unvan is given only to a müderris with an account"), or no listed row has an
           account ("A course is opened with at least one müderris who has an account", muderris-list.ts:141).
-        source: apps/tedrisat/src/course/course.service.ts:897
+        source: apps/tedrisat/src/course/course.service.ts:901
       COURSE_IMAM_NOT_LISTED: { status: 400, note: "imamUserId is not among the listed accounts", source: apps/tedrisat/src/course/domain/muderris-list.ts:147 }
-      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1125 }
-      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a linked userId is in neither the users table nor the realm", source: apps/tedrisat/src/course/course.service.ts:1129 }
+      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1140 }
+      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a linked userId is in neither the users table nor the realm", source: apps/tedrisat/src/course/course.service.ts:1144 }
       RESOURCE_URL_REQUIRED:
         status: 400
         note: "a session resource that carries an id of no stored row and no url: a new resource is a link and needs one (the DTO already refuses a new row with no id and no url, as VALIDATION_ERROR)"
-        source: apps/tedrisat/src/course/course.repository.ts:954
+        source: apps/tedrisat/src/course/course.repository.ts:957
       KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the realm did not answer while looking up a linked account that is not in users", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
       HTTP_400: { status: 400, note: "koskId is not a uuid" }
     sideEffects:
@@ -252,7 +254,10 @@ actions:
       The body also carries the caller's own enrollment (or null), muderris[], resources[] and madrasah {id, name} or null.
     needs: >-
       course.view on the course (@AuthzPublic: a caller with no token is decided as ANONYMOUS, who holds course.view; every signed-in
-      caller holds it); the content is cut by course.view_details inside CourseService.present.
+      caller holds it); the content is cut by course.view_details inside CourseService.present. A caller with no token is answered
+      COURSE_NOT_FOUND for a DRAFT, a hidden or an unlisted course (MDRS-248) and for a course of an unlisted köşk, by the anonymous
+      resolver (tedrisat-role-resolver.service.ts:186-193) and again by getDetail (course.service.ts:323-330); an unlisted course opens
+      by its link to any signed-in caller.
     result: { status: 200, returns: Course }
     refusals:
       COURSE_NOT_FOUND:
@@ -260,7 +265,7 @@ actions:
         note: >-
           S1 absent; S2 no token and the course is hidden or a DRAFT; S3 hidden to a caller without a hide code (a read also opens it to a
           non-müderris holding course.view_unpublished); S4 a DRAFT to a caller with neither course.edit nor course.view_unpublished; any
-          course of an unlisted or hidden köşk to a caller with no token (tedrisat-role-resolver.service.ts:191); a course of a hidden köşk
+          course of an unlisted or hidden köşk to a caller with no token (tedrisat-role-resolver.service.ts:194); a course of a hidden köşk
           to everyone but holders of course.hide or platform.kosk_edit. A PENDING caller gets the stranger's body, not a refusal.
         source: apps/tedrisat/src/course/course.service.ts:306
       HTTP_400: { status: 400, note: "id is not a uuid" }
@@ -308,8 +313,9 @@ actions:
       course's version. The body returned is the course re-read with audit:false.
     needs: >-
       course.edit on the course (a müderris of the course, the köşk's nazım, a medrese's başmüderris, a grantee); then, for the fields
-      carried: status that differs from stored needs course.publish; requiresApproval or isClosed needs course.settings;
-      requiresApproval:false needs setting.approval_off; isClosed:false needs setting.course_open.
+      carried: status that differs from stored needs course.publish; requiresApproval, isClosed or isUnlisted needs course.settings
+      (course.service.ts:976-993; no policy holds isUnlisted, MDRS-248); requiresApproval:false needs setting.approval_off;
+      isClosed:false needs setting.course_open.
     body:
       type: object
       properties:
@@ -326,6 +332,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean }
         isClosed: { type: boolean }
+        isUnlisted: { type: boolean, note: "MDRS-248, \"Listelenmeyen ders\": needs course.settings" }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean, note: "never null; absent leaves the mark as it is" }
     result: { status: 200, returns: Course }
@@ -335,17 +342,17 @@ actions:
         note: >-
           course.edit is not held (the guard), or the change needs course.publish or course.settings and the caller lacks it: "This
           change needs the permission <code>".
-        source: apps/tedrisat/src/course/course.service.ts:978
+        source: apps/tedrisat/src/course/course.service.ts:991
       COURSE_NOT_FOUND:
         status: 404
-        note: "S1, S3, S4 (a hidden course is not written by a müderris who cannot see it); a course of a hidden köşk; the row gone before the write (course.service.ts:933)"
+        note: "S1, S3, S4 (a hidden course is not written by a müderris who cannot see it); a course of a hidden köşk; the row gone before the write (course.service.ts:937)"
         source: apps/tedrisat/src/course/course.service.ts:306
       PLATFORM_POLICY_LOCKED:
         status: 409
         note: >-
           requiresApproval:false carried while ALWAYS_REQUIRE_APPROVAL is on above the course (köşk, medrese or platform), or isClosed:false
           carried while CLOSED_COURSE_REQUIRED is on (medrese level). A grant made by an authority above the policy survives it.
-        source: apps/tedrisat/src/course/course.service.ts:992
+        source: apps/tedrisat/src/course/course.service.ts:1007
       VALIDATION_ERROR: { status: 400, note: "any DTO rule, or a property the body may not carry" }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
@@ -388,6 +395,7 @@ actions:
         grantsCertificate: { type: boolean }
         requiresApproval: { type: boolean }
         isClosed: { type: boolean }
+        isUnlisted: { type: boolean }
         coverLabel: { type: string, maxLength: 40 }
         inPerson: { type: boolean }
         version: { type: integer, minimum: 0, note: "the version the editor loaded; a stale one is COURSE_VERSION_CONFLICT" }
@@ -469,23 +477,23 @@ actions:
         note: >-
           course.edit is not held (the guard), or the payload changes something that needs course.publish, course.settings or
           session.manage and the caller lacks it: "This change needs the permission <code>".
-        source: apps/tedrisat/src/course/course.service.ts:1106
+        source: apps/tedrisat/src/course/course.service.ts:1121
       COURSE_NOT_FOUND: { status: 404, note: "S1, S3, S4 (a hidden course is not saved by a müderris); a course of a hidden köşk", source: apps/tedrisat/src/course/course.service.ts:306 }
       COURSE_VERSION_CONFLICT:
         status: 409
-        note: "the stored version differs from the one sent: checked at once against the version just read (course.service.ts:1031) and again in the conditional UPDATE under the row lock"
-        source: apps/tedrisat/src/course/course.repository.ts:834
-      PLATFORM_POLICY_LOCKED: { status: 409, note: "as updateCourse, for the fields that differ from stored", source: apps/tedrisat/src/course/course.service.ts:992 }
+        note: "the stored version differs from the one sent: checked at once against the version just read (course.service.ts:1046) and again in the conditional UPDATE under the row lock"
+        source: apps/tedrisat/src/course/course.repository.ts:837
+      PLATFORM_POLICY_LOCKED: { status: 409, note: "as updateCourse, for the fields that differ from stored", source: apps/tedrisat/src/course/course.service.ts:1007 }
       MUDERRIS_ASSIGNMENT_FORBIDDEN:
         status: 403
         note: "the müderris list changes and the caller holds neither course.open_standalone nor madrasah.muderris_manage: \"Only the köşk manager may change who teaches course <id>\""
-        source: apps/tedrisat/src/course/course.service.ts:1050
+        source: apps/tedrisat/src/course/course.service.ts:1065
       SELF_GRANT_REFUSED: { status: 403, note: "a newly linked account is the caller, who does not already hold every müderris permission (asked at the medrese for a medrese course)", source: libs/common/src/authz/self-grant.guard.ts:91 }
-      MUDERRIS_LIST_INVALID: { status: 400, note: "the save would leave no account-bound müderris while the course had one (owner decision d-1004-13)", source: apps/tedrisat/src/course/course.service.ts:1067 }
-      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1125 }
-      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a newly linked userId is in neither users nor the realm", source: apps/tedrisat/src/course/course.service.ts:1129 }
-      RESOURCE_IS_FILE: { status: 400, note: "a url sent for a resource that is a stored file (a course resource, or a session's)", source: apps/tedrisat/src/course/course.repository.ts:598 }
-      RESOURCE_URL_REQUIRED: { status: 400, note: "a new session resource with no url: files are added through the upload route", source: apps/tedrisat/src/course/course.repository.ts:954 }
+      MUDERRIS_LIST_INVALID: { status: 400, note: "the save would leave no account-bound müderris while the course had one (owner decision d-1004-13)", source: apps/tedrisat/src/course/course.service.ts:1082 }
+      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1140 }
+      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a newly linked userId is in neither users nor the realm", source: apps/tedrisat/src/course/course.service.ts:1144 }
+      RESOURCE_IS_FILE: { status: 400, note: "a url sent for a resource that is a stored file (a course resource, or a session's)", source: apps/tedrisat/src/course/course.repository.ts:601 }
+      RESOURCE_URL_REQUIRED: { status: 400, note: "a new session resource with no url: files are added through the upload route", source: apps/tedrisat/src/course/course.repository.ts:957 }
       VALIDATION_ERROR: { status: 400, note: "any DTO rule, or a property the body may not carry (imamUserId, an unvan on a müderris row)" }
       KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the realm did not answer while looking up a newly linked account that is not in users", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
@@ -537,14 +545,14 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "neither course.open_standalone nor madrasah.muderris_manage is held on the course" }
       COURSE_NOT_FOUND: { status: 404, note: "S1, S3, S4; a course of a hidden köşk", source: apps/tedrisat/src/course/course.service.ts:306 }
-      COURSE_VERSION_CONFLICT: { status: 409, note: "the version sent is not the stored one", source: apps/tedrisat/src/course/course.repository.ts:834 }
+      COURSE_VERSION_CONFLICT: { status: 409, note: "the version sent is not the stored one", source: apps/tedrisat/src/course/course.repository.ts:837 }
       SELF_GRANT_REFUSED: { status: 403, note: "an account this save seats is the caller, who does not hold every müderris permission; keeping a seat one already holds seats nobody", source: libs/common/src/authz/self-grant.guard.ts:91 }
       MUDERRIS_LIST_INVALID:
         status: 400
-        note: "the imam is not among the listed accounts (\"The imam must be one of the listed muderris\"); the empty-list throw at course.service.ts:1244 is shadowed by the DTO's ArrayMinSize(1)"
-        source: apps/tedrisat/src/course/course.service.ts:1250
-      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1271 }
-      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a newly linked userId is in neither users nor the realm", source: apps/tedrisat/src/course/course.service.ts:1129 }
+        note: "the imam is not among the listed accounts (\"The imam must be one of the listed muderris\"); the empty-list throw at course.service.ts:1259 is shadowed by the DTO's ArrayMinSize(1)"
+        source: apps/tedrisat/src/course/course.service.ts:1265
+      MUDERRIS_DUPLICATE_USER: { status: 400, note: "the same userId twice", source: apps/tedrisat/src/course/course.service.ts:1286 }
+      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a newly linked userId is in neither users nor the realm", source: apps/tedrisat/src/course/course.service.ts:1144 }
       VALIDATION_ERROR: { status: 400, note: "an empty list, more than 20, a userId that is not a uuid, a missing version or imamUserId" }
       KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the realm did not answer while looking up a newly linked account that is not in users", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
@@ -571,7 +579,7 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.settings is not held on the course" }
       COURSE_NOT_FOUND: { status: 404, note: "S1, S3, S4; a course of a hidden köşk", source: apps/tedrisat/src/course/course.service.ts:306 }
-      COURSE_MUDERRIS_NOT_FOUND: { status: 404, note: "the account is not on this course's müderris list", source: apps/tedrisat/src/course/course.service.ts:1311 }
+      COURSE_MUDERRIS_NOT_FOUND: { status: 404, note: "the account is not on this course's müderris list", source: apps/tedrisat/src/course/course.service.ts:1326 }
       VALIDATION_ERROR: { status: 400, note: "unvan is missing or outside the eight codes" }
       HTTP_400: { status: 400, note: "id or userId is not a uuid" }
     sideEffects:
@@ -595,9 +603,9 @@ actions:
       AUTHZ_FORBIDDEN: { status: 403, note: "none of the three hide codes is held on the course" }
       COURSE_NOT_FOUND:
         status: 404
-        note: "S11 a malformed or absent id; a course of a hidden köşk to a caller without course.hide or platform.kosk_edit; the row gone before the write (course.service.ts:1468, 1515)"
+        note: "S11 a malformed or absent id; a course of a hidden köşk to a caller without course.hide or platform.kosk_edit; the row gone before the write (course.service.ts:1483, 1530)"
         source: apps/tedrisat/src/course/course.controller.ts:111
-      COURSE_ALREADY_HIDDEN: { status: 409, note: "\"Course <id> is hidden already\"; nothing is written", source: apps/tedrisat/src/course/course.service.ts:1469 }
+      COURSE_ALREADY_HIDDEN: { status: 409, note: "\"Course <id> is hidden already\"; nothing is written", source: apps/tedrisat/src/course/course.service.ts:1484 }
     sideEffects:
       - "audit:course.hide with the title and the level"
       - "audit:course.content_read with via course.hide, when the caller may read the content and is not exempt"
@@ -617,9 +625,9 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "none of the three hide codes is held on the course" }
       COURSE_NOT_FOUND: { status: 404, note: "S11 a malformed or absent id; a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/course/course.controller.ts:111 }
-      COURSE_NOT_HIDDEN: { status: 409, note: "\"Course <id> is not hidden\"", source: apps/tedrisat/src/course/course.service.ts:1490 }
-      ARCHIVE_RESTORE_LEVEL: { status: 403, note: "the course was hidden at a higher level than the caller acts at", source: apps/tedrisat/src/course/course.service.ts:1492 }
-      ARCHIVE_PARENT_HIDDEN: { status: 409, note: "the köşk or the medrese of the course is still hidden: restore it first", source: apps/tedrisat/src/course/course.service.ts:1494 }
+      COURSE_NOT_HIDDEN: { status: 409, note: "\"Course <id> is not hidden\"", source: apps/tedrisat/src/course/course.service.ts:1505 }
+      ARCHIVE_RESTORE_LEVEL: { status: 403, note: "the course was hidden at a higher level than the caller acts at", source: apps/tedrisat/src/course/course.service.ts:1507 }
+      ARCHIVE_PARENT_HIDDEN: { status: 409, note: "the köşk or the medrese of the course is still hidden: restore it first", source: apps/tedrisat/src/course/course.service.ts:1509 }
     sideEffects:
       - "audit:course.restore with the title and the level"
       - "audit:course.content_read with via course.restore, when the caller may read the content and is not exempt"
@@ -638,7 +646,7 @@ actions:
     result: { status: 200, type: boolean, const: true }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "everyone but SYSTEM_ADMIN, the köşk's nazım included (MDRS-124): they hide instead" }
-      COURSE_NOT_FOUND: { status: 404, note: "S11 a malformed or absent id; the course was gone when the purge looked", source: apps/tedrisat/src/course/course.service.ts:1521 }
+      COURSE_NOT_FOUND: { status: 404, note: "S11 a malformed or absent id; the course was gone when the purge looked", source: apps/tedrisat/src/course/course.service.ts:1536 }
     sideEffects:
       - "deletes the Course and its whole tree in one transaction"
       - "audit:course.delete with the title, the köşk and a count removed per child table"
@@ -653,7 +661,8 @@ actions:
     summary: Apply to a course, or take a seat in it
     description: >-
       Takes no body: the name and e-mail kept on the seat are snapshots of the token (name, else given and family name, else
-      preferred_username; email). The seat is PENDING when any of these holds: the course requires approval; its köşk is unlisted
+      preferred_username; email). The seat is PENDING when any of these holds: the course requires approval; the course is unlisted
+      (isUnlisted, MDRS-248: course.service.ts:1634-1638); its köşk is unlisted
       (isPrivate); the köşk's own policy alwaysRequireApproval; the platform policy ALWAYS_REQUIRE_APPROVAL; the course's medrese has
       policyAlwaysApproval. Otherwise it is ENROLLED. A course's own setting can never loosen a policy above it. A caller who already
       has a row of any status but REVOKED gets that row back unchanged (the insert is ON CONFLICT DO NOTHING): a PENDING row stays
@@ -667,7 +676,7 @@ actions:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       COURSE_NOT_FOUND: { status: 404, note: "S1, S3, S4: a DRAFT or hidden course is 404 to a caller who may not see it (staff who can see a DRAFT can enrol in it); a course of a hidden köşk", source: apps/tedrisat/src/course/course.service.ts:306 }
       BAN_ACTIVE: { status: 403, note: "\"You are barred from this course\": an open ban on the course, its köşk or its medrese", source: apps/tedrisat/src/ban/ban.service.ts:616 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the caller holds a REVOKED row: the team took them out and only the team brings them back", source: apps/tedrisat/src/course/course.service.ts:1541 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the caller holds a REVOKED row: the team took them out and only the team brings them back", source: apps/tedrisat/src/course/course.service.ts:1556 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "creates the Enrollment (progress 0) with status PENDING or ENROLLED; no notification and no audit row"
@@ -686,10 +695,10 @@ actions:
     result: { status: 200, type: boolean, const: true }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit; getDetail does not run here", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit; getDetail does not run here", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       BAN_ACTIVE: { status: 403, note: "an open ban bars the caller from the course", source: apps/tedrisat/src/ban/ban.service.ts:616 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row (course.service.ts:1804), or it went between the read and the write (:1818 via lostRace)", source: apps/tedrisat/src/course/course.service.ts:1804 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is COMPLETED or REVOKED (:1809), or its status moved between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1809 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row (course.service.ts:1821), or it went between the read and the write (:1835 via lostRace)", source: apps/tedrisat/src/course/course.service.ts:1821 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is COMPLETED or REVOKED (:1809), or its status moved between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1826 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "deletes the caller's Enrollment row"
@@ -707,9 +716,9 @@ actions:
     result: { status: 200, type: boolean, const: true }
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
       BAN_ACTIVE: { status: 403, note: "an open ban bars the caller from the course: a barred talebe cannot withdraw their own request either", source: apps/tedrisat/src/ban/ban.service.ts:616 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is no longer PENDING: an approved seat is a 404 and stays", source: apps/tedrisat/src/course/course.service.ts:1833 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is no longer PENDING: an approved seat is a 404 and stays", source: apps/tedrisat/src/course/course.service.ts:1850 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "deletes the caller's PENDING Enrollment row; no notification, no audit row, no sweep kick (a PENDING seat had no invitations)"
@@ -721,7 +730,10 @@ actions:
     summary: Record the talebe's own progress
     description: >-
       Writes enrollments.progress and nothing else, conditional on the status that was read. Reaching 100 does not complete the course
-      and a completion the team set survives later progress writes. The row of an ENROLLED or COMPLETED seat only.
+      and a completion the team set survives later progress writes. The row of an ENROLLED or COMPLETED seat only. Deprecated since
+      MDRS-248 (#402; `deprecated` in its OpenAPI operation): the progress is worked out from the talebe's watch records
+      (recordLessonView, tedrisat-learning.yaml), whose next completed celse overwrites a number written here, and tedris no longer
+      calls it (the window "İlerlemeni güncelle" that did is gone). The route still answers.
     needs: >-
       course.view_details on the course: a PENDING, REVOKED or barred caller is stopped at the guard with 403; staff pass the guard and
       are stopped by the service when they hold no enrollment
@@ -735,15 +747,15 @@ actions:
     refusals:
       HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       AUTHZ_FORBIDDEN: { status: 403, note: "course.view_details is not held: a PENDING, REVOKED or barred talebe, a stranger" }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is PENDING or REVOKED, or it went before the write (:1894)", source: apps/tedrisat/src/course/course.service.ts:1865 }
-      ENROLLMENT_STATUS_FORBIDDEN: { status: 403, note: "\"Only the course team sets the status of an enrollment in course <id>\": a status that differs from the stored one", source: apps/tedrisat/src/course/course.service.ts:1868 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the status moved between the read and the write", source: apps/tedrisat/src/course/course.service.ts:1896 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is PENDING or REVOKED, or it went before the write (:1894)", source: apps/tedrisat/src/course/course.service.ts:1882 }
+      ENROLLMENT_STATUS_FORBIDDEN: { status: 403, note: "\"Only the course team sets the status of an enrollment in course <id>\": a status that differs from the stored one", source: apps/tedrisat/src/course/course.service.ts:1885 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the status moved between the read and the write", source: apps/tedrisat/src/course/course.service.ts:1913 }
       VALIDATION_ERROR: { status: 400, note: "progress outside 0 to 100 or not an integer, or a status that is not an enrollment status" }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "sets Enrollment.progress; never the status"
     note: "Handler CourseController.updateProgress."
-    source: apps/tedrisat/src/course/course.controller.ts:821
+    source: apps/tedrisat/src/course/course.controller.ts:822
 
   # ---- Enrollment: the course team's side ----
   listKoskPendingEnrollments:
@@ -786,7 +798,7 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.staff_read is not held on the course" }
       COURSE_NOT_FOUND: { status: 404, note: "S11 a malformed or absent id; a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/course/course.controller.ts:111 }
-      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:486 }
+      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:490 }
     sideEffects:
       - "audit:course.roster_read with via stats, except for the course's müderrisler and its enrolled talebe who hold no other role in the chain; awaited"
     note: "Handler CourseController.stats."
@@ -803,8 +815,8 @@ actions:
     result: { status: 200, returns: Enrollment, type: array, note: "each item also carries ban: {id, scope} or null" }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.staff_read is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:486 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:490 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "audit:course.roster_read with via enrollments and systemAdmin, except for the course's müderrisler and its enrolled talebe who hold no other role in the chain; awaited"
@@ -839,8 +851,8 @@ actions:
               name: { type: [string, "null"] }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.staff_read is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:486 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:490 }
       HTTP_400: { status: 400, note: "id is not a uuid" }
     sideEffects:
       - "audit:course.roster_read with via removed, under the same exemption as the roster; awaited"
@@ -864,7 +876,7 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "course.staff_read is not held on the course" }
       COURSE_NOT_FOUND: { status: 404, note: "S11 a malformed or absent id; a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/course/course.controller.ts:111 }
-      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:486 }
+      INTERNAL_ERROR: { status: 500, note: "the audit row could not be written, so the read fails", source: apps/tedrisat/src/course/course.service.ts:490 }
     sideEffects:
       - "audit:course.roster_read with via badge-counts, under the same exemption as the roster; awaited"
     note: "Handler CourseController.badgeCounts."
@@ -881,10 +893,10 @@ actions:
     result: { status: 201, returns: Enrollment }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "enrollment.decide is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1649), or it was removed meanwhile (:1894)", source: apps/tedrisat/src/course/course.service.ts:1649 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1649), or it was removed meanwhile (:1894)", source: apps/tedrisat/src/course/course.service.ts:1666 }
       BAN_ACTIVE: { status: 403, note: "an open ban bars the talebe from the course", source: apps/tedrisat/src/ban/ban.service.ts:616 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is COMPLETED (:1652), or its status moved to something other than ENROLLED between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1652 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is COMPLETED (:1652), or its status moved to something other than ENROLLED between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1669 }
       HTTP_400: { status: 400, note: "id or userId is not a uuid" }
     sideEffects:
       - "sets Enrollment.status to ENROLLED"
@@ -960,8 +972,8 @@ actions:
     result: { status: 200, type: boolean, const: true }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "enrollment.decide is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, it is not PENDING (an approved request is not rejected), or it was approved meanwhile (:1702)", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, it is not PENDING (an approved request is not rejected), or it was approved meanwhile (:1702)", source: apps/tedrisat/src/course/course.service.ts:1703 }
       VALIDATION_ERROR: { status: 400, note: "reason longer than 500 characters or not a string" }
       HTTP_400: { status: 400, note: "id or userId is not a uuid" }
     sideEffects:
@@ -987,9 +999,9 @@ actions:
     result: { status: 200, returns: Enrollment }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "enrollment.complete is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1723), or it went before the write (:1894)", source: apps/tedrisat/src/course/course.service.ts:1723 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is PENDING (:1725) or REVOKED (:1729), or its status moved between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1725 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1723), or it went before the write (:1894)", source: apps/tedrisat/src/course/course.service.ts:1740 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is PENDING (:1725) or REVOKED (:1729), or its status moved between the read and the write (:1896)", source: apps/tedrisat/src/course/course.service.ts:1742 }
       BAN_ACTIVE: { status: 403, note: "reopening a completion for a barred talebe", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       VALIDATION_ERROR: { status: 400, note: "status is not ENROLLED or COMPLETED" }
       HTTP_400: { status: 400, note: "id or userId is not a uuid" }
@@ -1016,9 +1028,9 @@ actions:
     result: { status: 200, type: boolean, const: true }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, note: "enrollment.remove is not held on the course" }
-      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
-      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1769), or it went before the write (:1781)", source: apps/tedrisat/src/course/course.service.ts:1769 }
-      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is not ENROLLED", source: apps/tedrisat/src/course/course.service.ts:1771 }
+      COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      ENROLLMENT_NOT_FOUND: { status: 404, note: "the person holds no enrollment in the course (:1769), or it went before the write (:1781)", source: apps/tedrisat/src/course/course.service.ts:1786 }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the row is not ENROLLED", source: apps/tedrisat/src/course/course.service.ts:1788 }
       VALIDATION_ERROR: { status: 400, note: "reason is missing, blank or longer than 500 characters" }
       HTTP_400: { status: 400, note: "id or userId is not a uuid" }
     sideEffects:
@@ -1222,14 +1234,14 @@ invariants:
       A self-enrollment lands PENDING when the course requires approval, or its köşk is unlisted (isPrivate), or the köşk's own policy
       alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the course's medrese has policyAlwaysApproval.
       Otherwise it lands ENROLLED. A course's own setting can never loosen a policy above it.
-    source: apps/tedrisat/src/course/course.service.ts:1556
+    source: apps/tedrisat/src/course/course.service.ts:1571
 
   - id: course-policy-lock-keeps-switch-off-closed
     rule: >-
       A holder of course.settings may switch requiresApproval off only while no policy above the course says "always", and isClosed
       off only while CLOSED_COURSE_REQUIRED is not on; otherwise 409 PLATFORM_POLICY_LOCKED. A grant made by an authority above the
       policy's level survives it.
-    source: apps/tedrisat/src/course/course.service.ts:952
+    source: apps/tedrisat/src/course/course.service.ts:958
 
   - id: course-enrollment-state-machine
     rule: >-
@@ -1238,13 +1250,13 @@ invariants:
       talebe is refused). REVOKED becomes ENROLLED only by the team's approve, never by the talebe, and a barred talebe is refused.
       COMPLETED and REVOKED rows are never deleted by the talebe. Every transition after a read is conditional on the status that
       was read, so a concurrent change answers 404 or 409 and never overwrites.
-    source: apps/tedrisat/src/course/course.service.ts:1888
+    source: apps/tedrisat/src/course/course.service.ts:1905
 
   - id: course-revoked-seat-stays-out
     rule: >-
       A REVOKED talebe keeps the public page only (the relationship falls to PUBLIC): they cannot enrol (409), leave (409) or record
       progress (404 or 403), and the Derslerim list hides the row unless includeRevoked is asked.
-    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:414
+    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:417
 
   - id: course-ban-bars-every-seat-road
     rule: >-
@@ -1259,9 +1271,10 @@ invariants:
 
   - id: course-completion-is-the-teams
     rule: >-
-      Reaching progress 100 never completes a course; a progress write cannot change the status; a completion the team set survives
-      later progress writes. Only the course team completes.
-    source: apps/tedrisat/src/course/course.service.ts:1850
+      Reaching progress 100 never completes a course; a progress write cannot change the status, whether it is the deprecated PUT or
+      the share recordLessonView works out from the watch records (lesson-view.repository.ts:162-174); a completion the team set
+      survives later progress writes. Only the course team completes.
+    source: apps/tedrisat/src/course/course.service.ts:1867
 
   - id: course-bulk-enroll-rules
     rule: >-
@@ -1290,14 +1303,14 @@ invariants:
       A content read by anyone other than the course's müderrisler and its enrolled talebe writes course.content_read before the body
       is returned (an enrolled talebe who also holds a role in the chain, or is SYSTEM_ADMIN, is not exempt); the write routes echo the
       course with audit:false.
-    source: apps/tedrisat/src/course/course.service.ts:446
+    source: apps/tedrisat/src/course/course.service.ts:450
 
   - id: course-roster-read-audit
     rule: >-
       Every read of the roster, the removed list, the stats and the badge counts (course.roster_read on the course) and of the
       köşk-wide pending list (on the köşk, always) is written, except for the course's müderrisler and its enrolled talebe who hold no
       other role in the chain. The write is awaited, so a failed write fails the read.
-    source: apps/tedrisat/src/course/course.service.ts:470
+    source: apps/tedrisat/src/course/course.service.ts:474
 
   - id: course-roster-is-staff-work
     rule: >-
@@ -1319,7 +1332,7 @@ invariants:
     rule: >-
       Changing status needs course.publish; carrying requiresApproval or isClosed needs course.settings; a whole-course save counts only
       the fields that differ from the stored ones, a PATCH every field it carries.
-    source: apps/tedrisat/src/course/course.service.ts:952
+    source: apps/tedrisat/src/course/course.service.ts:958
 
   - id: course-create-honours-publish-gates
     rule: >-
@@ -1329,16 +1342,16 @@ invariants:
     finding: create-skips-publish-gates
     note: >-
       POST /kosks/{koskId}/courses accepts status PUBLISHED, requiresApproval and isClosed on creation with only course.open_standalone:
-      assertMayChangeSettings runs on PATCH and PUT, not on creation (course.service.ts:884-910). A grantee of course.open_standalone
+      assertMayChangeSettings runs on PATCH and PUT, not on creation (course.service.ts:888-914). A grantee of course.open_standalone
       can therefore open a course already published and set the approval and openness switches. The köşk nazım holds all three codes
       anyway; the gap is for a grantee. No inventory finding id: the id is this graph's.
-    source: apps/tedrisat/src/course/course.service.ts:884
+    source: apps/tedrisat/src/course/course.service.ts:888
 
   - id: course-replace-session-work-needs-session-manage
     rule: >-
       A whole-course save that adds, drops or reschedules a session, or changes a session's link, agenda, preview flag, in-person mark
       or own resources, needs session.manage; titles, texts and order need only course.edit.
-    source: apps/tedrisat/src/course/course.service.ts:1095
+    source: apps/tedrisat/src/course/course.service.ts:1110
 
   - id: course-optimistic-version
     rule: >-
@@ -1346,7 +1359,7 @@ invariants:
       /courses/{id}/muderris) is 409 COURSE_VERSION_CONFLICT. PUT checks it twice, against the version just read and in a conditional
       UPDATE under the row lock. PUT .../unvan takes no version and does not move it; PATCH takes none and bumps it. The calendar
       feed's SEQUENCE is this version.
-    source: apps/tedrisat/src/course/course.repository.ts:806
+    source: apps/tedrisat/src/course/course.repository.ts:809
 
   - id: course-muderris-list-rules
     rule: >-
@@ -1361,7 +1374,7 @@ invariants:
     rule: >-
       A hoca's title belongs to the (course, account) row and is set only with course.settings; an unchanged value writes nothing and
       does not move the version; changing the list keeps the unvan of those who stay and clears it for a row rebound to another account.
-    source: apps/tedrisat/src/course/course.service.ts:1292
+    source: apps/tedrisat/src/course/course.service.ts:1307
 
   - id: course-hide-ladder
     rule: >-
@@ -1374,7 +1387,7 @@ invariants:
     rule: >-
       isClosed (a kapalı ders) only withholds PUBLIC recordings from non-readers of the course content, and is switchable off only
       while CLOSED_COURSE_REQUIRED is not on; it does not block enrollment.
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
 
   # Schedule, feed and invitations
   - id: course-schedule-rules

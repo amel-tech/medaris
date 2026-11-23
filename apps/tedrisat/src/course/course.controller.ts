@@ -802,8 +802,9 @@ export class CourseController {
   @ApiOperation({
     summary: "Update the current talebe's progress in a course",
     description:
-      "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",
+      "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course. Deprecated (MDRS-248): progress is worked out from the talebe's watch records (`PUT /lessons/:id/view`), which overwrite a number written here the next time a celse is watched; tedris no longer offers it.",
     operationId: "updateCourseProgress",
+    deprecated: true,
   })
   @ApiOkResponse({ type: EnrollmentResponse })
   @ApiForbiddenResponse({

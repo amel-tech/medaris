@@ -10,15 +10,15 @@
 # Shared refusal sites. Many handlers reach the same refusal; the area chapters cite them by tag, and each action lists them in
 # its own `refusals`. The tags are the inventory's, from call-graph reachability (they over-report; the corrections of
 # domain.md section 10 say where a site is real):
-#   S1-S4, S11 (53 and 26 handlers)  404 COURSE_NOT_FOUND   course.service.ts:306, 321, 348, 362; course.controller.ts:111 (a course that is absent, a draft or hidden to this caller, or a malformed id)
+#   S1-S4, S11 (53 and 26 handlers)  404 COURSE_NOT_FOUND   course.service.ts:306, 328, 352, 366; course.controller.ts:111 (a course that is absent, a draft or hidden to this caller, or a malformed id)
 #   S5 (39)                          404 MADRASAH_NOT_FOUND  madrasah.controller.ts:110
 #   S6-S8 (37)                       503 KEYCLOAK_ADMIN_UNAVAILABLE  keycloak-admin.service.ts:160, 167, 175 (real only where the failure is not swallowed, see keycloak-directory-failure-is-503)
-#   S9, S10, S15, S16 (30 and 14)    404 LESSON_NOT_FOUND    lesson.controller.ts:91, 95; course.service.ts:512, 517
+#   S9, S10, S15, S16 (30 and 14)    404 LESSON_NOT_FOUND    lesson.controller.ts:91, 95; course.service.ts:516, 521
 #   S12 (20)                         404 KOSK_NOT_FOUND      kosk.controller.ts:88
 #   S13 (19)                         403 SELF_GRANT_REFUSED  self-grant.guard.ts:91 (invariant self-grant-refused)
 #   S14 (16) and S18 (11)            403 AUTHZ_FORBIDDEN     platform-access.service.ts:46; assignment/admin/permission-admin.service.ts:91 (the message is "Caller is not authorized for the requested scope on this resource" unless a caller gives its own)
 #   S17 (12)                         503 STORAGE_NOT_CONFIGURED  storage/object-storage.ts:68 (the BUNNY_STORAGE_* keys are not set)
-#   S19 (10)                         409 COURSE_VERSION_CONFLICT  course.repository.ts:834 (checked only by PATCH /lessons/{id}, POST /lessons/{id}/cancel and the course saves that send expectedVersion)
+#   S19 (10)                         409 COURSE_VERSION_CONFLICT  course.repository.ts:837 (checked only by PATCH /lessons/{id}, POST /lessons/{id}/cancel and the course saves that send expectedVersion)
 #
 # Background jobs (domain.md section 2): six in-process timers, none under the test runner. They are written as actions with no
 # route in the area files that own them: the recording encoding poll (60 s, only with the Bunny library configured), the recording
@@ -323,7 +323,7 @@ invariants:
       (grep of kontenjan, capacity, quota and waitlist over apps/tedrisat/src finds nothing but unrelated "seats" wording).
       CourseService.enroll decides only visibility, ban, REVOKED and PENDING versus ENROLLED. Course.inPerson and Lesson.inPersonOverride
       are a label only.
-    source: apps/tedrisat/src/course/course.service.ts:1529
+    source: apps/tedrisat/src/course/course.service.ts:1544
 
   - id: user-lookup-needs-user-lookup
     rule: >-
@@ -422,7 +422,7 @@ invariants:
     finding: progress-orphans
     note: >-
       FlashcardProgress.flashcardId has no foreign key (flashcard.schema.ts:34), so deleting a card or a deck leaves its progress rows,
-      invisible to the stats and never cleaned. Only the archive purge deletes them (archive/archive.repository.ts:833).
+      invisible to the stats and never cleaned. Only the archive purge deletes them (archive/archive.repository.ts:838).
       See FlashcardProgress in entities-decks.yaml.
     source: apps/tedrisat/src/database/schema/flashcard.schema.ts:34
 

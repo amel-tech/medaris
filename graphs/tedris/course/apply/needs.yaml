@@ -23,7 +23,7 @@ needs:
       - state: enrolled
       - source: apps/tedrisat/src/course/course.controller.ts:497
       - source: apps/tedrisat/src/course/course.controller.ts:794
-      - source: apps/tedris/features/courses/components/course-aside.tsx:80
+      - source: apps/tedris/features/courses/components/course-aside.tsx:79
       - source: apps/tedris/features/courses/components/leave-course.tsx:26
       - test: apps/tedris/e2e/course.e2e.ts
         name: "applies, reads the window, waits with the time of the application, and withdraws"
@@ -51,7 +51,7 @@ needs:
       köşk, the köşk's always-approve policy, the platform's policy, the medrese's policy), the card says so and offers "Kayıt
       başvurusu yap"; it never says "Kayıt onay gerektirmez" over an application that waits.
     evidence:
-      - source: "apps/tedris/app/courses/[courseId]/page.tsx:89"
+      - source: "apps/tedris/app/courses/[courseId]/page.tsx:93"
     missing: no Linear issue; findings CRS-APPLY-1; code exists in part
     note: |-
       Drawn on the state applyCard and on the nodes approvalFact and openFact, which the code has: they are not evidence, so that
@@ -79,7 +79,7 @@ needs:
     note: |-
       Drawn on the states enrolling and reachesNazar, which the code has: they are not evidence, so that a replay still walks them
       (SPEC.md §13 leaves out what only missing needs name).
-      No code: enrolment gives a seat with no count (apps/tedrisat/src/course/course.service.ts:1529). MDRS-284 plans it per celse
+      No code: enrolment gives a seat with no count (apps/tedrisat/src/course/course.service.ts:1544). MDRS-284 plans it per celse
       and per week, not per course (tedris.session.registerInPerson, nazar.sessions.inPersonSeats).
 
   - id: gender-required-before-a-seat
@@ -100,3 +100,20 @@ needs:
       Drawn on the state applyCard, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
       leaves out what only missing needs name).
       P-05 of planned.md; the icazet half waits on the record of icazet (MDRS-149, "Not now"). No screen and no decision yet.
+
+  - id: an-unlisted-course-waits-for-approval
+    need: >-
+      Every enrolment in a course its team keeps off the lists waits for the course team, whatever the course's own approval
+      setting, and the card says so before the talebe applies.
+    evidence:
+      - source: "apps/tedris/app/courses/[courseId]/page.tsx:93"
+      - source: apps/tedrisat/src/course/course.service.ts:1635
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "puts every enrollment on hold, whatever the course's own setting"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code, and the card it gives is this flow's `approval: needed`, but no case of `approval` names it and the forced PENDING is not drawn; the code exists and the API e2e spec covers it
+    note: |-
+      Drawn on the state applyCard, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      The card reads `course.isUnlisted` with the course's own approval and an unlisted köşk (page.tsx:93-95); the API puts the
+      seat PENDING for an unlisted course (policyForcesApproval, course.service.ts:1634-1638). Not walked.

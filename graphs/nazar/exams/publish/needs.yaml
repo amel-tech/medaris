@@ -134,7 +134,7 @@ needs:
       - state: scheduled
       - state: open
       - node: notifiedNote
-      - source: apps/tedrisat/src/course/course.service.ts:1409
+      - source: apps/tedrisat/src/course/course.service.ts:1424
       - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
         name: "plans the celse at the start, with its exam row, and locks the exam"
     note: "Owner, 22 Nov, asked whether a notification goes when it is scheduled: \"evet, takvime de düşsün\". Publishing plans the exam celse through createExamSession, which sends EXAM_SCHEDULED and queues the celse's calendar invitation (a CANCEL when it is taken back); the 24-hour reminder is LessonExam.remindedAt. No notification is sent when it opens."

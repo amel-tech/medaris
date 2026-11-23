@@ -70,7 +70,7 @@ needs:
       - node: dateField
       - node: timeError
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
-      - source: apps/tedrisat/src/course/course.service.ts:1177
+      - source: apps/tedrisat/src/course/course.service.ts:1192
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 4: a date can be changed"
 
@@ -152,7 +152,7 @@ needs:
       - node: toastMoved
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
       - source: apps/tedrisat/src/course/lesson.controller.ts:389
-      - source: apps/nizam/features/courses/present.ts:1231
+      - source: apps/nizam/features/courses/present.ts:1242
 
   - id: the-talebe-are-told-of-a-new-time-and-a-cancel
     need: >-
@@ -178,7 +178,7 @@ needs:
     need: >-
       Every change of a celse's meeting link, time or in-person mark is written to the audit log with who made it and what it was,
       as the stream and the cancel already are (MANAGE-1).
-    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1555)
+    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1558)
     note: >-
       Drawn on the states savingLink, savingTime and savingInPerson, which the code has: they are not evidence, so that a replay
       still walks them (SPEC.md §13 leaves out what only missing needs name).

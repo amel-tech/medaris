@@ -161,7 +161,10 @@
     "questionsTitle": "Soru sor",
     "questionPlaceholder": "Bu celseyle ilgili sorunu yaz…",
     "questionsList": "Bu celsedeki soruların",
-    "questionsEmpty": "Bu celsede henüz soru sormadın."
+    "questionsEmpty": "Bu celsede henüz soru sormadın.",
+    "watchedNote": "Bu celseyi izledin",
+    "resumeNote": "Kaldığın yer: {time}",
+    "resumeButton": "Kaldığın yerden devam et"
   },
   "Homework": {
     "title": "Ödevim",

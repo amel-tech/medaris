@@ -139,7 +139,7 @@ needs:
       - node: toastForbidden
       - node: toastOther
       - source: apps/tedrisat/src/course/course.controller.ts:368
-      - source: apps/nizam/features/courses/present.ts:1219
+      - source: apps/nizam/features/courses/present.ts:1230
       - source: apps/nizam/features/courses/components/muderris-dialog.tsx:105
 
   - id: a-moved-course-is-not-overwritten

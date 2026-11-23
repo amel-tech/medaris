@@ -43,7 +43,6 @@ vi.mock("~/features/courses/actions", () => ({
   enrollInCourse: vi.fn(),
   leaveCourse: vi.fn(),
   withdrawEnrollment: vi.fn(),
-  updateCourseProgress: vi.fn(),
 }));
 
 // 3 Ekim 2026 Cumartesi 12:00 İstanbul.

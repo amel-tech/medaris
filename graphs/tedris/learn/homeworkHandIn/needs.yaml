@@ -158,5 +158,6 @@ needs:
     note: |-
       Drawn on the states noteRefused and removeRefused, which the code has: they are not evidence, so that a replay still walks
       them (SPEC.md §13 leaves out what only missing needs name).
-      HAND-2 (new, provisional id); the course page's PROGRESS-1 (tedris.course.updateProgress) is the same defect. Not planned
-      work, so no Linear key.
+      HAND-2 (new, provisional id); the course page's PROGRESS-1 (tedris.course.updateProgress) was the same defect until MDRS-248
+      removed that window, and the watch page's counter has it now (COUNTER-1, tedris.celse.watchRecording). Not planned work, so no
+      Linear key.

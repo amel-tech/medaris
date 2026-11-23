@@ -60,7 +60,7 @@ decisions:
       Should "Ders kayıtlarına git" name its course and open the course's recordings tab (DSC-11)?
     recommend: >-
       Yes: give the link `aria-label="Ders kayıtlarına git: {ders}"` and the address `/courses/<id>?tab=kayitlar`, which the course page
-      already reads once to choose its tab (course-page.tsx:113). Today it is a plain link to `/courses/<id>`, the same as the title's.
+      already reads once to choose its tab (course-page.tsx:121). Today it is a plain link to `/courses/<id>`, the same as the title's.
     affects: [listed]
 
 context:

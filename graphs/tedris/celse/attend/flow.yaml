@@ -168,7 +168,7 @@ effects:
 failures:
   reading: { from: getSession, missing: [LESSON_NOT_FOUND, COURSE_NOT_FOUND], unreadable: [] }
 # `unreadable` stands for every other answer, which the page cannot tell from a missing celse: `getSession` turns any failure (a 5xx, a
-# network error, a timeout) into `null`, and the layout turns `null` into the 404 page (public-reads.ts:49-55, :92-97; layout.tsx:27, CLS-01).
+# network error, a timeout) into `null`, and the layout turns `null` into the 404 page (public-reads.ts:50-56, :93-98; layout.tsx:27, CLS-01).
 # A refused token is `reauthIfRefused`, which is out of view (realm.auth.sessionEnded).
 
 # The main story: a talebe opens the celse that begins in eight minutes, which has a meeting link, an agenda, a kaynak and a resource of
@@ -194,7 +194,7 @@ states:
     on:
       DONE: landed
       FAIL.missing: { target: not_found, starts: { flow: tedris.shell.systemPages }, say: "no such celse, or a draft or hidden course: \"Sayfa bulunamadı\"", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27" }
-      FAIL.unreadable: { target: not_found, starts: { flow: tedris.shell.systemPages }, say: "a failed read looks the same as a missing celse (CLS-01)", source: apps/tedris/features/courses/public-reads.ts:49 }
+      FAIL.unreadable: { target: not_found, starts: { flow: tedris.shell.systemPages }, say: "a failed read looks the same as a missing celse (CLS-01)", source: apps/tedris/features/courses/public-reads.ts:50 }
 
   landed:
     title: The celse is read

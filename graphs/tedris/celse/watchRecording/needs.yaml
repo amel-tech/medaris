@@ -14,6 +14,11 @@ summary: >-
 # missing:  recording-public-honours-medrese-policy (no code: the policy is stored and never asked; the domain's own finding), failed-recording-seen-by-team (no code: MDRS-259), notes-position-on-bunny (MDRS-264)
 # unwalked: bunny-recording-plays (code, needs Bunny), recording-failed-read-is-not-found (code, the stack cannot refuse the read), recording-with-stream-link (code, tedris.celse.watchStream walks it)
 # Walks: no replay was run in this phase ("walk phase"): `walked` lists the scenarios of binding.yaml that will walk each need, with the e2e checks that exist, never a scenario that has passed.
+#
+# Added on 23 Nov 2026 for the counter (MDRS-248, #402): watching-is-recorded and back-to-where-they-stopped (met, walked by nothing: the
+# stack's browser does not play YouTube), bunny-watching-is-recorded (missing: Bunny was not played, the Player.js path has only the
+# parser spec), the-counter-is-perceived-by-everyone (missing: COUNTER-2, COUNTER-3) and a-failed-save-says-what-happened, carried from the
+# retired tedris.course.updateProgress, where it was the window's save; the reports are the saves now (missing: COUNTER-1).
 
 needs:
   - id: talebe-watches-an-open-recording
@@ -24,7 +29,7 @@ needs:
       - state: celseCard
       - state: playerTalebe
       - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34"
-      - source: apps/tedris/features/courses/components/watch-view.tsx:205
+      - source: apps/tedris/features/courses/components/watch-view.tsx:223
       - source: apps/tedrisat/src/course/lesson.controller.ts:230
       - test: apps/tedris/e2e/celse-states.e2e.ts
         name: "tedris/17: a session that is over leads to its recording on the watch page (MDRS-285)"
@@ -42,7 +47,7 @@ needs:
     evidence:
       - state: playerTalebe
       - state: playerTeam
-      - source: apps/tedris/features/courses/components/media-player.tsx:71
+      - source: apps/tedris/features/courses/components/media-player.tsx:74
       - scenario: talebeLink
     note: "talebeLink: walk phase"
 
@@ -81,7 +86,7 @@ needs:
       - state: celseCard
       - state: playerTeam
       - source: apps/tedrisat/src/course/domain/recording.ts:150
-      - source: apps/tedris/features/courses/components/watch-view.tsx:219
+      - source: apps/tedris/features/courses/components/watch-view.tsx:237
       - scenario: teamHeld
     note: "teamHeld: walk phase"
 
@@ -107,7 +112,7 @@ needs:
       no ENROLLED or other recording is.
     evidence:
       - state: lockedPlayer
-      - source: apps/tedrisat/src/course/course.service.ts:697
+      - source: apps/tedrisat/src/course/course.service.ts:701
       - source: apps/tedris/features/courses/components/lesson-locked.tsx:149
       - scenario: outsiderSample
     note: "outsiderSample: walk phase"
@@ -149,7 +154,7 @@ needs:
     need: A celse that cannot be read because tedrisat is down is told apart from a celse that does not exist (CLS-01).
     evidence:
       - state: not_found
-      - source: apps/tedris/features/courses/public-reads.ts:49
+      - source: apps/tedris/features/courses/public-reads.ts:50
     note: "walked: []: the stack cannot make tedrisat refuse the read"
 
   - id: recording-with-stream-link
@@ -160,3 +165,97 @@ needs:
       - state: stream_opened
       - source: apps/tedris/features/courses/watch-model.ts:47
     note: "walked: []: tedris.celse.watchStream walks it"
+
+  - id: watching-is-recorded
+    need: >-
+      A talebe's watching of a celse's recording is recorded while they watch, with nothing to do: where they are in it, and, once they
+      reach its end or nine tenths of it, that they watched it, a mark that stays when they watch it again; the course page counts
+      their progress from it.
+    evidence:
+      - state: playerTalebe
+      - state: reporting
+      - source: apps/tedris/features/courses/components/watch-progress.tsx:56
+      - source: apps/tedrisat/src/lesson-view/lesson-view.controller.ts:66
+      - source: apps/tedrisat/src/lesson-view/lesson-view.repository.ts:41
+      - test: apps/tedrisat/test/e2e/lesson-view.e2e.spec.ts
+        name: "keeps where the player is and reads it back"
+      - test: apps/tedrisat/test/e2e/lesson-view.e2e.spec.ts
+        name: "marks a celse watched at nine tenths, and keeps the mark"
+      - test: apps/tedrisat/test/e2e/lesson-view.e2e.spec.ts
+        name: "marks a celse watched when the player ended, length or not"
+      - test: apps/tedrisat/test/e2e/lesson-view.e2e.spec.ts
+        name: "refuses everyone but an active talebe"
+      - test: apps/tedris/test/watch-progress-model.spec.ts
+        name: "sends whole seconds, and a length only when the player knows it"
+      - test: apps/tedris/test/watch-page.spec.ts
+        name: "frames a YouTube recording with the player API for a talebe's notes, and says what it is"
+    note: |-
+      For a YouTube recording; Bunny's is bunny-watching-is-recorded, and a Drive frame or a link that cannot be framed is not counted.
+      Unwalked: no browser e2e and no scenario. The stack's browser does not play YouTube, so a replay cannot make a report; #402 says
+      it played a YouTube recording to the end on a local stack by hand (PR description), which is not a walk of this graph.
+
+  - id: bunny-watching-is-recorded
+    need: >-
+      The same for a recording uploaded to Bunny: the position of Bunny's player is heard and recorded as YouTube's is, and its end
+      counts the celse watched.
+    evidence:
+      - source: apps/tedris/features/courses/bunny-player.ts:56
+      - test: apps/tedris/test/watch-progress-model.spec.ts
+        name: "reads the time, the pause, the end and the ready"
+      - test: apps/tedris/test/watch-page.spec.ts
+        name: "plays a Bunny recording in the link signed for this viewer; the notes get no position, the counter listens"
+    missing: >-
+      no Linear issue; Bunny was not played: the stack has no Bunny library, so the Player.js path (bunny-player.ts, useBunnyPlayer) is
+      covered only by the parser spec (bunnyEventOf) and was never seen working against Bunny's player; whether Bunny's embed answers
+      postMessage is the open question of MDRS-264's spike for the notes; code exists
+    note: |-
+      Drawn on the states playerTalebe and reporting, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      #402 names it under "Not verified": "worth one look on dev with a Bunny recording before release".
+
+  - id: back-to-where-they-stopped
+    need: >-
+      On the watch page a talebe is told whether they already watched the celse, or where they stopped in it, and goes back there
+      with one press.
+    evidence:
+      - state: playerTalebe
+      - node: watchedNote
+      - node: resumeNote
+      - node: resumeButton
+      - source: apps/tedris/features/courses/components/watch-progress.tsx:143
+      - source: apps/tedris/features/courses/components/watch-page.tsx:71
+      - test: apps/tedris/test/watch-progress-model.spec.ts
+        name: "goes back to where the player was, not to the start or the last seconds"
+    note: |-
+      Unwalked: no browser e2e and no scenario; the binding's data records no watch, and the stack's browser does not play YouTube. The
+      line is drawn from the record the page read when it was drawn, so a celse played in another tab shows at the next read. The
+      focus after the press and the unannounced change are the-counter-is-perceived-by-everyone.
+
+  - id: the-counter-is-perceived-by-everyone
+    need: >-
+      A talebe who uses a keyboard or a screen reader is told when the celse is counted watched, and keeps their place when they go
+      back to where they stopped.
+    evidence:
+      - source: apps/tedris/features/courses/components/watch-progress.tsx:143
+    missing: no Linear issue; findings COUNTER-2, COUNTER-3; code exists in part
+    note: |-
+      Drawn on the state playerTalebe and on the nodes watchedNote and resumeButton, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Read from the code, not walked: the button removes itself and the focus falls to the page (COUNTER-2); the line is no live region
+      (COUNTER-3). Defects, not planned work, so no Linear key.
+
+  - id: a-failed-save-says-what-happened
+    need: >-
+      When the platform does not record a talebe's watching, because their seat ended while the page was open or their session is
+      over, the talebe is told so under the player, and is not left watching as if it were counted.
+    evidence:
+      - source: apps/tedris/features/courses/components/watch-progress.tsx:62
+    missing: no Linear issue; findings COUNTER-1; code exists in part
+    note: |-
+      Drawn on the states reporting and playerTalebe, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      Carried from tedris.course.updateProgress (retired 23 Nov 2026), where it asked the window's save to say why it was refused
+      (PROGRESS-1); the counter's reports are the saves now. Half built: the line says "Bu celseyi izledin" only when the API stored the
+      mark (watch-progress.tsx:63, :143), so it never claims a count that did not happen; but a refused or lost report is dropped
+      without a word (COUNTER-1). Dropping a lost one is right, since the next report carries a newer position; a refusal that every next
+      report meets is not. Read from the code, not walked.

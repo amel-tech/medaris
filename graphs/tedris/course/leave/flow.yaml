@@ -129,7 +129,7 @@ states:
     title: The enrolled card on the course page
     by: human
     goal: true
-    source: apps/tedris/features/courses/components/course-aside.tsx:271
+    source: apps/tedris/features/courses/components/course-aside.tsx:270
     description: >-
       The card of a talebe whose enrolment is ENROLLED: the badge "Devam ediyor" and, beside it, the "···" button named
       "Diğer işlemler" (it carries no course title, where Derslerim's does). Under it the next celse, "Derse devam et", "Takvime
@@ -166,7 +166,7 @@ states:
     on:
       OPEN_MENU: { guard: viaCard, target: cardMenu, source: apps/tedris/features/courses/components/course-actions-menu.tsx:68 }
       WITHDRAW: { guard: viaRow, target: withdrawing, effect: [clearNotice], source: apps/tedris/features/courses/components/application-row.tsx:39 }
-      TEAM_APPROVES: { guard: "viaRow and stillWaiting", target: listed, effect: [teamApproves], say: "the course team approves the application, in nazar or in nizam (nazar.roster.decide); this page does not know", source: apps/tedrisat/src/course/course.service.ts:1642 }
+      TEAM_APPROVES: { guard: "viaRow and stillWaiting", target: listed, effect: [teamApproves], say: "the course team approves the application, in nazar or in nizam (nazar.roster.decide); this page does not know", source: apps/tedrisat/src/course/course.service.ts:1659 }
       NAVIGATE: left
 
   cardMenu:
@@ -263,7 +263,7 @@ states:
   apply_card:
     title: The course page is the apply card
     type: final
-    source: apps/tedris/features/courses/components/course-aside.tsx:324
+    source: apps/tedris/features/courses/components/course-aside.tsx:320
     description: >-
       The page is read again and the aside is the card "Derse kayıt" with the button that applies (its words depend on whether
       the course asks for approval, which tedris.course.apply draws). The button that had the focus is gone and nothing moves
@@ -273,7 +273,7 @@ states:
   course_read_again:
     title: The course page is read again and shows what the enrolment is now
     type: final
-    source: apps/tedris/features/courses/components/course-aside.tsx:236
+    source: apps/tedris/features/courses/components/course-aside.tsx:235
     description: >-
       After a 409 (the row is COMPLETED or REVOKED) the page is read again and the aside is the completed or the revoked card,
       which tedris.course.readProgramme draws, with the error toast "Kaydının durumu değişmiş. Sayfa yenilendi, güncel hâline bak.".

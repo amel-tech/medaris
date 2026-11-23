@@ -54,7 +54,7 @@ scope:
     - "the imam's star as a popover (hover, focus and press open a bubble; it moves no focus) and the Katılım cell's other words ('YouTube yayını', 'Yalnız yayın', 'Bilinmeyen platform', 'Katılım bilgisi gösterilmez' for a read that carried no attendance)"
     - "a week of celses the table does not list (it lists the nearest four), and a celse with no way in beyond the fourth, which the warning still names"
     - "the loading skeleton while the reads run (loading.tsx, F-X-10) and the footer (common.shell.privacyNotice)"
-    - "the audit rows tedrisat writes for every load of this page: course.content_read for the course and course.roster_read for the numbers and for the enrollments, for a reader who is neither the course's hoca nor an enrolled talebe (course.service.ts:410, :486); the reads' answers are what the page is made from"
+    - "the audit rows tedrisat writes for every load of this page: course.content_read for the course and course.roster_read for the numbers and for the enrollments, for a reader who is neither the course's hoca nor an enrolled talebe (course.service.ts:414, :490); the reads' answers are what the page is made from"
 
 decisions:
   D1:

@@ -10,7 +10,7 @@ flow: tedris.course.readProgramme
 
 scenarios:
   pending:
-    given: { read: ok, who: pending, ahead: noLink, course: rich, tabParam: none }
+    given: { read: ok, who: pending, ahead: noLink, course: rich, tabParam: none, views: none }
     as: applicantA
     open: '{tedris}/courses/{prog.course}'
     setup:

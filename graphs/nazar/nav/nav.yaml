@@ -190,7 +190,7 @@ sets:
     - madrasah.nazir_appoint
     - madrasah.ban
     - madrasah.appeal_open
-  # the başnazım holds every code by bypass (SYSTEM_ADMIN_COURSE_CODES for a course, course.service.ts:837)
+  # the başnazım holds every code by bypass (SYSTEM_ADMIN_COURSE_CODES for a course, course.service.ts:841)
   everything:
     - course.edit
     - session.manage
@@ -465,7 +465,7 @@ pages:
     title: The course in Tedris
     kind: external
     frame: outside
-    evidence: features/course-settings/course-settings.ts:149, hidden when TEDRIS_URL is empty; opens in a new tab
+    evidence: features/course-settings/course-settings.ts:162, hidden when TEDRIS_URL is empty; opens in a new tab
   tedrisTarget:
     route: TEDRIS_URL, a course, a celse, a deck or a köşk page that a notification row names
     title: The Tedris page a notification names

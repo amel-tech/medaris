@@ -295,6 +295,7 @@ src/models/LessonResourceFileUploadResponse.ts
 src/models/LessonResourceResponse.ts
 src/models/LessonResponse.ts
 src/models/LessonSubmissionResponse.ts
+src/models/LessonViewResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
 src/models/MadrasahAppealRowResponse.ts
@@ -439,6 +440,7 @@ src/models/QuestionOutcome.ts
 src/models/QuestionPersonResponse.ts
 src/models/QuestionPointsResponse.ts
 src/models/ReadAllNotificationsResponse.ts
+src/models/RecordLessonViewDto.ts
 src/models/RecordingAvailabilityResponse.ts
 src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts

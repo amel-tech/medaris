@@ -11,7 +11,7 @@
 # of this file, which is why the walk has a file of its own; unseat-hoca says `already` the second time the walk reaches `dirty`, and that is
 # fine. `call` is left off (a Next server action answers 200 on the page's own address, so the replay would compare 404 with 200).
 # Not verified: that tedrisat's refusal for a hoca who was on the list when the page was read is COURSE_MUDERRIS_NOT_FOUND and not another code
-# (the repository returns false when no course_muderris row has that account, course.repository.ts:1537, and the service throws it).
+# (the repository returns false when no course_muderris row has that account, course.repository.ts:1540, and the service throws it).
 schema: delurio-graph/0
 kind: binding
 extends: binding.common.yaml

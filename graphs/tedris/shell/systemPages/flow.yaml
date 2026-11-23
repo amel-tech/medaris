@@ -7,8 +7,10 @@
 #   - The forbidden page (ForbiddenState) is the deck pages' own and belongs to tedris.decks.accessRefusals.
 #   - Findings it carries (inventory ids): SHL-06 (seen in a browser now), SHL-07, SHL-15, CLS-01, DSC-10; SHL-01 and SHL-14 are
 #     named where they touch. Three more are this flow's own, proposed as SYS-1, SYS-2 and SYS-3 (ui.yaml `rules`).
-#   - The e2e checks it takes over: system-pages#7, #8, #10, course#3 (its one assertion is a status the replay cannot read) and
-#     session#8; see needs.yaml.
+#   - The e2e checks it takes over: system-pages#7, #8, #10, course#3 (its one assertion is a status the replay cannot read, and since
+#     #401 it no longer matches: a visitor of a draft is sent to sign in) and session#8; see needs.yaml.
+#   - Since MDRS-248's unlisted course (#401, 23 Nov 2026) a visitor never meets the not-found page for a course: the course segment
+#     sends anyone the API gives no course to sign in and back (load-course.ts:26-34), the arrival `missingCourse`.
 schema: delurio-graph/0
 kind: flow
 id: tedris.shell.systemPages
@@ -18,7 +20,8 @@ ui: tedris.shell.systemPages
 title: Meet the not-found and error pages, and come back
 summary: >-
   An address that no page owns, or a course, köşk, medrese or celse the API does not know, shows "Sayfa bulunamadı" under the
-  system's bar, with "Ana sayfaya dön", which goes to Ana sayfa for a member and to the landing address for a visitor. A page
+  system's bar, with "Ana sayfaya dön", which goes to Ana sayfa for a member and to the landing address for a visitor. A visitor
+  who asks for a course the API gives them none of is sent to sign in instead, with the course as the page to come back to. A page
   that throws shows "Bir şeyler ters gitti" with "Yeniden dene", which reads the page again; the error itself is never shown.
   Because the only error boundary is the root's, that page carries the app's old header and tab row instead of the system's
   bar (SHL-06). When the root layout itself throws, a document of its own says the same in words fixed in the code. A failed
@@ -57,11 +60,12 @@ decisions:
 
 context:
   arrival:
-    values: [unknownAddress, missingIntro, missingCelse, readFailed, pageThrows, shellThrows]
+    values: [unknownAddress, missingIntro, missingCourse, missingCelse, readFailed, pageThrows, shellThrows]
     initial: any
     say:
       unknownAddress: "the address is one no page owns (a typed or an old link)"
-      missingIntro: "the address is a course, köşk or medrese page and the API says it has no such thing, or a draft the person may not read"
+      missingIntro: "the address is a köşk or medrese page and the API says it has no such thing (an unlisted köşk is one to a visitor)"
+      missingCourse: "the address is a course page and the API gives the person no course: none by that id, a draft they may not read, a hidden course, or, to a visitor, an unlisted course or a course of an unlisted köşk"
       missingCelse: "the address is a celse of a course the person may read, and there is no such celse or it is not a live one"
       readFailed: "the address is a celse, and the read of it fails with a 5xx or a network error (CLS-01); a medrese's read fails the same way (DSC-10)"
       pageThrows: "the page throws while it is made: the course read answers 5xx, or the page cannot be drawn (a zone the platform cannot format)"
@@ -94,12 +98,15 @@ states:
       The request goes through proxy.ts first: a visitor who asks for a page that is not public is sent to sign in before any
       page runs, so an unknown address, a celse or a failed celse read never shows a visitor the not-found page. A course, a
       köşk, a medrese, and the sign-in pages are public (lib/public-paths.ts:29-35), so a visitor meets the not-found page for
-      those. What is then drawn is decided by what the page does: it throws (the root's error page), the root layout throws
+      a köşk and a medrese. Not for a course: since MDRS-248 (#401) the course segment's layout sends a visitor whom the API
+      gives no course to sign in and back (loadCourseOrLeave, load-course.ts:26-34), so that an unlisted course's link opens
+      once they are signed in, and a missing course is asked for the same way. What is then drawn is decided by what the page does: it throws (the root's error page), the root layout throws
       (the global error document), or it asks for the not-found page, which is also what Next draws for an address no page owns.
       Nothing is shown in this state.
     source: apps/tedris/proxy.ts:24
     always:
       - { guard: "person == 'visitor' and needsSession", target: sign_in_opened, say: "the address is not public, so the visitor is sent to Keycloak with the address as callbackUrl", source: apps/tedris/lib/public-paths.ts:29 }
+      - { guard: "person == 'visitor' and arrival == 'missingCourse'", target: sign_in_opened, say: "the API gave a caller with no token no course, so the course segment's layout sends the visitor to /auth/signin with the course as callbackUrl, whatever the reason", source: apps/tedris/features/courses/load-course.ts:31 }
       - { guard: "arrival == 'shellThrows'", target: shellErrorShown, say: "the root layout threw, so the document is replaced by the global error", source: apps/tedris/app/global-error.tsx:29 }
       - { guard: "arrival == 'pageThrows'", target: errorShown, say: "the page threw and the root's boundary replaced the segment", source: apps/tedris/app/error.tsx:12 }
       - { target: notFound, say: "no page, no such record, or a read that failed and was taken for a missing one", source: apps/tedris/app/not-found.tsx:5 }
@@ -191,11 +198,15 @@ assertions:
     never: "state == 'notFound' and person == 'visitor' and needsSession"
     say: "A visitor who asks for an address that is not public is sent to sign in; the not-found page never tells them whether a celse or a private page exists"
     source: apps/tedris/lib/public-paths.ts:29
+  - id: a-visitor-is-not-told-a-course-is-missing
+    never: "state == 'notFound' and person == 'visitor' and arrival == 'missingCourse'"
+    say: "A visitor who asks for a course the API gives them none of is sent to sign in, never told it is missing: a missing, a draft, a hidden and an unlisted course look the same to them"
+    source: apps/tedris/features/courses/load-course.ts:31
   - id: a-throw-is-not-a-404
     never: "state == 'notFound' and arrival in ['pageThrows', 'shellThrows']"
     say: "A page or a shell that throws is never drawn as the not-found page"
     source: apps/tedris/app/error.tsx:12
   - id: a-missing-page-is-not-an-error
-    never: "state in ['errorShown', 'shellErrorShown'] and arrival in ['unknownAddress', 'missingIntro', 'missingCelse']"
+    never: "state in ['errorShown', 'shellErrorShown'] and arrival in ['unknownAddress', 'missingIntro', 'missingCourse', 'missingCelse']"
     say: "An address with no page, or one the API says it has no record for, is never drawn as an error"
     source: apps/tedris/app/not-found.tsx:5

@@ -3935,7 +3935,8 @@
     },
     "/courses/{id}/progress": {
       "put": {
-        "description": "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.",
+        "deprecated": true,
+        "description": "Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course. Deprecated (MDRS-248): progress is worked out from the talebe's watch records (`PUT /lessons/:id/view`), which overwrite a number written here the next time a celse is watched; tedris no longer offers it.",
         "operationId": "updateCourseProgress",
         "parameters": [
           {
@@ -9298,6 +9299,108 @@
           }
         ],
         "summary": "Delete the caller's own note",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/view": {
+      "put": {
+        "description": "Sent by the watch page's player while it plays. An enrolled talebe only (ENROLLED or COMPLETED, and not barred), while the course's content is open. The first report that ends the video or reaches nine tenths of it marks the celse watched, and the mark stays; that report also works the enrollment's `progress` out again, as the share of the course's celses watched (hidden and cancelled ones left out).",
+        "operationId": "recordLessonView",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordLessonViewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonViewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_VIEW_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record how far the caller has watched a celse",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{id}/lesson-views": {
+      "get": {
+        "description": "Only the caller's own, one per celse they have played; a celse never played has none. Hidden celses are left out. A talebe who was removed still reads theirs while the course is open; a course in a passive scope is closed (403 LESSON_VIEW_FORBIDDEN), and a course the caller may not see is not found.",
+        "operationId": "listMyLessonViews",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LessonViewResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "LESSON_VIEW_FORBIDDEN"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's watch records on a course's celses",
         "tags": [
           "lessons"
         ]
@@ -25981,6 +26084,67 @@
             "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
           }
         }
+      },
+      "RecordLessonViewDto": {
+        "type": "object",
+        "properties": {
+          "positionSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 359999,
+            "example": 754,
+            "description": "The player's position in whole seconds from the start of the video: where “Kaldığın yer” goes back to."
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 359999,
+            "example": 3480,
+            "description": "The video's length in whole seconds, as the player reports it. Left out when the player has not said; the last length stored stays."
+          },
+          "ended": {
+            "type": "boolean",
+            "description": "True when the player reported that the video ended. It marks the celse watched, like reaching nine tenths of it."
+          }
+        },
+        "required": [
+          "positionSeconds"
+        ]
+      },
+      "LessonViewResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "positionSeconds": {
+            "type": "number",
+            "description": "Where the player last was, in whole seconds from the start of the video."
+          },
+          "durationSeconds": {
+            "type": "number",
+            "nullable": true,
+            "description": "The video's length in whole seconds, as the player reported it; null until it did."
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the celse first counted as watched (the video ended, or nine tenths of it played); null until then. It stays once set."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lessonId",
+          "positionSeconds",
+          "durationSeconds",
+          "completedAt",
+          "updatedAt"
+        ]
       },
       "AskLessonQuestionDto": {
         "type": "object",

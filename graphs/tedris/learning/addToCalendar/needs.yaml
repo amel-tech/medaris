@@ -32,7 +32,7 @@ needs:
       - source: apps/tedris/features/courses/components/calendar-menu.tsx:36
       - source: apps/tedris/features/schedule/components/schedule-page.tsx:175
       - source: apps/tedris/features/courses/components/session-page.tsx:248
-      - source: apps/tedris/features/courses/components/course-aside.tsx:295
+      - source: apps/tedris/features/courses/components/course-aside.tsx:294
       - test: apps/tedris/e2e/schedule.e2e.ts
         name: "opens three rows and a note, and closes with Esc"
       - test: apps/tedris/e2e/schedule.e2e.ts

@@ -52,6 +52,7 @@ GET /courses/:id/evaluations -> session.manage on byExistingCourse
 GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
 GET /courses/:id/exam-topics -> exam.prepare on course
 GET /courses/:id/exam-zeroth-question -> exam.prepare on course
+GET /courses/:id/lesson-views -> course.view on byExistingCourse
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
@@ -310,6 +311,7 @@ PUT /lessons/:id/online-exam/attempt/answers/:questionId -> course.view on byLes
 PUT /lessons/:id/online-exam/zeroth-answer -> course.view on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
+PUT /lessons/:id/view -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/exam-zeroth-question -> madrasah.settings_edit on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah

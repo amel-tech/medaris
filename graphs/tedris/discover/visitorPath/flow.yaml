@@ -43,7 +43,8 @@ scope:
   outOfView:
     - "the bar around the page (Keşfet, the theme switch, \"Giriş yap\", \"Kayıt ol\") and the phone's sheet: tedris.shell.frame (SHL-04, SHL-10, SHL-11); and how a visitor gets here from `/`, two redirects (SHL-05): tedris.shell.home"
     - "the search box, the medrese filter, the pager, the empty list and the failed read of Keşfet: tedris.discover.browse (DSC-13, DSC-14, DSC-19)"
-    - "the köşk page's other cases (an unlisted köşk is a 404 to a visitor, a köşk with no course, the failed read with no h1, DSC-09): tedris.discover.readKosk; the medrese page's (a medrese with no course, a failed read drawn as a 404, DSC-10): tedris.discover.readMadrasah; an unknown id: tedris.shell.systemPages"
+    - "the köşk page's other cases (an unlisted köşk is a 404 to a visitor, a köşk with no course, the failed read with no h1, DSC-09): tedris.discover.readKosk; the medrese page's (a medrese with no course, a failed read drawn as a 404, DSC-10): tedris.discover.readMadrasah; an unknown köşk or medrese id: tedris.shell.systemPages"
+    - "a course address the API gives a visitor no course for, which no page of this path links to but a shared link can name: an unlisted course (MDRS-248, #401) or a course of an unlisted köşk, a draft, a hidden course, an unknown id. The course segment's layout sends the visitor to sign in with the course as the page to come back to (loadCourseOrLeave, load-course.ts:26-34), and signed in an unlisted course opens (tedris.course.apply) and the rest are the not-found page (tedris.shell.systemPages, arrival missingCourse). Not drawn here: the need an-unlisted-course-opens-by-its-link says so"
     - "the follow button and the way to ask for a köşk, which a signed-in person has and a visitor does not: tedris.discover.followKosk, tedris.discover.applyForKosk (drawn here only as nodes the visitor never gets)"
     - "the course page of a signed-in person in any of its states, and what the card does after \"Başvurmak için giriş yap\" brings the person back: tedris.course.apply, tedris.course.readProgramme"
     - "the celse page and its watch page, which a visitor cannot open (the proxy sends them to sign in, with the celse as the page to come back to): tedris.celse.locked; a deck's page, which no page of a visitor's path links to (a link, a shared address): tedris.decks.visitorPublicDeck"
@@ -69,7 +70,7 @@ decisions:
     recommend: >-
       Yes (VISIT-1): the sentence is fixed text, `MadrasahPage.approvalNotice`, drawn for every medrese; the API asks for approval
       for a medrese's course only when `madrasah_settings.policy_always_approval` is true, which is off until a nazır sets it
-      (course.repository.ts:1928, madrasah.schema.ts:62). The seeded medrese says it above the card of a course that takes anyone.
+      (course.repository.ts:1931, madrasah.schema.ts:62). The seeded medrese says it above the card of a course that takes anyone.
     affects: [madrasah]
 
 context:
@@ -137,7 +138,7 @@ states:
       The page `/kosks/<id>`, public (lib/public-paths.ts:30); the köşk's name is its title. A breadcrumb "Keşfet / the köşk", the
       eyebrow "Köşk", the name as the h1, "N ders", and "Köşk nazımı <name>" where the API gives the manager's name, which a visitor
       gets without who they are (anonymous#18). No follow button (kosk-page.tsx:183) and no block "Köşk desteleri": the decks are
-      read only with a token (public-reads.ts:163). The section "Dersler" has a card for each published course (its title as a link,
+      read only with a token (public-reads.ts:176). The section "Dersler" has a card for each published course (its title as a link,
       the medrese that opened it as a link and "dersi", the hoca line, the next celse), and under it the invitation "Bir derse
       başvurmak için giriş yap ya da kayıt ol.", with the köşk as the page to come back to. A köşk the visitor may not read is not
       found, and one that fails to read is a box with no heading (DSC-09): tedris.discover.readKosk.
@@ -190,14 +191,16 @@ states:
     title: A course's introduction, the programme
     by: human
     goal: true
-    source: apps/tedris/features/courses/components/course-page.tsx:229
+    source: apps/tedris/features/courses/components/course-page.tsx:237
     description: >-
       The page `/courses/<id>` for a person with no token (the page's state `visitor`, features/courses/course-view.ts:21), public
-      (lib/public-paths.ts:32). A draft is a 404 to everyone the API does not let in. The header: the cover, the title as the h1,
+      (lib/public-paths.ts:32). It is drawn only for a course the API gives a caller with no token: a course it does not (a draft, a
+      hidden or an unlisted one, a course of an unlisted köşk) sends the visitor to sign in before the page (load-course.ts:31-32),
+      never to a 404 (scope.outOfView). The header: the cover, the title as the h1,
       the description, the medrese and the köşk as links with "N hafta", "N celse" and "N saat", the hoca line. The aside: the card
       "Derse kayıt" with the span of the weeks and one fact, "Kayıt onay gerektirmez: kaydolunca ders içerikleri sana açılır." or
-      "Kayıt onaya bağlı: başvurunu ders kadrosu değerlendirir." (it reads only the course's own setting and an unlisted köşk,
-      page.tsx:89: tedris.course.apply's CRS-APPLY-1), then "Başvurmak için giriş yap", a link to /auth/signin?callbackUrl=%2Fcourses%2F<id>,
+      "Kayıt onaya bağlı: başvurunu ders kadrosu değerlendirir." (it reads only the course's own settings and an unlisted köşk,
+      page.tsx:93-95: tedris.course.apply's CRS-APPLY-1), then "Başvurmak için giriş yap", a link to /auth/signin?callbackUrl=%2Fcourses%2F<id>,
       and "Hesabın yok mu? Kayıt ol"; under it, when a celse is ahead, a card "Sıradaki celse" with its day, its time and the notice
       "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." Under
       the card, when the course lists resources, "Bu dersin kaynakları": the names and the line under each, no link, and "Kaynakları
@@ -206,56 +209,56 @@ states:
       saatiyle" and one accordion item for each week. Every week is locked and its button says ", kilitli" except the week that
       holds the sample celse, which is open; the weeks that hold the sample celse and the next celse are open at first. A row of a
       locked week is a plain row with the lock "Kilitli". The sample celse's row is a link to the block "Örnek celse" under the
-      tabs, with the agenda "Celse akışı" and "Kaynaklar" (course-page.tsx:498): the one celse anyone may read. Once it is over the
+      tabs, with the agenda "Celse akışı" and "Kaynaklar" (course-page.tsx:507): the one celse anyone may read. Once it is over the
       row says ", tamamlandı" and the week "Sona erdi" (VISIT-3), and a week whose title is only "Hafta N" is written twice, its
       label and its title (VISIT-2). The meeting links, the closed celses' agenda and source, and the resources' links are not in
       the page (course#1 a10, course#2 a4, a5; not walked here). Where the page ends up depends on `intro`: `bare` has no sample row,
       no block "Örnek celse", no "Bu dersin kaynakları" and a recordings tab that is empty. The page sets no initial focus
       (measured on the stack in a browser: the focus is on the document after the page loads).
     on:
-      OPEN_RECORDINGS: { target: recordings, say: "they choose the tab \"Ders kayıtları\"", source: apps/tedris/features/courses/components/course-page.tsx:428 }
+      OPEN_RECORDINGS: { target: recordings, say: "they choose the tab \"Ders kayıtları\"", source: apps/tedris/features/courses/components/course-page.tsx:437 }
       OPEN_PROGRAMME: { target: course, say: "they press \"Müfredat\", the tab already chosen: nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
-      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
-      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
+      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:256 }
+      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:218 }
       SIGN_IN:
         target: handed_over.sign_in
         starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
         say: "\"Başvurmak için giriş yap\": /auth/signin?callbackUrl=%2Fcourses%2F<id>, which the app's page hands to Keycloak and Keycloak hands back to this course"
-        source: apps/tedris/features/courses/components/course-aside.tsx:352
+        source: apps/tedris/features/courses/components/course-aside.tsx:348
       REGISTER:
         target: handed_over.register
         starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"Kayıt ol\" in \"Hesabın yok mu?\": /auth/register"
-        source: apps/tedris/features/courses/components/course-aside.tsx:358
+        source: apps/tedris/features/courses/components/course-aside.tsx:354
       NAVIGATE: left
 
   recordings:
     title: A course's introduction, the recordings
     by: human
-    source: apps/tedris/features/courses/components/course-page.tsx:428
+    source: apps/tedris/features/courses/components/course-page.tsx:437
     description: >-
       The same page with the tab "Ders kayıtları" chosen (a click on the tab changes a client state; the address does not change).
       The panel is the section "Bütün ders kayıtları" and, for each week that holds one, a row for each recording the API lists
       to a caller with no token: only the PUBLIC ones (course controller listCourseRecordings), each a link that opens its host in
       a new tab, named "Ders kaydını aç: <title> (yeni sekmede açılır)", with the chip "Herkese açık" and the host's name. A row
       is not a link to the watch page: that is for those who may read the course's content (`watch={!course.contentLocked}`,
-      course-page.tsx:445). A course with no public recording says "Bu derste henüz yayımlanmış ders kaydı yok." The aside, the
+      course-page.tsx:454). A course with no public recording says "Bu derste henüz yayımlanmış ders kaydı yok." The aside, the
       resources and the block "Örnek celse" stay where they were.
     on:
-      OPEN_PROGRAMME: { target: course, say: "they choose the tab \"Müfredat\"", source: apps/tedris/features/courses/components/course-page.tsx:400 }
+      OPEN_PROGRAMME: { target: course, say: "they choose the tab \"Müfredat\"", source: apps/tedris/features/courses/components/course-page.tsx:408 }
       OPEN_RECORDINGS: { target: recordings, say: "they press \"Ders kayıtları\", the tab already chosen: nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
-      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
-      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
+      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:256 }
+      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:218 }
       SIGN_IN:
         target: handed_over.sign_in
         starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
         say: "\"Başvurmak için giriş yap\": the same link, whichever tab is open"
-        source: apps/tedris/features/courses/components/course-aside.tsx:352
+        source: apps/tedris/features/courses/components/course-aside.tsx:348
       REGISTER:
         target: handed_over.register
         starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"Kayıt ol\" in \"Hesabın yok mu?\""
-        source: apps/tedris/features/courses/components/course-aside.tsx:358
+        source: apps/tedris/features/courses/components/course-aside.tsx:354
       NAVIGATE: left
 
   handed_over.sign_in:

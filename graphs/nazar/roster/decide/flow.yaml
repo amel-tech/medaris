@@ -207,7 +207,7 @@ states:
       Each row has "Onayla" and "Reddet" where `mayDecide` is `may`, and none where it is `mayNot`; "Toplu talebe ekle" follows
       the same rule. Findings read here: ROSTER-1 (the note says "Bu ders onay istemiyor" above waiting rows when only the course's
       own flag is off, though the köşk's privacy, the köşk's or the platform's always-approve policy or the medrese's policy made
-      them wait; the API's rule is in course.service.ts:1544-1560, the page reads one flag), ROSTER-2 (a barred talebe's row has the
+      them wait; the API's rule is in course.service.ts:1559-1575, the page reads one flag), ROSTER-2 (a barred talebe's row has the
       same buttons; the roster read carries their ban and the page ignores it), ROSTER-3 (one `busy` value serves the table, so a
       second press while a first call runs takes the first row's busy mark away), F-D1-05 (after a decision the pressed button
       is gone and the focus with it), F-D1-20 (a call that fails outright, such as a dropped network, is not caught: no toast and
@@ -219,7 +219,7 @@ states:
     on:
       APPROVE: { guard: holdsDecide, target: approving, effect: [clearNote], say: "they press Onayla on a row", source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:161 }
       REJECT: { guard: holdsDecide, target: confirmReject, effect: [clearNote], say: "they press Reddet on a row", source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:174 }
-      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "a colleague rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "a colleague rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1703 }
       BAN_PLACED: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:207

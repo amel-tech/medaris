@@ -442,8 +442,8 @@ entries:
   - { from: courseNew, to: courseSessionsNew, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:191 }
   - { from: courseNew, to: koskCourses, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:198 }
   - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:527 }
-  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:292 }
-  - { from: courseSettings, to: koskCourses, how: button, label: a button in course-settings-page.tsx, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:459 }
+  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:308 }
+  - { from: courseSettings, to: koskCourses, how: button, label: a button in course-settings-page.tsx, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:475 }
   - { from: courseSessionsNew, to: courseSessions, how: button, label: a button in session-plan-form.tsx, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
   - { from: courseSessionsNew, to: courseSessions, how: link, label: SessionPlan.cancel, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:392 }
   - { from: koskDeckNew, to: koskDecks, how: button, label: a button in kosk-deck-form.tsx, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }

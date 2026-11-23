@@ -6,7 +6,7 @@
 # Three messages are built in code and are in no i18n file, so they are `composed.SessionPlan.*` ("Günler *" at session-plan-form.tsx:202, a weekday's
 # short name at :209, the date of a previewed celse at :429). `Changes.note` is the one catalog entry the app does not have: no app message says what
 # making celses changes (the toast says only "N celse eklendi"), so one short factual sentence was written for it from the API's side effects (the calendar
-# invitation mail to the enrolled talebe: apps/tedrisat/src/course/course.service.ts:1386-1415).
+# invitation mail to the enrolled talebe: apps/tedrisat/src/course/course.service.ts:1401-1430).
 # Where a node says "repeat", the page draws it once per item; the replay finds the items through the binding.
 schema: delurio-graph/0
 kind: ui
@@ -112,9 +112,9 @@ nodes:
   arrivalTitle: { type: status, component: Status, text: { key: CourseCreate.sessionsFailed }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:186 } # put up by Ders aç before it moved the person here; it stays over the planner and says no reason (F-W4-open-2)
   arrivalBody: { type: status, component: Status, text: { key: CourseCreate.sessionsFailedBody, params: { name: name } }, in: [form, previewing, formReady, previewFailed, creating], when: fromOpen, source: apps/nizam/features/courses/components/course-create-form.tsx:188 }
   toastFailedTitle: { type: status, component: Status, text: { key: SessionPlan.failed }, in: [formReady], when: "toast != 'none'", source: apps/nizam/features/courses/components/session-plan-form.tsx:145 } # an error toast: it stays, polite not assertive, and its region is named by the library's English default (F-X-5)
-  toastPatternBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.invalidPattern }, in: [formReady], when: "toast == 'patternRefused'", source: apps/nizam/features/courses/present.ts:1231 }
-  toastForbiddenBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.forbidden }, in: [formReady], when: "toast == 'forbidden'", source: apps/nizam/features/courses/present.ts:1231 }
-  toastGenericBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.generic }, in: [formReady], when: "toast == 'failed'", source: apps/nizam/features/courses/present.ts:1231 }
+  toastPatternBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.invalidPattern }, in: [formReady], when: "toast == 'patternRefused'", source: apps/nizam/features/courses/present.ts:1242 }
+  toastForbiddenBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.forbidden }, in: [formReady], when: "toast == 'forbidden'", source: apps/nizam/features/courses/present.ts:1242 }
+  toastGenericBody: { type: status, component: Status, text: { key: SessionPlan.errors.api.generic }, in: [formReady], when: "toast == 'failed'", source: apps/nizam/features/courses/present.ts:1242 }
   toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [formReady], when: "toast != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language
 
   # --- the card the page draws when the course cannot be read -------------------------------------------------------------------------

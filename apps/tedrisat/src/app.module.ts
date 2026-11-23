@@ -33,6 +33,7 @@ import { KoskApplicationModule } from "./kosk-application/kosk-application.modul
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
 import { LessonQuestionModule } from "./lesson-question/lesson-question.module";
 import { LessonSubmissionModule } from "./lesson-submission/lesson-submission.module";
+import { LessonViewModule } from "./lesson-view/lesson-view.module";
 import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
@@ -70,6 +71,7 @@ import { UserModule } from "./user/user.module";
     HostingModule,
     CourseModule,
     LessonNoteModule,
+    LessonViewModule,
     LessonQuestionModule,
     LessonSubmissionModule,
     EvaluationModule,

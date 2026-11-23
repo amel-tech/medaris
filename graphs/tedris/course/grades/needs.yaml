@@ -112,7 +112,7 @@ needs:
     need: A talebe can open the course on the grades by its address, to come back to or to share.
     evidence:
       - state: sorting
-      - source: apps/tedris/features/courses/components/course-page.tsx:194
+      - source: apps/tedris/features/courses/components/course-page.tsx:202
     note: >-
       walked: nothing. The address start (`tabParam: grades`) is drawn and carries no binding in this phase; the typed address was
       read by hand on the stack (a probe selected Notlarım from `?tab=notlarim`), which is no scenario.

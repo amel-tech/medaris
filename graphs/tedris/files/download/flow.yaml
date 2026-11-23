@@ -10,7 +10,7 @@
 #     page (`Sec-Fetch-Dest: document`, the page as the `Referer`). Success is an attachment, so the browser saves it and the page stays; a refusal
 #     is a 303 (libs/services/src/file-proxy/file-proxy.ts:351): no session or a token tedrisat refused goes to sign-in and comes back to the
 #     page; every other refusal goes back to the page with ?fileError=forbidden|notFound|unavailable|failed (by the status: 403, 400/404/410,
-#     502/503/504, the rest). The whole page loads again, FileErrorNotice (course-page.tsx:230, session-page.tsx:338) reads the parameter once,
+#     502/503/504, the rest). The whole page loads again, FileErrorNotice (course-page.tsx:238, session-page.tsx:338) reads the parameter once,
 #     takes it off the address with history.replaceState and raises one Sonner error toast "Dosya indirilemedi" with the reason under it, which
 #     stays until it is closed.
 #   - Where the page the 303 comes back to is NOT the page it left. A 403 means the caller may no longer read the course's content, so the course
@@ -176,9 +176,9 @@ states:
       A step with no screen: the talebe is on the course page with a seat (courseSeat), on a celse's page with a seat (celseSeat), or a person who
       may not read the content is on the course page (courseNames). Nothing is drawn here; the pages are.
     always:
-      - { guard: "view == 'courseSeat'", target: courseListed, source: "apps/tedris/app/courses/[courseId]/page.tsx:86" }
+      - { guard: "view == 'courseSeat'", target: courseListed, source: "apps/tedris/app/courses/[courseId]/page.tsx:90" }
       - { guard: "view == 'celseSeat'", target: celseListed, source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:46" }
-      - { target: namesOnly, effect: [readsNamesOnly], source: "apps/tedris/app/courses/[courseId]/page.tsx:86" }
+      - { target: namesOnly, effect: [readsNamesOnly], source: "apps/tedris/app/courses/[courseId]/page.tsx:90" }
 
   courseListed:
     title: The course page, with the card of its resources
@@ -305,7 +305,7 @@ states:
       A step with no screen: the person is on the page they followed the link from. After a saved file it is the page that never left; after a
       303 it is that page loaded again, with the toast of the reason.
     always:
-      - { guard: onCourse, target: courseListed, source: apps/tedris/features/courses/components/course-page.tsx:230 }
+      - { guard: onCourse, target: courseListed, source: apps/tedris/features/courses/components/course-page.tsx:238 }
       - { target: celseListed, source: apps/tedris/features/courses/components/session-page.tsx:338 }
 
   sent_to_sign_in:

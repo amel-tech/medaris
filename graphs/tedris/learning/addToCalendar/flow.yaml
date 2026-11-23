@@ -176,7 +176,7 @@ states:
     title: The course page, with the calendar button on the enrolled card
     by: human
     goal: true
-    source: apps/tedris/features/courses/components/course-aside.tsx:295
+    source: apps/tedris/features/courses/components/course-aside.tsx:294
     description: >-
       The enrolled card offers its next celse ("Derse devam et") and, under it, the outlined full-width button "Takvime ekle"
       of another component than the other two places' (add-to-calendar.tsx, Radix; ADDCAL-1). It is not drawn while the next

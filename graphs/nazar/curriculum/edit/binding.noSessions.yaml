@@ -6,7 +6,7 @@
 # would be the one `--cover transitions` takes. The walk makes its own course (tag cur-edit-ns) and gives DERS_NAZIR a post in it with `course.edit`
 # alone, as the hoca does on Ders nazırları (helpers/course-nazir-grants.mjs); `teardown` removes the course and the post with it. Not verified:
 # that a save by a holder of course.edit alone, which carries the stored celses unchanged and a new week with no celse, is accepted without session.manage
-# (the API's note says only a changed session needs it, apps/tedrisat/src/course/course.service.ts:1095).
+# (the API's note says only a changed session needs it, apps/tedrisat/src/course/course.service.ts:1110).
 schema: delurio-graph/0
 kind: binding
 extends: binding.common.yaml

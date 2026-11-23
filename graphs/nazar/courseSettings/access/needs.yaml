@@ -61,8 +61,8 @@ needs:
       - node: approvalBox
       - node: sampleField
       - node: zoneField
-      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:244
-      - source: apps/nazar/features/course-settings/controls.ts:29
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:260
+      - source: apps/nazar/features/course-settings/controls.ts:30
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "the müderris finds every control open, and Kaydet waiting for a change"
       - test: apps/nazar/test/course-settings-form.spec.tsx
@@ -96,7 +96,7 @@ needs:
       - node: inPersonDesc
       - node: closedBox
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:228
       - test: apps/nazar/test/course-settings-form.spec.tsx
     note: "apps/nazar/test/course-settings-form.spec.tsx: the box is pinned here only; no e2e spec touches it (CSA-3)"
 
@@ -160,8 +160,8 @@ needs:
       - node: closedLockedDesc
       - node: approvalBoxLocked
       - node: approvalLockedDesc
-      - source: apps/nazar/features/course-settings/controls.ts:29
-      - source: apps/nazar/features/course-settings/course-settings.ts:83
+      - source: apps/nazar/features/course-settings/controls.ts:30
+      - source: apps/nazar/features/course-settings/course-settings.ts:91
       - test: apps/nazar/test/course-settings-form.spec.tsx
     note: |-
       Also drawn as the assertion a-locked-page-sends-nothing.
@@ -177,7 +177,7 @@ needs:
       - node: toastPolicy
       - state: dirty
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nazar/features/course-settings/course-settings.ts:135
+      - source: apps/nazar/features/course-settings/course-settings.ts:148
       - test: apps/nazar/test/course-settings-form.spec.tsx
     note: "apps/nazar/test/course-settings-form.spec.tsx: \"words a policy's lock and a refusal from the code\"; no e2e spec"
 
@@ -241,3 +241,23 @@ needs:
     note: >-
       Drawn on the nodes submit, cancel, accessForm and accessTitle, which the code has: they are not evidence, so that a replay
       still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-unlisted-course-opens-by-its-link
+    need: >-
+      The course team can keep a course off every list and search, so that only the signed-in people given its link open it; while it
+      is unlisted every enrolment waits for approval, and the approval box says so and cannot be switched off.
+    evidence:
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:175
+      - source: apps/tedrisat/src/course/course.service.ts:988
+      - test: apps/nazar/test/course-settings.spec.ts
+        name: "sends 'Listelenmeyen ders' when it changes, either way (MDRS-248)"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is listed and unlisted by its köşk manager, and by no stranger"
+    missing: >-
+      not drawn yet: the box "Listelenmeyen ders" (MDRS-248, #401) is in the form and in no state or node of this flow, nor is what it does to the approval box; the code exists and the specs named cover it
+    note: |-
+      Drawn on the states of the form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      The box is course-settings-form.tsx:175-184, open whenever the form is (controls.ts: no policy holds it); while it is ticked
+      the approval box is ticked and shut and says "Listelenmeyen derste her kayıt onaya düşer; ders listelenene kadar bu ayar
+      değiştirilemez." (:212-224). The API asks course.settings for the change (course.service.ts:988-993). Not walked.

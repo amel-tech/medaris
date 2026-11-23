@@ -30,7 +30,7 @@
 #   404 COURSE_NOT_FOUND    a course of a hidden köşk answers 404 before the permission is asked, to everyone but a holder of course.hide or
 #                           platform.kosk_edit (libs/common/src/authz/authz.guard.ts:89, closure at apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:106)
 #   400 VALIDATION_ERROR    libs/common/src/pipes/validation.pipe.ts:52 (on every route with a body)
-# S1-S4 of domain.yaml are reached here only through getDetail (course.service.ts:306, 321, 348, 362); S13 (SELF_GRANT_REFUSED),
+# S1-S4 of domain.yaml are reached here only through getDetail (course.service.ts:306, 328, 352, 366); S13 (SELF_GRANT_REFUSED),
 # S6-S8 (KEYCLOAK_ADMIN_UNAVAILABLE) and S19 outside updateLesson and cancelLesson are not reachable from this area.
 # The session writes bump `courses.version`, so a whole-course save loaded before them is refused; only updateLesson and
 # cancelLesson carry the version they saw. Creating a lesson, updating one and creating a batch write no audit row of their own,
@@ -79,12 +79,12 @@ actions:
         status: 404
         note: >-
           no such lesson; or the course is a draft, hidden, or of a hidden köşk to this caller (every CourseNotFoundError of getDetail is
-          rethrown as this, course.service.ts:630); or the lesson is archived (the detail carries live lessons only, :639)
-        source: apps/tedrisat/src/course/course.service.ts:623
+          rethrown as this, course.service.ts:634); or the lesson is archived (the detail carries live lessons only, :643)
+        source: apps/tedrisat/src/course/course.service.ts:627
       LESSON_NOT_SCHEDULED:
         status: 409
         note: the lesson has no scheduled_at
-        source: apps/tedrisat/src/course/course.service.ts:640
+        source: apps/tedrisat/src/course/course.service.ts:644
     sideEffects: []
     source: apps/tedrisat/src/course/lesson.controller.ts:165
 
@@ -149,7 +149,7 @@ actions:
       LESSON_NOT_FOUND:
         status: 404
         note: the id is not a LIVE, non-archived lesson of this course (a video, document or quiz lesson, an archived one, one of another course)
-        source: apps/tedrisat/src/course/course.service.ts:688
+        source: apps/tedrisat/src/course/course.service.ts:692
     sideEffects:
       - "audit:course.content_read (only when the caller holds course.view_details and is neither a müderris of the course nor an enrolled talebe, a talebe who also holds a role in the chain and the başnazım included; written before the body is returned, so a failed write fails the read)"
     source: apps/tedrisat/src/course/lesson.controller.ts:230
@@ -268,18 +268,18 @@ actions:
         source: libs/common/src/pipes/validation.pipe.ts:52
       RESOURCE_URL_REQUIRED:
         status: 400
-        note: a resource row has no url (RESOURCE_IS_FILE, course.repository.ts:950, cannot fire here, the lesson has no stored row yet)
-        source: apps/tedrisat/src/course/course.repository.ts:954
+        note: a resource row has no url (RESOURCE_IS_FILE, course.repository.ts:953, cannot fire here, the lesson has no stored row yet)
+        source: apps/tedrisat/src/course/course.repository.ts:957
       COURSE_NOT_FOUND:
         status: 404
         note: >-
           no such course (the role resolver for anyone else, the repository for the başnazım); or a course of a hidden köşk to a caller
           who may not open it
-        source: apps/tedrisat/src/course/course.repository.ts:837
+        source: apps/tedrisat/src/course/course.repository.ts:840
       WEEK_NOT_FOUND:
         status: 404
         note: the week is archived or not in this course
-        source: apps/tedrisat/src/course/course.repository.ts:857
+        source: apps/tedrisat/src/course/course.repository.ts:860
     sideEffects:
       - "kicks sweepLessonInvitations (calendar mail to the ENROLLED talebe)"
       - "no notification: SESSION_ADDED is declared and has no producer"
@@ -340,11 +340,11 @@ actions:
           context.problem is one of INVALID_DATE (not a calendar day), END_OR_COUNT_REQUIRED (both or neither of endDate and count),
           END_BEFORE_START, RANGE_TOO_LONG (more than 366 days, or count sessions that do not fit in 366 days), TOO_MANY_SESSIONS (more
           than 200), NO_SESSIONS (no listed weekday falls in the range)
-        source: apps/tedrisat/src/course/course.service.ts:1432
+        source: apps/tedrisat/src/course/course.service.ts:1447
       COURSE_NOT_FOUND:
         status: 404
         note: the course has no time zone row, so it does not exist; or it is of a hidden köşk to a caller who may not open it
-        source: apps/tedrisat/src/course/course.service.ts:1373
+        source: apps/tedrisat/src/course/course.service.ts:1388
     sideEffects: []
     source: apps/tedrisat/src/course/lesson.controller.ts:300
 
@@ -422,15 +422,15 @@ actions:
       INVALID_SESSION_PATTERN:
         status: 400
         note: as in previewSessionBatch; raised inside the transaction, so the version bump is rolled back
-        source: apps/tedrisat/src/course/course.service.ts:1432
+        source: apps/tedrisat/src/course/course.service.ts:1447
       EXAM_ONE_SESSION:
         status: 400
         note: an exam was sent and the pattern gives other than one session ("An exam is one session; the pattern gives N"); context.count
-        source: apps/tedrisat/src/course/course.service.ts:1403
+        source: apps/tedrisat/src/course/course.service.ts:1418
       COURSE_NOT_FOUND:
         status: 404
         note: no such course (the role resolver for anyone else, the repository for the başnazım), or a course of a hidden köşk to a caller who may not open it
-        source: apps/tedrisat/src/course/course.repository.ts:837
+        source: apps/tedrisat/src/course/course.repository.ts:840
     sideEffects:
       - "notification:EXAM_SCHEDULED (with an exam: to the ENROLLED seats except the actor, per session, not for a session already over)"
       - "kicks sweepLessonInvitations (calendar mail to the ENROLLED talebe)"
@@ -489,15 +489,15 @@ actions:
       RESOURCE_IS_FILE:
         status: 400
         note: a url was sent for a row that is a stored file
-        source: apps/tedrisat/src/course/course.repository.ts:950
+        source: apps/tedrisat/src/course/course.repository.ts:953
       RESOURCE_URL_REQUIRED:
         status: 400
         note: a listed row that is no stored row of this lesson has no url
-        source: apps/tedrisat/src/course/course.repository.ts:954
+        source: apps/tedrisat/src/course/course.repository.ts:957
       LESSON_NOT_FOUND:
         status: 404
         note: the id is not a uuid or names no lesson (resolver, lesson.controller.ts:91 and :95); or the lesson is archived (the write needs a live one)
-        source: apps/tedrisat/src/course/course.repository.ts:880
+        source: apps/tedrisat/src/course/course.repository.ts:883
       COURSE_NOT_FOUND:
         status: 404
         note: the lesson's course is in a hidden köşk and the caller may not open it
@@ -505,11 +505,11 @@ actions:
       WEEK_NOT_FOUND:
         status: 404
         note: the target weekId is not a live week of this course
-        source: apps/tedrisat/src/course/course.repository.ts:857
+        source: apps/tedrisat/src/course/course.repository.ts:860
       COURSE_VERSION_CONFLICT:
         status: 409
         note: version is not the course's current one ("Course X has changed since version N was loaded")
-        source: apps/tedrisat/src/course/course.repository.ts:834
+        source: apps/tedrisat/src/course/course.repository.ts:837
     sideEffects:
       - "notification:SESSION_RESCHEDULED (to the ENROLLED seats except the actor, only when the start moved between two non-null times, the session is not cancelled and not over)"
       - "audit:resource.file_delete (one per stored file the new resource list drops)"
@@ -557,11 +557,11 @@ actions:
         note: >-
           the make-up is the session itself (:1391), or not a non-archived LIVE session of the same course (:1410), or is cancelled
           (:1417); the message says which
-        source: apps/tedrisat/src/course/course.repository.ts:1391
+        source: apps/tedrisat/src/course/course.repository.ts:1394
       LESSON_NOT_FOUND:
         status: 404
         note: the id is not a uuid or names no lesson (resolver); or the lesson is archived
-        source: apps/tedrisat/src/course/course.repository.ts:880
+        source: apps/tedrisat/src/course/course.repository.ts:883
       COURSE_NOT_FOUND:
         status: 404
         note: the lesson's course is in a hidden köşk and the caller may not open it
@@ -569,15 +569,15 @@ actions:
       COURSE_VERSION_CONFLICT:
         status: 409
         note: version is not the course's current one; checked before the make-up rules
-        source: apps/tedrisat/src/course/course.repository.ts:834
+        source: apps/tedrisat/src/course/course.repository.ts:837
       LESSON_ALREADY_CANCELLED:
         status: 409
         note: the session is cancelled already; checked first when a make-up is named (:1348), and by the update that matches no un-cancelled row (:1362)
-        source: apps/tedrisat/src/course/course.repository.ts:1348
+        source: apps/tedrisat/src/course/course.repository.ts:1351
       LESSON_REPLACEMENT_TAKEN:
         status: 409
         note: the named make-up already makes up for another cancelled session
-        source: apps/tedrisat/src/course/course.repository.ts:1429
+        source: apps/tedrisat/src/course/course.repository.ts:1432
     sideEffects:
       - "audit:lesson.cancel (details courseId, reason, replacementLessonId)"
       - "notification:SESSION_CANCELLED (to the ENROLLED seats except the actor, params sessionAt and reason; only for a session with a time that is not over)"
@@ -610,7 +610,7 @@ actions:
       LESSON_NOT_FOUND:
         status: 404
         note: the id is not a uuid or names no lesson (resolver); or the lesson is archived already (the write needs a live one, :880, and a concurrent hide, :1639)
-        source: apps/tedrisat/src/course/course.repository.ts:880
+        source: apps/tedrisat/src/course/course.repository.ts:883
       COURSE_NOT_FOUND:
         status: 404
         note: the lesson's course is in a hidden köşk and the caller may not open it
@@ -648,11 +648,11 @@ actions:
       COURSE_NOT_FOUND:
         status: 404
         note: no such course (the role resolver for anyone else, the repository for the başnazım), or a course of a hidden köşk to a caller who may not open it
-        source: apps/tedrisat/src/course/course.repository.ts:837
+        source: apps/tedrisat/src/course/course.repository.ts:840
       WEEK_NOT_FOUND:
         status: 404
         note: the week is hidden already or belongs to another course
-        source: apps/tedrisat/src/course/course.repository.ts:1691
+        source: apps/tedrisat/src/course/course.repository.ts:1694
     sideEffects:
       - "audit:week.hide (entity week; details title, level, courseId, koskId, madrasahId, and sessions, the count hidden)"
       - "kicks sweepLessonInvitations (CANCEL mails for the hidden sessions)"
@@ -1225,8 +1225,8 @@ actions:
         note: >-
           the id is not a uuid or names no lesson (resolver); the session is hidden, or of a course the caller may not see or write
           (findWritableLessonCourse turns every CourseNotFound into this, :545, and a hidden session is :549); or it is hidden under
-          the write (course.repository.ts:880)
-        source: apps/tedrisat/src/course/course.service.ts:549
+          the write (course.repository.ts:883)
+        source: apps/tedrisat/src/course/course.service.ts:553
       COURSE_NOT_FOUND:
         status: 404
         note: the lesson's course is in a hidden köşk and the caller may not open it
@@ -1276,7 +1276,7 @@ actions:
       LESSON_NOT_FOUND:
         status: 404
         note: >-
-          the id is not a uuid or names no lesson (resolver, and course.service.ts:512); the course is a draft, hidden or of a hidden
+          the id is not a uuid or names no lesson (resolver, and course.service.ts:516); the course is a draft, hidden or of a hidden
           köşk to a caller who may not see it (turned from CourseNotFound, :517); or the session is hidden (resource-file.service.ts:140)
         source: apps/tedrisat/src/course/resource-file.service.ts:140
       COURSE_NOT_FOUND:
@@ -1424,13 +1424,13 @@ invariants:
       Cancelling a session sets cancelled_at, cancel_reason and replacement_lesson_id and writes the audit row lesson.cancel; the
       session stays in the programme, its meeting link is no longer sent, and a cancelled session takes no live stream link and no
       pasted recording (409 LESSON_CANCELLED). A second cancel is 409 LESSON_ALREADY_CANCELLED.
-    source: apps/tedrisat/src/course/course.repository.ts:1330
+    source: apps/tedrisat/src/course/course.repository.ts:1333
 
   - id: session-make-up-rules
     rule: >-
       The make-up of a cancelled session is a non-archived LIVE session of the same course, not the session itself, not cancelled,
       and the make-up of at most one cancelled session; checked under the course row's lock, after the version check.
-    source: apps/tedrisat/src/course/course.repository.ts:1384
+    source: apps/tedrisat/src/course/course.repository.ts:1387
 
   - id: session-hide-never-deletes
     rule: >-
@@ -1438,7 +1438,7 @@ invariants:
       sessions at one instant with one stamp. The hider's level, the highest rung of COURSE_HIDE_LADDER the caller holds, decides who
       may restore it: the same level or above. Everything attached (recordings, resources, homework) is kept; the real delete is the
       başnazım's purge.
-    source: apps/tedrisat/src/course/course.repository.ts:1619
+    source: apps/tedrisat/src/course/course.repository.ts:1622
 
   - id: session-writes-bump-the-version
     rule: >-
@@ -1447,7 +1447,7 @@ invariants:
       cancelLesson carry the version they saw and are refused 409 COURSE_VERSION_CONFLICT when it is stale; the others bump with no
       expected version. The live stream, the recordings and the release time do not bump it, because they are no part of the course
       document.
-    source: apps/tedrisat/src/course/course.repository.ts:806
+    source: apps/tedrisat/src/course/course.repository.ts:809
 
   - id: session-batch-pattern-limits
     rule: >-
@@ -1477,7 +1477,7 @@ invariants:
       and a failed write fails the read. The audit keys this area writes are session.hide, week.hide, lesson.cancel,
       lesson.live_stream_set, lesson.live_stream_clear, lesson.recording_availability_set, recording.upload_start, recording.add,
       recording.update, recording.video_delete, resource.file_upload, resource.file_delete, course.content_read and scope.passive_open.
-    source: apps/tedrisat/src/course/course.service.ts:411
+    source: apps/tedrisat/src/course/course.service.ts:415
 
   # Recordings
   - id: recording-one-per-session
@@ -1485,13 +1485,13 @@ invariants:
       A session has at most one recording (a unique index on lesson_recordings.lesson_id) and a Bunny video belongs to at most one
       recording (a unique index on bunny_video_id). A second recording is 409 RECORDING_EXISTS unless the existing one is a FAILED
       Bunny upload (a paste may replace it) or a link, a FAILED upload or, with replaceVideo, any Bunny upload (an upload may replace it).
-    source: apps/tedrisat/src/database/schema/course.schema.ts:448
+    source: apps/tedrisat/src/database/schema/course.schema.ts:454
 
   - id: recording-provider-columns
     rule: >-
       A BUNNY recording carries bunny_video_id and upload_expires_at and no url; every other provider carries a url and no video id
       (and a PROCESSING row may have neither), by the CHECK lesson_recordings_provider_columns.
-    source: apps/tedrisat/src/database/schema/course.schema.ts:450
+    source: apps/tedrisat/src/database/schema/course.schema.ts:456
 
   - id: recording-status-machine
     rule: >-
@@ -1514,7 +1514,7 @@ invariants:
       An ENROLLED recording is for content readers. A PUBLIC one is also for everyone else, token or not, unless the course is closed
       (is_closed), the platform policy RECORDINGS_NEVER_PUBLIC is on, or the köşk has recordings_never_public; a pending, removed or
       barred talebe counts as everyone else.
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
 
   - id: recording-public-honours-medrese-policy
     rule: >-
@@ -1527,7 +1527,7 @@ invariants:
       reads only is_closed, the platform policy and the köşk flag, so a PUBLIC recording of a medrese course is still shown to
       visitors. The schema comment says the other two medrese policies "are kept for the courses and recordings that will read them".
       setting.recordings_public is closed by the policy in the engine and no handler asks it.
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
 
   - id: recording-bunny-link-own-library
     rule: >-
@@ -1565,8 +1565,8 @@ invariants:
     finding: cancel-no-type-check
     note: >-
       cancelLesson has no lesson-type check, so a VIDEO, DOCUMENT or QUIZ lesson can be cancelled, though it appears nowhere as a
-      session (course.repository.ts:1330).
-    source: apps/tedrisat/src/course/course.repository.ts:1330
+      session (course.repository.ts:1333).
+    source: apps/tedrisat/src/course/course.repository.ts:1333
 
   - id: session-hide-audit-key-is-documented
     rule: The audit action DELETE /lessons/{id} writes is the one its published description names.
@@ -1593,7 +1593,7 @@ invariants:
       lesson_resources_link_or_file; course_resources.url may also be null on legacy rows). A stored file keeps its file on a whole-list
       save and refuses a url (400 RESOURCE_IS_FILE); a new row in a list needs a url (files come only through the upload routes); a
       row left out of a list is deleted and its object queued.
-    source: apps/tedrisat/src/database/schema/course.schema.ts:285
+    source: apps/tedrisat/src/database/schema/course.schema.ts:291
 
   - id: resource-upload-limits
     rule: >-

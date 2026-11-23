@@ -142,7 +142,7 @@ needs:
       - node: needsEditNote
       - node: formSave
       - node: hocaSave
-      - source: apps/nazar/features/course-settings/controls.ts:29
+      - source: apps/nazar/features/course-settings/controls.ts:30
       - source: apps/tedrisat/src/course/course.controller.ts:300
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "a ders nazırı with session.manage alone may change the sample session, and nothing else"

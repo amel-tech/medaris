@@ -2,7 +2,8 @@
 # for an entry that needs an item (`data: true`), because the item is the walk's to choose, so this file extends it and names the course
 # by its title: the card's link holds it. Derslerim is the way a talebe would come (`myCourses->course the course card's title`, which
 # tedris.nav gave its own key after two entries shared these ends; its locator would be a.mds-card__link[href="/courses/{course}"]), but this
-# walk comes in by the köşk's page, as tedris.course.updateProgress does, and was not moved.
+# walk comes in by the köşk's page, as tedris.course.updateProgress did until it was retired on 23 Nov 2026 (MDRS-248), and was not moved:
+# it is now the one walk that enters through tedris.nav's kosk->course.
 schema: delurio-graph/0
 kind: binding
 nav: tedris.nav

@@ -21,7 +21,7 @@ needs:
       - node: examHeading
       - node: examBadge
       - source: apps/tedrisat/src/course/lesson.controller.ts:329
-      - source: apps/tedrisat/src/course/course.service.ts:1386
+      - source: apps/tedrisat/src/course/course.service.ts:1401
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "the müderris plans an exam with Sınav in the same flow"
     note: >-

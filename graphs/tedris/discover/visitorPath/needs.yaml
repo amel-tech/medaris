@@ -62,7 +62,7 @@ needs:
     evidence:
       - state: handed_over.sign_in
       - source: apps/tedris/lib/invite-hrefs.ts:10
-      - source: apps/tedris/features/courses/components/course-aside.tsx:352
+      - source: apps/tedris/features/courses/components/course-aside.tsx:348
       - test: apps/tedris/e2e/anonymous.e2e.ts
         name: "invites the visitor to sign in or register instead of offering a köşk application"
       - test: apps/tedris/e2e/anonymous.e2e.ts
@@ -80,7 +80,7 @@ needs:
     evidence:
       - state: handed_over.register
       - source: apps/tedris/lib/invite-hrefs.ts:11
-      - source: apps/tedris/features/courses/components/course-aside.tsx:358
+      - source: apps/tedris/features/courses/components/course-aside.tsx:354
       - test: apps/tedris/e2e/anonymous.e2e.ts
         name: "sends 'kayıt ol' to Keycloak's registration form"
     note: "anonymous.e2e.ts anonymous#7 (it awaits only /realms/, so a login form passes it too: E2E-P-06)"
@@ -101,8 +101,8 @@ needs:
       why, and what stays out of the page: the meeting links and the closed celses' agenda and source.
     evidence:
       - state: course
-      - source: apps/tedris/features/courses/components/course-programme.tsx:199
-      - source: apps/tedris/features/courses/components/course-aside.tsx:195
+      - source: apps/tedris/features/courses/components/course-programme.tsx:243
+      - source: apps/tedris/features/courses/components/course-aside.tsx:194
       - test: apps/tedris/e2e/course.e2e.ts
         name: "sees the page, the programme with its locked weeks, and is asked to sign in"
       - scenario: fullIntro
@@ -115,7 +115,7 @@ needs:
     evidence:
       - state: course
       - state: recordings
-      - source: apps/tedris/features/courses/components/course-page.tsx:498
+      - source: apps/tedris/features/courses/components/course-page.tsx:507
       - source: apps/tedrisat/src/course/lesson.controller.ts:355
       - test: apps/tedris/e2e/course.e2e.ts
         name: "shows the sample session with its agenda and source, and hides the closed one"
@@ -184,3 +184,23 @@ needs:
     note: >-
       course.e2e.ts course#1 (a10), course#2 (a4, a5): they read the page HTML and the API JSON; this graph cannot, so the replay
       does not carry them
+
+  - id: an-unlisted-course-opens-by-its-link
+    need: >-
+      A course its team keeps off every list can be shared by its link: a visitor who follows it is asked to sign in and brought back
+      to it, and nothing on the way says whether such a course exists.
+    evidence:
+      - source: apps/tedris/features/courses/load-course.ts:31
+      - source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:190
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "sends a signed-out visitor to sign in and back, as an unlisted course needs"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "answers a caller with no token as not found, as a missing course"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "opens to a signed-in caller by its link, still without content"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state of this flow, which reaches a course only from a list; the code exists and the specs named cover it
+    note: |-
+      The course segment's layout sends the visitor to /auth/signin with the course as callbackUrl (loadCourseOrLeave,
+      load-course.ts:26-34) because the API answers a caller with no token as for a missing course (the anonymous resolver,
+      tedrisat-role-resolver.service.ts:190). Drawing it needs an entry by address, which this flow has not got. Not walked.

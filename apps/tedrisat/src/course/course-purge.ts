@@ -34,6 +34,7 @@ import {
   submissionFiles,
   submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
+import { lessonViews } from "../database/schema/lesson-view.schema";
 import {
   courseExamTopics,
   courseZerothOptions,
@@ -124,6 +125,9 @@ export async function purgeCourses(
     await tx
       .delete(lessonNotes)
       .where(inArray(lessonNotes.lessonId, lessonIds));
+    await tx
+      .delete(lessonViews)
+      .where(inArray(lessonViews.lessonId, lessonIds));
     await tx
       .delete(lessonQuestions)
       .where(inArray(lessonQuestions.lessonId, lessonIds));

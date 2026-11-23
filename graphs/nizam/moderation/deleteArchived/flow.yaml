@@ -70,7 +70,7 @@ decisions:
   D1:
     question: >-
       Should the dialog count everything that goes with the item? The count lists weeks, celses and talebe records for a course and
-      never a recording (the API's `recordings` is a constant 0, archive.repository.ts:678), a note, a question, a homework hand-in
+      never a recording (the API's `recordings` is a constant 0, archive.repository.ts:679), a note, a question, a homework hand-in
       with its file, an exam or a resource, although the sentence above it says "ve ona bağlı her şey" goes (PURGE-1).
     recommend: >-
       Count each kind that the purge deletes, and say in the sentence which kinds are not counted until they are; the audit row
@@ -372,7 +372,7 @@ assertions:
   - id: a-blocked-week-is-never-deleted
     never: "toast == 'deleted' and item == 'blockedWeek'"
     say: A hidden week that holds a recording is never reported deleted, because its purge fails (MDRS-244).
-    source: apps/tedrisat/src/archive/archive.repository.ts:747
+    source: apps/tedrisat/src/archive/archive.repository.ts:748
   - id: an-item-someone-else-took-is-never-reported-deleted
     never: "toast == 'deleted' and row == 'gone'"
     say: The success toast never stands for an item that was gone before the call.

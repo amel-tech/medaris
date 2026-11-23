@@ -80,14 +80,7 @@
     "meetingNotAdded": "Toplantı bağlantısı henüz eklenmedi.",
     "inPersonBadge": "Yüz yüze",
     "progressLabel": "Ders ilerlemen",
-    "progressNote": "İlerlemeni sen girersin; dersi tamamladığını ders kadrosu onaylar.",
-    "updateProgress": "İlerlemeni güncelle",
-    "progressField": "İlerleme (yüzde)",
-    "progressHelp": "0 ile 100 arasında bir tam sayı.",
-    "progressInvalid": "0 ile 100 arasında bir tam sayı yaz.",
-    "progressSave": "Kaydet",
-    "progressSaved": "İlerlemen güncellendi.",
-    "progressCancel": "Vazgeç",
+    "progressNote": "İzlediğin celselerden kendiliğinden hesaplanır; dersi tamamladığını ders kadrosu onaylar.",
     "statusInProgress": "Devam ediyor",
     "statusCompleted": "Tamamlandı",
     "revokedTitle": "Bu derse erişimin kaldırıldı.",
@@ -207,7 +200,10 @@
     "gradesFull": "Tam",
     "gradesIncomplete": "Eksik",
     "gradesNotRecited": "Vermedi",
-    "gradesWeek": "{week}. hafta"
+    "gradesWeek": "{week}. hafta",
+    "watchedBadge": "İzlendi",
+    "watchedPercent": "%{percent} izlendi",
+    "watchedUntil": "Kaldığın yer {time}"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."

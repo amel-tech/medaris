@@ -81,7 +81,7 @@ needs:
       questions, the talebe's homework with its files, the exams and the course's resources and appointments, not only the weeks,
       celses and talebe records. Where a kind is not counted, the dialog says which.
     evidence:
-      - source: apps/tedrisat/src/archive/archive.repository.ts:629
+      - source: apps/tedrisat/src/archive/archive.repository.ts:630
     missing: no Linear issue; PURGE-1, ui.yaml `rules`; the API's `recordings` is a constant 0; code exists in part
     note: >-
       Drawn on the state confirming, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
@@ -109,7 +109,7 @@ needs:
       - state: deleting
       - state: settled
       - source: apps/tedrisat/src/archive/archive.controller.ts:284
-      - source: apps/tedrisat/src/archive/archive.repository.ts:691
+      - source: apps/tedrisat/src/archive/archive.repository.ts:692
       - test: apps/nizam/e2e/archive.e2e.ts
         name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
 
@@ -171,7 +171,7 @@ needs:
     need: >-
       A hidden week or session that holds a recording is deleted like one that does not, the recording with it, as a course's is.
     evidence:
-      - source: apps/tedrisat/src/archive/archive.repository.ts:747
+      - source: apps/tedrisat/src/archive/archive.repository.ts:748
     missing: MDRS-244; code exists in part
     note: >-
       Drawn on the state deleting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13

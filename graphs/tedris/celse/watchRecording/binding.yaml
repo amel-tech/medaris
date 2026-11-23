@@ -32,6 +32,10 @@
 #     policy "Ders kayıtları herkese açılamaz" on (needs a medrese course of its own: WATCH-3 is read from the code), lockedShows publicSampleDespiteMedreseRule.
 #   - OPEN_HOST (the new tab of "Ders kaydını aç"): bound by nothing, the replay presses a link and does not follow a tab.
 #   - The phone layout (CLS-06): the replay's window is 1280 px wide.
+#   - The counter (MDRS-248, added to the graph on 23 Nov 2026): REPORT and RESUME are bound by nothing, and the walk's data records no watch,
+#     so every scenario gives `seen: none` and no line is drawn under the player. A report needs a video that plays, which the stack's browser
+#     does not do with YouTube; the line could be walked by writing applicantE's record first (PUT /lessons/{id}/view as the talebe), which no
+#     scenario does yet. Bunny is not on the stack at all (bunny-watching-is-recorded).
 schema: delurio-graph/0
 kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml
@@ -42,7 +46,7 @@ data:
 
 scenarios:
   talebeOpen:
-    given: { read: ok, viewer: talebe, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: talebe, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing, seen: none }
     as: applicantE
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}'
     samples: { title: Celse 1, recording: Birinci okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
@@ -59,7 +63,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
       - run: [node, helpers/notify.mjs, applicantE, clear]
   teamHeld:
-    given: { read: ok, viewer: team, entry: celse, recording: held, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: team, entry: celse, recording: held, host: youtube, stream: none, lockedShows: nothing, seen: none }
     as: muderris
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l3}'
     samples: { title: Celse 3, recording: Üçüncü okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
@@ -72,7 +76,7 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, watchrec]
   talebeHeld:
-    given: { read: ok, viewer: talebe, entry: direct, recording: held, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: talebe, entry: direct, recording: held, host: youtube, stream: none, lockedShows: nothing, seen: none }
     as: applicantE
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l3}/izle'
     samples: { title: Celse 3, recording: Üçüncü okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
@@ -89,7 +93,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
       - run: [node, helpers/notify.mjs, applicantE, clear]
   talebePreparing:
-    given: { read: ok, viewer: talebe, entry: celse, recording: preparing, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: talebe, entry: celse, recording: preparing, host: youtube, stream: none, lockedShows: nothing, seen: none }
     as: applicantE
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l4}'
     samples: { title: Celse 4, recording: Dördüncü okuma kaydı, course: Deneme dersi watchrec, week: '2', length: 60 dk }
@@ -106,7 +110,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
       - run: [node, helpers/notify.mjs, applicantE, clear]
   talebeLink:
-    given: { read: ok, viewer: talebe, entry: direct, recording: open, host: other, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: talebe, entry: direct, recording: open, host: other, stream: none, lockedShows: nothing, seen: none }
     as: applicantE
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l2}/izle'
     samples: { title: Celse 2, recording: İkinci okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
@@ -123,7 +127,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
       - run: [node, helpers/notify.mjs, applicantE, clear]
   outsiderSample:
-    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: publicSample }
+    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: publicSample, seen: none }
     as: applicantF
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l6}'
     samples: { title: Celse 6, recording: Altıncı okuma kaydı, course: Deneme dersi watchrec, week: '2', length: 60 dk }
@@ -136,7 +140,7 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, watchrec]
   outsider:
-    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing, seen: none }
     as: applicantF
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}'
     vars: { who: applicantF, celse: l1, answer: no-recording url=no }
@@ -148,7 +152,7 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, watchrec]
   visitor:
-    given: { read: ok, viewer: visitor, entry: direct, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    given: { read: ok, viewer: visitor, entry: direct, recording: open, host: youtube, stream: none, lockedShows: nothing, seen: none }
     open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}/izle'
     vars: { who: visitor, celse: l1, answer: no-recording url=no }
     setup:

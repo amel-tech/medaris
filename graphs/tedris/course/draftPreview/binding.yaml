@@ -1,5 +1,6 @@
 # tedris.course.draftPreview on the local stack: a draft course's page in tedris-web (:4000) as the seeded müderris (the preview, the
-# main story), as the same müderris when no celse has a time, as a talebe (the not-found page and its way home) and as a visitor.
+# main story), as the same müderris when no celse has a time, as a talebe (the not-found page and its way home) and as a visitor (sent
+# to sign in since MDRS-248's unlisted course, #401).
 #   node apps/engine/src/cli.ts replay graphs/tedris/course/draftPreview \
 #     --bind graphs/tedris/course/draftPreview/binding.yaml --absent --out <dir>          (the main story: scenario editorDated)
 #   ... --to home_opened         (the not-found page and "Ana sayfaya dön" for a member: scenario memberNotFound)
@@ -26,9 +27,9 @@
 # not read a navigation's status), a draft opened by a ders nazırı who holds course.view_unpublished or by the başnazım (the same page;
 # only the müderris was walked), the preview that throws (tedris.shell.systemPages), and NAVIGATE (the walks end before it).
 # Walked on 15 Nov 2026, with --absent, three runs and all three passed first time: the main story (editorDated), --to home_opened
-# (memberNotFound: the not-found page, then "Ana sayfaya dön" to /home) and --to previewUnscheduled (editorUndated). Not walked: visitorNotFound
-# (its locators were counted in a browser outside the replay: the region, the heading, the sentence and the link, one each, and the link ends on
-# /discover) and NAVIGATE. The başnazım and the köşk's nazım were opened in a browser outside the replay too (the same preview).
+# (memberNotFound: the not-found page, then "Ana sayfaya dön" to /home) and --to previewUnscheduled (editorUndated). Not walked:
+# visitorAskedToSignIn (was visitorNotFound, whose not-found page and link to /discover were counted in a browser on 15 Nov 2026, before
+# #401 sent a visitor to sign in instead; --to sign_in_asked would walk it) and NAVIGATE. The başnazım and the köşk's nazım were opened in a browser outside the replay too (the same preview).
 schema: delurio-graph/0
 kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml
@@ -91,8 +92,9 @@ scenarios:
       - run: [node, helpers/draft-course.mjs, remove]
         expect: 'draft-course remove'
 
-  # Nobody is signed in: the same page (e2e course#3 asserts its status). NOT walked in this phase.
-  visitorNotFound:
+  # Nobody is signed in: the course segment sends them to sign in and back (load-course.ts:31-32). NOT walked. e2e course#3 still asserts
+  # the 404 a visitor got before #401.
+  visitorAskedToSignIn:
     given: { viewer: visitor, draft: dated }
     open: '{tedris}/courses/{sp.draft}'
     setup:
@@ -112,8 +114,8 @@ states:
   # Nazar's landing sends the person on to a course of theirs once it has loaded
   nazar_opened: { url: '{nazar}/**' }
   home_opened: { url: '{tedris}/home' }
-  # the link is "/", which the page redirects to Keşfet for a visitor
-  discover_opened: { url: '{tedris}/discover' }
+  # the app's sign-in page hands the visitor straight to Keycloak
+  sign_in_asked: { url: '{keycloak}/realms/medaris/**' }
   left: { url: '{tedris}/discover' }
 
 nodes:

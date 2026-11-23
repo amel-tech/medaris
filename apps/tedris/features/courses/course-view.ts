@@ -319,11 +319,3 @@ export const sessionWhen = (
     minute: "2-digit",
     hourCycle: "h23",
   });
-
-/** The progress a talebe types: a whole number from 0 to 100, else null. */
-export const parseProgress = (text: string): number | null => {
-  const trimmed = text.trim();
-  if (!/^\d{1,3}$/.test(trimmed)) return null;
-  const value = Number(trimmed);
-  return value >= 0 && value <= 100 ? value : null;
-};

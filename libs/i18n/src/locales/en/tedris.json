@@ -80,14 +80,7 @@
     "meetingNotAdded": "The meeting link has not been added yet.",
     "inPersonBadge": "In person",
     "progressLabel": "Your progress",
-    "progressNote": "You enter your own progress; the course team confirms that you have completed the course.",
-    "updateProgress": "Update your progress",
-    "progressField": "Progress (percent)",
-    "progressHelp": "A whole number from 0 to 100.",
-    "progressInvalid": "Enter a whole number from 0 to 100.",
-    "progressSave": "Save",
-    "progressSaved": "Your progress was updated.",
-    "progressCancel": "Cancel",
+    "progressNote": "Worked out from the celses you have watched; the course team confirms that you completed the course.",
     "statusInProgress": "In progress",
     "statusCompleted": "Completed",
     "revokedTitle": "Your access to this course was withdrawn.",
@@ -207,7 +200,10 @@
     "gradesFull": "Full",
     "gradesIncomplete": "Incomplete",
     "gradesNotRecited": "Not recited",
-    "gradesWeek": "Week {week}"
+    "gradesWeek": "Week {week}",
+    "watchedBadge": "Watched",
+    "watchedPercent": "{percent}% watched",
+    "watchedUntil": "Stopped at {time}"
   },
   "DataTable": {
     "noResults": "No results."

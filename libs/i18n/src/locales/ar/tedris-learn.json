@@ -161,7 +161,10 @@
     "questionsTitle": "اطرح سؤالًا",
     "questionPlaceholder": "اكتب سؤالك عن هذه الجلسة…",
     "questionsList": "أسئلتك في هذه الجلسة",
-    "questionsEmpty": "لم تطرح أي سؤال في هذه الجلسة بعد."
+    "questionsEmpty": "لم تطرح أي سؤال في هذه الجلسة بعد.",
+    "watchedNote": "شاهدت هذه الجلسة",
+    "resumeNote": "توقفت عند {time}",
+    "resumeButton": "تابع من حيث توقفت"
   },
   "Homework": {
     "title": "واجبي",

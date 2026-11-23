@@ -1,9 +1,10 @@
 # tedris.shell.systemPages on the local stack: tedris-web (:4000) as a member who asks for an address no page owns (the main
-# story), as a visitor who asks for a course that is not there, and as a hoca whose draft course throws when it is drawn.
+# story), as a visitor who asks for a course that is not there (sent to sign in since #401), and as a hoca whose draft course throws when
+# it is drawn.
 #   node apps/engine/src/cli.ts replay graphs/tedris/shell/systemPages \
 #     --bind graphs/tedris/shell/systemPages/binding.yaml --absent --out <dir>              (the main story)
 #   ... --to page_shown   (the error page, the old header, and "Yeniden dene": scenario hocaPageThrows)
-#   ... --to discover_opened   (a visitor's not-found page and its way back: scenario visitorMissingCourse)
+#   ... --to sign_in_opened    (a visitor who asks for a course that is not there is sent to sign in: scenario visitorMissingCourse)
 #
 # Data. Nothing the seed holds is changed. The error page needs a course that throws, which the seed has not got, so
 # helpers/draft-course.mjs makes a DRAFT köşk course of its own, "Sistem sayfaları denemesi", as the köşk's nazım, with the
@@ -20,8 +21,9 @@
 # (the old header's "Giriş yap" and "Kayıt ol"), and HTTP statuses (the replay does not read a navigation's status).
 # What was walked (15 Nov 2026, with --absent, 3 runs): the main story (the first run found `systemBar` shown on /home, where the
 # walk leaves for; the locator was narrowed and the second run passed) and --to page_shown (hocaPageThrows). Not walked:
-# visitorMissingCourse and its way to Keşfet (its nodes were counted in the running app with the engine's own locators, outside the
-# replay), memberMissingCelse, memberMissingCourse and visitorUnknownAddress (looked at in a browser only). A later walk takes them.
+# visitorMissingCourse (its not-found page and its way to Keşfet were counted in the running app on 15 Nov 2026, before #401 sent a visitor
+# of a course to sign in instead), memberMissingCelse, memberMissingCourse and visitorUnknownAddress (looked at in a browser only). A later
+# walk takes them.
 schema: delurio-graph/0
 kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml
@@ -37,9 +39,10 @@ scenarios:
     as: talebe
     open: '{tedris}/olmayan-sayfa'
 
-  # A visitor asks for a course the API does not know (the visitor's half of system-pages#8, and the case SP-04 says nothing tests).
+  # A visitor asks for a course the API does not know (the visitor's half of system-pages#8, and the case SP-04 says nothing tests):
+  # since #401 the course segment sends them to sign in and back.
   visitorMissingCourse:
-    given: { arrival: missingIntro, person: visitor, recovery: gone }
+    given: { arrival: missingCourse, person: visitor, recovery: gone }
     open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'
 
   # A hoca opens their draft course, which throws, mends it and presses "Yeniden dene" (system-pages#10).
@@ -61,7 +64,7 @@ scenarios:
 
   # A member asks for a course the API does not know (system-pages#8).
   memberMissingCourse:
-    given: { arrival: missingIntro, person: member, recovery: gone }
+    given: { arrival: missingCourse, person: member, recovery: gone }
     as: talebe
     open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'
 

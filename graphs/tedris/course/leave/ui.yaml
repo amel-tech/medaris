@@ -25,8 +25,8 @@ changes: { key: CoursePage.leaveBodyCards }
 
 nodes:
   # ---- the course page of a talebe with a seat: only the card's top row and the page around the apply card it becomes ----
-  courseMain: { type: page, component: Page, role: main, in: [courseCard, courseMenu, apply_card, course_read_again], source: apps/tedris/features/courses/components/course-page.tsx:229, script: actions } # no name, no initial focus: the page sets none (focus-not-set)
-  seatBadge: { type: text, component: Text, text: { key: CoursePage.statusInProgress }, in: [courseCard, courseMenu], source: apps/tedris/features/courses/components/course-aside.tsx:277 } # "Devam ediyor", beside the trigger
+  courseMain: { type: page, component: Page, role: main, in: [courseCard, courseMenu, apply_card, course_read_again], source: apps/tedris/features/courses/components/course-page.tsx:237, script: actions } # no name, no initial focus: the page sets none (focus-not-set)
+  seatBadge: { type: text, component: Text, text: { key: CoursePage.statusInProgress }, in: [courseCard, courseMenu], source: apps/tedris/features/courses/components/course-aside.tsx:276 } # "Devam ediyor", beside the trigger
   courseTrigger: { type: action, component: Button, role: button, intent: secondary, name: { key: CoursePage.moreActions }, in: [courseCard, courseMenu], emits: OPEN_MENU, source: apps/tedris/features/courses/components/course-actions-menu.tsx:68 } # an icon only; the name has no course in it where Derslerim's has (the card's own page says which course). aria-haspopup=menu
   courseMenuList: { type: list, component: List, role: menu, name: { key: CoursePage.moreActions }, in: [courseMenu], source: libs/ui/src/mds/menu.tsx:64 } # Base UI popup named by its trigger; it takes the focus itself, not its first item (menu-focus-on-popup)
   cardLeaveItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: CoursePage.leaveCourse }, in: [courseMenu, cardMenu], emits: CHOOSE_LEAVE, source: apps/tedris/features/courses/components/course-actions-menu.tsx:73 } # the menu's one item
@@ -74,7 +74,7 @@ nodes:
   toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [courseCard, listed, apply_card, course_read_again, seat_left, nothing_left], when: "notice != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language
 
   # ---- the pages the person lands on after a step ----
-  applyCardTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.registerCard }, in: [apply_card], source: apps/tedris/features/courses/components/course-aside.tsx:326 } # h2 of the card tedris.course.apply draws; the course page is read again and is the apply card now
+  applyCardTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.registerCard }, in: [apply_card], source: apps/tedris/features/courses/components/course-aside.tsx:322 } # h2 of the card tedris.course.apply draws; the course page is read again and is the apply card now
   emptyAll: { type: text, component: Text, text: { key: MyCoursesPage.noCourses }, in: [nothing_left], source: apps/tedris/features/courses/components/my-courses-page.tsx:231 } # the page's empty state: nothing at all is left on it
   discoverLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyCoursesPage.goDiscover }, in: [nothing_left], source: apps/tedris/features/courses/components/my-courses-page.tsx:226 } # to /discover
 

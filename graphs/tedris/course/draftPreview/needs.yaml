@@ -12,10 +12,15 @@ summary: >-
 # built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # missing (no code, or code that does the opposite; each is a defect and has no Linear key found, none searched):
-# back-to-the-draft-in-nazar (CRS-10), staff-from-nazar-reach-the-draft (DRAFT-1), preview-tab-names-the-draft (DRAFT-2),
-# preview-says-when-no-celse-is-dated, preview-sample-row-leads-nowhere (CRS-15)
-# unwalked (code, and no e2e check and no replay takes it): visitor-gets-not-found (the scenario visitorNotFound is bound and was not walked;
-# e2e course#3 asserts only the status, which no graph carries)
+# back-to-the-draft-in-nazar (CRS-10), preview-tab-names-the-draft (DRAFT-2), preview-says-when-no-celse-is-dated,
+# preview-sample-row-leads-nowhere (CRS-15)
+# unwalked (code, and no e2e check and no replay takes it): visitor-is-asked-to-sign-in (the scenario visitorAskedToSignIn is bound and was
+# not walked), staff-from-nazar-reach-the-draft
+#
+# 23 Nov 2026, after MDRS-248's unlisted course (#401): the course segment sends a visitor the API gives no course to sign in
+# (load-course.ts:26-34), so visitor-gets-not-found became visitor-is-asked-to-sign-in, met and unwalked, and
+# staff-from-nazar-reach-the-draft is met in the code (DRAFT-1 fixed, not walked). e2e course#3 ("answers a draft with the not-found
+# page", apps/tedris/e2e/course.e2e.ts) still expects a 404 for a visitor and no longer matches the code; no need names it.
 
 needs:
   - id: staff-preview-a-draft
@@ -33,7 +38,7 @@ needs:
       - node: previewCardBadge
       - node: previewCardText
       - source: apps/tedrisat/src/course/course.controller.ts:260
-      - source: apps/tedris/features/courses/components/course-page.tsx:239
+      - source: apps/tedris/features/courses/components/course-page.tsx:247
       - source: apps/tedris/features/courses/preview.ts:8
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "an editor sees the banner, the badge and the preview card, and cannot apply"
@@ -48,7 +53,7 @@ needs:
       - state: reading
       - state: previewShown
       - source: apps/tedrisat/src/course/course.controller.ts:260
-      - source: apps/tedrisat/src/course/course.service.ts:355
+      - source: apps/tedrisat/src/course/course.service.ts:359
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "an editor sees the banner, the badge and the preview card, and cannot apply"
       - scenario: editorDated
@@ -66,7 +71,7 @@ needs:
     evidence:
       - node: previewCardText
       - node: applyButton
-      - source: apps/tedris/features/courses/components/course-page.tsx:348
+      - source: apps/tedris/features/courses/components/course-page.tsx:356
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "an editor sees the banner, the badge and the preview card, and cannot apply"
       - scenario: editorDated
@@ -126,8 +131,8 @@ needs:
       - node: homeLink
       - state: home_opened
       - source: apps/tedrisat/src/course/course.controller.ts:260
-      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:27"
-      - source: apps/tedrisat/src/course/course.service.ts:355
+      - source: apps/tedris/features/courses/load-course.ts:33
+      - source: apps/tedrisat/src/course/course.service.ts:359
       - test: apps/tedris/e2e/system-pages.e2e.ts
         name: "anyone who may not edit it gets the not-found page"
       - scenario: memberNotFound
@@ -137,30 +142,37 @@ needs:
       navigation's status)
       memberNotFound: --to home_opened: the page, then "Ana sayfaya dön" to /home
 
-  - id: visitor-gets-not-found
-    need: A visitor gets the same page as a member does, whoever they are elsewhere, and the link on it leads to Keşfet.
+  - id: visitor-is-asked-to-sign-in
+    need: >-
+      A visitor who opens a draft's address learns nothing about it: they are asked to sign in and brought back to it, as for any
+      course they may not read or that does not exist, and signed in they meet what their account may open.
     evidence:
-      - state: notFound
-      - state: discover_opened
+      - state: sign_in_asked
       - source: apps/tedrisat/src/course/course.controller.ts:260
-      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:27"
-      - source: apps/tedris/app/page.tsx:13
-    note: >-
-      walked: nothing. e2e course#3 asserts only the 404 status, which no graph carries. The scenario visitorNotFound is bound and
-      was not walked; its locators were counted in a browser probe (the region, the heading, the sentence and the link, one each;
-      the link ends on /discover).
+      - source: apps/tedris/features/courses/load-course.ts:31
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "sends a signed-out visitor to sign in and back, as an unlisted course needs"
+      - scenario: visitorAskedToSignIn
+    note: |-
+      Was visitor-gets-not-found ("a visitor gets the same page as a member does"), which the code no longer does since MDRS-248's
+      unlisted course (#401): the segment's layout calls loadCourseOrLeave, and a visitor is redirected before any not-found page.
+      walked: nothing. The scenario visitorAskedToSignIn (was visitorNotFound) is bound and not walked. e2e course#3 still asserts a 404
+      for a visitor and is stale.
 
   - id: staff-from-nazar-reach-the-draft
     need: >-
       A staff member who follows a link to the draft from Nazar, with a Nazar session and none in Tedris, sees the draft or is
       asked to sign in to see it; they are not told the page is missing.
-    missing: no Linear issue; DRAFT-1
+    evidence:
+      - state: sign_in_asked
+      - source: apps/tedris/features/courses/load-course.ts:31
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "sends a signed-out visitor to sign in and back, as an unlisted course needs"
     note: |-
-      Drawn on the state notFound, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
-      leaves out what only missing needs name).
-      DRAFT-1. The 404 for a visitor must stay (no draft is announced), so the fix is on the link: Nazar sends the person through
-      Tedris's own sign-in. Seen in a browser on 15 Nov 2026 (Nazar signed in, Tedris not: 404). A defect, so no Linear key; I did
-      not search Linear.
+      Met in the code since MDRS-248's unlisted course (#401): such a person is a visitor to Tedris, and the course segment sends
+      them to sign in and back (DRAFT-1, fixed). Unwalked: that Keycloak answers the round trip without a form while the Nazar
+      session lasts was not seen on this branch, and no scenario walks it. It was missing (DRAFT-1, seen in a browser on 15 Nov
+      2026: Nazar signed in, Tedris not: 404).
 
   - id: preview-tab-names-the-draft
     need: >-

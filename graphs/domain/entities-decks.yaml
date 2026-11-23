@@ -75,14 +75,14 @@ entities:
     required: [userId, flashcardId, status, intervalDays]
     fields:
       userId: { type: string, format: uuid, note: "Keycloak sub" }
-      flashcardId: { type: string, format: uuid, references: Flashcard, note: "no foreign key: deleting a card or a deck leaves its progress rows behind, invisible to the stats but never cleaned (finding progress-orphans); the archive purge deletes them (archive/archive.repository.ts:833)" }
+      flashcardId: { type: string, format: uuid, references: Flashcard, note: "no foreign key: deleting a card or a deck leaves its progress rows behind, invisible to the stats but never cleaned (finding progress-orphans); the archive purge deletes them (archive/archive.repository.ts:838)" }
       status: { enum: [NEW, LEARNING, MASTERED], default: NEW }
       dueAt: { type: [string, "null"], format: date-time, note: "null for a row written without a rating: LEARNING then means due now, MASTERED never due. The ratings HARD, MEDIUM and EASY are not stored; they set dueAt and intervalDays (flashcard/domain/review-schedule.ts)" }
       reviewedAt: { type: [string, "null"], format: date-time }
       intervalDays: { type: integer, default: 0, note: "the last gap in days" }
     lifecycle:
       - "none -> NEW | LEARNING | MASTERED: a rating, or the older memorised toggle, writes the row (upsert, flashcard/flashcard.repository.ts:149)"
-      - "any -> any: a later rating upserts the same row; the archive purge deletes it (archive/archive.repository.ts:833)"
+      - "any -> any: a later rating upserts the same row; the archive purge deletes it (archive/archive.repository.ts:838)"
 
   DeckLabel: # a label in the vocabulary of deck labels (SQL table deck_label)
     source: apps/tedrisat/src/database/schema/flashcard-deck-label.schema.ts:14

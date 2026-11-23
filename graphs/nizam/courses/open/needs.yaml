@@ -164,7 +164,7 @@ needs:
       - node: summaryBody
       - node: summaryNone
       - node: summaryEmpty
-      - source: apps/nizam/features/courses/present.ts:1199
+      - source: apps/nizam/features/courses/present.ts:1210
       - source: apps/nizam/features/courses/components/course-create-form.tsx:439
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"

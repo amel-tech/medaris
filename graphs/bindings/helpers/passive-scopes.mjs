@@ -11,7 +11,7 @@
 //   node helpers/passive-scopes.mjs view   <tag> <kosk|course|gone>   one opening, as the page makes it (POST .../view)
 //
 // What `make` writes, and why by SQL. tedrisat has no route that leaves a course without its last müderris (a course never loses it
-// by removal, course.service.ts:1061, owner decision d-1004-13; only a term that runs out does), and a köşk or a medrese goes passive
+// by removal, course.service.ts:1076, owner decision d-1004-13; only a term that runs out does), and a köşk or a medrese goes passive
 // through the API only after a real account has held the post (open it with a nazım, then POST .../deactivate), which would put one
 // of the stack's accounts in a role it must not keep. So the rows go in as apps/nizam/e2e/inactive-seed.ts puts them (fake people in
 // `users`, `role_assignments` rows that ran out on a past date, the scopes), with the same columns; the NOT NULL columns without a

@@ -13,6 +13,7 @@ import {
   getCourseDecks,
   getCourseForMetadata,
   getMyGrades,
+  getMyLessonViews,
   getMySubmissions,
   getRecordings,
   isSignedIn,
@@ -61,7 +62,8 @@ export default async function Page({
   // they may hand in (the programme's "Ödev teslim edilmedi" marks).
   // The decks are read only for a caller who holds a seat (the tab exists only then).
   // "Notlarım" (MDRS-248) is read, like the decks, only for a seat holder.
-  const [kosk, signedIn, recordings, handedIn, decks, grades] =
+  // The watch marks (MDRS-248, the "sayaç") too.
+  const [kosk, signedIn, recordings, handedIn, decks, grades, views] =
     await Promise.all([
       getKosk(course.koskId),
       isSignedIn(),
@@ -76,6 +78,10 @@ export default async function Page({
       (async () =>
         holdsSeat(courseViewState(course, await isSignedIn()))
           ? getMyGrades(course.id)
+          : null)(),
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getMyLessonViews(course.id)
           : null)(),
     ]);
   const hrefs = inviteHrefs(`/courses/${course.id}`);
@@ -95,6 +101,7 @@ export default async function Page({
       handedIn={handedIn}
       decks={decks ?? []}
       grades={grades}
+      views={views}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

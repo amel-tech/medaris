@@ -246,7 +246,7 @@ states:
         target: clean
         effect: [savedElsewhere]
         say: "someone else saves the course (another editor, the settings page); this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       PLAN:
         guard: isFull
         target: plan_opened
@@ -304,7 +304,7 @@ states:
         target: edited
         effect: [savedElsewhere]
         say: "someone else saves the course; this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       PLAN:
         guard: isFull
         target: plan_opened
@@ -350,7 +350,7 @@ states:
         target: invalid
         effect: [savedElsewhere]
         say: "someone else saves the course; this page does not know"
-        source: apps/tedrisat/src/course/course.repository.ts:806
+        source: apps/tedrisat/src/course/course.repository.ts:809
       PLAN:
         guard: isFull
         target: plan_opened

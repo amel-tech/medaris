@@ -237,3 +237,18 @@ needs:
       - test: apps/tedris/e2e/learn.e2e.ts
         name: "on a phone it is one column and does not scroll sideways"
     note: "learn.e2e.ts learn#6 (kept as an e2e: a layout metric the graph does not state)"
+
+  - id: an-unlisted-course-is-not-offered-to-followers
+    need: >-
+      A course its team keeps off the lists is not offered on Ana sayfa under the köşks the person follows; the people given its link
+      open it.
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk.repository.ts:361
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "is not on its medrese's page, nor on a follower's shelf"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state or node of this flow; the code exists and the API e2e spec covers it
+    note: |-
+      Drawn on the states readingFollowed and home, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      listFollowedKoskCourses leaves it out (kosk.repository.ts:361). Not walked.

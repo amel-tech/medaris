@@ -86,7 +86,7 @@ needs:
       - node: statusPublished
       - node: statusDraft
       - source: apps/tedrisat/src/course/course.controller.ts:300
-      - source: apps/nazar/features/course-settings/controls.ts:52
+      - source: apps/nazar/features/course-settings/controls.ts:55
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "a ders nazırı with session.manage alone may change the sample session, and nothing else"
       - test: apps/nazar/e2e/course-settings.e2e.ts
@@ -128,7 +128,7 @@ needs:
       recording back; the hoca sees the effect from the same page that holds the closed box and the public link.
     evidence:
       - node: viewPublic
-      - source: apps/tedrisat/src/course/course.service.ts:857
+      - source: apps/tedrisat/src/course/course.service.ts:861
       - test: apps/nazar/e2e/course-settings.e2e.ts
         name: "a closed course hides its public recording from a visitor in tedris, and opening it shows it again"
     note: >-
@@ -140,7 +140,9 @@ needs:
       For a draft, the header link opens the preview the course's staff may read, and does not tell them "Sayfa bulunamadı": it is
       named for what it opens and sends the person through Tedris's own sign-in with the course as the way back (DRAFT-1, decision
       D2).
-    missing: no Linear issue; DRAFT-1, D2
+    missing: >-
+      no Linear issue; D2: the link is still named "Tanıtım sayfasını gör" for a draft; its other half is done in Tedris since #401
+      (DRAFT-1: a visitor is sent to sign in and back, load-course.ts:26-34); code exists in part
     note: >-
       Drawn on the states draft and draftEdited and on the node viewPublic, which the code has: they are not evidence, so that a
       replay still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -75,7 +75,7 @@ decisions:
   D1:
     question: >-
       Should a refusal that leaves the stored values as they were read the page again? After PLATFORM_POLICY_LOCKED, AUTHZ_FORBIDDEN or any other
-      failure the form keeps the pressed box and Kaydet on and the page is not read (apps/nazar/test/course-settings-form.spec.tsx:322 pins
+      failure the form keeps the pressed box and Kaydet on and the page is not read (apps/nazar/test/course-settings-form.spec.tsx:323 pins
       `refresh` not called), so the lock the refusal names is not shown until a reload (CSA-2).
     recommend: >-
       Read the page again after a policy lock so the box shows shut with its reason, keep the draft of the other controls, and after AUTHZ_FORBIDDEN
@@ -193,7 +193,7 @@ states:
     invoke: { action: getCourse }
     on:
       DONE:
-        - { guard: "world == 'policyOpen'", target: readLocked, effect: [loadedLocked], say: "a policy holds the course closed and the enrolment on approval: the two boxes come shut", source: apps/nazar/features/course-settings/controls.ts:37 }
+        - { guard: "world == 'policyOpen'", target: readLocked, effect: [loadedLocked], say: "a policy holds the course closed and the enrolment on approval: the two boxes come shut", source: apps/nazar/features/course-settings/controls.ts:38 }
         - { guard: policyWorld, target: clean, effect: [loadedApproval], say: "the course asks for approval: the box is ticked and open", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76 }
         - { target: clean, effect: [loadedPlain], say: "the course is open, takes anyone, is not in person, is in Istanbul and has no sample", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76 }
     source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
@@ -203,14 +203,14 @@ states:
     by: human
     description: >-
       "Kapalı ders" is ticked and shut and says "Medresenin “Kapalı ders zorunlu” politikası bu ayarı kilitler." (locked when the course is closed
-      and setting.course_open is gone, controls.ts:37); "Kayıt onayı gereksin" is ticked and shut and says "Bir politika bu derste kaydın her
-      zaman onaya bağlı olmasını istiyor; bu ayar değiştirilemez." (locked when setting.approval_off is gone, controls.ts:41, and shown ticked
+      and setting.course_open is gone, controls.ts:38); "Kayıt onayı gereksin" is ticked and shut and says "Bir politika bu derste kaydın her
+      zaman onaya bağlı olmasını istiyor; bu ayar değiştirilemez." (locked when setting.approval_off is gone, controls.ts:43, and shown ticked
       whatever the course's own flag holds, `checked = locked || draft`). A shut box is never sent. The other three controls stay open and Kaydet
       and Vazgeç are off until one differs; editing them is not drawn here (outOfView). The page sets no focus (focus-not-set).
     on:
-      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
-      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
-      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
       NAVIGATE: { target: left, say: "they go to another page" }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:161
 
@@ -226,11 +226,11 @@ states:
     on:
       TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:172 }
       TOGGLE_APPROVAL:
-        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:219 }
-      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:179 }
-      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:226 }
+        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:235 }
+      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:189 }
+      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:146
 
@@ -249,16 +249,16 @@ states:
     on:
       TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:172 }
       TOGGLE_APPROVAL:
-        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:209 }
-      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:219 }
-      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:179 }
-      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:226 }
+        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:235 }
+      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:189 }
+      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
       SUBMIT: { guard: readyToSend, target: sending, say: "they press Kaydet (the page's own one, not 'Hocalar ve unvanları')", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:75 }
-      CANCEL: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:245 }
+      CANCEL: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:261 }
       RELOAD: { guard: "world == 'forbidden'", target: reloading, effect: [clearToast], say: "after the refusal they reload the page: it is read again", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51 }
       NAVIGATE: { target: left, say: "they leave the page: the pressed controls are lost and nothing warned them" }
-    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:244
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:260
 
   choosingSample:
     title: The list "Örnek ders" is open
@@ -270,8 +270,8 @@ states:
       "Örnek ders yok" is drawn only after a conflict showed the other person's sample (outOfView); "Hafta 1 · Celse 2" is an option of the list that no
       walk of this graph chooses (the other person's save, `interfere values`, makes it the stored sample). Esc closes the list and changes nothing.
     on:
-      PICK_NONE: { guard: pickNone, target: dirty, effect: [sampleNone], say: "they choose 'Örnek ders yok' (after a conflict showed the other person's sample)", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:182 }
-      PICK_FIRST: { guard: pickFirst, target: dirty, effect: [sampleFirst], say: "they choose 'Hafta 1 · Celse 1'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:182 }
+      PICK_NONE: { guard: pickNone, target: dirty, effect: [sampleNone], say: "they choose 'Örnek ders yok' (after a conflict showed the other person's sample)", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:192 }
+      PICK_FIRST: { guard: pickFirst, target: dirty, effect: [sampleFirst], say: "they choose 'Hafta 1 · Celse 1'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:192 }
       DISMISS:
         - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
         - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
@@ -287,7 +287,7 @@ states:
       with and the one e2e course-settings#2 chooses; choosing İstanbul again is the way back and is not drawn. The page behind is inert as for the
       first list (not verified in a browser).
     on:
-      PICK_BERLIN: { guard: pickBerlin, target: dirty, effect: [zoneBerlin], say: "they choose 'Berlin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:229 }
+      PICK_BERLIN: { guard: pickBerlin, target: dirty, effect: [zoneBerlin], say: "they choose 'Berlin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:245 }
       DISMISS:
         - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
         - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
@@ -304,7 +304,7 @@ states:
       - { guard: "world == 'policyAfterSample' and looked == 'again'", target: clean, effect: [restorePartial], say: "back to what the read after the partial save brought: the sample saved, the approval still on" }
       - { guard: policyWorld, target: clean, effect: [restoreApproval], say: "back to the course that asks for approval" }
       - { target: clean, effect: [restorePlain], say: "back to the course as it was read" }
-    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:245
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:261
 
   sending:
     title: Which writes are due
@@ -353,9 +353,9 @@ states:
     invoke: { action: updateCourse }
     on:
       DONE: { guard: "not courseRefused", target: saved, effect: [savedAll], say: "the course is saved", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:136 }
-      FAIL.policy: { guard: policyWorld, target: afterRefusal, effect: [toastRefused], say: "409 PLATFORM_POLICY_LOCKED: the toast says 'Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.' and names no box", source: apps/nazar/features/course-settings/course-settings.ts:135 }
-      FAIL.forbidden: { guard: "world == 'forbidden'", target: afterRefusal, effect: [toastRefused], say: "403 AUTHZ_FORBIDDEN: 'Bunu yapma izniniz yok.'", source: apps/nazar/features/course-settings/course-settings.ts:133 }
-      FAIL.other: { guard: "world == 'failed'", target: afterRefusal, effect: [toastRefused], say: "anything else: 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'", source: apps/nazar/features/course-settings/course-settings.ts:141 }
+      FAIL.policy: { guard: policyWorld, target: afterRefusal, effect: [toastRefused], say: "409 PLATFORM_POLICY_LOCKED: the toast says 'Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.' and names no box", source: apps/nazar/features/course-settings/course-settings.ts:148 }
+      FAIL.forbidden: { guard: "world == 'forbidden'", target: afterRefusal, effect: [toastRefused], say: "403 AUTHZ_FORBIDDEN: 'Bunu yapma izniniz yok.'", source: apps/nazar/features/course-settings/course-settings.ts:146 }
+      FAIL.other: { guard: "world == 'failed'", target: afterRefusal, effect: [toastRefused], say: "anything else: 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'", source: apps/nazar/features/course-settings/course-settings.ts:154 }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:128
 
   afterRefusal:
@@ -380,10 +380,10 @@ states:
     on:
       RELOAD: { target: reloading, effect: [clearToast], say: "they reload the page: it is read again with what the API now holds", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51 }
       TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
-      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:208 }
-      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
-      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
-      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:224 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-form.tsx:136
 
@@ -409,10 +409,10 @@ states:
       browser: the walk's effect check reads the course again through the API as well (a10).
     on:
       TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
-      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:208 }
-      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:218 }
-      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 }
-      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:230 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:224 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
       NAVIGATE: { target: left, say: "they follow the menu or a link" }
     source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76
 
@@ -432,7 +432,7 @@ states:
     type: final
     description: >-
       A box pressed or a list opened on a card saved in this visit (`saved`, `readBack`) or opened with two boxes locked by a policy
-      (`readLocked`): the control is open (course-settings-form.tsx:171-230 disable it only while a save runs or a code or a policy shuts it),
+      (`readLocked`): the control is open (course-settings-form.tsx:171-246 disable it only while a save runs or a code or a policy shuts it),
       and Kaydet and Vazgeç come on once a value differs. What follows is a new round of this flow, which the graph does not draw (scope.outOfView:
       a second round of edits, an edit of a locked page). The person stays on the page.
 
@@ -461,7 +461,7 @@ assertions:
   - id: a-locked-page-sends-nothing
     never: "world == 'policyOpen' and (state == 'sendingSample' or state == 'sendingCourse')"
     say: A page whose two boxes a policy holds shut sends nothing in the walk of this flow, and a shut box is never in a body.
-    source: apps/nazar/features/course-settings/course-settings.ts:83
+    source: apps/nazar/features/course-settings/course-settings.ts:91
   - id: a-success-toast-follows-a-save
     never: "state == 'saved' and toast != 'saved'"
     say: After a save the toast says so.

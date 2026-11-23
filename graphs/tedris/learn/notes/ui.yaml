@@ -19,7 +19,7 @@ changes: { key: Changes.note }
 # Nothing on either page moves the focus on load or into the panel, so there is no `initialFocus` and no `focus` here.
 nodes:
 
-  # --- the page and the panel: a region named by its h2 (celse-page: session-page.tsx:134, watch page: watch-view.tsx:297)
+  # --- the page and the panel: a region named by its h2 (celse-page: session-page.tsx:134, watch page: watch-view.tsx:315)
   celsePage: { type: page, component: Page, role: main, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/session-page.tsx:337 } # the page's one <main>, on the celse page and on the watch page; it has no name, and nothing moves the focus into it or into the panel (focus-not-set)
   notesRegion: { type: page, component: Page, role: region, name: { labelledBy: notesTitle }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:154 } # a <section aria-labelledby>
   notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:160 } # h2, with a note icon

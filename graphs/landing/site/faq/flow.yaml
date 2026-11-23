@@ -12,7 +12,7 @@
 #   L11   The answers are plain divs: no role=region and no aria-labelledby, which the disclosure pattern asks for once
 #         there are more than a few panels.
 #   FAQ-1 (new) The same answer calls the course page's enrolment button "Derse kaydol"; tedris-web's button for a course
-#         that takes anyone is "Kayıt ol" (CoursePage.enroll, course-aside.tsx:375), and "Kayıt başvurusu yap" for a course
+#         that takes anyone is "Kayıt ol" (CoursePage.enroll, course-aside.tsx:371), and "Kayıt başvurusu yap" for a course
 #         that asks for approval. No string "Derse kaydol" exists in the apps.
 # The graph draws what the code does; none of these is fixed here.
 #

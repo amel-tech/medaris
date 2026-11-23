@@ -4,7 +4,7 @@
 #     the list of a person with no seat, the empty message, the box that says the read failed) and the retry.
 #   - Who sees what is decided by tedrisat, not by the page: a caller who may read the course's content (an enrolled or completed talebe, the
 #     course team) is listed every recording that is not FAILED; everyone else, a visitor included, only the PUBLIC ones, and none when the
-#     course is closed or a recordings policy of the platform or of the köşk is on (course.service.ts:857-867). The tab only chooses what each
+#     course is closed or a recordings policy of the platform or of the köşk is on (course.service.ts:861-871). The tab only chooses what each
 #     row offers (recordings-model.ts:150-157). The watch page the rows lead to is tedris.celse.watchRecording.
 #   - Which parts need Bunny (the stack has none, STACK.md): a recording that is being uploaded or encoded (PROCESSING), one that failed, the
 #     chip "Bunny Stream", the signed player link a Bunny row carries (an outsider's row opens THAT link, a seat's row opens the watch page,
@@ -41,7 +41,7 @@ scope:
     - "the watch page a seat's row leads to, with its player, notes and questions (tedris.celse.watchRecording), and the celse page's own recording block (tedris.celse.attend)"
     - "the course team's own view of this tab: a hoca or a nazır who holds recording.manage is handed the link of a recording that is held back and reads \"Talebelere … açılacak\" on its row (recordings-tab.tsx:251, RecordingRelease.early); adding, renaming and replacing recordings is nazar.recordings.add and nazar.recordings.upload"
     - "the line under a held row that names the course's zone and the viewer's clock when they differ (RecordingRelease.zone): the stack's browser and course are both Europe/Istanbul, so it is never drawn in a walk"
-    - "a seat's row for a recording of a lesson that is not a celse (a video or document lesson, or a celse that changed kind after it was recorded): it has no watch page, so it is the same new-tab link as an outsider's (recordings-model.ts:150-157, course-page.tsx:432-448)"
+    - "a seat's row for a recording of a lesson that is not a celse (a video or document lesson, or a celse that changed kind after it was recorded): it has no watch page, so it is the same new-tab link as an outsider's (recordings-model.ts:150-157, course-page.tsx:441-457)"
     - "the loading skeleton while the page's reads run (app/courses/[courseId]/loading.tsx), and a course that does not open (the not-found page, tedris.shell.systemPages)"
     - "a recording that FAILED (a Bunny upload that could not be encoded or never finished): the read leaves it out for every caller, so the tab has no row for it (MDRS-259)"
     - "the cookie of the viewer's own YouTube session and the players' frames: nothing on this tab frames a player"
@@ -100,7 +100,7 @@ effects:
 failures:
   reading: { from: listCourseRecordings, unreadable: [COURSE_NOT_FOUND] }
   retrying: { from: listCourseRecordings, unreadable: [COURSE_NOT_FOUND] }
-# `unreadable` stands for any failure: public-reads.ts:48-55 turns a thrown error of any kind (a 404 the page's own read of the course would
+# `unreadable` stands for any failure: public-reads.ts:49-56 turns a thrown error of any kind (a 404 the page's own read of the course would
 # have caught first, a 5xx, a refused token, a network error) into null, and null is the failed box. The domain lists the one refusal code.
 
 # The main story: a talebe with a seat opens the tab by its address, reads the list, and follows a ready recording to its watch page.
@@ -122,16 +122,16 @@ states:
     source: apps/tedris/app/courses/[courseId]/page.tsx:70
     invoke: { action: listCourseRecordings }
     on:
-      DONE: { guard: "read == 'ok'", target: opened, source: apps/tedris/features/courses/public-reads.ts:105 }
-      FAIL.unreadable: { guard: "read == 'failed'", target: opened, source: apps/tedris/features/courses/public-reads.ts:48, say: "the page is drawn all the same, with recordings = null" }
+      DONE: { guard: "read == 'ok'", target: opened, source: apps/tedris/features/courses/public-reads.ts:106 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: opened, source: apps/tedris/features/courses/public-reads.ts:49, say: "the page is drawn all the same, with recordings = null" }
 
   opened:
     title: See which tab the page opens on
     description: classification only; the tab is the page's own state, set once from ?tab= (and never again, a later change of the address does not switch it)
-    source: apps/tedris/features/courses/components/course-page.tsx:194
+    source: apps/tedris/features/courses/components/course-page.tsx:202
     always:
-      - { guard: "entry == 'tab'", target: programmeTab, say: "no ?tab=: the page opens on Müfredat", source: apps/tedris/features/courses/components/course-page.tsx:197 }
-      - { target: panel, say: "?tab=kayitlar: the page opens on this tab at once", source: apps/tedris/features/courses/components/course-page.tsx:195 }
+      - { guard: "entry == 'tab'", target: programmeTab, say: "no ?tab=: the page opens on Müfredat", source: apps/tedris/features/courses/components/course-page.tsx:205 }
+      - { target: panel, say: "?tab=kayitlar: the page opens on this tab at once", source: apps/tedris/features/courses/components/course-page.tsx:203 }
 
   programmeTab:
     title: The page, open on Müfredat
@@ -140,9 +140,9 @@ states:
       The course page as it opens by default, with the tab row; its programme is another flow's. "Ders kayıtları" carries the number of
       recordings listed to this person when there are any (a seat's count and an outsider's differ, and a held or prepared recording counts).
       Pressing it shows the tab; the choice is local to the page and is not written to the address.
-    source: apps/tedris/features/courses/components/course-page.tsx:394
+    source: apps/tedris/features/courses/components/course-page.tsx:402
     on:
-      OPEN_RECORDINGS: { target: panel, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_RECORDINGS: { target: panel, source: apps/tedris/features/courses/components/course-page.tsx:402 }
       OPEN_PROGRAMME: { target: programmeTab, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -179,7 +179,7 @@ states:
         starts: { flow: tedris.celse.watchRecording }
         say: "a ready row is a link to its celse's watch page; the page is left"
         source: apps/tedris/features/courses/components/recordings-tab.tsx:277
-      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:402 }
       OPEN_RECORDINGS: { target: listForSeat, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -200,7 +200,7 @@ states:
     source: apps/tedris/features/courses/components/recordings-tab.tsx:290
     on:
       OPEN_HOST: { target: listForOutsider, say: "the host opens in a new tab; this page stays where it is", source: apps/tedris/features/courses/components/recordings-tab.tsx:290 }
-      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:402 }
       OPEN_RECORDINGS: { target: listForOutsider, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -213,7 +213,7 @@ states:
       FAILED ones are left (MDRS-259). It is not the failed box: an empty list is a fact. The tab carries no number.
     source: apps/tedris/features/courses/components/recordings-tab.tsx:102
     on:
-      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:402 }
       OPEN_RECORDINGS: { target: recordingsEmpty, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -226,7 +226,7 @@ states:
     source: apps/tedris/features/courses/components/recordings-failed.tsx:14
     on:
       RETRY: { target: retrying, effect: [again], say: "\"Yeniden dene\" asks the server to render the page again", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
-      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:402 }
       OPEN_RECORDINGS: { target: recordingsFailed, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
@@ -244,7 +244,7 @@ states:
     on:
       DONE: { guard: "read == 'ok'", target: panel, source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
       FAIL.unreadable: { guard: "read == 'failed'", target: panel, say: "the box is drawn again, and nothing says it tried", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
-      OPEN_PROGRAMME: { target: programmeTab, say: "Müfredat stays live while the page is rendered again: the tab changes at once, and the refresh, when it ends, draws its answer under a tab that is no longer shown", source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      OPEN_PROGRAMME: { target: programmeTab, say: "Müfredat stays live while the page is rendered again: the tab changes at once, and the refresh, when it ends, draws its answer under a tab that is no longer shown", source: apps/tedris/features/courses/components/course-page.tsx:402 }
 
   watch_opened: { type: final, title: The watch page of the celse opens, leavesPage: true }
   left: { type: final, title: The person leaves the course page, leavesPage: true }
@@ -253,7 +253,7 @@ assertions:
   - id: seat-list-is-for-a-seat
     never: "state == 'listForSeat' and reader == 'outsider'"
     say: "The list of every recording is drawn only for a person who may read the course's content"
-    source: apps/tedrisat/src/course/course.service.ts:809
+    source: apps/tedrisat/src/course/course.service.ts:813
   - id: no-watch-page-for-an-outsider
     never: "state == 'watch_opened' and reader == 'outsider'"
     say: "A person with no seat is never sent to a watch page by this tab: their rows open the host in a new tab"
@@ -261,7 +261,7 @@ assertions:
   - id: koskplatform-policy-hides-public-recordings
     never: "state == 'listForOutsider' and policy == 'honoured'"
     say: "A closed course, the platform's switch and the köşk's switch keep the PUBLIC recordings from a person with no seat (the medrese's switch does not, RECS-1)"
-    source: apps/tedrisat/src/course/course.service.ts:857
+    source: apps/tedrisat/src/course/course.service.ts:861
   - id: failed-read-draws-no-rows
     never: "(state == 'listForSeat' or state == 'listForOutsider' or state == 'recordingsEmpty') and read == 'failed'"
     say: "A failed read never draws a list or says there are none"

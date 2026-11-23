@@ -133,7 +133,7 @@ effects:
 failures:
   readingMadrasah: { from: getMadrasah, notFound: [MADRASAH_NOT_FOUND], unreadable: [] }
   readingOverview: { from: getMadrasahOverview, notFound: [MADRASAH_NOT_FOUND], unreadable: [] }
-# `unreadable` stands for any answer but a 404: public-reads.ts:49-55 turns a network error, a 5xx and a refused token alike into `null`.
+# `unreadable` stands for any answer but a 404: public-reads.ts:50-56 turns a network error, a 5xx and a refused token alike into `null`.
 # A 404 from the overview after the medrese read answered (a medrese hidden between the two) is the same page; the graph draws it as
 # `overviewFailed`, and says nothing of the two requests' order beyond what the code does.
 
@@ -157,7 +157,7 @@ states:
     on:
       DONE: { guard: "read in ['ok', 'overviewFailed']", target: readingOverview }
       FAIL.notFound: { guard: "read == 'absent'", target: notFoundPage, effect: [answers404], say: "a real 404: the layout throws before anything is streamed", source: "apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20" }
-      FAIL.unreadable: { guard: "read == 'failed'", target: notFoundPage, say: "the page cannot tell an outage from a missing medrese: both are the 404 page (DSC-10)", source: apps/tedris/features/courses/public-reads.ts:49 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: notFoundPage, say: "the page cannot tell an outage from a missing medrese: both are the 404 page (DSC-10)", source: apps/tedris/features/courses/public-reads.ts:50 }
 
   readingOverview:
     title: Read what the page shows
@@ -178,7 +178,7 @@ states:
   sorting:
     title: See whether the viewer holds a token
     description: classification only; `isSignedIn` is "there is a usable access token", and decides the hint, the invitation and whether a badge can come
-    source: apps/tedris/features/courses/public-reads.ts:151
+    source: apps/tedris/features/courses/public-reads.ts:164
     always:
       - { guard: isVisitor, target: readByVisitor, say: "no token" }
       - { target: readByMember, say: "a token" }
