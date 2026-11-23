@@ -231,6 +231,16 @@ export function CourseSettingsPage({
             onCheckedChange={(v) => set("isClosed", v === true)}
             name="isClosed"
           />
+          <Checkbox
+            bordered
+            icon={<Icon name="link" size="sm" />}
+            label={t("unlistedLabel")}
+            description={t("unlistedDesc")}
+            checked={form.isUnlisted}
+            disabled={writing}
+            onCheckedChange={(v) => set("isUnlisted", v === true)}
+            name="isUnlisted"
+          />
           <Field label={t("sampleLabel")} help={t("sampleHelp")}>
             <Select
               name="sample"
@@ -253,9 +263,15 @@ export function CourseSettingsPage({
             bordered
             icon={<Icon name="users" size="sm" />}
             label={t("approvalLabel")}
-            description={t(fixed ? "approvalFixed" : "approvalDesc")}
-            checked={effectiveApproval(form, fixed)}
-            disabled={writing || fixed}
+            description={t(
+              fixed
+                ? "approvalFixed"
+                : form.isUnlisted
+                  ? "approvalUnlisted"
+                  : "approvalDesc"
+            )}
+            checked={effectiveApproval(form, fixed || form.isUnlisted)}
+            disabled={writing || fixed || form.isUnlisted}
             onCheckedChange={(v) => set("requiresApproval", v === true)}
             name="requiresApproval"
           />

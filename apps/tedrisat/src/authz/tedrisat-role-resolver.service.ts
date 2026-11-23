@@ -169,10 +169,12 @@ export class TedrisatRoleResolver implements RoleResolver {
    *
    * - Non-UUID id: ANONYMOUS, for the pipe's 400.
    * - `CourseNotFoundError`, one answer for all of: no such course; a DRAFT;
-   *   a hidden (archived) course; any course of an unlisted köşk. A signed-in
-   *   stranger already gets 404 for the first three (`getDetail`); the
-   *   fourth is the köşk's own rule carried down to its courses, so a course
-   *   link does not open what the köşk link would not.
+   *   a hidden (archived) course; an unlisted course (MDRS-248); any course
+   *   of an unlisted köşk. A signed-in stranger already gets 404 for the
+   *   first three (`getDetail`); the last two open by their link to a
+   *   signed-in caller only, the köşk's rule (MDRS-122) carried down to its
+   *   courses and repeated for a course of its own, so a course link does
+   *   not open what the köşk link would not.
    * - Otherwise: ANONYMOUS.
    */
   private async resolveAnonymousCourseRole(
@@ -185,6 +187,7 @@ export class TedrisatRoleResolver implements RoleResolver {
       !course ||
       course.status !== CourseStatus.PUBLISHED ||
       course.archived ||
+      course.unlisted ||
       course.koskIsPrivate ||
       course.koskHidden
     ) {

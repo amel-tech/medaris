@@ -19552,6 +19552,10 @@
             "type": "boolean",
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
           },
+          "isUnlisted": {
+            "type": "boolean",
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only; every enrollment waits for approval."
+          },
           "coverLabel": {
             "type": "string",
             "nullable": true,
@@ -19636,6 +19640,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "isUnlisted",
           "inPerson",
           "timeZone",
           "version",
@@ -19937,6 +19942,11 @@
             "type": "boolean",
             "example": false,
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
+          },
+          "isUnlisted": {
+            "type": "boolean",
+            "example": false,
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only (404 with no token); every enrollment waits for approval. Not hidden: a hidden course is not-found even by its link."
           },
           "coverLabel": {
             "type": "string",
@@ -20548,6 +20558,10 @@
             "type": "boolean",
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
           },
+          "isUnlisted": {
+            "type": "boolean",
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only; every enrollment waits for approval."
+          },
           "coverLabel": {
             "type": "string",
             "nullable": true,
@@ -20633,6 +20647,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "isUnlisted",
           "inPerson",
           "timeZone",
           "version",
@@ -20773,6 +20788,10 @@
             "type": "boolean",
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
           },
+          "isUnlisted": {
+            "type": "boolean",
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only; every enrollment waits for approval."
+          },
           "coverLabel": {
             "type": "string",
             "nullable": true,
@@ -20856,6 +20875,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "isUnlisted",
           "inPerson",
           "timeZone",
           "version",
@@ -20959,6 +20979,11 @@
             "type": "boolean",
             "example": false,
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
+          },
+          "isUnlisted": {
+            "type": "boolean",
+            "example": false,
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only (404 with no token); every enrollment waits for approval. Not hidden: a hidden course is not-found even by its link."
           },
           "coverLabel": {
             "type": "string",
@@ -21072,6 +21097,11 @@
             "type": "boolean",
             "example": false,
             "description": "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only."
+          },
+          "isUnlisted": {
+            "type": "boolean",
+            "example": false,
+            "description": "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only (404 with no token); every enrollment waits for approval. Not hidden: a hidden course is not-found even by its link."
           },
           "coverLabel": {
             "type": "string",

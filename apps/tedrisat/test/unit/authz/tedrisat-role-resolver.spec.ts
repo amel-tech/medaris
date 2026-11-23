@@ -51,6 +51,7 @@ interface Stubs {
   coursePublic?: {
     status: CourseStatus;
     archived: boolean;
+    unlisted: boolean;
     koskIsPrivate: boolean;
   } | null;
   /** `MadrasahService.exists`; defaults to true. */
@@ -264,6 +265,7 @@ describe("TedrisatRoleResolver", () => {
     const published = {
       status: CourseStatus.PUBLISHED,
       archived: false,
+      unlisted: false,
       koskIsPrivate: false,
     };
 
@@ -295,6 +297,7 @@ describe("TedrisatRoleResolver", () => {
       ["a course that does not exist", null],
       ["a draft", { ...published, status: CourseStatus.DRAFT }],
       ["a hidden course", { ...published, archived: true }],
+      ["an unlisted course (MDRS-248)", { ...published, unlisted: true }],
       ["a course of an unlisted köşk", { ...published, koskIsPrivate: true }],
     ])("404s %s", async (_label, coursePublic) => {
       const { resolver } = build({ coursePublic });

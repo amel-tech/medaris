@@ -156,6 +156,8 @@ export interface ICourse {
   requiresApproval: boolean;
   /** Content and recordings never public (MDRS-176). */
   isClosed: boolean;
+  /** "Listelenmeyen ders" (MDRS-248): in no list, opened by its link only. */
+  isUnlisted: boolean;
   /** The word printed on the cover; null when none (MDRS-176). */
   coverLabel: string | null;
   /** "Celseler yüz yüze yapılır" (MDRS-283): a label, public like the title. */
@@ -407,6 +409,7 @@ export interface ICreateCourse {
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
   isClosed?: boolean;
+  isUnlisted?: boolean;
   coverLabel?: string | null;
   inPerson?: boolean;
   timeZone?: string;
@@ -430,6 +433,7 @@ export interface IUpdateCourse {
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
   isClosed?: boolean;
+  isUnlisted?: boolean;
   coverLabel?: string | null;
   inPerson?: boolean;
   timeZone?: string;
@@ -571,10 +575,11 @@ export interface ICourseRepository {
   forcesApproval(id: string): Promise<boolean>;
   /** The user holding the course's imam grant, or null (MDRS-133). */
   findImamUserId(courseId: string): Promise<string | null>;
-  /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */
+  /** Status, hidden, its own `is_unlisted` (MDRS-248) and the köşk's `is_private`; null for no course (MDRS-122). */
   findPublicVisibility(id: string): Promise<{
     status: CourseStatus;
     archived: boolean;
+    unlisted: boolean;
     koskIsPrivate: boolean;
     koskHidden: boolean;
   } | null>;
