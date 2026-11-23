@@ -254,6 +254,7 @@ export function PermissionEditor({
             <Select
               id={groupId}
               value={editor.draft.groupId ?? NO_GROUP}
+              disabled={pending}
               options={[
                 { value: NO_GROUP, label: t("Editor.groupNone") },
                 ...editor.data.groups.map((candidate) => ({
@@ -281,7 +282,7 @@ export function PermissionEditor({
               labelOf={label}
               ticked={(code) => isTicked(code, editor.draft, group)}
               locked={(code) => isLocked(code, group)}
-              disabled={(code) => !givable.has(code)}
+              disabled={(code) => pending || !givable.has(code)}
               lockedNote={t("Editor.fromGroup")}
               onToggle={(code, on) => setDraft(tick(editor.draft, code, on))}
             />
@@ -292,7 +293,7 @@ export function PermissionEditor({
               labelOf={label}
               ticked={(code) => isTicked(code, editor.draft, group)}
               locked={(code) => isLocked(code, group)}
-              disabled={(code) => !givable.has(code)}
+              disabled={(code) => pending || !givable.has(code)}
               lockedNote={t("Editor.fromGroup")}
               onToggle={(code, on) => setDraft(tick(editor.draft, code, on))}
             >
@@ -314,7 +315,7 @@ export function PermissionEditor({
                       ? EVERY_COURSE
                       : SOME_COURSES
                   }
-                  disabled={spans}
+                  disabled={spans || pending}
                   options={[
                     { value: EVERY_COURSE, label: t("Editor.whereAll") },
                     { value: SOME_COURSES, label: t("Editor.whereChosen") },
@@ -343,6 +344,7 @@ export function PermissionEditor({
                         key={course.id}
                         label={<bdi>{course.title}</bdi>}
                         checked={editor.draft.courseIds.includes(course.id)}
+                        disabled={pending}
                         onCheckedChange={(on) =>
                           setDraft(toggleCourse(editor.draft, course.id, on))
                         }
@@ -372,6 +374,7 @@ export function PermissionEditor({
               type="datetime-local"
               name="expiresAt"
               value={editor.draft.expiresAtLocal}
+              disabled={pending}
               onChange={(event) =>
                 setDraft({
                   ...editor.draft,

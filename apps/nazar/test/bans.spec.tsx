@@ -919,6 +919,41 @@ describe("'Yasakla' on the page (nazir 11)", () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
+  it("keeps the person chosen while the ban is sent: 'Seçimi kaldır' is off until it answers (BAN-3)", async () => {
+    lookupPerson.mockResolvedValue(found);
+    let answer: (value: unknown) => void = () => {};
+    banPerson.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await search("a.kilicarslan@example.com");
+    const remove = () =>
+      dialog().querySelector(
+        "[aria-label='Seçimi kaldır: Ayşe Nur Kılıçarslan']"
+      ) as HTMLButtonElement | null;
+    expect(remove()?.disabled).toBe(false);
+    await typeInto(reason(), "Derste taciz.");
+    await click(submit());
+    await settle(20);
+
+    expect(remove()?.disabled).toBe(true);
+    await click(remove() as Element);
+    expect(dialog().textContent).toContain("Ayşe Nur Kılıçarslan");
+    expect(banPerson).toHaveBeenCalledExactlyOnceWith(
+      "m-1",
+      expect.objectContaining({ userId: "u-9" })
+    );
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(20);
+    expect(remove()?.disabled).toBe(false);
+    expect(dialog().textContent).toContain("Ayşe Nur Kılıçarslan");
+  });
+
   it("offers only the whole medrese when the courses cannot be read", async () => {
     state.courses = { status: "failed" };
     await open();

@@ -36,7 +36,8 @@ import {
  * commits the moment it changes). Kaydet is off until something differs from
  * the last save; a blank name is refused on the page, under its field, and
  * never sent. A save the API refuses leaves the form as it was and says so in
- * a toast that stays.
+ * a toast that stays. The fields and the boxes are off while a save is out:
+ * its answer becomes the draft, so a change made meanwhile would be lost.
  */
 export function SettingsForm({
   madrasahId,
@@ -145,6 +146,7 @@ export function SettingsForm({
               name="name"
               required
               autoComplete="off"
+              disabled={pending}
               value={draft.name}
               onChange={(event) =>
                 setDraft({ ...draft, name: event.target.value })
@@ -163,6 +165,7 @@ export function SettingsForm({
             <Textarea
               name="description"
               rows={5}
+              disabled={pending}
               value={draft.description}
               onChange={(event) =>
                 setDraft({ ...draft, description: event.target.value })
@@ -196,6 +199,7 @@ export function SettingsForm({
                 label={t(`Settings.policies.${key}.label`)}
                 description={t(`Settings.policies.${key}.help`)}
                 checked={draft.policies[key]}
+                disabled={pending}
                 onCheckedChange={(checked) =>
                   setDraft({
                     ...draft,

@@ -36,6 +36,8 @@ needs:
       - test: apps/nazar/e2e/course-nazirs.e2e.ts
         name: "the müderris takes a permission and then the end away, and the page it opened shuts (criterion 3)"
       - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+        name: "turns the boxes off while the save is on its way, so what is sent is what is shown"
 
   - id: lift-or-move-the-end
     need: >-
