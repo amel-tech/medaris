@@ -630,6 +630,28 @@ describe("removing a file", () => {
     ).toHaveLength(2);
   });
 
+  it("keeps 'Vazgeç' off while the removal runs: the file would go all the same", async () => {
+    mocks.get.mockResolvedValue(withTwo());
+    let answer: (value: unknown) => void = () => {};
+    mocks.remove.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    await click(named(host, "Kaldır: bir.pdf"));
+    await click(button(host, "Kaldır"));
+    expect(mocks.remove).toHaveBeenCalledWith(LESSON, F1);
+    expect(button(host, "Vazgeç").disabled).toBe(true);
+    await click(button(host, "Vazgeç"));
+    expect(host.textContent).toContain("Bu dosya kaldırılsın mı?");
+
+    mocks.get.mockResolvedValue(
+      own(submission({ files: [pdf(F2, { name: "iki.pdf" })] }))
+    );
+    await act(async () => answer(ok(undefined)));
+    await settle();
+    expect(
+      host.querySelectorAll('[data-testid="homework-files"] li')
+    ).toHaveLength(1);
+  });
+
   it("says why it could not be removed, and keeps it", async () => {
     mocks.get.mockResolvedValue(withTwo());
     mocks.remove.mockResolvedValue({ success: false, error: "x", status: 503 });

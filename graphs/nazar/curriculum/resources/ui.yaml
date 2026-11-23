@@ -22,7 +22,7 @@ samples:
 # The page keeps no focus of its own on load (nothing in features/curriculum sets it), none moves into or out of the upload panel
 # (F-C-course-a-14), and a removed row takes its focus with it (F-C-course-a-15), so there is no `initialFocus` on the page and no
 # `focus` here; the graph says nothing of what the code does not say. The one dialog gives the focus to "Vazgeç" (Base UI's
-# initialFocus in libs/ui/src/mds/alert-dialog.tsx:64).
+# initialFocus in libs/ui/src/mds/alert-dialog.tsx:70).
 nodes:
   # --- the page -----------------------------------------------------------------------------------------------------------
   page: { type: page, component: Page, role: main, in: [listed, drafting, refused, saving, uploadPanel, uploadingCourse, uploadingLesson, freshSession], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:319 } # the shell's one <main id="main">; it has no name. The form inside it has none either, so it is no form landmark
@@ -119,7 +119,7 @@ nodes:
   removeTitle: { type: text, component: Heading, role: heading, text: { key: Files.removeTitle }, in: [removeFile], source: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:29 }
   removeBody: { type: text, component: Text, text: { key: Files.removeBody }, in: [removeFile], source: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:36 } # the file's name stands before it in one paragraph (a <bdi>), so the text is a part of the element
   removeNote: { type: text, component: Text, text: { key: Files.removeNote }, in: [removeFile], source: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:40 }
-  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Files.cancel }, in: [removeFile], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:94 } # the focus starts here
+  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Files.cancel }, in: [removeFile], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:101 } # the focus starts here
   removeConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Files.removeConfirm }, in: [removeFile], emits: CONFIRM, source: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:32 } # destructive
   removeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [removeFile], emits: CLOSE, source: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:31 } # an icon button named only by aria-label
 

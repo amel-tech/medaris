@@ -398,6 +398,25 @@ describe("editing", () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
+  it("keeps Vazgeç off while the change is sent: it would be saved all the same", async () => {
+    mocks.list.mockResolvedValue(page([question("Eski metin", { id: "q1" })]));
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    await click(button(host, tr.edit) as Element);
+    await set(editBox(host), "Yeni metin");
+    await click(editSave(host));
+    expect(mocks.update).toHaveBeenCalledWith("q1", "Yeni metin");
+    expect(button(host, tr.cancel)?.disabled).toBe(true);
+    await click(button(host, tr.cancel) as Element);
+    expect(editBox(host)).not.toBeNull();
+
+    await act(async () => answer(ok(question("Yeni metin", { id: "q1" }))));
+    await settle();
+    expect(host.textContent).toContain("Yeni metin");
+    expect(host.querySelectorAll("textarea")).toHaveLength(1);
+  });
+
   it("says so, and takes Düzenle away, when the API says it was answered meanwhile", async () => {
     mocks.list.mockResolvedValue(page([question("Eski metin", { id: "q1" })]));
     mocks.update.mockResolvedValue({ success: false, error: "x", status: 409 });
@@ -471,6 +490,30 @@ describe("deleting", () => {
     expect(mocks.remove).toHaveBeenCalledWith("q1");
     expect(host.querySelectorAll("article")).toHaveLength(1);
     expect(host.textContent).toContain("Beta soru");
+    expect(host.textContent).not.toContain("Alfa soru");
+  });
+
+  it("keeps Vazgeç off while the delete runs: the question would go all the same", async () => {
+    mocks.list.mockResolvedValue(
+      page([
+        question("Alfa soru", { id: "q1" }),
+        question("Beta soru", { id: "q2" }),
+      ])
+    );
+    let answer: (value: unknown) => void = () => {};
+    mocks.remove.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    const first = () => host.querySelectorAll("article")[0] as HTMLElement;
+    await click(button(first(), tr.delete) as Element);
+    await click(button(first(), tr.delete) as Element);
+    expect(mocks.remove).toHaveBeenCalledWith("q1");
+    expect(button(first(), tr.cancel)?.disabled).toBe(true);
+    await click(button(first(), tr.cancel) as Element);
+    expect(first().textContent).toContain(tr.deleteAsk);
+
+    await act(async () => answer(ok(undefined)));
+    await settle();
+    expect(host.querySelectorAll("article")).toHaveLength(1);
     expect(host.textContent).not.toContain("Alfa soru");
   });
 

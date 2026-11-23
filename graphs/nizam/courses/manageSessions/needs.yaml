@@ -122,7 +122,7 @@ needs:
       - node: countsCancelled
       - source: apps/tedrisat/src/course/lesson.controller.ts:389
       - source: apps/nizam/features/courses/components/sessions-view.tsx:260
-      - source: libs/ui/src/mds/alert-dialog.tsx:44
+      - source: libs/ui/src/mds/alert-dialog.tsx:46
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 3: 'İptal et' marks the session cancelled, hides its link and leaves it no action"
 

@@ -196,11 +196,11 @@ rules:
   - id: focus-not-set
     rule: >-
       Nothing in features/grants moves the focus when the page opens or when a toast shows. The two dialogs "Ders nazırı ata" and "İzinleri düzenle" are opened with no
-      `initialFocus` (grant-dialog.tsx:139-159, libs/ui/src/mds/dialog.tsx:138 gives Base UI `undefined` for a form), so the focus is on the close icon, not the e-mail field:
+      `initialFocus` (grant-dialog.tsx:139-159, libs/ui/src/mds/dialog.tsx:145 gives Base UI `undefined` for a form), so the focus is on the close icon, not the e-mail field:
       the same as F-W2-12 of nizam.madrasahs.headMuderris. Only "Görevden al" names its first stop, "Vazgeç" (revoke-dialog.tsx:82; e2e grants#8 a1). Not verified in a browser.
   - id: F-W2-12
     rule: >-
-      The assignment and the edit open on the header's close icon, one stop before the field a keyboard or screen-reader user came for (grant-dialog.tsx:139, libs/ui/src/mds/dialog.tsx:138).
+      The assignment and the edit open on the header's close icon, one stop before the field a keyboard or screen-reader user came for (grant-dialog.tsx:139, libs/ui/src/mds/dialog.tsx:145).
       The graph draws `initialFocus: closeIcon`, from the code. Fix: pass the picker's input as `initialFocus` in the assignment and the first box in the edit.
   - id: F-W4-17
     rule: >-
@@ -223,7 +223,7 @@ rules:
       marked; only "Kaydet" / "Görevden al" look busy and the boxes, the select and the end field are disabled. The same as CAPPOINT-1 and CNDIS-3. Fix: disable them with aria-disabled while it is pending.
   - id: CAPPOINT-3
     rule: >-
-      The footer's "{n} izin seçili" is a plain <p class=mds-dialog__meta> (libs/ui/src/mds/dialog.tsx:114-116), not a live region: ticking a box changes it and a reader of the screen is told nothing
+      The footer's "{n} izin seçili" is a plain <p class=mds-dialog__meta> (libs/ui/src/mds/dialog.tsx:118-120), not a live region: ticking a box changes it and a reader of the screen is told nothing
       (CAPPOINT-3, CNP-4). Here it also says "0 izin seçili" with no sentence for none, where the hoca's dialog says "İzin seçilmedi". Fix: role=status on it.
   - id: F-W2-open-8
     rule: >-
@@ -240,7 +240,7 @@ rules:
       its place. The person stays chosen and the field keeps the typed address. Same picker as nizam.madrasahs.headMuderris.
   - id: F-UI-W1-1
     rule: >-
-      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103-112), so the dialog's description is the picker, the select, 21 boxes and the end field (F-D2c-16 of the
+      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so the dialog's description is the picker, the select, 21 boxes and the end field (F-D2c-16 of the
       hoca's dialog). Fix: describe the dialog by the line above its first field only.
   - id: CNP-2
     rule: >-
@@ -252,7 +252,7 @@ rules:
       region inert, so that the accessibility tree does not expose it, is not known from the code. The graph draws the toast in the dialog's state; the replay's `exposed` check will say.
   - id: CNDIS-1
     rule: >-
-      The confirmation "Görevden al" is a `Dialog form`, so it is a role dialog; the kit says a confirmation that waits for an answer is an AlertDialog (libs/ui/src/mds/dialog.tsx:49-50). A reader of the screen
+      The confirmation "Görevden al" is a `Dialog form`, so it is a role dialog; the kit says a confirmation that waits for an answer is an AlertDialog (libs/ui/src/mds/dialog.tsx:51-52). A reader of the screen
       is not told it is a confirmation. e2e grants#8 finds it as a dialog. Fix: AlertDialog with a busy confirm button, as nazar's Pano does.
   - id: GRANTS-1
     rule: >-

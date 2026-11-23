@@ -35,7 +35,9 @@ const firstField = {
  * deck's page. Opened by the route `/decks/[id]/edit`, closed by going back to
  * `/decks/[id]`, so the address says what is on screen. A pending publication
  * request is not touched by an edit; the dialog says so. Nothing is sent when
- * nothing changed.
+ * nothing changed. While the save runs the dialog cannot be closed and its
+ * fields are read-only: closing would not stop it, and a change typed then
+ * would not be sent.
  */
 export function DeckEditDialog({
   deck,
@@ -99,13 +101,14 @@ export function DeckEditDialog({
       }}
       form
       onSubmit={submit}
+      dismissDisabled={busy}
       size="md"
       eyebrow={<span dir="auto">{deck.title}</span>}
       title={t("editTitle")}
       initialFocus={firstField}
       footer={
         <>
-          <DialogClose>{t("cancel")}</DialogClose>
+          <DialogClose disabled={busy}>{t("cancel")}</DialogClose>
           <Button type="submit" loading={busy}>
             {t("save")}
           </Button>
@@ -126,6 +129,7 @@ export function DeckEditDialog({
             value={title}
             maxLength={TITLE_MAX}
             autoComplete="off"
+            readOnly={busy}
             onChange={(event) => setTitle(event.target.value)}
           />
         </Field>
@@ -135,6 +139,7 @@ export function DeckEditDialog({
             rows={3}
             maxLength={DESCRIPTION_MAX}
             value={description}
+            readOnly={busy}
             onChange={(event) => setDescription(event.target.value)}
           />
         </Field>

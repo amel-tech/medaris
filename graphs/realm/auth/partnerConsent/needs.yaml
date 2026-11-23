@@ -100,7 +100,7 @@ needs:
       Hesap.
     evidence:
       - source: apps/tedris/features/account/connected-apps.ts:8
-      - source: apps/tedris/features/account/components/account-settings.tsx:357
+      - source: apps/tedris/features/account/components/account-settings.tsx:361
 
   - id: consent-texts-read-in-the-console
     need: >-

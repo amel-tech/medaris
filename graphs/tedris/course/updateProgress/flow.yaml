@@ -5,7 +5,7 @@
 #   CRS-01      an invalid number is said only as a Field error, which is a plain div with no role and no live region; the focus
 #               stays on "Kaydet", so a screen reader says nothing (progress-dialog.tsx:37-40, libs/ui/src/mds/field.tsx:50-53)
 #   CRS-02      the field relies on React autoFocus and the kit's own initialFocus is not passed (progress-dialog.tsx:92-93,
-#               libs/ui/src/mds/dialog.tsx:138); measured by the replay on the dev server: the field has the focus on opening
+#               libs/ui/src/mds/dialog.tsx:145); measured by the replay on the dev server: the field has the focus on opening
 #   CRS-03      a 409 says "Sayfa yenilendi" and nothing refreshes the page (progress-dialog.tsx:44-48)
 #   CRS-04      the action is called with no try/catch (progress-dialog.tsx:42-52)
 #   CRS-13      the toast has no role of its own and its region has the library's English name

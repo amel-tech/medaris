@@ -241,6 +241,40 @@ describe("with the YouTube player", () => {
     expect(timeInput(host).value).toBe("");
   });
 
+  it("holds the form while a note is sent, so 'Şimdiki an' or text given then is not wiped by its success", async () => {
+    const control = player(90);
+    mocks.player.current = control;
+    let answer: (value: unknown) => void = () => {};
+    mocks.create.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount({ frameId: "live-stream-frame" });
+    await set(timeInput(host), "0:30");
+    await set(textarea(host), "İlk not");
+    await submit(host);
+    expect(mocks.create).toHaveBeenCalledWith("l1", {
+      body: "İlk not",
+      offsetSeconds: 30,
+    });
+
+    // The success empties the form: what is put in now could only be lost.
+    const asked = control.position.mock.calls.length;
+    expect(button(host, "Şimdiki an").disabled).toBe(true);
+    await click(button(host, "Şimdiki an"));
+    expect(control.position.mock.calls.length).toBe(asked);
+    expect(textarea(host).readOnly).toBe(true);
+    expect(timeInput(host).readOnly).toBe(true);
+
+    await act(async () =>
+      answer(ok(note("n1", { body: "İlk not", offsetSeconds: 30 })))
+    );
+    await settle();
+    expect(host.textContent).toContain("İlk not");
+    expect(textarea(host).value).toBe("");
+    expect(textarea(host).readOnly).toBe(false);
+    expect(timeInput(host).readOnly).toBe(false);
+    await click(button(host, "Şimdiki an"));
+    expect(timeInput(host).value).toBe("1:30");
+  });
+
   it("moves the player when a note's time is pressed", async () => {
     const control = player(0);
     mocks.player.current = control;
@@ -532,6 +566,52 @@ describe("editing and deleting", () => {
     await click(confirm[0]);
     await settle();
     expect(mocks.remove).toHaveBeenCalledWith("l1", "a");
+    expect(host.querySelectorAll("li")).toHaveLength(1);
+  });
+
+  it("keeps 'Vazgeç' off while a change is sent: the change would be saved all the same", async () => {
+    mocks.list.mockResolvedValue(
+      ok([note("a", { body: "ilk", offsetSeconds: 10 })])
+    );
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    await click(named(host, "Notu düzenle, 0:10"));
+    await set(
+      host.querySelector("li textarea") as HTMLTextAreaElement,
+      "ilk (düzeltildi)"
+    );
+    await click(button(host, "Kaydet"));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(button(host, "Vazgeç").disabled).toBe(true);
+    await click(button(host, "Vazgeç"));
+    expect(host.querySelector("li textarea")).not.toBeNull();
+
+    await act(async () =>
+      answer(ok(note("a", { body: "ilk (düzeltildi)", offsetSeconds: 10 })))
+    );
+    await settle();
+    expect(host.querySelector("li textarea")).toBeNull();
+    expect(host.textContent).toContain("ilk (düzeltildi)");
+  });
+
+  it("keeps 'Vazgeç' off while a delete runs: the note would be deleted all the same", async () => {
+    mocks.list.mockResolvedValue(ok([note("a"), note("b")]));
+    let answer: (value: unknown) => void = () => {};
+    mocks.remove.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    await click(named(host, "Notu sil, Zamansız"));
+    const confirm = [...host.querySelectorAll("button")].filter((b) =>
+      b.textContent?.includes("Sil")
+    );
+    await click(confirm[0]);
+    expect(mocks.remove).toHaveBeenCalledWith("l1", "a");
+    expect(button(host, "Vazgeç").disabled).toBe(true);
+    await click(button(host, "Vazgeç"));
+    expect(host.textContent).toContain("Silinsin mi?");
+
+    await act(async () => answer(ok(undefined)));
+    await settle();
     expect(host.querySelectorAll("li")).toHaveLength(1);
   });
 

@@ -1290,7 +1290,6 @@ gaps:
     - errors-are-announced
   tedris.decks.editOrDelete:
     - delete-confirms-it-is-done
-    - closing-while-the-call-is-out-does-nothing
     - edit-is-dated
     - an-accepted-edit-is-never-a-500
     - a-deck-name-is-never-blank-in-the-api
@@ -1315,7 +1314,6 @@ gaps:
     - csv-is-read-by-its-name
     - csv-survives-excel
     - a-cell-is-told-as-what-it-is
-    - closing-while-sending-is-honest
     - the-dialog-is-accessible
   tedris.decks.manageCards:
     - the-refusal-is-said-and-the-focus-goes-to-it
@@ -1324,7 +1322,6 @@ gaps:
     - deleting-says-what-happens-to-the-progress
     - the-list-has-an-order-the-buttons-can-name
     - the-focus-goes-somewhere-after-a-card-is-added-or-deleted
-    - a-write-that-is-closed-is-stopped-or-says-so
     - the-api-takes-only-the-fields-of-a-card
     - a-card-id-that-is-no-uuid-is-a-400
     - an-accepted-write-is-never-a-500
@@ -1338,7 +1335,6 @@ gaps:
   tedris.decks.readAndCopy:
     - staff-and-the-bashnazim-are-not-offered-the-collection
     - a-refusal-tells-its-cause
-    - closing-the-dialog-stops-the-copy
     - changes-are-announced
     - the-copy-dialog-starts-in-its-form
   tedris.decks.study:

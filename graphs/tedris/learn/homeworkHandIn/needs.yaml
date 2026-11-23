@@ -83,7 +83,7 @@ needs:
       - state: drafting
       - state: noteSaving
       - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:138
-      - source: apps/tedris/features/courses/components/session-homework.tsx:986
+      - source: apps/tedris/features/courses/components/session-homework.tsx:987
     note: unwalked; the walks `removeThenNote` and `firstNote` of binding.yaml.
 
   - id: hand-in-reaches-the-course-team

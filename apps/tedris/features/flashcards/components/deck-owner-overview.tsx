@@ -259,6 +259,7 @@ export function DeckOwnerOverview({
               confirmLabel={t("delete")}
               confirmVariant="destructive"
               confirmLoading={deleting}
+              dismissDisabled={deleting}
               onConfirm={remove}
             >
               {t("deleteText", { title: deck.title, count: counts.total })}

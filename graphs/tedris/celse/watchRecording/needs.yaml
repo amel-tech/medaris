@@ -108,7 +108,7 @@ needs:
     evidence:
       - state: lockedPlayer
       - source: apps/tedrisat/src/course/course.service.ts:697
-      - source: apps/tedris/features/courses/components/lesson-locked.tsx:139
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:149
       - scenario: outsiderSample
     note: "outsiderSample: walk phase"
 

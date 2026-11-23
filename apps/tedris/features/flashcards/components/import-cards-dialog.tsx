@@ -106,11 +106,12 @@ export function ImportCardsDialog({
       }}
       form
       onSubmit={submit}
+      dismissDisabled={busy}
       size="md"
       title={t("importTitle")}
       footer={
         <>
-          <DialogClose>{t("cancel")}</DialogClose>
+          <DialogClose disabled={busy}>{t("cancel")}</DialogClose>
           <Button type="submit" loading={busy}>
             {t("import")}
           </Button>

@@ -64,7 +64,7 @@ nodes:
   titleAssign: { type: text, component: Heading, role: heading, text: { key: AssignHeadDialog.title }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'assign'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:256 } # h2
   titleChange: { type: text, component: Heading, role: heading, text: { key: AssignHeadDialog.titleChange }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:256 }
   eyebrow: { type: text, component: Text, text: { key: composed.AssignHeadDialog.eyebrow, params: { name: madrasah.name } }, in: [reading, listFailed, form, formReady, looking, saving], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:255 }
-  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: AssignHeadDialog.close }, in: [reading, listFailed, form, formReady, looking, saving], emits: CANCEL, source: libs/ui/src/mds/dialog.tsx:97 } # an icon button named only by aria-label; ignored while the call is in flight (HEAD-6, `if (!saving)`); it is not disabled in the DOM
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: AssignHeadDialog.close }, in: [reading, listFailed, form, formReady, looking, saving], emits: CANCEL, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label; ignored while the call is in flight (HEAD-6, `if (!saving)`); it is not disabled in the DOM
   introAssign: { type: text, component: Text, text: { key: AssignHeadDialog.intro, params: { name: madrasah.name } }, in: [form, formReady, looking, saving], when: "mode == 'assign'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:274 }
   introChange: { type: text, component: Text, text: { key: composed.AssignHeadDialog.introChange, params: { oldHead: head.old } }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:269 }
   requiredNote: { type: text, component: Text, text: { key: AssignHeadDialog.requiredNote }, in: [reading, listFailed, form, formReady, looking, saving], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:276 } # drawn as "* zorunlu alan"
@@ -144,7 +144,7 @@ rules:
       either (assign-head-dialog.tsx:246-266 passes none), so the focus is on the close icon of the header, not on the e-mail field; the same as F-W2-12.
   - id: F-W2-12
     rule: >-
-      The dialog opens on its first focusable element, the header's close icon, instead of the first field (assign-head-dialog.tsx:246, libs/ui/src/mds/dialog.tsx:138).
+      The dialog opens on its first focusable element, the header's close icon, instead of the first field (assign-head-dialog.tsx:246, libs/ui/src/mds/dialog.tsx:145).
       A keyboard or screen-reader user starts one stop before the field they came for. Fix: pass initialFocus = the picker's input.
   - id: F-W2-3
     rule: >-
@@ -173,7 +173,7 @@ rules:
       rows; when the list cannot be read the button is off for good and the alert's retry is the only cue. Fix: keep the button on and validate on submit, or tie the reason to the button.
   - id: F-UI-W1-1
     rule: >-
-      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103-112), so opening 'Başmüderrisi değiştir' makes a screen reader read the intro,
+      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so opening 'Başmüderrisi değiştir' makes a screen reader read the intro,
       the fields and every row as the dialog's description (F-W2-13).
   - id: HEAD-1
     rule: >-
@@ -237,7 +237,7 @@ rules:
       which person changed. Not a defect; drawn as the code has it.
   - id: scrim-does-not-close
     rule: >-
-      A click on the scrim does not close the dialog (a form dialog sets disablePointerDismissal, libs/ui/src/mds/dialog.tsx:71), so a stray click does not lose the answers; Esc and Vazgeç do close it (head-change#2). Holds.
+      A click on the scrim does not close the dialog (a form dialog sets disablePointerDismissal, libs/ui/src/mds/dialog.tsx:74), so a stray click does not lose the answers; Esc and Vazgeç do close it (head-change#2). Holds.
   - id: label-in-name
     rule: >-
       A button's visible text is contained in its accessible name: 'Başmüderris ata' in 'Başmüderris ata: {name}', 'Başmüderrisi değiştir' in 'Başmüderrisi değiştir: {name}' (WCAG 2.5.3). Holds.
