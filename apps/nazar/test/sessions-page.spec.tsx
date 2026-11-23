@@ -527,6 +527,32 @@ describe("the link of a session", () => {
     expect(editor()).toBeNull();
   });
 
+  it("holds the link while it is written, so a refusal shows the link that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open();
+    await typeInto(field("meetingUrl"), "zoom.us/j/999");
+    await click(save());
+    await settle(20);
+    expect(field("meetingUrl").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      meetingUrl: "https://zoom.us/j/999",
+    });
+    expect(field("meetingUrl").disabled).toBe(false);
+    expect(field("meetingUrl").value).toBe("zoom.us/j/999");
+  });
+
   it("starts from the link the session has", async () => {
     await open(`${L2} celsesinin bağlantısını güncelle`);
     expect(field("meetingUrl").value).toBe("https://zoom.us/j/123456");
@@ -623,6 +649,36 @@ describe("the time of a session", () => {
       scheduledAt: "2026-10-14T17:30:00.000Z",
     });
     expect(toast("success")).toContain("Celse zamanı değişti");
+  });
+
+  it("holds the date and the time while they are written, so what is saved is what is shown", async () => {
+    state.viewer = { id: "u-1", timeZone: "Europe/Berlin" };
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await click(byLabel("12 Eki Pzt 20:00 celsesinin tarihini değiştir"));
+    await settle(40);
+    await typeInto(field("time"), "19:30");
+    await click(save());
+    await settle(20);
+    expect(field("date").disabled).toBe(true);
+    expect(field("time").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      scheduledAt: "2026-10-12T17:30:00.000Z",
+    });
+    expect(field("date").disabled).toBe(false);
+    expect(field("time").disabled).toBe(false);
   });
 
   it("asks for the date and the time when one is empty", async () => {
@@ -889,6 +945,32 @@ describe("the live stream link", () => {
       document.querySelectorAll('[data-testid="stream-set"]')
     ).toHaveLength(2);
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("holds the stream link while it is written, so a refusal shows the link that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    setLiveStream.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open(`${L3} celsesine canlı yayın bağlantısı ekle`);
+    await typeInto(field("liveStreamUrl"), "https://youtu.be/zyxwvutsrqp");
+    await click(save());
+    await settle(20);
+    expect(field("liveStreamUrl").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(setLiveStream).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      "https://www.youtube.com/live/zyxwvutsrqp"
+    );
+    expect(field("liveStreamUrl").disabled).toBe(false);
+    expect(field("liveStreamUrl").value).toBe("https://youtu.be/zyxwvutsrqp");
   });
 
   it("is removed with its own button, and only where there is a link", async () => {
@@ -1179,6 +1261,45 @@ describe("the in-person mark of a session (MDRS-283)", () => {
     });
     expect(toast("error")).toContain("Bunu yapma izniniz yok.");
     expect(editor()).not.toBeNull();
+  });
+
+  it("holds the choice while it is written, so a refusal shows the choice that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open();
+    await pick("Yüz yüze");
+    await settle(20);
+    await click(save());
+    await settle(20);
+    const off = (label: string) => {
+      const control = radio(label).querySelector("[role=radio]");
+      return (
+        control?.getAttribute("aria-disabled") === "true" ||
+        control?.hasAttribute("data-disabled") === true
+      );
+    };
+    expect(off("Dersin ayarına uy")).toBe(true);
+    expect(off("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(true);
+    await pick("Yüz yüze değil");
+    await settle(20);
+    expect(picked("Yüz yüze")).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: true,
+    });
+    expect(picked("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(false);
   });
 });
 

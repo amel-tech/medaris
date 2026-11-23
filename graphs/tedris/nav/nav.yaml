@@ -77,12 +77,12 @@ extract:
     deck->decks DeckUnavailable.backToDecks: { skip: "written below (deck-unavailable.tsx:26) with when: signedIn: a visitor never gets the unavailable screen" }
     # deck-unavailable.tsx:26 again, on the study page (app/decks/(medaris)/study/[id]/page.tsx:38,59)
     deckStudy->decks DeckUnavailable.backToDecks: { skip: "written below (deck-unavailable.tsx:26) with when: signedIn: a visitor never gets the unavailable screen" }
-    # copy-card-dialog.tsx:94, the dialog's "Deste oluştur" button; the dialog is opened by DeckReaderView (deck-reader-view.tsx:225), which a visitor never gets (app/decks/(medaris)/[id]/page.tsx:39-50); written below (:94) with when: signedIn
-    deck->decksCreate Decks.create: { skip: "written below (copy-card-dialog.tsx:94), where it is signedIn: the dialog belongs to the reader view, not to a visitor's page" }
-    # copy-card-dialog.tsx:81,104: the Dialog and its sentence, not a control; the button is Decks.create (:94), written below
-    deck->decksCreate Decks.noOwnDecks: { skip: "the sentence of the dialog (copy-card-dialog.tsx:104), not a control: the button is Decks.create (:94), written below" }
-    # create-deck-page.tsx:197-199, "Vazgeç"; written below (:197) with back: true (the generated twin has no back, so the check reads its words against the page's title)
-    decksCreate->decks Decks.cancel: { skip: "written below (create-deck-page.tsx:197) with back: true" }
+    # copy-card-dialog.tsx:96, the dialog's "Deste oluştur" button; the dialog is opened by DeckReaderView (deck-reader-view.tsx:225), which a visitor never gets (app/decks/(medaris)/[id]/page.tsx:39-50); written below (:94) with when: signedIn
+    deck->decksCreate Decks.create: { skip: "written below (copy-card-dialog.tsx:96), where it is signedIn: the dialog belongs to the reader view, not to a visitor's page" }
+    # copy-card-dialog.tsx:82,106: the Dialog and its sentence, not a control; the button is Decks.create (:94), written below
+    deck->decksCreate Decks.noOwnDecks: { skip: "the sentence of the dialog (copy-card-dialog.tsx:106), not a control: the button is Decks.create (:94), written below" }
+    # create-deck-page.tsx:207-209, "Vazgeç"; written below (:197) with back: true (the generated twin has no back, so the check reads its words against the page's title)
+    decksCreate->decks Decks.cancel: { skip: "written below (create-deck-page.tsx:207) with back: true" }
     # study-session.tsx:135-137, "Çalışmayı bitir"; written below (:135) with back: true
     deckStudy->deck tedrisLearn.Study.finish: { skip: "written below as Study.finish (study-session.tsx:135) with back: true" }
     # study-session.tsx:156,163 and :167,174: an EmptyState and its title (<strong>), not a control; the button in each is Study.backToDeck (:158-160, :169-171), already an entry
@@ -240,7 +240,7 @@ pages:
   accountPublicProfile:
     kind: missing # LAYOUT.md planned `placeholder`; the format's `missing` is the kind that says "the server answers not found", which is what the page does
     title: PublicProfile.title
-    evidence: app/account/public-profile/page.tsx:25 calls notFound() before it reads anything while PUBLIC_PROFILE_ENABLED is false (features/public-profile/availability.ts:14, MDRS-141), the Hesap card that links to it is left out (account-settings.tsx:430), and the API answers 404 for the same routes until API__PUBLIC_PROFILE_ENABLED is true
+    evidence: app/account/public-profile/page.tsx:25 calls notFound() before it reads anything while PUBLIC_PROFILE_ENABLED is false (features/public-profile/availability.ts:14, MDRS-141), the Hesap card that links to it is left out (account-settings.tsx:434), and the API answers 404 for the same routes until API__PUBLIC_PROFILE_ENABLED is true
   signIn:
     title: Auth.signIn # the tab title is the app default (SHL-01); the phone bar says "Giriş yap"
     evidence: public; on mount it sends the browser on to Keycloak by itself ("Devam et" only forces it), and an error code shows a box with a way back (features/auth/auth-entry.tsx)
@@ -466,9 +466,9 @@ entries:
   - { from: madrasah, to: signIn, how: link, label: "Sign in (the link in the invitation under the courses)", when: not signedIn, source: apps/tedris/components/anonymous-invite.tsx:41 }
   - { from: madrasah, to: register, how: link, label: "Register (the link in the same sentence)", when: not signedIn, source: apps/tedris/components/anonymous-invite.tsx:46 }
   - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.breadcrumbDiscover, source: apps/tedris/app/kosk-applications/new/page.tsx:29 }
-  - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.cancel, back: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:229 }
+  - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.cancel, back: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235 }
   - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.backToDiscover, data: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91 } # after the application is sent
-  - { from: newKoskApplication, to: landingPrivacyNotice, how: link, label: KoskApplication.noticeLink, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:217 }
+  - { from: newKoskApplication, to: landingPrivacyNotice, how: link, label: KoskApplication.noticeLink, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:223 }
 
   # ---- the course page ----
   - { from: course, to: kosk, how: link, label: "The köşk (breadcrumb)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:248 }
@@ -490,7 +490,7 @@ entries:
   # ---- the celse page and the watch page ----
   - { from: celse, to: kosk, how: link, label: "The köşk (breadcrumb)", data: true, source: apps/tedris/features/courses/session-join-labels.ts:113 }
   - { from: celse, to: course, how: link, label: "The course (breadcrumb)", data: true, source: apps/tedris/features/courses/session-join-labels.ts:114 }
-  - { from: celse, to: course, how: link, label: "The course card of the locked celse", data: true, source: apps/tedris/features/courses/components/lesson-locked.tsx:265 }
+  - { from: celse, to: course, how: link, label: "The course card of the locked celse", data: true, source: apps/tedris/features/courses/components/lesson-locked.tsx:273 }
   - { from: celse, to: course, how: link, label: SessionPage.recordingsGo, data: true, source: apps/tedris/features/courses/components/session-action-card.tsx:371 } # to ?tab=kayitlar, when the celse has a recording that is still being prepared or held back
   - { from: celse, to: celseWatch, how: link, label: SessionPage.watchStream, data: true, source: apps/tedris/features/courses/components/session-action-card.tsx:270 }
   - { from: celse, to: celseWatch, how: link, label: SessionPage.watchRecording, data: true, source: apps/tedris/features/courses/components/session-action-card.tsx:270 }
@@ -501,7 +501,7 @@ entries:
   - { from: celse, to: accountCalendar, how: button, label: AddToCalendar.subscribe, data: true, source: apps/tedris/features/courses/components/calendar-menu.tsx:133 }
   - { from: celse, to: lessonCalendar, how: button, label: AddToCalendar.apple, data: true, source: apps/tedris/features/courses/components/calendar-menu.tsx:124 } # a menu item of "Takvime ekle": it fetches the file and saves it, and navigates only when the handler redirects to sign-in
   - { from: celse, to: filesCourseResource, how: link, label: "A course resource that is a file (the \"Ders geneli\" group of the celse's Kaynaklar)", data: true, source: apps/tedris/features/courses/components/course-resources.tsx:124 }
-  - { from: celse, to: signIn, how: link, label: LessonLocked.signIn, data: true, when: not signedIn, source: apps/tedris/features/courses/components/lesson-locked.tsx:104 } # the locked card of a session whose token cannot be renewed; a visitor is normally sent away by the proxy first
+  - { from: celse, to: signIn, how: link, label: LessonLocked.signIn, data: true, when: not signedIn, source: apps/tedris/features/courses/components/lesson-locked.tsx:106 } # the locked card of a session whose token cannot be renewed; a visitor is normally sent away by the proxy first
   - { from: celse, to: filesLessonResource, how: link, label: "A celse resource that is a file", data: true, source: apps/tedris/features/courses/components/course-resources.tsx:124 }
   - { from: celse, to: filesLessonAssignment, how: link, label: "A file of the homework set for the celse", data: true, source: apps/tedris/features/courses/components/session-homework.tsx:848 }
   - { from: celse, to: filesSubmissionFile, how: link, label: "One of my own homework files", data: true, source: apps/tedris/features/courses/components/session-homework.tsx:924 }
@@ -527,9 +527,9 @@ entries:
   - { from: decks, to: deckStudy, how: link, label: "Çalış: a deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:167 }
   - { from: decksExplore, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 } # breadcrumb
   - { from: decksExplore, to: deck, how: link, label: "A deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
-  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:103 } # breadcrumb
-  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197 }
-  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86 } # the new deck's page
+  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:106 } # breadcrumb
+  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:207 }
+  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89 } # the new deck's page
   - { from: deck, to: decks, how: link, label: Decks.title, when: signedIn, source: apps/tedris/features/flashcards/components/deck-header.tsx:50 } # breadcrumb
   - { from: deck, to: discover, how: link, label: PhoneMenu.discover, when: not signedIn, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:56 } # a visitor's breadcrumb starts at Keşfet
   - { from: deck, to: deckStudy, how: link, label: Decks.study, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:63 }
@@ -541,18 +541,18 @@ entries:
   - { from: deck, to: signIn, how: link, label: PublicDeck.signIn, when: not signedIn, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:73 }
   - { from: deck, to: signIn, how: auto, data: true, when: not signedIn, source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:42" } # a visitor on a deck the API will not show (private or missing): sent to sign in and back
   - { from: deck, to: notFound, how: auto, data: true, when: signedIn, source: apps/tedris/features/flashcards/deck-page-data.ts:36 } # a missing, malformed or private-to-another deck
-  - { from: deck, to: decksCreate, how: link, label: Decks.create, data: true, when: signedIn, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94 } # in the copy-a-card dialog of the reader view, when the person has no deck of that kind of their own
+  - { from: deck, to: decksCreate, how: link, label: Decks.create, data: true, when: signedIn, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:96 } # in the copy-a-card dialog of the reader view, when the person has no deck of that kind of their own
   - { from: deck, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, when: signedIn, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 } # the unavailable screen, drawn only when the API answers 403 for the deck
   - { from: deckCards, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/deck-header.tsx:50 }
   - { from: deckCards, to: deck, how: link, label: Decks.tabOverview, source: apps/tedris/features/flashcards/components/deck-header.tsx:119 }
   - { from: deckCards, to: deckExport, how: link, label: Decks.export, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:84 } # a download
-  - { from: deckCards, to: deckSample, how: link, label: "Excel (.xlsx) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136 } # the link's name is the hard-coded literal "Excel (.xlsx)", not a catalog text: it does not say "template" (the sentence before it does)
-  - { from: deckCards, to: deckSample, how: link, label: "CSV (.csv) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:142 } # the same, "CSV (.csv)"
+  - { from: deckCards, to: deckSample, how: link, label: "Excel (.xlsx) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:137 } # the link's name is the hard-coded literal "Excel (.xlsx)", not a catalog text: it does not say "template" (the sentence before it does)
+  - { from: deckCards, to: deckSample, how: link, label: "CSV (.csv) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:143 } # the same, "CSV (.csv)"
   - { from: deckCards, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 } # the forbidden screen, for a reader who is not the author
   - { from: deckCards, to: notFound, how: auto, data: true, when: signedIn, source: apps/tedris/features/flashcards/deck-page-data.ts:36 }
   - { from: deckCards, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }
-  - { from: deckEdit, to: deck, how: button, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56 } # closes the dialog: the address goes back to the deck's page
-  - { from: deckEdit, to: deck, how: button, label: Decks.save, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:90 }
+  - { from: deckEdit, to: deck, how: button, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:58 } # closes the dialog: the address goes back to the deck's page
+  - { from: deckEdit, to: deck, how: button, label: Decks.save, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:92 }
   - { from: deckEdit, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 }
   - { from: deckEdit, to: notFound, how: auto, data: true, when: signedIn, source: apps/tedris/features/flashcards/deck-page-data.ts:36 }
   - { from: deckEdit, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }
@@ -567,13 +567,13 @@ entries:
   - { from: deckStudy, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, when: signedIn, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }
 
   # ---- Hesap, the calendar subscription, Bildirimler ----
-  - { from: account, to: accountCalendar, how: link, label: AccountProfile.calendarManage, source: apps/tedris/features/account/components/account-settings.tsx:313 }
-  - { from: account, to: signOut, how: link, label: AccountProfile.signOut, source: apps/tedris/features/account/components/account-settings.tsx:374 }
+  - { from: account, to: accountCalendar, how: link, label: AccountProfile.calendarManage, source: apps/tedris/features/account/components/account-settings.tsx:317 }
+  - { from: account, to: signOut, how: link, label: AccountProfile.signOut, source: apps/tedris/features/account/components/account-settings.tsx:378 }
   - { from: account, to: realmProfileUpdate, how: link, label: PublicProfile.genderChange, source: apps/tedris/features/account/components/account-settings.tsx:80 } # "Ekle" (AccountProfile.genderAdd) when the account has no gender
-  - { from: account, to: realmAccountConsole, how: link, label: AccountProfile.connectedManage, source: apps/tedris/features/account/components/account-settings.tsx:357 }
+  - { from: account, to: realmAccountConsole, how: link, label: AccountProfile.connectedManage, source: apps/tedris/features/account/components/account-settings.tsx:361 }
   - { from: account, to: nizamApp, how: link, label: AccountPage.open.nizam, data: true, source: apps/tedris/features/account/components/assignments-table.tsx:122 } # a row of the roles table, only when NIZAM_URL is set, in a new tab; the accessible name is the aria-label "Nizam’da aç: <role>, <scope>"
   - { from: account, to: nazarApp, how: link, label: AccountPage.open.nazar, data: true, source: apps/tedris/features/account/components/assignments-table.tsx:122 } # the same, "Nazar’da aç: <role>, <scope>"
-  - { from: account, to: accountPublicProfile, how: link, label: "The address /account/public-profile, typed in or bookmarked (the Hesap card that links to it is not drawn while the switch is off)", data: true, source: apps/tedris/features/account/components/account-settings.tsx:372 }
+  - { from: account, to: accountPublicProfile, how: link, label: "The address /account/public-profile, typed in or bookmarked (the Hesap card that links to it is not drawn while the switch is off)", data: true, source: apps/tedris/features/account/components/account-settings.tsx:376 }
   - { from: accountCalendar, to: account, how: link, label: CalendarSubscription.breadcrumbAccount, source: apps/tedris/app/account/calendar/page.tsx:26 }
   - { from: accountCalendar, to: calendarFeed, how: link, label: CalendarSubscription.appleOpen, data: true, source: apps/tedris/features/courses/components/calendar-subscription.tsx:185 } # the webcal link, shown once when the link is created
   - { from: notifications, to: course, how: link, label: "A notification about a course", data: true, source: apps/tedris/features/notifications/notification-view.ts:64 }

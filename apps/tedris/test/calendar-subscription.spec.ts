@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { createElement, Fragment, type ReactNode } from "react";
+import { act, createElement, Fragment, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 /**
  * "Takvim aboneliği" (MDRS-163, design tedris/23): the three states of the
@@ -158,6 +158,40 @@ describe("Takvim aboneliği (design tedris/23)", () => {
     );
     await settle();
     expect(mocks.regenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it("while the link is renewed, Vazgeç, Kapat and Esc are off, so nobody believes the old link still works", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.regenerate.mockReturnValue(
+      new Promise((resolve) => (answer = resolve))
+    );
+    const { button, input } = await mount({ createdAt: LINK.createdAt });
+    await click(button("Bağlantıyı yenile") as HTMLElement);
+    await settle();
+    const dialog = () =>
+      document.querySelector("[role=alertdialog]") as HTMLElement | null;
+    const inDialog = (text: string) =>
+      [...(dialog()?.querySelectorAll("button") ?? [])].find(
+        (b) => b.textContent === text
+      ) as HTMLButtonElement;
+    await click(inDialog("Yenile"));
+    expect(mocks.regenerate).toHaveBeenCalledTimes(1);
+
+    const close = dialog()?.querySelector(
+      ".mds-dialog__close"
+    ) as HTMLButtonElement;
+    expect(inDialog("Vazgeç").disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(inDialog("Vazgeç"));
+    await click(close);
+    await key(document.activeElement ?? document.body, "Escape");
+    await settle(60);
+    expect(dialog()).not.toBeNull();
+
+    await act(async () => answer({ success: true, data: LINK }));
+    await settle(60);
+    expect(dialog()).toBeNull();
+    expect(input("calendar-google")?.value).toBe(LINK.url);
   });
 
   it("says so when the link could not be created", async () => {

@@ -218,7 +218,7 @@ states:
       PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
       TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name in Kişi ara", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
       CLEAR_NAME: { guard: "typed == 'some'", target: classify, effect: [erased], say: "they erase what they typed", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
-      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:316 }
       LIFT: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Yasağı kaldır on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
       ESCALATE: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Medreseden de yasakla on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
       REQUEST_PERMANENT: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Kalıcı yasak talebi aç on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
@@ -238,7 +238,7 @@ states:
       PICK_MEDRESE: { guard: "scope != 'madrasah'", target: reading, effect: [toMedrese], say: "they choose Medrese düzeyi", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
       PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
       TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
-      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:316 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:298
 
@@ -261,7 +261,7 @@ states:
       PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
       TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
       CLEAR_NAME: { guard: "typed == 'some'", target: classify, effect: [erased], say: "they erase what they typed", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
-      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:316 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/bans/components/bans-table.tsx:283
 

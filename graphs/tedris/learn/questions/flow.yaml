@@ -50,7 +50,6 @@ scope:
     - "a list that holds several questions: the graph follows one card, and a further question joins the list above it (needs.yaml carries paging as unwalked)"
     - "asking from the celse's detail page (planned, MDRS-267), the player position (MDRS-264)"
     - "the ask box and the card are parts of the page that do not wait for each other, and the graph keeps one state for both: a question sent from the ask box while the card's form, its delete line or its late-edit alert is up leads to the same send as from the list, and the states after it draw the card in view (what the card held is not carried on)"
-    - "a change or a delete refused after its \"Vazgeç\" was pressed while it ran: the card is in view at once, and the refusal's line then stays under it; the graph draws that end as the form or the line with its refusal, and its \"Vazgeç\""
 
 context:
   place:
@@ -207,8 +206,8 @@ states:
     on:
       RETRY: { target: opened, say: "the button reads the list again" }
       SEND:
-        - { guard: needsCelse, target: loadFailed, effect: [needCelse], say: "the ask box stays above the alert and is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
-        - { target: loadFailed, effect: [askBlank], say: "the box is empty here (the page has just been read, or read again): \"Soru boş olamaz.\" and nothing is sent", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
+        - { guard: needsCelse, target: loadFailed, effect: [needCelse], say: "the ask box stays above the alert and is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing", source: apps/tedris/features/courses/components/course-questions.tsx:412 }
+        - { target: loadFailed, effect: [askBlank], say: "the box is empty here (the page has just been read, or read again): \"Soru boş olamaz.\" and nothing is sent", source: apps/tedris/features/courses/components/course-questions.tsx:413 }
       NAVIGATE: left
 
   listed:
@@ -230,13 +229,13 @@ states:
       that replaces a button leaves the focus nowhere (WRT-01, CRS-06).
     on:
       TYPE: { target: listed, effect: [typeText], say: "they write a question" }
-      PICK_CELSE: { guard: "place == 'tab'", target: listed, effect: [pickCelse], say: "they choose a celse in the course tab's form", source: apps/tedris/features/courses/components/course-questions.tsx:446 }
+      PICK_CELSE: { guard: "place == 'tab'", target: listed, effect: [pickCelse], say: "they choose a celse in the course tab's form", source: apps/tedris/features/courses/components/course-questions.tsx:448 }
       SEND:
-        - { guard: needsCelse, target: listed, effect: [needCelse], say: "the course tab says \"Önce bir celse seç.\" and sends nothing", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
-        - { guard: "typed == 'blank'", target: listed, effect: [askBlank], say: "\"Soru boş olamaz.\" and nothing is sent", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
+        - { guard: needsCelse, target: listed, effect: [needCelse], say: "the course tab says \"Önce bir celse seç.\" and sends nothing", source: apps/tedris/features/courses/components/course-questions.tsx:412 }
+        - { guard: "typed == 'blank'", target: listed, effect: [askBlank], say: "\"Soru boş olamaz.\" and nothing is sent", source: apps/tedris/features/courses/components/course-questions.tsx:413 }
         - { target: asking, effect: [clearAsk], say: "they press \"Soruyu gönder\"" }
       EDIT: { guard: mayEdit, target: editing, effect: [openEdit], say: "they press \"Düzenle\" on a card that waits", source: apps/tedris/features/courses/question-model.ts:55 }
-      DELETE: { guard: holdsQuestion, target: confirming, effect: [clearCard], say: "they press \"Sil\" on the card", source: apps/tedris/features/courses/components/course-questions.tsx:375 }
+      DELETE: { guard: holdsQuestion, target: confirming, effect: [clearCard], say: "they press \"Sil\" on the card", source: apps/tedris/features/courses/components/course-questions.tsx:377 }
       TEAM_ANSWERS: { guard: "cards == 'waiting' and team == 'silent'", target: listed, effect: [teamAnswers], say: "the hoca answers it in nazar; this page does not know", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
       RELOAD: { target: opened, effect: [readAgain], say: "the page is read again (a reload): what was typed and chosen is gone (WRT-13)" }
       NAVIGATE: left
@@ -254,11 +253,11 @@ states:
     invoke: { action: askLessonQuestion }
     on:
       DONE:
-        - { guard: "cards == 'none'", target: sent, effect: [cardWaits], say: "the question stands in the list, waiting", source: apps/tedris/features/courses/components/course-questions.tsx:418 }
-        - { target: sent, effect: [asked], say: "a further question joins the list above the one this flow follows", source: apps/tedris/features/courses/components/course-questions.tsx:418 }
+        - { guard: "cards == 'none'", target: sent, effect: [cardWaits], say: "the question stands in the list, waiting", source: apps/tedris/features/courses/components/course-questions.tsx:420 }
+        - { target: sent, effect: [asked], say: "a further question joins the list above the one this flow follows", source: apps/tedris/features/courses/components/course-questions.tsx:420 }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.forbidden: { target: listed, effect: [askForbidden], source: apps/tedris/features/courses/components/course-questions.tsx:422 }
-      FAIL.failed: { target: listed, effect: [askFailed], source: apps/tedris/features/courses/components/course-questions.tsx:422 }
+      FAIL.forbidden: { target: listed, effect: [askForbidden], source: apps/tedris/features/courses/components/course-questions.tsx:424 }
+      FAIL.failed: { target: listed, effect: [askFailed], source: apps/tedris/features/courses/components/course-questions.tsx:424 }
 
   sent:
     title: The question is on the course team's list in nazar
@@ -286,9 +285,9 @@ states:
         - { target: saving, effect: [clearCard], say: "they press \"Kaydet\"" }
       CANCEL: { target: listed, effect: [clearCard], say: "they press \"Vazgeç\"; the text goes back to what it was" }
       SEND:
-        - { guard: needsCelse, target: editing, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's form stays open", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
-        - { guard: "typed == 'blank'", target: editing, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's form stays open", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
-        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's form stays open (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:415 }
+        - { guard: needsCelse, target: editing, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's form stays open", source: apps/tedris/features/courses/components/course-questions.tsx:412 }
+        - { guard: "typed == 'blank'", target: editing, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's form stays open", source: apps/tedris/features/courses/components/course-questions.tsx:413 }
+        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's form stays open (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:417 }
       TEAM_ANSWERS: { guard: "team == 'silent'", target: editing, effect: [teamAnswers], say: "the hoca answers it in nazar while the form is open", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
       NAVIGATE: left
 
@@ -297,8 +296,9 @@ states:
     source: apps/tedris/features/courses/components/course-questions.tsx:204
     description: >-
       The server action updateLessonQuestion, PATCH /questions/:questionId with the text. The button is busy ("Kaydediliyor");
-      its "Vazgeç" and the ask box stay live, and a press on one is drawn where the call ends (duringStep: "Vazgeç" shows the card
-      in view at once, and the call's end still applies). A 200 puts the API's copy in the card and returns to view. A 404 (the
+      its "Vazgeç" is disabled (course-questions.tsx:309), as the call would go on and save a change the talebe called off. The
+      ask box stays live, and a press on it is drawn where the call ends (duringStep). A 200 puts the API's copy in the card and
+      returns to view. A 404 (the
       question went) drops the card without a word. A 409
       (answered meanwhile) returns to view and says "Cevaplanmış bir soru düzenlenemez." (lateEdit); a 403 and any other refusal
       say their words in the form and keep it open.
@@ -324,15 +324,15 @@ states:
       DELETE: { target: confirming, effect: [clearCard], say: "they press \"Sil\"" }
       RELOAD: { target: opened, effect: [readAgain], say: "the page is read again and shows the answer" }
       SEND:
-        - { guard: needsCelse, target: lateEdit, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's alert stays", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
-        - { guard: "typed == 'blank'", target: lateEdit, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's alert stays", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
-        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's alert stays (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:415 }
+        - { guard: needsCelse, target: lateEdit, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's alert stays", source: apps/tedris/features/courses/components/course-questions.tsx:412 }
+        - { guard: "typed == 'blank'", target: lateEdit, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's alert stays", source: apps/tedris/features/courses/components/course-questions.tsx:413 }
+        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's alert stays (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:417 }
       NAVIGATE: left
 
   confirming:
     title: Sil asks once
     by: human
-    source: apps/tedris/features/courses/components/course-questions.tsx:336
+    source: apps/tedris/features/courses/components/course-questions.tsx:337
     description: >-
       The card's buttons give way to an inline line: "Silinsin mi?" (or "Silinsin mi? Cevabı da silinir." when the card holds an
       answer), a destructive "Sil" and "Vazgeç". It is not a dialog: nothing behind it is inert, and the focus goes nowhere
@@ -342,9 +342,9 @@ states:
       CONFIRM_DELETE: { target: deleting, effect: [clearCard], say: "they press \"Sil\" in the line" }
       CANCEL: { target: listed, effect: [clearCard], say: "they press \"Vazgeç\"" }
       SEND:
-        - { guard: needsCelse, target: confirming, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's line stays", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
-        - { guard: "typed == 'blank'", target: confirming, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's line stays", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
-        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's line stays (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:415 }
+        - { guard: needsCelse, target: confirming, effect: [needCelse], say: "the ask box is checked on its own: the course tab says \"Önce bir celse seç.\" and sends nothing; the card's line stays", source: apps/tedris/features/courses/components/course-questions.tsx:412 }
+        - { guard: "typed == 'blank'", target: confirming, effect: [askBlank], say: "\"Soru boş olamaz.\" under the ask box, and nothing is sent; the card's line stays", source: apps/tedris/features/courses/components/course-questions.tsx:413 }
+        - { target: asking, effect: [clearAsk], say: "the question in the ask box is sent while the card's line stays (not carried on: scope.outOfView)", source: apps/tedris/features/courses/components/course-questions.tsx:417 }
       TEAM_ANSWERS: { guard: "cards == 'waiting' and team == 'silent'", target: confirming, effect: [teamAnswers], say: "the hoca answers it while the line is up", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
       NAVIGATE: left
 
@@ -353,9 +353,10 @@ states:
     source: apps/tedris/features/courses/components/course-questions.tsx:231
     description: >-
       The server action deleteLessonQuestion, DELETE /questions/:questionId, which the author may call at any time, answered or
-      not, and which deletes the answer with the question. The button is busy ("Siliniyor"); its "Vazgeç" and the ask box stay
-      live, and a press on one is drawn where the call ends (duringStep: "Vazgeç" shows the card in view at once, and the call's
-      end still applies). A 204 and a 404 (gone already is what the author wanted) remove the card from the list; any other
+      not, and which deletes the answer with the question. The button is busy ("Siliniyor"); its "Vazgeç" is disabled
+      (course-questions.tsx:354), as the call would go on and delete a question the talebe kept. The ask box stays live, and a
+      press on it is drawn where the call ends (duringStep). A 204 and a 404 (gone already is what the author wanted) remove the
+      card from the list; any other
       refusal says "Soru silinemedi. Biraz sonra yeniden dene." and keeps the line.
     invoke: { action: deleteLessonQuestion }
     on:
@@ -389,8 +390,8 @@ assertions:
   - id: send-needs-a-body
     never: "state == 'asking' and typed == 'blank'"
     say: "a question is sent only with text in the ask box"
-    source: apps/tedris/features/courses/components/course-questions.tsx:411
+    source: apps/tedris/features/courses/components/course-questions.tsx:413
   - id: send-needs-a-celse-on-the-tab
     never: "state == 'asking' and place == 'tab' and picked == 'no'"
     say: "the course tab sends a question only with a celse chosen"
-    source: apps/tedris/features/courses/components/course-questions.tsx:410
+    source: apps/tedris/features/courses/components/course-questions.tsx:412

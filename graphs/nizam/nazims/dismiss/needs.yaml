@@ -115,7 +115,7 @@ needs:
       - node: dismissDialog
       - state: roster
       - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:151
-      - source: libs/ui/src/mds/dialog.tsx:126
+      - source: libs/ui/src/mds/dialog.tsx:133
       - test: apps/nizam/e2e/permissions.e2e.ts
         name: "nizam/11 — dropping what was handed on revokes it, and 'Vazgeç' changes nothing"
       - test: apps/nizam/e2e/permissions.e2e.ts

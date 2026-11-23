@@ -115,7 +115,6 @@ states:
   sampling: { call: '{tedris}/api/decks/sample*' }
   # the import is a fetch from the dialog: held while the busy button and the hidden "Yükleniyor" are checked, then released
   importing: { call: '{tedris}/api/decks/*/import' }
-  abandoned: { call: '{tedris}/api/decks/*/import' }
   left: { url: '{tedris}/notifications' }
 
 effects:

@@ -28,7 +28,7 @@
 # when they learn the session is over is realm.auth.sessionEnded.
 #
 # Where the people start. The controls that lead here are the screens of other flows and the entries of the navigation graphs:
-#   tedris   Hesap's "Çıkış yap" link to /auth/signout (account-settings.tsx:403); the legacy user menu has the same link but is
+#   tedris   Hesap's "Çıkış yap" link to /auth/signout (account-settings.tsx:407); the legacy user menu has the same link but is
 #            drawn only on the error page, where nothing hides it (user-header-menu.tsx:82)
 #   nizam    Hesap's "Çıkış yap" link to /auth/signout (account-page.tsx:265)
 #   nazar    Hesap's and the no-access page's "Çıkış yap" buttons post at once, with no confirmation (sign-out-button.tsx:28); the
@@ -134,7 +134,7 @@ states:
       first. Nazar's buttons on Hesap and on the no-access page skip it and post at once (F-E-18, decision D1); no other app
       has a button that signs out without asking. The page is public in all three apps, so it still opens when the session
       ended before the person got there (`session: gone`).
-    source: apps/tedris/features/account/components/account-settings.tsx:374
+    source: apps/tedris/features/account/components/account-settings.tsx:378
     always:
       - { target: signingOut, guard: direct, say: "nazar's button posts at once" }
       - { target: confirmPage, say: "the confirmation page opens" }

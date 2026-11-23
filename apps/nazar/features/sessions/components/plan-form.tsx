@@ -66,7 +66,8 @@ const PREVIEW_DELAY_MS = 250;
  * links stay empty or go to the first session only. The times are typed on the
  * viewer's clock unless another zone is chosen. The sessions carry no
  * in-person mark of their own: they follow the course's, and the form says so
- * when the course is held in person (MDRS-283).
+ * when the course is held in person (MDRS-283). While the celses are made
+ * every field and choice is held, so what the page shows is what was sent.
  */
 export function PlanForm({
   courseId,
@@ -118,6 +119,9 @@ export function PlanForm({
 
   const set = <K extends keyof PlanFields>(key: K, value: PlanFields[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+  /** A chip group's options, held while the celses are made. */
+  const held = <T extends { value: string }>(options: T[]) =>
+    options.map((option) => ({ ...option, disabled: saving }));
 
   const zones = useMemo(() => listTimeZones(form.timeZone), [form.timeZone]);
   const problems = planErrors(form);
@@ -243,6 +247,7 @@ export function PlanForm({
         type="time"
         name="startTime"
         value={form.startTime}
+        disabled={saving}
         onChange={(event) => set("startTime", event.target.value)}
       />
     </Field>
@@ -260,6 +265,7 @@ export function PlanForm({
         max={1440}
         inputMode="numeric"
         value={form.duration}
+        disabled={saving}
         trailing={t("SessionPlan.durationUnit")}
         onChange={(event) => set("duration", event.target.value)}
       />
@@ -270,6 +276,7 @@ export function PlanForm({
       <Select
         name="timeZone"
         value={form.timeZone}
+        disabled={saving}
         onChange={(value) => value && set("timeZone", value)}
         options={zones.map((zone) => ({
           value: zone,
@@ -292,6 +299,7 @@ export function PlanForm({
         type="date"
         name="startDate"
         value={form.startDate}
+        disabled={saving}
         onChange={(event) => set("startDate", event.target.value)}
       />
     </Field>
@@ -307,6 +315,7 @@ export function PlanForm({
         name="title"
         value={title}
         maxLength={200}
+        disabled={saving}
         onChange={(event) => setTitle(event.target.value)}
       />
     </Field>
@@ -318,6 +327,7 @@ export function PlanForm({
         name="links"
         bordered
         value={links}
+        disabled={saving}
         onChange={(value) => setLinks(value as Links)}
         options={[
           {
@@ -346,6 +356,7 @@ export function PlanForm({
             autoComplete="off"
             spellCheck={false}
             value={firstUrl}
+            disabled={saving}
             onChange={(event) => setFirstUrl(event.target.value)}
           />
         </Field>
@@ -394,10 +405,10 @@ export function PlanForm({
             setTitle(t("SessionPlan.defaultTitle"));
           }
         }}
-        options={[
+        options={held([
           { value: "lesson", label: t("SessionPlan.kindLesson") },
           { value: "exam", label: t("SessionPlan.kindExam") },
-        ]}
+        ])}
       />
 
       {exam ? null : (
@@ -409,10 +420,10 @@ export function PlanForm({
           onChange={(value) =>
             value && set("mode", value as PlanFields["mode"])
           }
-          options={[
+          options={held([
             { value: "single", label: t("SessionPlan.modeSingle") },
             { value: "weekly", label: t("SessionPlan.modeWeekly") },
-          ]}
+          ])}
         />
       )}
 
@@ -435,6 +446,7 @@ export function PlanForm({
                 legend={t("SessionPlan.examPlaceLegend")}
                 name="examPlace"
                 value={place}
+                disabled={saving}
                 onChange={(value) => setPlace(value as ExamPlace)}
                 options={[
                   { value: "online", label: t("SessionPlan.examOnline") },
@@ -452,6 +464,7 @@ export function PlanForm({
                     maxLength={200}
                     dir="auto"
                     value={location}
+                    disabled={saving}
                     onChange={(event) => setLocation(event.target.value)}
                   />
                 </Field>
@@ -500,13 +513,13 @@ export function PlanForm({
                       onChange={(value) =>
                         value && setExamFormat(value as ExamFormat)
                       }
-                      options={[
+                      options={held([
                         {
                           value: "WRITTEN",
                           label: t("SessionPlan.examWritten"),
                         },
                         { value: "ORAL", label: t("SessionPlan.examOral") },
-                      ]}
+                      ])}
                     />
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field
@@ -521,6 +534,7 @@ export function PlanForm({
                           max={1000}
                           inputMode="numeric"
                           value={maxScore}
+                          disabled={saving}
                           onChange={(event) => setMaxScore(event.target.value)}
                         />
                       </Field>
@@ -533,6 +547,7 @@ export function PlanForm({
                         rows={3}
                         dir="auto"
                         value={topics}
+                        disabled={saving}
                         onChange={(event: { target: { value: string } }) =>
                           setTopics(event.target.value)
                         }
@@ -542,6 +557,7 @@ export function PlanForm({
                       label={t("SessionPlan.examRetake")}
                       description={t("SessionPlan.examRetakeDesc")}
                       checked={retake}
+                      disabled={saving}
                       onCheckedChange={(checked: boolean) => setRetake(checked)}
                     />
                     {titleField}
@@ -573,10 +589,12 @@ export function PlanForm({
                       name="weekdays"
                       value={form.weekdays.map(String)}
                       onChange={(value) => set("weekdays", value.map(Number))}
-                      options={WEEKDAYS.map((day) => ({
-                        value: String(day),
-                        label: weekdayName(locale, day, "short"),
-                      }))}
+                      options={held(
+                        WEEKDAYS.map((day) => ({
+                          value: String(day),
+                          label: weekdayName(locale, day, "short"),
+                        }))
+                      )}
                     />
                     {sent && problems.weekdays ? (
                       <p className="mds-error" role="alert">
@@ -597,6 +615,7 @@ export function PlanForm({
                       legend={t("SessionPlan.endLegend")}
                       name="endMode"
                       value={form.endMode}
+                      disabled={saving}
                       onChange={(value) =>
                         set("endMode", value as PlanFields["endMode"])
                       }
@@ -620,6 +639,7 @@ export function PlanForm({
                           type="date"
                           name="endDate"
                           value={form.endDate}
+                          disabled={saving}
                           onChange={(event) =>
                             set("endDate", event.target.value)
                           }
@@ -638,6 +658,7 @@ export function PlanForm({
                           max={200}
                           inputMode="numeric"
                           value={form.count}
+                          disabled={saving}
                           onChange={(event) => set("count", event.target.value)}
                         />
                       </Field>

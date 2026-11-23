@@ -14,9 +14,8 @@
 #     progress-orphans; MCARDS-1)
 #   - the list has no ORDER BY at the API (flashcard.repository.ts:63), the names "Düzenle: kart n" are positions, and an UPDATE of a row can move it in
 #     the heap order Postgres answers in: the row an author edited may come back last (MCARDS-3, from the code, not seen)
-#   - "Vazgeç", the close icon and Esc close an add, edit or delete dialog while its write is out, and do not cancel the write: the toast then tells a
-#     result for a dialog that is gone (MCARDS-4; DCK-30 is the same for deleting a deck). The graph does not draw that interval: it draws the busy
-#     dialog with its buttons off
+#   - fixed on 23 Nov 2026: "Vazgeç", the close icon and Esc closed an add, edit or delete dialog while its write was out without cancelling it
+#     (MCARDS-4); now they are off until the answer, and the graph draws the busy dialog with them disabled
 #   - after a delete the row, and with it the opener, is gone, and after the first card the empty state's "Kart ekle" is gone: the focus falls to
 #     the document (DCK-17, not seen in a browser)
 #   - the API's own broken rules on these routes are not reachable from this page, whose bodies are always well-formed: a card id that is not a uuid
@@ -122,7 +121,7 @@ context:
   confirmed: { values: [true, false], initial: false } # the author pressed "Kartı sil" in the dialog that is open
 
 guards:
-  # card-form-dialog.tsx:53: a message shows only once a submit was tried, and only for a face with a problem
+  # card-form-dialog.tsx:55: a message shows only once a submit was tried, and only for a face with a problem
   faceBad: "attempted and (typed == 'none' or typed == 'short')"
   # the edit form starts filled, so only a face typed too short can have a message
   backBad: "attempted and typed == 'short'"
@@ -221,17 +220,17 @@ states:
       picker (invariants deck-card-type-fixed, card-type-matches-deck). A refused write puts the error toast over the form, which keeps what was typed.
       The words "Kapat" of the close icon and "Vazgeç" are the kit's and the dialog's, "Kapat" from a default of the kit (DCK-23); the dialog's whole
       body is the dialog's description for a screen reader (DCK-24).
-    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:89
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91
     on:
       FILL_IN:
-        - { guard: "fields == 'valid'", target: addForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:127, say: "they type a front and a back that are long enough" }
-        - { guard: "fields == 'short'", target: addForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:127, say: "they type a front and a back of under three characters" }
+        - { guard: "fields == 'valid'", target: addForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:131, say: "they type a front and a back that are long enough" }
+        - { guard: "fields == 'short'", target: addForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:131, say: "they type a front and a back of under three characters" }
       SUBMIT:
-        - { guard: goodFaces, target: adding, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:66, say: "they press 'Kaydet' with both faces long enough: the card is sent" }
-        - { target: addForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:65, say: "they press 'Kaydet' with an empty or too short face: nothing is sent, the messages appear under the faces" }
+        - { guard: goodFaces, target: adding, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:68, say: "they press 'Kaydet' with both faces long enough: the card is sent" }
+        - { target: addForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67, say: "they press 'Kaydet' with an empty or too short face: nothing is sent, the messages appear under the faces" }
       CANCEL:
-        - { guard: "rows == 'none'", target: emptyList, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91, say: "'Vazgeç', the close icon or Esc: nothing is made, the empty state is back" }
-        - { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91, say: "'Vazgeç', the close icon or Esc: nothing is made, the table is back" }
+        - { guard: "rows == 'none'", target: emptyList, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is made, the empty state is back" }
+        - { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is made, the table is back" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   adding:
@@ -241,17 +240,18 @@ states:
       trimmed and the type the deck's. The API makes no check that the type is the deck's and spreads the elements it is sent into the insert, so a
       caller of the API may set the card's id (invariants card-create-takes-only-its-fields and card-type-matches-deck; this page sends exactly those
       three fields). "Kaydet" is busy (aria-disabled, aria-busy) and says "Yükleniyor" to a screen reader from a default of the kit (DCK-23). The
-      fields stay live. "Vazgeç", the close icon and Esc stay on and close the dialog without cancelling the write (MCARDS-4): not drawn here. On
+      faces are read-only (card-form-dialog.tsx:130, 147), as a change typed now would not be sent. "Vazgeç" and the close icon are disabled and Esc does nothing until the answer (the dialog's dismissDisabled,
+      card-form-dialog.tsx:98), as closing would not stop the write (MCARDS-4, fixed). On
       success: the toast "Kart eklendi", the page is read again and the dialog closes, the focus going back to the header's "Kart ekle". On any
       refusal (`attempt()` turns a rejected call into one): the error toast "Kaydedilemedi" / "Bir sorun oluştu; yazdıkların korundu. Yeniden dene." and
       the dialog stays with its text.
-    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:70
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72
     invoke: { action: createCards }
     on:
       DONE:
-        - { guard: "answer == 'saved' and rows == 'none'", target: list, effect: [addedFirst], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:80, say: "the first card: the empty state gives way to a table of one row, the tab says 'Kartlar 1'; its button, if the dialog was opened from it, is gone (DCK-17)" }
-        - { guard: "answer == 'saved'", target: list, effect: [addedMore], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:80, say: "another card: the table has a row more, the count grows" }
-      FAIL.failed: { guard: "answer == 'failed'", target: addForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72, say: "an error toast; the form stays open with what was typed" }
+        - { guard: "answer == 'saved' and rows == 'none'", target: list, effect: [addedFirst], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "the first card: the empty state gives way to a table of one row, the tab says 'Kartlar 1'; its button, if the dialog was opened from it, is gone (DCK-17)" }
+        - { guard: "answer == 'saved'", target: list, effect: [addedMore], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "another card: the table has a row more, the count grows" }
+      FAIL.failed: { guard: "answer == 'failed'", target: addForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74, say: "an error toast; the form stays open with what was typed" }
 
   editForm:
     title: The "Kartı düzenle" form
@@ -261,15 +261,15 @@ states:
       as PATCH /flashcard/cards/{id} (the type is not sent); an unchanged form sends them all the same and the toast says "Kart güncellendi" (MCARDS-2).
       A back face under three characters is refused under it once "Kaydet" was tried. After a save the row's own "Düzenle" button is still there to
       take the focus back; the list may have moved the row (MCARDS-3, from the code).
-    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:89
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91
     on:
       REVISE:
-        - { guard: "fields == 'valid'", target: editForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:143, say: "they change the back face to a text that is long enough" }
-        - { guard: "fields == 'short'", target: editForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:143, say: "they change the back face to under three characters" }
+        - { guard: "fields == 'valid'", target: editForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:148, say: "they change the back face to a text that is long enough" }
+        - { guard: "fields == 'short'", target: editForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:148, say: "they change the back face to under three characters" }
       SUBMIT:
-        - { guard: "typed == 'short'", target: editForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:65, say: "they press 'Kaydet' with a back face that is too short: nothing is sent, the message appears" }
-        - { target: updating, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:69, say: "they press 'Kaydet': the faces are sent, changed or not (MCARDS-2)" }
-      CANCEL: { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91, say: "'Vazgeç', the close icon or Esc: nothing is changed" }
+        - { guard: "typed == 'short'", target: editForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67, say: "they press 'Kaydet' with a back face that is too short: nothing is sent, the message appears" }
+        - { target: updating, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:71, say: "they press 'Kaydet': the faces are sent, changed or not (MCARDS-2)" }
+      CANCEL: { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is changed" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   updating:
@@ -280,13 +280,13 @@ states:
       those). A card id that is not a uuid is a 500 AUTHZ_RESOLVER_ERROR and not a 400 (card-routes-malformed-id-400; the ids come from the API, so
       neither can this page). Busy as `adding`. On success the toast "Kart güncellendi" and the page is read again; on a refusal the error toast and
       the form stays.
-    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:69
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:71
     invoke: { action: updateCard }
     on:
       DONE:
-        - { guard: "answer == 'saved' and typed == 'valid'", target: list, effect: [updatedRevised], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:80, say: "the row shows the new back face" }
-        - { guard: "answer == 'saved'", target: list, effect: [updatedUnchanged], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:80, say: "nothing was changed and the toast says it was updated all the same (MCARDS-2)" }
-      FAIL.failed: { guard: "answer == 'failed'", target: editForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72, say: "an error toast; the form stays open with what was typed" }
+        - { guard: "answer == 'saved' and typed == 'valid'", target: list, effect: [updatedRevised], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "the row shows the new back face" }
+        - { guard: "answer == 'saved'", target: list, effect: [updatedUnchanged], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "nothing was changed and the toast says it was updated all the same (MCARDS-2)" }
+      FAIL.failed: { guard: "answer == 'failed'", target: editForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74, say: "an error toast; the form stays open with what was typed" }
 
   confirmDelete:
     title: '"Kartı sil?" asks once'
@@ -299,7 +299,7 @@ states:
       "Kapat" (DCK-23). Closing it unmounts it and Base UI gives the focus back to the row's "Sil: kart n" (from the code).
     source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:212
     on:
-      CONFIRM_DELETE: { target: deleting, effect: [answered], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:222, say: "they press 'Kartı sil'" }
+      CONFIRM_DELETE: { target: deleting, effect: [answered], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:223, say: "they press 'Kartı sil'" }
       CANCEL: { target: list, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:214, say: "'Vazgeç', the close icon or Esc: the card stays" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
@@ -307,8 +307,8 @@ states:
     title: The card is being deleted
     description: >-
       The server action deleteCard, DELETE /flashcard/cards/{id}, which answers true; the card's labels go with it and its progress rows do not.
-      "Kartı sil" is busy. "Vazgeç", the close icon and Esc stay on, close the dialog and do not cancel the request: the card is deleted although the
-      author closed the dialog, and the toast then comes without a dialog (MCARDS-4, the same as DCK-30 for a deck): not drawn here. On success: the
+      "Kartı sil" is busy. "Vazgeç" and the close icon are disabled and Esc does nothing until the answer (the window's dismissDisabled,
+      deck-cards-page.tsx:222), as closing would not stop the delete (MCARDS-4, fixed). On success: the
       toast "Kart silindi", the page is read again and the dialog closes; the row, and with it the button that opened the dialog, is gone, so the focus
       falls to the document (DCK-17, from the code). When it was the last card the empty state is back and the tab says "Kartlar 0". On a refusal the
       dialog closes and the error toast "Silinemedi" / "Bir sorun oluştu. Yeniden dene." says so; the row stays.
@@ -326,9 +326,9 @@ states:
     leavesPage: true
 
 assertions:
-  - { id: a-card-is-sent-only-with-long-enough-faces, never: "state == 'adding' and typed != 'valid'", say: "A card is sent only when both faces were checked in the page: 3 to 5000 characters after trimming", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:65 }
-  - { id: an-edit-is-never-sent-with-a-short-face, never: "state == 'updating' and typed == 'short'", say: "A card is changed only with a back face that is long enough", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:65 }
-  - { id: a-card-is-deleted-only-after-the-answer, never: "state == 'deleting' and not confirmed", say: "A card is deleted only after the author pressed 'Kartı sil' in the confirmation", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:222 }
-  - { id: a-refused-write-keeps-what-was-typed, never: "state == 'addForm' and toast == 'saveFailed' and typed == 'none'", say: "After a refused write the form still holds what was typed", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72 }
+  - { id: a-card-is-sent-only-with-long-enough-faces, never: "state == 'adding' and typed != 'valid'", say: "A card is sent only when both faces were checked in the page: 3 to 5000 characters after trimming", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67 }
+  - { id: an-edit-is-never-sent-with-a-short-face, never: "state == 'updating' and typed == 'short'", say: "A card is changed only with a back face that is long enough", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67 }
+  - { id: a-card-is-deleted-only-after-the-answer, never: "state == 'deleting' and not confirmed", say: "A card is deleted only after the author pressed 'Kartı sil' in the confirmation", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:223 }
+  - { id: a-refused-write-keeps-what-was-typed, never: "state == 'addForm' and toast == 'saveFailed' and typed == 'none'", say: "After a refused write the form still holds what was typed", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74 }
   - { id: the-table-is-never-empty, never: "state == 'list' and rows == 'none'", say: "The table is drawn only for a deck that has a card", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110 }
   - { id: the-empty-state-is-never-over-cards, never: "state == 'emptyList' and rows != 'none'", say: "The empty state is drawn only for a deck with no card", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110 }

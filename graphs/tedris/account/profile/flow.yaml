@@ -187,7 +187,7 @@ failures:
   savingInvitations: { from: updateMe, signedOut: [HTTP_401], refused: [VALIDATION_ERROR, USER_NOT_FOUND] }
 # `unreadable` stands for any answer but a refused token: the page treats a 404, a 5xx and a network error alike (reads.ts:178-187).
 # `refused` stands for every answer but 401 that a save gets: authenticatedAction turns each into `success: false` and the page draws
-# one toast whatever the status was (account-settings.tsx:120-125, 217-221, 293-297).
+# one toast whatever the status was (account-settings.tsx:120-125, 219-223, 297-301).
 
 # The main story, as e2e profile#1, #2 and #3 walk it together: a blank first name is refused and nothing is sent, the names are filled
 # and saved, a reload keeps them, a time zone is chosen from the short list, the invitation switch is turned off, and the calendar
@@ -216,7 +216,7 @@ states:
     title: Hesap
     by: human
     goal: true
-    source: apps/tedris/features/account/components/account-settings.tsx:392
+    source: apps/tedris/features/account/components/account-settings.tsx:396
     description: >-
       /account as a signed-in talebe, the cards in the order the code draws them: "Kişisel bilgiler" (Ad and Soyad with their help,
       the e-mail address, read-only with a lock, the gender, read-only, with "Değiştir" or "Ekle" under it, and "Kaydet"), "Bağlı
@@ -235,18 +235,18 @@ states:
         - { guard: "typed == 'blankGiven'", target: account, effect: [saidGiven, clearToast], say: "Kaydet with Ad empty: 'Adını yaz.' under Ad, nothing is sent, the focus stays where it is (ACC-02); e2e profile#1", source: apps/tedris/features/account/components/account-settings.tsx:112 }
         - { guard: "typed == 'blankFamily'", target: account, effect: [saidFamily, clearToast], say: "Kaydet with Soyad empty: 'Soyadını yaz.' under Soyad, nothing is sent", source: apps/tedris/features/account/components/account-settings.tsx:112 }
         - { target: savingName, effect: [saidNone, clearToast], say: "both boxes hold a name: the lines go and updateMyName is called with the trimmed names", source: apps/tedris/features/account/components/account-settings.tsx:113 }
-      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list, 'Saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:237 }
-      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list, 'Diğer saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:247 }
+      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list, 'Saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:239 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list, 'Diğer saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:250 }
       TOGGLE_INVITATIONS:
-        - { guard: switchOn, target: savingInvitations, effect: [flipOff, clearToast], say: "they turn the switch off: it flips at once and updateMyInvitationEmails(false) is called", source: apps/tedris/features/account/components/account-settings.tsx:278 }
-        - { guard: switchOff, target: savingInvitations, effect: [flipOn, clearToast], say: "they turn the switch on: it flips at once and updateMyInvitationEmails(true) is called", source: apps/tedris/features/account/components/account-settings.tsx:278 }
+        - { guard: switchOn, target: savingInvitations, effect: [flipOff, clearToast], say: "they turn the switch off: it flips at once and updateMyInvitationEmails(false) is called", source: apps/tedris/features/account/components/account-settings.tsx:282 }
+        - { guard: switchOff, target: savingInvitations, effect: [flipOn, clearToast], say: "they turn the switch on: it flips at once and updateMyInvitationEmails(true) is called", source: apps/tedris/features/account/components/account-settings.tsx:282 }
       CLOSE_ALERT: { guard: alerting, target: account, effect: [clearAlert], say: "they press Kapat on the error toast", source: libs/ui/src/mds/toast.tsx:95 }
       CHANGE_GENDER:
         - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir': the same tab goes to /api/auth/signin?action=UPDATE_PROFILE and Keycloak's form, which comes back to /account with new tokens", source: apps/tedris/features/account/components/account-settings.tsx:80 }
         - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle': the same link, for a copy with no gender", source: apps/tedris/features/account/components/account-settings.tsx:80 }
-      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör': the same tab goes to <KEYCLOAK_ISSUER>/account/applications", source: apps/tedris/features/account/components/account-settings.tsx:357 }
-      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet': /account/calendar, in the same tab (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:313 }
-      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap': /auth/signout, the confirmation page; nothing ends here (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:372 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör': the same tab goes to <KEYCLOAK_ISSUER>/account/applications", source: apps/tedris/features/account/components/account-settings.tsx:361 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet': /account/calendar, in the same tab (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:317 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap': /auth/signout, the confirmation page; nothing ends here (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:376 }
       RELOAD: { target: readingProfile, effect: [pageFresh], say: "the page is read again and the boxes hold what the API holds (e2e profile#1, #2)", source: apps/tedris/app/account/page.tsx:12 }
       NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:28 }
 
@@ -278,21 +278,21 @@ states:
       and changes nothing.
     on:
       CHOOSE_PRESET:
-        - { guard: boxHidden, target: savingZone, effect: [boxWasHidden], say: "they choose a zone: the select shows it and updateMyTimeZone is called", source: apps/tedris/features/account/components/account-settings.tsx:230 }
-        - { guard: boxShown, target: savingZone, effect: [boxWasShown, boxClosed], say: "they choose a zone while 'Diğer…' was chosen: the second list goes, and a refusal brings it back", source: apps/tedris/features/account/components/account-settings.tsx:230 }
-      CHOOSE_OTHER: { target: account, effect: [boxOpened], say: "'Diğer…': nothing is saved, the second list is drawn under the first (ACC-20: nothing says so and the focus stays)", source: apps/tedris/features/account/components/account-settings.tsx:229 }
+        - { guard: boxHidden, target: savingZone, effect: [boxWasHidden], say: "they choose a zone: the select shows it and updateMyTimeZone is called", source: apps/tedris/features/account/components/account-settings.tsx:232 }
+        - { guard: boxShown, target: savingZone, effect: [boxWasShown, boxClosed], say: "they choose a zone while 'Diğer…' was chosen: the second list goes, and a refusal brings it back", source: apps/tedris/features/account/components/account-settings.tsx:232 }
+      CHOOSE_OTHER: { target: account, effect: [boxOpened], say: "'Diğer…': nothing is saved, the second list is drawn under the first (ACC-20: nothing says so and the focus stays)", source: apps/tedris/features/account/components/account-settings.tsx:231 }
       DISMISS: { target: account, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
 
   choosingListed:
     title: The second time-zone list is open
     by: human
-    source: apps/tedris/features/account/components/account-settings.tsx:247
+    source: apps/tedris/features/account/components/account-settings.tsx:250
     description: >-
       The same kit Select with every IANA zone the runtime lists (Intl.supportedValuesOf, profile-model.ts:81), the underscores of a
       name shown as spaces ("America/New York"). The options are not drawn as nodes: there are four hundred, and the e2e names none.
       Choosing one saves it at once.
     on:
-      CHOOSE_LISTED: { target: savingZone, effect: [boxWasShown], say: "they choose a zone: updateMyTimeZone is called, and a refusal puts the first list back on 'Diğer…'", source: apps/tedris/features/account/components/account-settings.tsx:254 }
+      CHOOSE_LISTED: { target: savingZone, effect: [boxWasShown], say: "they choose a zone: updateMyTimeZone is called, and a refusal puts the first list back on 'Diğer…'", source: apps/tedris/features/account/components/account-settings.tsx:257 }
       DISMISS: { target: account, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
 
   savingName:
@@ -321,34 +321,36 @@ states:
       CHANGE_GENDER:
         - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the name's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
         - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
-      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
-      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
-      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:361 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:317 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:376 }
 
   savingZone:
     title: Save the time zone
     description: >-
       updateMyTimeZone(zone) is a server action: PATCH /me with the zone, and, when it is saved, syncViewerTimeZone sets the cookie
       medaris-tz (one year, path /, lax) from the saved zone, which makes Next render the route again so that every date on the
-      page switches zone without a reload. The card is aria-busy while the call is out; the list stays usable. A success draws the
+      page switches zone without a reload. The card is aria-busy while the call is out, and both lists are disabled
+      (account-settings.tsx:245, 259): one save at a time, as two in flight could leave the list on a zone that is not the stored
+      one; the focus on the list just used falls to the document (as ACC-10 on the switch). A success draws the
       toast "Saat dilimin kaydedildi."; a refusal sets the saved zone and the first list back to what they held, brings the second
       list back if it was drawn, and draws the error toast "Saat dilimin kaydedilemedi; önceki seçimin korundu.". Kaydet, the switch
       and a toast's Kapat stay live as well, handled where the answer leads (`duringStep`), and the four links leave at once.
     source: apps/tedris/features/account/profile-actions.ts:35
     invoke: { action: updateMe }
     on:
-      DONE: { target: account, effect: [toastZoneSaved], say: "the zone is stored and the cookie follows (e2e profile#2)", source: apps/tedris/features/account/components/account-settings.tsx:210 }
+      DONE: { target: account, effect: [toastZoneSaved], say: "the zone is stored and the cookie follows (e2e profile#2)", source: apps/tedris/features/account/components/account-settings.tsx:212 }
       FAIL.refused:
-        - { guard: wasShown, target: account, effect: [boxOpened, alertZoneFailed], say: "the old choice, 'Diğer…', is put back with the second list", source: apps/tedris/features/account/components/account-settings.tsx:215 }
-        - { target: account, effect: [boxClosed, alertZoneFailed], say: "the old preset is put back", source: apps/tedris/features/account/components/account-settings.tsx:215 }
-      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:209 }
+        - { guard: wasShown, target: account, effect: [boxOpened, alertZoneFailed], say: "the old choice, 'Diğer…', is put back with the second list", source: apps/tedris/features/account/components/account-settings.tsx:217 }
+        - { target: account, effect: [boxClosed, alertZoneFailed], say: "the old preset is put back", source: apps/tedris/features/account/components/account-settings.tsx:217 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:211 }
       # The four links out are plain anchors (the kit's Button with an href), never busy: they leave at once while the zone's save is out.
       CHANGE_GENDER:
         - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the zone's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
         - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
-      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
-      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
-      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:361 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:317 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:376 }
 
   savingInvitations:
     title: Save the invitation switch
@@ -363,19 +365,19 @@ states:
     invoke: { action: updateMe }
     on:
       DONE:
-        - { guard: switchOn, target: account, effect: [toastInvitationsOn], say: "the switch is on, the toast says so", source: apps/tedris/features/account/components/account-settings.tsx:286 }
-        - { guard: switchOff, target: account, effect: [toastInvitationsOff], say: "the switch is off, the toast says no invitation mail will come", source: apps/tedris/features/account/components/account-settings.tsx:286 }
+        - { guard: switchOn, target: account, effect: [toastInvitationsOn], say: "the switch is on, the toast says so", source: apps/tedris/features/account/components/account-settings.tsx:290 }
+        - { guard: switchOff, target: account, effect: [toastInvitationsOff], say: "the switch is off, the toast says no invitation mail will come", source: apps/tedris/features/account/components/account-settings.tsx:290 }
       FAIL.refused:
-        - { guard: switchOn, target: account, effect: [flipOff, alertInvitationsFailed], say: "the switch goes back to off", source: apps/tedris/features/account/components/account-settings.tsx:292 }
-        - { guard: switchOff, target: account, effect: [flipOn, alertInvitationsFailed], say: "the switch goes back to on", source: apps/tedris/features/account/components/account-settings.tsx:292 }
-      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:284 }
+        - { guard: switchOn, target: account, effect: [flipOff, alertInvitationsFailed], say: "the switch goes back to off", source: apps/tedris/features/account/components/account-settings.tsx:296 }
+        - { guard: switchOff, target: account, effect: [flipOn, alertInvitationsFailed], say: "the switch goes back to on", source: apps/tedris/features/account/components/account-settings.tsx:296 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:288 }
       # The four links out are plain anchors (the kit's Button with an href), never busy: they leave at once while the switch's save is out.
       CHANGE_GENDER:
         - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir' is live while the switch's save is out: the same tab goes to Keycloak's form at once, and the save's answer is lost with the page (whether it was stored is not drawn)", source: apps/tedris/features/account/components/account-settings.tsx:80 }
         - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle', the same way", source: apps/tedris/features/account/components/account-settings.tsx:80 }
-      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:357 }
-      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:313 }
-      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:372 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör' leaves at once for the account console; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:361 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet' leaves at once for /account/calendar; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:317 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap' leaves at once for the confirmation page; the save's answer is lost with the page", source: apps/tedris/features/account/components/account-settings.tsx:376 }
 
   handed_over.profile_update:
     type: final

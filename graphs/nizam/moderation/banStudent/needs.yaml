@@ -95,7 +95,7 @@ needs:
       - state: closedRow
       - node: cancel
       - node: closeIcon
-      - source: libs/ui/src/mds/dialog.tsx:71
+      - source: libs/ui/src/mds/dialog.tsx:74
       - source: apps/nizam/features/bans/components/ban-dialog.tsx:126
       - test: apps/nizam/e2e/bans.e2e.ts
         name: "nizam/41 — the scrim does not close it; Escape and 'Vazgeç' do"

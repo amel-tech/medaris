@@ -54,12 +54,12 @@ nodes:
   hideButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Archive.hide.button }, in: [shownMedrese], emits: HIDE, source: apps/nazar/features/archive/components/hide-madrasah.tsx:94 }
 
   # --- Medreseyi gizle asks once ----------------------------------------------------------------------------------------------
-  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: dialogTitle }, in: [confirmHide, hiding], initialFocus: dialogCancel, source: libs/ui/src/mds/alert-dialog.tsx:62 } # its eyebrow is the medrese's name; the scrim does not close it
-  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Archive.hide.title }, in: [confirmHide, hiding], source: libs/ui/src/mds/alert-dialog.tsx:74 }
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: dialogTitle }, in: [confirmHide, hiding], initialFocus: dialogCancel, source: libs/ui/src/mds/alert-dialog.tsx:68 } # its eyebrow is the medrese's name; the scrim does not close it
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Archive.hide.title }, in: [confirmHide, hiding], source: libs/ui/src/mds/alert-dialog.tsx:80 }
   dialogBody: { type: text, component: Text, text: { key: Archive.hide.confirmBody, params: { name: madrasah.name } }, in: [confirmHide, hiding], source: apps/nazar/features/archive/components/hide-madrasah.tsx:117 }
-  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Archive.hide.cancel }, in: [confirmHide, hiding], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:95 } # the focus starts here; while the call runs it does nothing and is not marked disabled (HIDEMED-3)
-  dialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Archive.hide.confirm }, in: [confirmHide, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: libs/ui/src/mds/alert-dialog.tsx:101 } # busy (aria-busy) while the call runs
-  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmHide, hiding], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:82 } # an icon button named only by aria-label
+  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Archive.hide.cancel }, in: [confirmHide, hiding], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here; while the call runs it does nothing and is not marked disabled (HIDEMED-3)
+  dialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Archive.hide.confirm }, in: [confirmHide, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: libs/ui/src/mds/alert-dialog.tsx:109 } # busy (aria-busy) while the call runs
+  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmHide, hiding], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:88 } # an icon button named only by aria-label
   hidingBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [hiding], source: libs/ui/src/mds/button.tsx:114 } # the confirm button's hidden <output> (F-A-14)
 
   # --- the toasts: a region "Bildirimler", each toast a dialog (a success or an info) or an alertdialog (an error, which stays) ---
@@ -84,7 +84,7 @@ edges:
   - { returnsFocus: [hideDialog, hideButton] } # Vazgeç, Esc or the close icon: the page's button is still there; the dialog has no trigger, so the return rests on the element that had the focus when it opened; not verified in the browser
 
 rules:
-  - { id: focus-not-set, rule: "The page sets no initial focus (nothing in features/archive does), so a person who arrives starts at the top of the document; the graph says no more. The dialog's focus on 'Vazgeç' is the app's own (libs/ui/src/mds/alert-dialog.tsx:64)." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (nothing in features/archive does), so a person who arrives starts at the top of the document; the graph says no more. The dialog's focus on 'Vazgeç' is the app's own (libs/ui/src/mds/alert-dialog.tsx:70)." }
   - { id: F-A-2, rule: "After the hiding the button 'Medreseyi gizle' is replaced (by an Alert for an instant, then, once the page is read again, by the banner), and after the restore the banner is replaced by the section; no code moves the focus, and the only word is a toast of 6 seconds (hide-madrasah.tsx:46-69, restore-madrasah.tsx:40-65). Fix: after the page is read again, focus the banner's heading or the section's, and keep the line on the page." }
   - { id: F-A-3, rule: "restore-madrasah.tsx:68: aria-labelledby='hidden-heading' names an id that exists nowhere, so the banner's section has no name and the banner has no heading (its title is a <p>). Fix: give the Alert's title that id, or drop the attribute." }
   - { id: F-A-10, rule: "hide-madrasah.tsx:46-69 and restore-madrasah.tsx:40-65: no try/catch around the server action, so when the call itself fails (the network) the busy state is never cleared and no toast is shown; React hands the error to the nearest boundary. Not verified in a browser." }

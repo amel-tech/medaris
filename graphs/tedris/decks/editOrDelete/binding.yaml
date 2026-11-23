@@ -19,10 +19,9 @@
 #   noName     the name cleared: "Bir deste adı yaz." (decks#14 step 7)
 #   shortName  a name of three letters: "Deste adı en az 5 karakter olmalı."
 # The same story on a private deck is binding.private.yaml; a save or a delete the server refuses is binding.refused.yaml.
-# Not bound (the planner finds no steps; reported): `sent_to_sign_in`, from `saving`, `savingClosed`, `deleting` and `deletingClosed` (a session that ends
-# between the click and the answer cannot be made on request), and the INTERNAL_ERROR code of `saving`'s class `failed` (the page never sends the body that
-# makes it). Bound by the planner and doubtful at the walk: `savingClosed` and `deletingClosed` (the dialog closed with "Vazgeç" or the close icon while the
-# call is out, which a held `call` has to be let go of for the press to land).
+# Not bound (the planner finds no steps; reported): `sent_to_sign_in`, from `saving` and `deleting` (a session that ends between the click and the answer
+# cannot be made on request), and the INTERNAL_ERROR code of `saving`'s class `failed` (the page never sends the body that makes it). Since 23 Nov 2026
+# neither dialog can be closed while its call is out, so there is no closed-while-out state to walk.
 schema: delurio-graph/0
 kind: binding
 extends: walk.common.binding.yaml

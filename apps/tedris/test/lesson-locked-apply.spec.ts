@@ -3,7 +3,7 @@ import type {
   CourseDetailResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render } from "./dom";
 
@@ -64,7 +64,7 @@ const session = {
   contentLocked: true,
 } as unknown as SessionResponse;
 
-const mount = async () => {
+const mount = async (koskName: string | null = null) => {
   const { LessonLocked } = await import(
     "~/features/courses/components/lesson-locked"
   );
@@ -72,7 +72,7 @@ const mount = async () => {
     createElement(LessonLocked, {
       course,
       session,
-      koskName: null,
+      koskName,
       reason: "apply",
       signInHref: "/signin",
       now: Date.parse("2026-10-01T09:00:00Z"),
@@ -99,5 +99,29 @@ describe("tedris/19: Kayıt başvurusu yap -> tedris/07", () => {
     const host = await mount();
     await click(apply(host));
     expect(document.body.textContent).not.toContain("Başvurun alındı");
+  });
+
+  it("while the application is sent, the page's ways out are no links: leaving would not stop it", async () => {
+    let answer: (value: unknown) => void = () => {};
+    enroll.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount("Örnek Köşk");
+    const hrefs = () =>
+      [...host.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    // The breadcrumb's köşk and course, and the course's card.
+    expect(hrefs().filter((h) => h === "/kosks/k1")).toHaveLength(1);
+    expect(hrefs().filter((h) => h === "/courses/c1")).toHaveLength(2);
+
+    await click(apply(host));
+    expect(enroll).toHaveBeenCalledWith("c1");
+    expect(hrefs()).not.toContain("/kosks/k1");
+    expect(hrefs()).not.toContain("/courses/c1");
+    expect(host.textContent).toContain("Örnek Köşk");
+    expect(host.textContent).toContain("Bina ve İzhar Şerhi");
+
+    await act(async () =>
+      answer({ success: true, data: { status: "PENDING" } })
+    );
+    expect(hrefs().filter((h) => h === "/courses/c1")).toHaveLength(2);
+    expect(document.body.textContent).toContain("Başvurun alındı");
   });
 });

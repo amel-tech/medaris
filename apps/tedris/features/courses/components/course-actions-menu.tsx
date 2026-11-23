@@ -29,7 +29,8 @@ export interface CourseActionsLabels {
  * The "···" of an enrolled course (design tedris/12 and tedris/20): a menu
  * with "Dersten ayrıl", which asks first, because leaving also deletes the
  * talebe's progress (MDRS-105). The words come from the caller, so a server
- * page (Derslerim) and a client card (the course page) both draw it.
+ * page (Derslerim) and a client card (the course page) both draw it. While
+ * the leave runs the window cannot be closed: closing would not stop it.
  */
 export function CourseActionsMenu({
   courseId,
@@ -84,6 +85,7 @@ export function CourseActionsMenu({
         confirmLabel={labels.confirm}
         cancelLabel={labels.cancel}
         confirmLoading={pending}
+        dismissDisabled={pending}
         onConfirm={leave}
       >
         <p>{labels.body}</p>

@@ -39,15 +39,18 @@ export interface KoskChoice {
 /**
  * The form of "Medrese dersi aç" (nazir 08): the köşk, the name, the müderris
  * list and, in a card beside them, the two settings of the course. The first
- * köşk is chosen, as the design draws it. The button is never off: a problem is
- * written under its field when "Dersi aç" is pressed and the focus goes to the
- * first, except that an imam left unchosen among several müderrisler is said
- * at once. A policy of the medrese that fixes a setting shows it on and off
+ * köşk is chosen, as the design draws it. The button is off only while a hoca
+ * is looked up, so no course goes out without them; a problem is written under
+ * its field when "Dersi aç" is pressed and the focus goes to the first, except
+ * that an imam left unchosen among several müderrisler is said at once. A
+ * policy of the medrese that fixes a setting shows it on and off
  * limits, with the sentence that says whose it is; the API applies the policies
  * whatever is sent. Each hoca chosen gets a select of the unvan they will carry
  * in the course, "Hoca (unvansız)" until another is chosen (owner,
- * 2026-10-15); only the ones given an unvan are sent. A course that opens is a
- * draft, and the page goes back to the list with a toast.
+ * 2026-10-15); only the ones given an unvan are sent. While the course is
+ * opened the form is held, so the course opened is the one the page shows. A
+ * course that opens is a draft, and the page goes back to the list with a
+ * toast.
  */
 export function OpenCourseForm({
   madrasahId,
@@ -70,6 +73,7 @@ export function OpenCourseForm({
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(() => blankForm(kosks));
   const [attempted, setAttempted] = useState(false);
+  const [looking, setLooking] = useState(false);
   const listHref = coursesHref(madrasahId, { kosk: null, status: null });
 
   // A köşk that left the list (its right was withdrawn) is no choice any more.
@@ -98,6 +102,7 @@ export function OpenCourseForm({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (looking) return;
     setAttempted(true);
     if (problems) {
       const field = problems.title
@@ -156,6 +161,7 @@ export function OpenCourseForm({
             name="kosk"
             bordered
             value={koskId}
+            disabled={pending}
             onChange={(value) => setDraft({ ...draft, koskId: value })}
             options={kosks.map((kosk) => ({
               value: kosk.id,
@@ -187,6 +193,7 @@ export function OpenCourseForm({
             required
             autoComplete="off"
             value={draft.title}
+            disabled={pending}
             onChange={(event) =>
               setDraft({ ...draft, title: event.target.value })
             }
@@ -208,6 +215,8 @@ export function OpenCourseForm({
           removal="icon"
           keepOne={false}
           unvan={unvan}
+          onSearchingChange={setLooking}
+          disabled={pending}
         />
       </div>
 
@@ -225,7 +234,7 @@ export function OpenCourseForm({
             label={t("OpenCourse.closed.label")}
             description={t("OpenCourse.closed.help")}
             checked={closed}
-            disabled={locks.closed}
+            disabled={locks.closed || pending}
             onCheckedChange={(checked) =>
               setDraft({ ...draft, closed: checked })
             }
@@ -236,7 +245,7 @@ export function OpenCourseForm({
             label={t("OpenCourse.approval.label")}
             description={t("OpenCourse.approval.help")}
             checked={approval}
-            disabled={locks.approval}
+            disabled={locks.approval || pending}
             onCheckedChange={(checked) =>
               setDraft({ ...draft, approval: checked })
             }
@@ -266,6 +275,7 @@ export function OpenCourseForm({
           </Button>
           <Button
             type="submit"
+            disabled={looking}
             loading={pending}
             loadingLabel={t("OpenCourse.opening")}
           >

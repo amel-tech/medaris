@@ -62,7 +62,7 @@ needs:
       - node: sampleCsv
       - source: apps/tedris/app/api/decks/sample/route.ts:5
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
-      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136
+      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:137
     note: >-
       walked: nothing. No e2e opens the dialog's links (decks#20 does not follow them); test/deck-file-routes.spec.ts is the
       routes' unit spec.
@@ -184,10 +184,16 @@ needs:
     need: >-
       Closing the dialog while the file is being sent either waits for the answer or stops the send, so that cards are never added
       after the person said Vazgeç and a refusal is never lost.
-    missing: no Linear issue; IMPEXP-5 (decision D3); the same family as DCK-30
+    evidence:
+      - state: importing
+      - node: cancel
+      - node: closeIcon
+      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:109
+      - test: apps/tedris/test/deck-cards-page.spec.ts
+        name: "while the file is sent, Vazgeç, Kapat and Esc are off: the cards would be added all the same (IMPEXP-5)"
     note: >-
-      Drawn on the states importing and abandoned and on the nodes cancel and closeIcon, which the code has: they are not
-      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Met on 23 Nov 2026 (IMPEXP-5, fixed): the dialog cannot be closed while the file is out, so no card is added after the person
+      said Vazgeç and a refusal is shown in the dialog. Walked by the unit spec only, not in a browser.
 
   - id: limits-are-held
     need: >-

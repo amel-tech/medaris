@@ -97,7 +97,7 @@ needs:
       - state: confirming
       - state: confirmingBlind
       - source: apps/nizam/features/archive/components/archive-view.tsx:507
-      - source: libs/ui/src/mds/alert-dialog.tsx:62
+      - source: libs/ui/src/mds/alert-dialog.tsx:68
       - test: apps/nizam/e2e/archive.e2e.ts
         name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
 

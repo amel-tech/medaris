@@ -299,6 +299,51 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     expect(onDone).toHaveBeenCalledOnce();
   });
 
+  it("turns the form off while the save is on its way, so what is sent is what is shown", async () => {
+    let answer: (value: unknown) => void = () => {};
+    saveNazirPermissions.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await choose(1, "Seçtiğim dersler");
+    const course = () =>
+      [
+        ...dialog().querySelectorAll(
+          "[data-testid=chosen-courses] label.mds-choice"
+        ),
+      ].find((l) => l.textContent?.includes("İsâgûcî")) as HTMLElement;
+    await click(course());
+    await toggle("Hafta ve celse gizle, geri al");
+    await click(button("Kaydet"));
+    await settle(20);
+
+    expect(locked("Hafta ve celse gizle, geri al")).toBe(true);
+    expect(locked("Medrese nazırı ata")).toBe(true);
+    expect(
+      course().querySelector("[role=checkbox]")?.hasAttribute("data-disabled")
+    ).toBe(true);
+    for (const trigger of triggers()) {
+      expect((trigger as HTMLButtonElement).disabled).toBe(true);
+    }
+    expect(dateField().disabled).toBe(true);
+    await toggle("Medrese nazırı ata");
+    await toggle("Hafta ve celse gizle, geri al");
+    expect(checked("Medrese nazırı ata")).toBe(false);
+    expect(checked("Hafta ve celse gizle, geri al")).toBe(true);
+
+    answer({ success: true, data: null });
+    await settle(80);
+    expect(saveNazirPermissions).toHaveBeenCalledExactlyOnceWith("m-1", "u-3", {
+      groupId: null,
+      permissions: ["week.hide"],
+      courseIds: ["c-2"],
+      expiresAt: null,
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("limits a group that carries no medrese permission, and the single ones, to the courses chosen", async () => {
     await open();
     await choose(0, "Kayıt ve talebe işleri");

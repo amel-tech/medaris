@@ -27,7 +27,7 @@ needs:
       - node: deckHeadingSaved
       - node: toastSaved
       - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:390
-      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:77
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:79
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Edit' opens the dialog filled in; an empty name is refused; a new name is saved and the request stays"
 
@@ -41,7 +41,7 @@ needs:
       - node: titleRequired
       - node: titleShort
       - source: apps/tedris/features/flashcards/deck-model.ts:155
-      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:71
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:73
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Edit' opens the dialog filled in; an empty name is refused; a new name is saved and the request stays"
     note: Also drawn as the assertion nothing-is-sent-for-a-bad-or-unchanged-name, the assertion a-refused-name-shows-its-reason.
@@ -50,7 +50,7 @@ needs:
     need: Saving a form in which nothing changed closes the dialog and sends nothing, with no toast.
     evidence:
       - state: editForm
-      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:72
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:74
     note: |-
       Also drawn as the assertion nothing-is-sent-for-a-bad-or-unchanged-name.
       unwalked: no e2e checks it, and the scenario `unchanged` of binding.yaml has not been replayed
@@ -64,7 +64,7 @@ needs:
       - node: statusPending
       - state: saved
       - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:390
-      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:141
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:146
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Edit' opens the dialog filled in; an empty name is refused; a new name is saved and the request stays"
 
@@ -76,7 +76,7 @@ needs:
       - state: saving
       - state: filled
       - node: toastSaveFailed
-      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:83
     note: >-
       unwalked: no e2e; binding.refused.yaml makes the refusal by deleting the deck through the API and has not been replayed
 
@@ -90,7 +90,7 @@ needs:
       - node: deleteDialog
       - node: deleteCancel
       - source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254
-      - source: libs/ui/src/mds/alert-dialog.tsx:62
+      - source: libs/ui/src/mds/alert-dialog.tsx:68
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Desteyi sil' deletes only after the confirmation, with its cards"
     note: Also drawn as the assertion delete-only-after-the-confirmation, the rule confirm-before-deleting.
@@ -130,10 +130,22 @@ needs:
       Closing a dialog ("Vazgeç", "Kapat", Esc) while its save or delete is on its way either cancels the call or is ignored until
       it answers; it never lets the write go on after the person said no, and an error never says "yazdıkların korundu" over a
       form that is gone.
-    missing: no Linear issue; DCK-30 (delete) and EDITDEL-1 (save); decision D3
+    evidence:
+      - state: saving
+      - state: deleting
+      - node: cancel
+      - node: editClose
+      - node: deleteCancel
+      - node: deleteClose
+      - source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:104
+      - source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:262
+      - test: apps/tedris/test/deck-detail-page.spec.ts
+        name: "while the deck is deleted, Vazgeç, Kapat and Esc are off (DCK-30)"
+      - test: apps/tedris/test/deck-detail-page.spec.ts
+        name: "while the save runs, Vazgeç, Kapat and Esc are off, so a refusal keeps the typed name in sight (EDITDEL-1)"
     note: >-
-      Drawn on the states savingClosed, deletingClosed, saving and deleting, which the code has: they are not evidence, so that a
-      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Met on 23 Nov 2026 (DCK-30 and EDITDEL-1, fixed): while the save or the delete runs, Vazgeç and the close icon are disabled
+      and Esc does nothing, so the dialog stays until the answer. Walked by the unit spec only, not in a browser.
 
   - id: edit-is-dated
     need: >-

@@ -2,7 +2,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cardRow, deckResponse } from "./decks-harness";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -205,6 +205,64 @@ describe("Deste kartları (design tedris/29)", () => {
       ).toBe("Okudu");
     });
 
+    it("while the card is saved, Vazgeç, Kapat and Esc are off, so a refusal keeps the typed faces in sight (MCARDS-4)", async () => {
+      let answer: (value: unknown) => void = () => {};
+      mocks.create.mockReturnValue(
+        new Promise((resolve) => (answer = resolve))
+      );
+      await open();
+      await type(
+        dialog().querySelector('[name="contentFront"]') as HTMLInputElement,
+        "قَرَأَ"
+      );
+      await type(
+        dialog().querySelector('[name="contentBack"]') as HTMLInputElement,
+        "Okudu"
+      );
+      await click(button("Kaydet", dialog()));
+      expect(mocks.create).toHaveBeenCalledTimes(1);
+      const cancel = button("Vazgeç", dialog()) as HTMLButtonElement;
+      const close = dialog().querySelector(
+        ".mds-dialog__close"
+      ) as HTMLButtonElement;
+      expect(cancel.disabled).toBe(true);
+      expect(close.disabled).toBe(true);
+      await click(cancel);
+      await click(close);
+      await key(document.activeElement ?? document.body, "Escape");
+      await settle(60);
+      expect(dialog()).not.toBeNull();
+
+      await act(async () => answer({ success: false, error: "no" }));
+      await settle();
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: "error", title: "Kaydedilemedi" })
+      );
+      expect(
+        (dialog().querySelector('[name="contentBack"]') as HTMLInputElement)
+          .value
+      ).toBe("Okudu");
+    });
+
+    it("while the card is saved, its two faces are read-only: a change then would not be sent", async () => {
+      let answer: (value: unknown) => void = () => {};
+      mocks.create.mockReturnValue(
+        new Promise((resolve) => (answer = resolve))
+      );
+      await open();
+      const face = (name: string) =>
+        dialog().querySelector(`[name="${name}"]`) as HTMLTextAreaElement;
+      await type(face("contentFront"), "قَرَأَ");
+      await type(face("contentBack"), "Okudu");
+      await click(button("Kaydet", dialog()));
+      expect(face("contentFront").readOnly).toBe(true);
+      expect(face("contentBack").readOnly).toBe(true);
+      await act(async () => answer({ success: false, error: "no" }));
+      await settle();
+      expect(face("contentFront").readOnly).toBe(false);
+      expect(face("contentBack").value).toBe("Okudu");
+    });
+
     it("a hadith deck helps with its own words", async () => {
       await mount(cards, deckResponse({ cardType: "HADEETH" }));
       await click(
@@ -271,6 +329,34 @@ describe("Deste kartları (design tedris/29)", () => {
       );
     });
 
+    it("while the card is deleted, Vazgeç, Kapat and Esc are off (MCARDS-4)", async () => {
+      let answer: (value: unknown) => void = () => {};
+      mocks.del.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await mount();
+      await click(labelled("Sil: kart 3"));
+      await settle();
+      await click(button("Kartı sil", confirm()));
+      expect(mocks.del).toHaveBeenCalledWith("c3");
+      const cancel = button("Vazgeç", confirm()) as HTMLButtonElement;
+      const close = confirm().querySelector(
+        ".mds-dialog__close"
+      ) as HTMLButtonElement;
+      expect(cancel.disabled).toBe(true);
+      expect(close.disabled).toBe(true);
+      await click(cancel);
+      await click(close);
+      await key(document.activeElement ?? document.body, "Escape");
+      await settle(60);
+      expect(confirm()).not.toBeNull();
+
+      await act(async () => answer({ success: true, data: true }));
+      await settle(60);
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: "success", title: "Kart silindi" })
+      );
+      expect(confirm()).toBeNull();
+    });
+
     it("a refused delete leaves the card and says so", async () => {
       mocks.del.mockResolvedValue({ success: false, error: "no" });
       await mount();
@@ -315,6 +401,40 @@ describe("Deste kartları (design tedris/29)", () => {
         input.dispatchEvent(new Event("change", { bubbles: true }));
       });
     };
+
+    it("while the file is sent, Vazgeç, Kapat and Esc are off: the cards would be added all the same (IMPEXP-5)", async () => {
+      let answer: (value: Response) => void = () => {};
+      fetchMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await open();
+      await choose();
+      await click(button("İçe aktar", dialog()));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const cancel = button("Vazgeç", dialog()) as HTMLButtonElement;
+      const close = dialog().querySelector(
+        ".mds-dialog__close"
+      ) as HTMLButtonElement;
+      expect(cancel.disabled).toBe(true);
+      expect(close.disabled).toBe(true);
+      await click(cancel);
+      await click(close);
+      await key(document.activeElement ?? document.body, "Escape");
+      await settle(60);
+      expect(dialog()).not.toBeNull();
+
+      await act(async () =>
+        answer(
+          new Response(JSON.stringify({ count: 2 }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+      );
+      await settle(60);
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: "success" })
+      );
+      expect(dialog()).toBeNull();
+    });
 
     it("asks for a file first and points at the templates", async () => {
       await open();

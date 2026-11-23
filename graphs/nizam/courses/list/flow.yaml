@@ -414,10 +414,10 @@ states:
       primary button, not a destructive one. A refused hide leaves the window open with an error toast over it (F-X-4).
     by: human
     on:
-      CONFIRM_HIDE: { target: hiding, effect: [clearNote], say: "they press Gizle", source: libs/ui/src/mds/alert-dialog.tsx:101 }
-      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç: the course stays where it is (kosk-view.e2e.ts#9)", source: libs/ui/src/mds/alert-dialog.tsx:95 }
-      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon", source: libs/ui/src/mds/alert-dialog.tsx:82 }
-      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc", source: libs/ui/src/mds/alert-dialog.tsx:64 }
+      CONFIRM_HIDE: { target: hiding, effect: [clearNote], say: "they press Gizle", source: libs/ui/src/mds/alert-dialog.tsx:109 }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç: the course stays where it is (kosk-view.e2e.ts#9)", source: libs/ui/src/mds/alert-dialog.tsx:102 }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon", source: libs/ui/src/mds/alert-dialog.tsx:88 }
+      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc", source: libs/ui/src/mds/alert-dialog.tsx:70 }
     source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:60
 
   hiding:

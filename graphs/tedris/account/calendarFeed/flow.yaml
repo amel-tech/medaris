@@ -51,7 +51,6 @@ scope:
     - "the bars above the page (the top bar, the phone bar, the loading skeleton of app/account/loading.tsx): tedris.shell.frame"
     - "the phone layout: below 768 px the breadcrumb shows only its parent, as a back link"
     - "a visitor, who is sent to sign in before the page runs (the middleware), and a token tedrisat refuses on the read, which sends the person to sign in again with `reauth` (realm.auth.sessionEnded)"
-    - "a dialog dismissed while its call is still running: Vazgeç, the cross and Esc work all the while and the call goes on to the end (renewing-can-be-dismissed in ui.yaml rules)"
     - "the other cards of Hesap, including the switch that e-mails the lesson invitations: tedris.account.profile"
 
 context:
@@ -262,14 +261,15 @@ states:
       CANCEL: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
       CLOSE_DIALOG: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
       ESCAPE: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
-      CONFIRM: { target: renewing, effect: [clearNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:291 }
+      CONFIRM: { target: renewing, effect: [clearNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:292 }
 
   renewing:
     title: Replace the link
     source: apps/tedris/features/courses/components/calendar-subscription.tsx:122
     description: >-
       The dialog stays open and its "Yenile" is busy (aria-busy, aria-disabled; the hidden status says "Yükleniyor", CALFEED-1) while
-      POST /me/calendar-feed replaces the stored hash. Success closes the dialog and shows the new link as in `issued`; the
+      POST /me/calendar-feed replaces the stored hash; "Vazgeç" and the cross are disabled and Esc does nothing until the answer (the
+      window's dismissDisabled, calendar-subscription.tsx:291), as closing would not stop the renewal (renewing-can-be-dismissed, fixed). Success closes the dialog and shows the new link as in `issued`; the
       old address answers 404 from now on. A session that is over sends the person to sign in. Any other failure closes the dialog
       and draws the red alert "Bağlantı oluşturulamadı. Lütfen tekrar dene." over a page that still holds whatever it held, so a
       refused renewal reads as a failed creation and never says that the old link still works (CALFEED-2); a link shown earlier in

@@ -16,8 +16,8 @@
 #               it, and no focus moves after the failed try
 #   DCK-31      the reader's table gives the front cell the row-header role; the public view's does not (tedris.decks.visitorPublicDeck)
 #   MDRS-224    "destesi" is said twice when a title ends in it ("“X destesi” destesine eklendi.", "X destesi destesinin kartları")
-#   READCOPY-1  (new, provisional id) closing the copy dialog while the call is out does not stop it: the card is copied and the success toast
-#               still comes after "Vazgeç"
+#   READCOPY-1  (new, provisional id; fixed on 23 Nov 2026) closing the copy dialog while the call was out did not stop it; now the dialog
+#               cannot be closed and its radios are off until the answer
 #   READCOPY-2  (new, provisional id) a person who may read the deck without being enrolled in it (a ders nazırı or another one of the course's
 #               staff who did not write the deck, the başnazım) is given this reader's page, whose words and "Koleksiyona ekle" assume the enrolled
 #               talebe; the API answers that button with 403 DECK_FORBIDDEN and the toast says "try again"
@@ -286,7 +286,7 @@ states:
   copyDialog:
     title: The copy dialog is open
     by: human
-    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:82
     description: >-
       The kit's Dialog (a form, size small, Base UI) over the page, which is inert while it is open. Its eyebrow names the row ("Kart n"), its title is
       "Kendi desteme kopyala", its close icon is "Kapat" (the kit's default word, DCK-23) and the scrim closes nothing; Esc, "Vazgeç" and the icon do,
@@ -300,24 +300,23 @@ states:
       "Vazgeç" and the link "Deste oluştur" to /decks/create. The whole body is the dialog's description (DCK-24). An error toast "Kart kopyalanamadı"
       over the dialog is what is left after a refused copy.
     on:
-      CHOOSE: { guard: hasTargets, target: copyDialog, effect: [pick], say: "a radio is chosen and the line \"Bir hedef deste seç.\" goes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:120 }
+      CHOOSE: { guard: hasTargets, target: copyDialog, effect: [pick], say: "a radio is chosen and the line \"Bir hedef deste seç.\" goes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:123 }
       CONFIRM:
-        - { guard: chosen, target: copying, say: "\"Kopyala\" with a radio chosen sends the card", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:50 }
-        - { guard: hasTargets, target: copyDialog, effect: [tryWithoutPick], say: "\"Kopyala\" with no radio chosen sends nothing and shows \"Bir hedef deste seç.\"", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:51 }
-      CREATE_DECK: { guard: noTargets, target: create_opened, say: "\"Deste oluştur\" is a link to /decks/create", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94 }
-      CANCEL: { target: reader, say: "\"Vazgeç\" closes the dialog and nothing is sent", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:92 }
-      CLOSE: { target: reader, say: "the icon \"Kapat\" does the same", source: libs/ui/src/mds/dialog.tsx:97 }
-      ESCAPE: { target: reader, say: "Esc does the same; the scrim does nothing", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:83 }
+        - { guard: chosen, target: copying, say: "\"Kopyala\" with a radio chosen sends the card", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:51 }
+        - { guard: hasTargets, target: copyDialog, effect: [tryWithoutPick], say: "\"Kopyala\" with no radio chosen sends nothing and shows \"Bir hedef deste seç.\"", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:52 }
+      CREATE_DECK: { guard: noTargets, target: create_opened, say: "\"Deste oluştur\" is a link to /decks/create", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:96 }
+      CANCEL: { target: reader, say: "\"Vazgeç\" closes the dialog and nothing is sent", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94 }
+      CLOSE: { target: reader, say: "the icon \"Kapat\" does the same", source: libs/ui/src/mds/dialog.tsx:100 }
+      ESCAPE: { target: reader, say: "Esc does the same; the scrim does nothing", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:84 }
 
   copying:
     title: Copy the card, or wait for the answer
-    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:53
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:54
     description: >-
-      "Kopyala" is busy (aria-disabled and a hidden <output> "Yükleniyor"); the dialog stays open and "Vazgeç", "Kapat" and Esc still work, but closing
-      does not stop the call: the card is copied and the success toast still comes (READCOPY-1). The graph draws "Vazgeç" and "Kapat" `duringStep`:
-      their press is handled where the answer leads, which is where the page ends (a success closes the dialog anyway; after a refusal the dialog the
-      person closed is gone and the error toast is up). The radios stay live too, but a radio chosen now does not change where the card goes: the
-      deck was taken when "Kopyala" was pressed (copy-card-dialog.tsx:50). The server action copyCard, through
+      "Kopyala" is busy (aria-disabled and a hidden <output> "Yükleniyor"); the dialog stays open and cannot be closed until the answer: "Vazgeç"
+      and "Kapat" are disabled and Esc does nothing (the dialog's dismissDisabled, copy-card-dialog.tsx:89, 94), because closing would not stop
+      the call (READCOPY-1, fixed). The radios are disabled too (:122): the deck was taken when "Kopyala" was pressed (:51), so no other may be
+      chosen now. The server action copyCard, through
       `attempt`, is POST /flashcard/decks/{target}/cards with a one-item array holding the card's own type, front, back and meta (its source), so the
       copy keeps the source line; the card is added as it is to the chosen own deck, the API makes a new row each time (nothing stops the same card
       being copied twice into one deck), and the deck being read is untouched (e2e decks#24 counts its cards before and after). Success: the toast
@@ -326,9 +325,9 @@ states:
       kopyalanamadı" with "Bir sorun oluştu. Yeniden dene.".
     invoke: { action: createCards }
     on:
-      DONE: { guard: copyAccepted, target: reader, effect: [toastCopied], say: "the toast says it was copied, the page is read again and the dialog closes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:70 }
+      DONE: { guard: copyAccepted, target: reader, effect: [toastCopied], say: "the toast says it was copied, the page is read again and the dialog closes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:71 }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.refused: { guard: copyRefused, target: copyDialog, effect: [toastCopyFailed], say: "the error toast says it was not copied and the dialog stays", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:62 }
+      FAIL.refused: { guard: copyRefused, target: copyDialog, effect: [toastCopyFailed], say: "the error toast says it was not copied and the dialog stays", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:63 }
 
   study_opened:
     type: final
@@ -356,11 +355,11 @@ assertions:
   - id: copy-needs-a-chosen-deck
     never: "state == 'copying' and picked == 'no'"
     say: "A card is never sent before a deck is chosen: \"Kopyala\" with no radio chosen shows the line and sends nothing"
-    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:50
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:51
   - id: no-copy-without-a-target
     never: "state == 'copying' and targets == 'none'"
     say: "With no own deck of the same kind there is no \"Kopyala\" to press: the dialog links to Deste oluştur instead"
-    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:93
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:95
   - id: no-card-no-copy
     never: "state in ['copyDialog', 'copying'] and cards == 'none'"
     say: "A deck with no card has no \"Kendi desteme kopyala\" to press, so the dialog never opens for it"
@@ -372,4 +371,4 @@ assertions:
   - id: copied-toast-needs-acceptance
     never: "notice == 'copied' and refusal == 'copy'"
     say: "\"Kart destene kopyalandı\" shows only after tedrisat accepted the copy"
-    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:70
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:71

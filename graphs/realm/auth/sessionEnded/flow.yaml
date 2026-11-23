@@ -145,8 +145,8 @@ states:
       SESSION_ENDED: { target: keycloakCallsBack, effect: [endsAtKeycloak], say: "Keycloak ends the session: a sign-out in another app, an administrator, or too long idle" }
       TOKEN_REFUSED: { target: staleSession, guard: onProtectedPage, effect: [refusedByApi], say: "tedrisat starts answering 401 to the access token the session holds" }
       ADD_NOTE:
-        - { target: pageOpen, guard: "onProtectedPage and draftTyped", effect: [savesNote], source: apps/tedris/features/courses/components/lesson-notes.tsx:321, say: "they press Notu ekle while the session is alive: the note is saved and the field is empty again (the save is tedris.learn.notes's, not drawn here)" }
-        - { target: pageOpen, guard: onProtectedPage, source: apps/tedris/features/courses/components/lesson-notes.tsx:324, say: "they press Notu ekle with the field empty: the panel says \"Not boş olamaz.\" and saves nothing (tedris.learn.notes)" }
+        - { target: pageOpen, guard: "onProtectedPage and draftTyped", effect: [savesNote], source: apps/tedris/features/courses/components/lesson-notes.tsx:329, say: "they press Notu ekle while the session is alive: the note is saved and the field is empty again (the save is tedris.learn.notes's, not drawn here)" }
+        - { target: pageOpen, guard: onProtectedPage, source: apps/tedris/features/courses/components/lesson-notes.tsx:332, say: "they press Notu ekle with the field empty: the panel says \"Not boş olamaz.\" and saves nothing (tedris.learn.notes)" }
       FOLLOW_LINK: { target: courses_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the session is alive: /my-courses opens" }
       NAVIGATE: { target: left, say: "they close the page" }
 
@@ -211,10 +211,10 @@ states:
       "Notu ekle" posts the note as the Server Action createLessonNote (a POST to the page's own address). The proxy runs first and,
       past the minute, finds the session over and drops the cookie from the request; the action then has no access token and answers
       { kind: "unauthenticated" } without calling tedrisat (reads.ts:211-216). With a token that tedrisat refuses it answers the same with
-      `reauth: true` (reads.ts:222). The panel hands the answer to sendToSignIn and returns: no error text is drawn (lesson-notes.tsx:332).
+      `reauth: true` (reads.ts:222). The panel hands the answer to sendToSignIn and returns: no error text is drawn (lesson-notes.tsx:340).
       While it is on its way the button is busy and a status line reads "Kaydediliyor". The panel's `finally` frees the button again
       while the browser is already leaving the page, so for a moment it looks as it did, with the text still in the field.
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:321
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:329
     invoke: { action: createLessonNote }
     on:
       DONE: { target: staleSession, guard: endedNotYetKnown, effect: [savesNote], say: "the app has not noticed yet: the action runs with the token the page holds and tedrisat saves the note; the page shows it and the field is empty" }

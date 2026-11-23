@@ -45,7 +45,7 @@ nodes:
   bansPage: { type: page, component: Page, role: main, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:51 } # the shell's one <main id="main">; it has no name
   bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:55 } # h1; it stays over a refusal (F-B-13)
   bansIntro: { type: text, component: Text, text: { key: Bans.intro }, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:56 }
-  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [listed, empty, noMatch], emits: BAN, source: apps/nazar/features/bans/components/ban-dialog.tsx:315 } # left out with the list when the read is refused or fails
+  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [listed, empty, noMatch], emits: BAN, source: apps/nazar/features/bans/components/ban-dialog.tsx:316 } # left out with the list when the read is refused or fails
   kademeNotice: { type: alert, component: Alert, role: status, text: { key: Bans.kademe.title }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-page.tsx:77 } # neutral: a status, which no name comes from; its title is a <p>. A fixed sentence, whoever reads (BANS-1)
   kademeText: { type: text, component: Text, text: { key: Bans.kademe.text }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-page.tsx:78 }
 
