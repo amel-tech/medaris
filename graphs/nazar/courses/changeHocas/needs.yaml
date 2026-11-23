@@ -44,7 +44,7 @@ needs:
       - node: countThree
       - source: apps/tedrisat/src/user/users.controller.ts:57
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:95
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:107
       - test: apps/nazar/e2e/courses.e2e.ts
         name: "nazir/17 — a müderris added by e-mail takes the course's müderris role; an address nobody has finds no one (criterion 5)"
 
@@ -86,7 +86,7 @@ needs:
       - state: form
       - node: guestName
       - node: noAccountNote
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:164
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:176
       - test: apps/nazar/e2e/courses.e2e.ts
         name: "nazir/17 — a müderris with no account is shown and left alone"
 
@@ -112,7 +112,7 @@ needs:
       - node: imamPickTwo
       - node: imamPickThree
       - state: formReady
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:185
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:197
 
   - id: a-refusal-is-told-and-the-dialog-stays
     need: >-

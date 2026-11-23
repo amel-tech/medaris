@@ -1180,6 +1180,45 @@ describe("the in-person mark of a session (MDRS-283)", () => {
     expect(toast("error")).toContain("Bunu yapma izniniz yok.");
     expect(editor()).not.toBeNull();
   });
+
+  it("holds the choice while it is written, so a refusal shows the choice that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open();
+    await pick("Yüz yüze");
+    await settle(20);
+    await click(save());
+    await settle(20);
+    const off = (label: string) => {
+      const control = radio(label).querySelector("[role=radio]");
+      return (
+        control?.getAttribute("aria-disabled") === "true" ||
+        control?.hasAttribute("data-disabled") === true
+      );
+    };
+    expect(off("Dersin ayarına uy")).toBe(true);
+    expect(off("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(true);
+    await pick("Yüz yüze değil");
+    await settle(20);
+    expect(picked("Yüz yüze")).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: true,
+    });
+    expect(picked("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(false);
+  });
 });
 
 describe("a session that is over (MDRS-283)", () => {

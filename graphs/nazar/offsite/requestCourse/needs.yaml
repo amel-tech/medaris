@@ -27,9 +27,11 @@ needs:
       - state: sent
       - node: toastSent
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:220
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:58
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:59
       - test: apps/nazar/e2e/offsite.e2e.ts
         name: "nazir/09 — köşk, name and reason are recorded as a pending request of the medrese, no course is made, and the way back is Dersler (criteria 1, 4)"
+      - test: apps/nazar/test/offsite.spec.tsx
+        name: "holds the köşk while the request is sent, so a refusal shows the köşk that was sent"
     note: "replay: sends (bound, not walked yet)"
 
   - id: the-form-says-what-is-missing
@@ -41,7 +43,7 @@ needs:
       - state: refusedReason
       - node: nameError
       - node: reasonError
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:55
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:56
       - source: apps/nazar/features/offsite/offsite.ts:19
       - test: apps/nazar/e2e/offsite.e2e.ts
         name: "nazir/09 — a form with a field missing sends nothing and says which, under the field (criterion 2)"
@@ -61,7 +63,7 @@ needs:
       - node: afterNamedOther
       - node: afterTwo
       - node: afterThree
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:101
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:102
       - test: apps/nazar/e2e/offsite.e2e.ts
         name: "nazir/09 — Dersler leads to the form, which has the canvas's fields and says what happens after"
       - test: apps/nazar/e2e/offsite.e2e.ts
@@ -78,7 +80,7 @@ needs:
       - node: noKoskBack
       - state: courses_opened
       - source: apps/nazar/features/courses/components/courses-page.tsx:114
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:189
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:191
       - test: apps/nazar/e2e/offsite.e2e.ts
         name: "nazir/09 — Dersler leads to the form, which has the canvas's fields and says what happens after"
     note: "replay: sends enters through the nav; the exits are walked by --cover transitions (bound, not walked yet)"
@@ -107,7 +109,7 @@ needs:
       - node: toastOther
       - node: toastClose
       - source: apps/nazar/features/offsite/offsite.ts:67
-      - source: apps/nazar/features/offsite/components/offsite-form.tsx:92
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:93
       - test: apps/nazar/test/offsite.spec.tsx
     note: "replay: koskGone (binding.koskGone.yaml, bound, not walked yet); invalid, forbidden and other cannot be driven locally"
 

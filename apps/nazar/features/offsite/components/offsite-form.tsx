@@ -27,8 +27,9 @@ import {
  * reason, and in a card beside them what happens next. The first köşk is
  * chosen, as the design draws it. The button is never off: a problem is written
  * under its field when "Talebi gönder" is pressed and the focus goes to the
- * first. A request that is sent makes no course; the page goes back to Dersler
- * with a toast.
+ * first. The köşk is held while the request is sent, so the köşk the page
+ * names is the one it was sent to. A request that is sent makes no course; the
+ * page goes back to Dersler with a toast.
  */
 export function OffsiteForm({
   madrasahId,
@@ -137,6 +138,7 @@ export function OffsiteForm({
               label: candidate.name,
             }))}
             value={draft.koskId}
+            disabled={pending}
             onChange={(value) => setDraft({ ...draft, koskId: value })}
           />
         </Field>

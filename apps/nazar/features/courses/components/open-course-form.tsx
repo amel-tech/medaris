@@ -39,10 +39,11 @@ export interface KoskChoice {
 /**
  * The form of "Medrese dersi aç" (nazir 08): the köşk, the name, the müderris
  * list and, in a card beside them, the two settings of the course. The first
- * köşk is chosen, as the design draws it. The button is never off: a problem is
- * written under its field when "Dersi aç" is pressed and the focus goes to the
- * first, except that an imam left unchosen among several müderrisler is said
- * at once. A policy of the medrese that fixes a setting shows it on and off
+ * köşk is chosen, as the design draws it. The button is off only while a hoca
+ * is looked up, so no course goes out without them; a problem is written under
+ * its field when "Dersi aç" is pressed and the focus goes to the first, except
+ * that an imam left unchosen among several müderrisler is said at once. A
+ * policy of the medrese that fixes a setting shows it on and off
  * limits, with the sentence that says whose it is; the API applies the policies
  * whatever is sent. Each hoca chosen gets a select of the unvan they will carry
  * in the course, "Hoca (unvansız)" until another is chosen (owner,
@@ -70,6 +71,7 @@ export function OpenCourseForm({
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(() => blankForm(kosks));
   const [attempted, setAttempted] = useState(false);
+  const [looking, setLooking] = useState(false);
   const listHref = coursesHref(madrasahId, { kosk: null, status: null });
 
   // A köşk that left the list (its right was withdrawn) is no choice any more.
@@ -98,6 +100,7 @@ export function OpenCourseForm({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (looking) return;
     setAttempted(true);
     if (problems) {
       const field = problems.title
@@ -208,6 +211,7 @@ export function OpenCourseForm({
           removal="icon"
           keepOne={false}
           unvan={unvan}
+          onSearchingChange={setLooking}
         />
       </div>
 
@@ -266,6 +270,7 @@ export function OpenCourseForm({
           </Button>
           <Button
             type="submit"
+            disabled={looking}
             loading={pending}
             loadingLabel={t("OpenCourse.opening")}
           >

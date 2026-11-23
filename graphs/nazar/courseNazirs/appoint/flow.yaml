@@ -2,7 +2,7 @@
 # (apps/nazar/features/course-nazirs/components/{course-nazirs-page,course-nazirs-table,course-nazir-dialog}.tsx, course-nazirs.ts,
 # actions.ts; features/nazirs/actions.ts for the search; the API's GET /users/lookup, GET /courses/:id/nazirs and POST /courses/:id/nazirs
 # in apps/tedrisat/src/course/nazir/). Nothing here was walked in a browser: every behaviour is "from the code" until the walk phase;
-# the unit specs apps/nazar/test/course-nazir-dialog.spec.tsx:179-400 and course-nazirs-page.spec.tsx, and the e2e named in needs.yaml,
+# the unit specs apps/nazar/test/course-nazir-dialog.spec.tsx:179-431 and course-nazirs-page.spec.tsx, and the e2e named in needs.yaml,
 # are the only runs. Read-only looks at the API on the stack: GET /courses/<seeded>/nazirs as the müderris, the başmüderris and the
 # başnazım (each: mayAppoint true, 21 codes grantable; the seeded roster is one post, Rukiye Ders Nazırı, appointed by the başmüderris),
 # GET /courses/<standalone>/nazirs as the müderris (a köşk's own course: mayAppoint true, no post) and GET /me for four accounts (their
@@ -58,7 +58,7 @@ scope:
     - "a ders nazırı with no course_nazir.assign, a person with no seat, and the köşk nazımı in a medrese course meet the notice 'Bu sayfaya izniniz yok' or the 404 page: nazar.access.dersNazirPages, nazar.shell.errorStates (the refusal and the not-found of the list read are exits here, `refused` and `not_found`)"
     - "the başmüderris of the course's medrese and the başnazım open the same page by its address and appoint through the same dialog, as a giver at the medrese's and the platform's level (courseStandingOf); both read 21 codes grantable on the seeded course. The başmüderris opens only the courses of her own medrese (opened-scope.ts:19-32), the başnazım any course. binding.head.yaml walks her (the e2e's account, e2e course-nazirs#3 to #11 and #14); the başnazım, who gives all 21 codes and is never asked about himself (e2e course-nazirs#15), is not bound"
     - "the box list after the ceiling is cut (a passive medrese, a policy): a code the caller no longer holds is a disabled box and the server answers GRANT_EXCEEDS_GIVER to one sent anyway (e2e course-nazirs#14). Drawn as `overreach` in the failures; the stack cannot be made to cut a ceiling without changing seeded state, so it is not bound"
-    - "an end left half typed ('Bitiş tarihini ve saatini tamamlayın.', isUnfinishedEnd): a datetime-local field cannot be left half typed by the replay's fill; the unit spec pins it (course-nazir-dialog.spec.tsx:344)"
+    - "an end left half typed ('Bitiş tarihini ve saatini tamamlayın.', isUnfinishedEnd): a datetime-local field cannot be left half typed by the replay's fill; the unit spec pins it (course-nazir-dialog.spec.tsx:376)"
     - "a hidden course (GRANT_COURSE_INVALID), a code the server does not know, the directory failing at the save (KEYCLOAK_ADMIN_UNAVAILABLE) and any other failure: one error toast with its own sentence (courseNazirErrorKey), drawn together as `refused`; none can be made on request"
     - "the roster's other rows and columns: a ders nazırı who holds permissions and ends, with their buttons; the second row; a post whose holder appointed others (the 'Önce bu kişinin atadığı N ders nazırını görevden alın.' line), which nazar.courseNazirs.dismiss draws"
     - "a session that has ended: the lookup and the save send the person to sign in (realm.auth.signIn) instead of drawing a message"
@@ -232,7 +232,7 @@ states:
     by: human
     goal: true
     on:
-      OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:433, say: "they press 'Ders nazırı ata'" }
+      OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:439, say: "they press 'Ders nazırı ata'" }
       EDIT_PERMISSIONS: { guard: "row != 'none'", target: handed_over.permissions, starts: { flow: nazar.courseNazirs.permissions }, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113, say: "they press 'İzinleri düzenle: name' on the row of a post" }
       END_POST: { guard: "row != 'none'", target: handed_over.dismiss, starts: { flow: nazar.courseNazirs.dismiss }, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123, say: "they press 'Görevden al: name' on the row of a post" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
@@ -289,9 +289,9 @@ states:
     by: human
     on:
       REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç': the e-mail field is back, empty, and the focus is not moved; the boxes and the end stay" }
-      TICK_PERMISSION: { guard: "ticks == 'none'", target: picked, effect: [ticked], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:371, say: "they tick two boxes: the footer says '2 izin seçili'" }
-      TYPE_FUTURE_END: { guard: "until != 'future'", target: picked, effect: [endFuture], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:403, say: "they type an end ahead in the end field" }
-      TYPE_PAST_END: { guard: "until == 'none'", target: picked, effect: [endPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:403, say: "they type an end in the past: nothing is said until they press Kaydet" }
+      TICK_PERMISSION: { guard: "ticks == 'none'", target: picked, effect: [ticked], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:377, say: "they tick two boxes: the footer says '2 izin seçili'" }
+      TYPE_FUTURE_END: { guard: "until != 'future'", target: picked, effect: [endFuture], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:409, say: "they type an end ahead in the end field" }
+      TYPE_PAST_END: { guard: "until == 'none'", target: picked, effect: [endPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:409, say: "they type an end in the past: nothing is said until they press Kaydet" }
       SAVE:
         - { guard: endIsPast, target: picked, effect: [endTold], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:166, say: "'Kaydet' with an end that is not after now: nothing is sent, the field says 'Bitiş zamanı şu andan sonra olmalı.' (F-D2c-4)" }
         - { target: appointing, effect: [clearToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:172, say: "they press 'Kaydet'" }
@@ -310,7 +310,7 @@ states:
       REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç'" }
       CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "they leave the page" }
-    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:306
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:311
 
   pickedSelf:
     title: The person chosen is the viewer
@@ -323,7 +323,7 @@ states:
       REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç'" }
       CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "they leave the page" }
-    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:306
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:311
 
   appointing:
     title: The appointment is on its way
@@ -334,8 +334,9 @@ states:
       course, its köşk or its medrese; then, in one transaction with the course row locked, that no post and no other seat over the course
       (a role at the course, its köşk, its medrese or the platform) speaks for the person; it revokes a lapsed post and the earlier
       grants of the person in this course, writes the DERS_NAZIR role and one grant per code with the same end, and the audit row
-      course_nazir.assign. "Kaydet" is busy (loadingLabel "Kaydediliyor…") and the end field is disabled. "Vazgeç", the close icon and Esc
-      do nothing meanwhile and are not marked (CAPPOINT-1).
+      course_nazir.assign. "Kaydet" is busy (loadingLabel "Kaydediliyor…"); "Başka birini seç", the boxes and the end field are
+      disabled, so the person and the codes shown are the ones sent. "Vazgeç", the close icon and Esc do nothing meanwhile and are not
+      marked (CAPPOINT-1).
     invoke: { action: createCourseNazir }
     on:
       DONE:

@@ -2,6 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsForm } from "~/features/settings/components/settings-form";
 import type { SettingsSnapshot } from "~/features/settings/settings";
@@ -168,6 +169,44 @@ describe("the settings form (nazir 04)", () => {
     ).toContain("Ayarlar kaydedildi.");
     expect(refresh).toHaveBeenCalledOnce();
     expect(button("Kaydet").disabled).toBe(true);
+  });
+
+  it("keeps the fields and the boxes off while the save is out, so the answer drops nothing typed meanwhile", async () => {
+    let answer: (value: unknown) => void = () => {};
+    save.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await mount();
+    await typeInto(field("name"), "Fatih Medresesi");
+    await submit();
+
+    expect(save).toHaveBeenCalledExactlyOnceWith("m-1", {
+      name: "Fatih Medresesi",
+    });
+    expect(field("name").disabled).toBe(true);
+    expect(field("description").disabled).toBe(true);
+    const box = row("Kapalı ders zorunlu").querySelector("[role=checkbox]");
+    expect(box?.getAttribute("aria-disabled")).toBe("true");
+    await toggle("Kapalı ders zorunlu");
+    expect(isOn("Kapalı ders zorunlu")).toBe(false);
+
+    await act(async () => {
+      answer({
+        success: true,
+        data: {
+          ...initial,
+          form: { ...initial.form, name: "Fatih Medresesi" },
+          updatedAt: "2026-10-02T10:00:00.000Z",
+        },
+      });
+    });
+    await settle();
+    expect(field("name").disabled).toBe(false);
+    expect(field("description").disabled).toBe(false);
+    expect(box?.getAttribute("aria-disabled")).not.toBe("true");
+    expect(field("name").value).toBe("Fatih Medresesi");
   });
 
   it("clears the description with null when it is emptied", async () => {

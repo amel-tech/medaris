@@ -33,7 +33,7 @@ needs:
       - node: newRowStatus
       - node: newRowToday
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
-      - source: apps/nazar/features/courses/components/open-course-form.tsx:99
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:101
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
       - test: apps/nazar/test/open-course.spec.tsx
@@ -71,7 +71,7 @@ needs:
       - node: nameLong
       - node: teamNone
       - node: submit
-      - source: apps/nazar/features/courses/components/open-course-form.tsx:99
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:101
       - source: apps/nazar/features/courses/courses.ts:318
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — 'Dersi aç' without a name and a müderris says what is missing under the fields and opens nothing (criterion 2)"
@@ -101,11 +101,16 @@ needs:
       - node: hocaListed
       - node: searching
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:95
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:107
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — with several müderrisler the imam is chosen, and the one chosen is the imam (criterion 3)"
+      - test: apps/nazar/test/open-course.spec.tsx
+        name: "will not open the course while a hoca is being looked up, and sends them once they are listed"
+    note: >-
+      "Dersi aç" is off while a hoca is looked up (open-course-form.tsx:273), so the course is never opened without the hoca the
+      person just asked for.
 
   - id: lookup-only-on-request
     need: >-
@@ -155,7 +160,7 @@ needs:
       - node: unvanB
       - state: form
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
-      - source: apps/nazar/features/courses/components/muderris-picker.tsx:196
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:208
 
   - id: policies-fix-the-boxes
     need: >-
@@ -171,7 +176,7 @@ needs:
       - state: readingPolicies
       - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
-      - source: apps/nazar/features/courses/components/open-course-form.tsx:244
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:248
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — where the medrese always approves, 'Kayıt onayı gereksin' is on and off limits, and the course is opened that way (criterion 5)"
       - test: apps/nazar/e2e/open-course.e2e.ts
@@ -192,7 +197,7 @@ needs:
       - state: noKosk
       - node: koskKubbealti
       - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
-      - source: apps/nazar/features/courses/components/open-course-form.tsx:133
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:136
       - test: apps/nazar/e2e/open-course.e2e.ts
         name: "nazir/08 — a köşk that took its right back after the page opened refuses the course, and says why"
 

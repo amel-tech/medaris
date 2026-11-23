@@ -245,7 +245,7 @@ states:
       dialog until it is closed.
     by: human
     on:
-      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:186, say: "they press 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved" }
+      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:187, say: "they press 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved" }
       APPOINT: { target: appointing, effect: [clearToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:94, say: "they press 'Ata'" }
       CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "Vazgeç, the close icon or Escape: nothing is written" }
       NAVIGATE: { target: left, say: "they leave the page" }
@@ -259,10 +259,10 @@ states:
       nothing newer than the last refresh. Nobody is appointed twice anyway: the API answers the same row again.
     by: human
     on:
-      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:186, say: "they press 'Seçimi kaldır'" }
+      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:187, say: "they press 'Seçimi kaldır'" }
       CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "they leave the page" }
-    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:191
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:192
 
   appointing:
     title: The appointment is on its way
@@ -273,7 +273,8 @@ states:
       its courses; then, in one transaction with the medrese row locked, it writes the MEDRESE_NAZIR role with no permission,
       drops what the person was given under an earlier seat that no role of theirs still covers, and writes the audit row
       madrasah_nazir.appoint (once, not on a repeat). "Ata" is busy (aria-disabled and aria-busy; the hidden status says "Yükleniyor" from the button's
-      hard-coded default, F-B-2). "Vazgeç", the close icon and Esc do nothing meanwhile and are not marked (APPOINT-1).
+      hard-coded default, F-B-2). "Seçimi kaldır" is natively disabled until the answer, so the person shown is the one the
+      appointment is for. "Vazgeç", the close icon and Esc do nothing meanwhile and are not marked (APPOINT-1).
     invoke: { action: addMadrasahNazir }
     on:
       DONE:

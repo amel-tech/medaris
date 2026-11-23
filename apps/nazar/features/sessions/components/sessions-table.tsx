@@ -633,6 +633,7 @@ export function SessionsTable({
                   legend={t("Sessions.inPerson.legend")}
                   name="inPerson"
                   bordered
+                  disabled={busy}
                   value={editing.value}
                   onChange={(value) =>
                     setEditing({ ...editing, value: value as InPersonChoice })

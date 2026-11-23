@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   koskChoices,
@@ -373,6 +373,41 @@ describe("the form", () => {
     expect(push).not.toHaveBeenCalled();
     expect(field("title").value).toBe("Maksûd şerhi");
     expect(field("reason").value).toBe("Neden.");
+  });
+
+  it("holds the köşk while the request is sent, so a refusal shows the köşk that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    sendOffsiteRequest.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await fill("Maksûd şerhi", "Neden.");
+    await click(submit());
+    await settle(20);
+    const trigger = form().querySelector(
+      "button[role=combobox]"
+    ) as HTMLButtonElement;
+    expect(trigger.disabled).toBe(true);
+    await click(trigger);
+    await settle(40);
+    expect(
+      document.querySelectorAll(".mds-popup[data-open] [role=option]")
+    ).toHaveLength(0);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(sendOffsiteRequest).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-3",
+      title: "Maksûd şerhi",
+      reason: "Neden.",
+    });
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.textContent).toContain("Beyazıt Köşkü");
   });
 
   it("reads the köşks again when the one chosen is gone", async () => {

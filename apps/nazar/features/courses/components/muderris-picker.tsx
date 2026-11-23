@@ -14,6 +14,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -51,6 +52,9 @@ type Search = "idle" | "searching" | "none" | "failed" | "listed" | "full";
  * beside the row, never inside its radio's label. Only a course being opened
  * passes it (owner, 2026-10-15); on a course that exists the unvan is set in
  * Ders ayarları, so "Müderrisleri değiştir" draws none.
+ *
+ * Given `onSearchingChange`, the picker says when a search starts and ends, so
+ * a form can hold its submit back until the person searched for is listed.
  */
 export function MuderrisPicker({
   team,
@@ -63,6 +67,7 @@ export function MuderrisPicker({
   keepOne,
   inputRef,
   unvan,
+  onSearchingChange,
 }: {
   team: Team;
   dispatch: (action: TeamAction) => void;
@@ -83,6 +88,8 @@ export function MuderrisPicker({
     valueOf: (userId: string) => string;
     onChange: (userId: string, value: string) => void;
   };
+  /** told `true` while an address is being looked up, `false` once it is answered */
+  onSearchingChange?: (searching: boolean) => void;
 }) {
   const t = useTranslations("nazar");
   const legendId = useId();
@@ -91,6 +98,11 @@ export function MuderrisPicker({
   const [search, setSearch] = useState<Search>("idle");
   const [announced, setAnnounced] = useState("");
   const searched = useRef<string | null>(null);
+  const searching = search === "searching";
+
+  useEffect(() => {
+    onSearchingChange?.(searching);
+  }, [searching, onSearchingChange]);
 
   const find = async () => {
     const wanted = email.trim();
@@ -241,8 +253,8 @@ export function MuderrisPicker({
           placeholder={t("Team.placeholder")}
           leading={<Icon name="search" size="sm" />}
           value={email}
-          disabled={search === "searching"}
-          aria-busy={search === "searching" || undefined}
+          disabled={searching}
+          aria-busy={searching || undefined}
           onChange={(event) => {
             setEmail(event.target.value);
             if (search !== "idle" && search !== "searching") setSearch("idle");

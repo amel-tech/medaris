@@ -54,7 +54,7 @@ scope:
     - "a session that has ended: the import's server action sends the person to sign in (realm.auth.signIn) instead of drawing a message; so does the template link, through the proxy, which redirects a signed-out request before the route runs"
     - "the file picker itself and what the person does in it, and what a spreadsheet application does with the saved template (the Arabic example rows in a CSV opened in Excel)"
     - "the cards a clean file adds, as the deck's tiles show them, and the deck cards' own counts ('N kart · Kelime'): nazar.decks.openAndFill"
-    - "the unreachable stray cases the code allows: a course whose last deck is deleted while the dialog is open (the API's 404, one more refusal of the third kind), and a double press of 'Aktar' (a second press is ignored while the first is out, import-cards-dialog.tsx:50)"
+    - "the unreachable stray cases the code allows: a course whose last deck is deleted while the dialog is open (the API's 404, one more refusal of the third kind), and a double press of 'Aktar' (a second press is ignored while the first is out, import-cards-dialog.tsx:56)"
     - "the sidebar, the scope picker and the toast host (nazar.shell.scopeAndMenu)"
 
 decisions:
@@ -251,22 +251,22 @@ states:
       name and its size only, decks.ts:303-311); none of the three is announced and the focus does not move (F-D1-16, F-L-12). A file that was
       chosen and then edited on disk may not be readable when sent, and picking the same path again may not fire the browser's change event, which
       the "fix the file and send it again" loop of the row alert leans on (NOT VERIFIED in a browser).
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:75
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:81
     on:
       CHOOSE_FILE:
-        - { guard: "file == 'notSheet'", target: dialog, effect: [choseNotSheet], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:125, say: "they choose a file that is not .xlsx or .csv: \"Yalnızca .xlsx ya da .csv dosyası seçilebilir.\" at once; the file is held all the same, and any alert stays until the next send" }
-        - { guard: "file == 'tooBig'", target: dialog, effect: [choseTooBig], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:125, say: "they choose a file of more than 5 MB: \"Dosya 5 MB'den büyük olamaz.\" at once" }
-        - { target: dialog, effect: [chose], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:125, say: "they choose a file the dialog accepts (or another one): the field's error goes and the help line is back; any alert stays until the next send" }
+        - { guard: "file == 'notSheet'", target: dialog, effect: [choseNotSheet], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:132, say: "they choose a file that is not .xlsx or .csv: \"Yalnızca .xlsx ya da .csv dosyası seçilebilir.\" at once; the file is held all the same, and any alert stays until the next send" }
+        - { guard: "file == 'tooBig'", target: dialog, effect: [choseTooBig], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:132, say: "they choose a file of more than 5 MB: \"Dosya 5 MB'den büyük olamaz.\" at once" }
+        - { target: dialog, effect: [chose], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:132, say: "they choose a file the dialog accepts (or another one): the field's error goes and the help line is back; any alert stays until the next send" }
       SUBMIT:
-        - { guard: noFileChosen, target: dialog, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:51, say: "\"Aktar\" with no file: nothing is sent, the alerts are cleared and \"Bir dosya seçin.\" stands under the field; the focus stays on the button (F-D1-16)" }
-        - { guard: fileRefusedHere, target: dialog, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:54, say: "\"Aktar\" with a file the dialog refuses by its name or its size: nothing is sent, the alerts are cleared and the field's error stays" }
-        - { target: sending, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:55, say: "\"Aktar\" (or Enter in the form) with a file the dialog accepts: the alerts are cleared and the file is sent as the FormData of a Server Action" }
-      OPEN_DECKS: { guard: fromList, target: choosingDeck, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:96, say: "they press \"Hedef deste\": the list of the course's decks opens" }
-      SAMPLE_XLSX: { target: sampling, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:134, say: "they follow \"Excel (.xlsx)\": the template comes as deste-ornek.xlsx, the dialog stays" }
-      SAMPLE_CSV: { target: sampling, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:138, say: "they follow \"CSV (.csv)\": the template comes as deste-ornek.csv, the dialog stays" }
+        - { guard: noFileChosen, target: dialog, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:57, say: "\"Aktar\" with no file: nothing is sent, the alerts are cleared and \"Bir dosya seçin.\" stands under the field; the focus stays on the button (F-D1-16)" }
+        - { guard: fileRefusedHere, target: dialog, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60, say: "\"Aktar\" with a file the dialog refuses by its name or its size: nothing is sent, the alerts are cleared and the field's error stays" }
+        - { target: sending, effect: [submitted], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:61, say: "\"Aktar\" (or Enter in the form) with a file the dialog accepts: the alerts are cleared and the file is sent as the FormData of a Server Action" }
+      OPEN_DECKS: { guard: fromList, target: choosingDeck, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:102, say: "they press \"Hedef deste\": the list of the course's decks opens" }
+      SAMPLE_XLSX: { target: sampling, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:141, say: "they follow \"Excel (.xlsx)\": the template comes as deste-ornek.xlsx, the dialog stays" }
+      SAMPLE_CSV: { target: sampling, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:145, say: "they follow \"CSV (.csv)\": the template comes as deste-ornek.csv, the dialog stays" }
       CANCEL:
-        - { guard: onDeckPage, target: deckPage, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:77, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"Excel'den aktar\"" }
-        - { target: list, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:77, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"Excel'den aktar\"" }
+        - { guard: onDeckPage, target: deckPage, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:83, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"Excel'den aktar\"" }
+        - { target: list, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:83, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"Excel'den aktar\"" }
 
   choosingDeck:
     title: The list of decks is open
@@ -278,8 +278,8 @@ states:
       not shown here, IMPORT-4).
     source: libs/ui/src/mds/select.tsx:80
     on:
-      PICK_FIRST: { target: dialog, effect: [pickedFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:103, say: "they choose the first deck" }
-      PICK_OTHER: { target: dialog, effect: [pickedSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:103, say: "they choose the other deck: the field shows it and the file will go to it" }
+      PICK_FIRST: { target: dialog, effect: [pickedFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:109, say: "they choose the first deck" }
+      PICK_OTHER: { target: dialog, effect: [pickedSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:109, say: "they choose the other deck: the field shows it and the file will go to it" }
       DISMISS: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "Esc closes the list only; the dialog stays" }
       OPEN_DECKS: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Hedef deste\" again: the list closes, the deck is as it was" }
       SUBMIT: { target: dialog, source: libs/ui/src/mds/select.tsx:51, say: "they press \"Aktar\": the list is modal (Base UI's default), so the press only closes it and nothing is sent" }
@@ -318,19 +318,20 @@ states:
       before a formula trigger away; no data row is a 400 (also a file whose header names do not match, and a CSV with semicolons); more than 1000
       data rows is a 422 on row 1002 (IMPORT-2); and every row is validated, all the bad rows reported together, before one row is written, so a
       refused file adds nothing. The card type is not compared with the deck's (IMPORT-4). The button "Aktar" is busy (aria-disabled, aria-busy;
-      the hidden output says "Yükleniyor") and the form stays as it is. Vazgeç, the close icon and Esc still close the dialog (IMPORT-1, decision
+      the hidden output says "Yükleniyor"), "Hedef deste" is disabled, so the deck it shows is the one the file goes to, and the rest of the form
+      stays as it is. Vazgeç, the close icon and Esc still close the dialog (IMPORT-1, decision
       D5). A 422 with rows is `importRowProblems` of the body (decks.ts:268-296): one entry per bad row, with the API's own messages (F-D1-19);
       anything else without rows is the failure alert.
     source: apps/nazar/features/decks/actions.ts:175
     invoke: { action: importCards }
     on:
       DONE:
-        - { guard: "cleanFile and toFirst", target: imported, effect: [addedToFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60, say: "201 { count }: a toast says how many cards were added, the page is read again and the dialog closes" }
-        - { guard: cleanFile, target: imported, effect: [addedToSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60, say: "201 { count } into the deck the person picked: the same toast, and the other deck is untouched" }
-      FAIL.rows: { guard: rowsFile, target: dialog, effect: [rowsRefused], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:69, say: "422 with rows: the dialog stays with an alert that lists them, and nothing was added" }
-      FAIL.refused: { guard: turnedDown, target: dialog, effect: [fileRefused], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:70, say: "any other status without rows, or a network answer the dialog cannot read: one alert, \"İşlem tamamlanamadı. Tekrar deneyin.\"; nothing says why (IMPORT-3)" }
+        - { guard: "cleanFile and toFirst", target: imported, effect: [addedToFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:66, say: "201 { count }: a toast says how many cards were added, the page is read again and the dialog closes" }
+        - { guard: cleanFile, target: imported, effect: [addedToSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:66, say: "201 { count } into the deck the person picked: the same toast, and the other deck is untouched" }
+      FAIL.rows: { guard: rowsFile, target: dialog, effect: [rowsRefused], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:75, say: "422 with rows: the dialog stays with an alert that lists them, and nothing was added" }
+      FAIL.refused: { guard: turnedDown, target: dialog, effect: [fileRefused], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:76, say: "any other status without rows, or a network answer the dialog cannot read: one alert, \"İşlem tamamlanamadı. Tekrar deneyin.\"; nothing says why (IMPORT-3)" }
       FAIL.tooLarge: { guard: bigForNext, target: error_page, source: apps/nazar/next.config.js:40, say: "a file of 1 to 5 MB: Next refuses the body before the action runs, the call rejects, nothing catches it (F-D1-20) and the error page replaces the page (F-D1-18; NOT VERIFIED)" }
-      CANCEL: { target: abandoned, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:77, say: "Vazgeç, the close icon or Esc while the file is out: the dialog closes at once and the request goes on (IMPORT-1)" }
+      CANCEL: { target: abandoned, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:83, say: "Vazgeç, the close icon or Esc while the file is out: the dialog closes at once and the request goes on (IMPORT-1)" }
 
   abandoned:
     title: The dialog was closed while the file was being sent
@@ -338,16 +339,17 @@ states:
       The page is back with no dialog and the focus goes back to "Excel'den aktar", but the transition of the closed dialog is still running (nothing
       aborts it). When it is answered 201 the toast "{count} kart eklendi" appears over the page, the page is read again and the cards were added
       after the person said Vazgeç; any refusal is lost, because `setRows` and `setFailed` write to a component that is gone, so the person is
-      told nothing (IMPORT-1).
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:57
+      told nothing (IMPORT-1). The answer closes nothing: the closed dialog calls the page's onClose only while it is open
+      (import-cards-dialog.tsx:72), so a dialog the person opened since ("Excel'den aktar" again, or "Deste aç") stays open.
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:63
     invoke: { action: importCards }
     on:
       DONE:
-        - { guard: "cleanFile and toFirst", target: imported, effect: [addedToFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:61, say: "201: the toast and the new total come, though the person had closed the dialog" }
-        - { guard: cleanFile, target: imported, effect: [addedToSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:61, say: "201 into the deck the person had picked: the toast and the new total come" }
+        - { guard: "cleanFile and toFirst", target: imported, effect: [addedToFirst], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:67, say: "201: the toast and the new total come, though the person had closed the dialog" }
+        - { guard: cleanFile, target: imported, effect: [addedToSecond], source: apps/nazar/features/decks/components/import-cards-dialog.tsx:67, say: "201 into the deck the person had picked: the toast and the new total come" }
       FAIL.refused:
-        - { guard: "not cleanFile and onDeckPage", target: deckPage, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:69, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
-        - { guard: "not cleanFile", target: list, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:69, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
+        - { guard: "not cleanFile and onDeckPage", target: deckPage, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:75, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
+        - { guard: "not cleanFile", target: list, source: apps/nazar/features/decks/components/import-cards-dialog.tsx:75, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
 
   imported:
     title: The cards are in the deck
@@ -359,7 +361,7 @@ states:
       no deck (IMPORT-5); it sits in the region "Bildirimler" with a close button "Kapat", both the kit's own words (F-L-6). The dialog is gone (the page unmounts it) and the focus is back on "Excel'den aktar" (Base UI returns it to the opener; not
       seen). Nothing in the file can be taken back as a batch: each card is deleted one at a time from its deck (nazar.decks.openAndFill). The same
       file sent again adds the same cards again: no check for a duplicate is made.
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:66
     on:
       OPEN_IMPORT: { target: dialog, effect: [reopened], source: apps/nazar/features/decks/components/decks-actions.tsx:31, say: "they open the dialog again, with no file in it and the first deck" }
       NEW_DECK: { guard: fromList, target: handed_over.open_deck, starts: { flow: nazar.decks.openAndFill }, source: apps/nazar/features/decks/components/decks-actions.tsx:35, say: "they press \"Deste aç\"" }
@@ -392,11 +394,11 @@ assertions:
   - id: only-an-accepted-file-is-sent
     never: "state == 'sending' and chosen != 'ok'"
     say: Nothing is sent while no file is chosen or while the chosen one is refused by its name or its size; the dialog says so under the field instead.
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:54
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
   - id: success-only-for-a-clean-file
     never: "state == 'imported' and file != 'clean'"
     say: The toast "{count} kart eklendi" is never shown for a file with bad rows, too many rows, a refusal or a size the page cannot send.
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:66
   - id: no-deck-no-dialog
     never: "state == 'dialog' and entry == 'noDeck'"
     say: A course with no deck has no import dialog; the button is off.
@@ -404,8 +406,8 @@ assertions:
   - id: nothing-stands-under-the-form-while-sending
     never: "state == 'sending' and said != 'none'"
     say: The alerts are cleared before a file is sent, so a busy dialog shows none of the last answer.
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:52
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:58
   - id: a-deck-field-only-where-no-deck-is-fixed
     never: "state == 'choosingDeck' and entry == 'deckPage'"
     say: On a deck's own page the dialog is fixed to that deck and has no deck list to open.
-    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:94
+    source: apps/nazar/features/decks/components/import-cards-dialog.tsx:100

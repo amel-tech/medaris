@@ -103,7 +103,7 @@ needs:
       - source: apps/nazar/features/course-nazirs/course-nazirs.ts:219
     note: >-
       unwalked: nothing makes tedrisat answer so for a button the page offered; a unit spec
-      (apps/nazar/test/course-nazir-dialog.spec.tsx:568-633) pins the words
+      (apps/nazar/test/course-nazir-dialog.spec.tsx:627-692) pins the words
 
   - id: a-post-already-gone-is-info
     need: >-

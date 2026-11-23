@@ -506,9 +506,9 @@ entries:
   - { from: medreseCourses, to: medreseCoursesYeni, how: link, label: Courses.open, when: "'madrasah.course_open' in held", source: apps/nazar/features/courses/components/courses-page.tsx:118 }
   - { from: medreseCourses, to: medreseArchive, how: link, label: Courses.hiddenNote.link, source: apps/nazar/features/courses/components/courses-page.tsx:155 }
   - { from: medreseCourses, to: dersOverview, how: link, label: a course in the list, data: true, source: apps/nazar/features/courses/components/courses-table.tsx:80 } # every listed course opens by its address
-  - { from: medreseCoursesYeni, to: medreseCourses, how: link, label: OpenCourse.cancel, back: true, source: apps/nazar/features/courses/components/open-course-form.tsx:264 }
-  - { from: medreseCoursesYeni, to: medreseSettings, how: link, label: Nav.medrese.settings, data: true, source: apps/nazar/features/courses/components/open-course-form.tsx:250 } # in the sentence that says a policy locks a box
-  - { from: medreseCoursesTalep, to: medreseCourses, how: link, label: Offsite.cancel, back: true, source: apps/nazar/features/offsite/components/offsite-form.tsx:189 }
+  - { from: medreseCoursesYeni, to: medreseCourses, how: link, label: OpenCourse.cancel, back: true, source: apps/nazar/features/courses/components/open-course-form.tsx:268 }
+  - { from: medreseCoursesYeni, to: medreseSettings, how: link, label: Nav.medrese.settings, data: true, source: apps/nazar/features/courses/components/open-course-form.tsx:254 } # in the sentence that says a policy locks a box
+  - { from: medreseCoursesTalep, to: medreseCourses, how: link, label: Offsite.cancel, back: true, source: apps/nazar/features/offsite/components/offsite-form.tsx:191 }
   - { from: medreseSettings, to: medreseCourses, how: link, label: Settings.coursesLink, source: apps/nazar/features/settings/components/settings-page.tsx:191 }
   - { from: medreseSettings, to: tedrisMadrasah, how: link, label: Settings.viewPage, source: apps/nazar/features/settings/components/settings-page.tsx:84 }
 
@@ -521,8 +521,8 @@ entries:
   - { from: dersCurriculum, to: dersSessionsPlanla, how: link, label: Curriculum.generate, when: "'session.manage' in held", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:459 }
   - { from: dersCurriculum, to: dersCurriculumGizle, how: link, label: Curriculum.hidePage, when: "'week.hide' in held", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:468 }
   - { from: dersSessions, to: dersSessionsPlanla, how: link, label: Sessions.plan, when: "'session.manage' in held", source: apps/nazar/features/sessions/components/sessions-page.tsx:90 }
-  - { from: dersSessionsPlanla, to: dersSessions, how: link, label: SessionPlan.breadcrumbRoot, back: true, source: apps/nazar/features/sessions/components/plan-form.tsx:369 }
-  - { from: dersSessionsPlanla, to: dersSessions, how: link, label: SessionPlan.cancel, back: true, source: apps/nazar/features/sessions/components/plan-form.tsx:673 }
+  - { from: dersSessionsPlanla, to: dersSessions, how: link, label: SessionPlan.breadcrumbRoot, back: true, source: apps/nazar/features/sessions/components/plan-form.tsx:380 }
+  - { from: dersSessionsPlanla, to: dersSessions, how: link, label: SessionPlan.cancel, back: true, source: apps/nazar/features/sessions/components/plan-form.tsx:694 }
   - { from: dersDeck, to: dersDeckOne, how: link, label: a deck card, data: true, source: apps/nazar/features/decks/components/decks-page.tsx:104 }
   - { from: dersDeckOne, to: dersDeck, how: link, label: Decks.backToDecks, back: true, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
   - { from: dersSettings, to: tedrisCourse, how: link, label: CourseSettings.viewPublic, source: apps/nazar/features/course-settings/components/course-settings-page.tsx:92 }

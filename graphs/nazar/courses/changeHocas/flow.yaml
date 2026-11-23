@@ -219,7 +219,7 @@ states:
       the field's own error, not announced (F-A-4).
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': the other account is the imam now" }
       REMOVE_OTHER:
@@ -236,7 +236,7 @@ states:
     description: The same dialog with "Kaydet" on; pressing it sends the whole list.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they look up another hoca" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:107, say: "they look up another hoca" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [imamLeftTrio], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': none is the imam, the button goes off" }
@@ -263,15 +263,15 @@ states:
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and list == 'guest'", target: settle, effect: [addedToGuest], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added after the name-only hoca and is the imam; the model stops here" }
-        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added; there are two accounts now and the imam stays who it was" }
-        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added; there are three accounts" }
-        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:111, say: "'Bu kişi zaten listede.' under the field and nobody is added" }
-        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.' under the field" }
+        - { guard: "lookup == 'found' and list == 'guest'", target: settle, effect: [addedToGuest], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the person is added after the name-only hoca and is the imam; the model stops here" }
+        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the person is added; there are two accounts now and the imam stays who it was" }
+        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nazar/features/courses/components/muderris-picker.tsx:127, say: "the person is added; there are three accounts" }
+        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:123, say: "'Bu kişi zaten listede.' under the field and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:136, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:136, say: "'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.' under the field" }
       CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:109, say: "they close the dialog while the search runs: its answer is dropped" }
       CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:104, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
-    source: apps/nazar/features/courses/components/muderris-picker.tsx:105
+    source: apps/nazar/features/courses/components/muderris-picker.tsx:117
 
   saving:
     title: The list is on its way
