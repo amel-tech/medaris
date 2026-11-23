@@ -165,7 +165,7 @@ needs:
       - node: summaryNone
       - node: summaryEmpty
       - source: apps/nizam/features/courses/present.ts:1199
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:435
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:439
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
 
@@ -192,7 +192,7 @@ needs:
       - node: inPersonDesc
       - state: opening
       - source: apps/tedrisat/src/course/course.controller.ts:188
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:465
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:469
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 4: 'Hemen yayımla' with a closed course and a cover caption opens it published"
 
@@ -207,7 +207,7 @@ needs:
       - node: newRowDraft
       - node: newRowPublished
       - source: apps/tedrisat/src/course/course.controller.ts:188
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:497
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:501
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 2–5: one müderris is the imam, the summary counts the sessions, a draft is opened with its sessions"
       - test: apps/nizam/e2e/courses.e2e.ts
@@ -221,7 +221,7 @@ needs:
       - node: approvalBox
       - node: approvalFixed
       - node: approvalDesc
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:480
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:484
 
   - id: accept-a-request-by-opening-its-course
     need: >-

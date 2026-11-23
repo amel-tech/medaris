@@ -279,6 +279,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
                   name="tone"
                   className="flex-row flex-wrap gap-x-5 [&>.mds-label]:basis-full"
                   value={tone}
+                  disabled={saving}
                   onChange={(v) => setTone(v as typeof tone)}
                   options={COVER_TONES.map((value) => ({
                     value,
@@ -295,6 +296,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
                     name="coverLabel"
                     value={label}
                     placeholder={t("labelPlaceholder")}
+                    disabled={saving}
                     onChange={setLabel}
                     options={COVER_LABELS.map((l) => ({
                       value: l.value,
@@ -378,6 +380,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
                 options={WEEKDAYS.map((d) => ({
                   value: String(d),
                   label: weekdayName(format, d, "short"),
+                  disabled: saving,
                 }))}
               />
               {sent && scheduleProblems.weekdays ? (
@@ -422,6 +425,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
               <Select
                 name="timeZone"
                 value={timeZone}
+                disabled={saving}
                 onChange={(v) => v && setTimeZone(v)}
                 options={zones.map((zone) => ({
                   value: zone,
@@ -499,6 +503,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
             name="visibility"
             bordered
             value={publish}
+            disabled={saving}
             onChange={(v) => setPublish(v as typeof publish)}
             options={[
               {

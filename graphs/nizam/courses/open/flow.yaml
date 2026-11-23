@@ -276,18 +276,18 @@ states:
         - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nizam/features/courses/components/team-picker.tsx:243, say: "they take the last hoca off" }
       PICK_IMAM: { guard: "team == 'abImamA'", target: form, effect: [imamIsB], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they choose the second hoca as the imam; choosing the first again is the same move the other way and is not drawn" }
       CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nizam/features/courses/components/team-picker.tsx:236, say: "they choose an unvan for a hoca (sent with that hoca; the select's value is not drawn)" }
-      SET_DATE: { guard: "not dated", target: form, effect: [dateSet], source: apps/nizam/features/courses/components/course-create-form.tsx:343, say: "they fill the start date (and may change the length): the summary counts the celses once a day is chosen too" }
-      PICK_DAY: { guard: "not daysSet", target: form, effect: [dayPicked], source: apps/nizam/features/courses/components/course-create-form.tsx:371, say: "they press a weekday chip: it is pressed (aria-pressed) and the summary counts the celses once the date is filled" }
-      CHOOSE_LABEL: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:294, say: "they choose a cover caption from the list" }
-      TOGGLE_CLOSED: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:465, say: "they check or uncheck 'Kapalı ders'" }
-      TOGGLE_APPROVAL: { guard: "not locked", target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:475, say: "they check or uncheck 'Kayıt onayı gereksin' (checked at first); off limits when the köşk's policy fixes it" }
-      TOGGLE_IN_PERSON: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:487, say: "they check or uncheck 'Celseler yüz yüze yapılır': every celse with no setting of its own is then in person" }
-      CHOOSE_PUBLISH: { guard: "visibility == 'draft'", target: form, effect: [publishChosen], source: apps/nizam/features/courses/components/course-create-form.tsx:497, say: "they choose 'Hemen yayımla'" }
-      CHOOSE_DRAFT: { guard: "visibility == 'publish'", target: form, effect: [draftChosen], source: apps/nizam/features/courses/components/course-create-form.tsx:497, say: "they choose 'Taslak olarak aç' again" }
+      SET_DATE: { guard: "not dated", target: form, effect: [dateSet], source: apps/nizam/features/courses/components/course-create-form.tsx:345, say: "they fill the start date (and may change the length): the summary counts the celses once a day is chosen too" }
+      PICK_DAY: { guard: "not daysSet", target: form, effect: [dayPicked], source: apps/nizam/features/courses/components/course-create-form.tsx:373, say: "they press a weekday chip: it is pressed (aria-pressed) and the summary counts the celses once the date is filled" }
+      CHOOSE_LABEL: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:295, say: "they choose a cover caption from the list" }
+      TOGGLE_CLOSED: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:469, say: "they check or uncheck 'Kapalı ders'" }
+      TOGGLE_APPROVAL: { guard: "not locked", target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:479, say: "they check or uncheck 'Kayıt onayı gereksin' (checked at first); off limits when the köşk's policy fixes it" }
+      TOGGLE_IN_PERSON: { target: form, source: apps/nizam/features/courses/components/course-create-form.tsx:491, say: "they check or uncheck 'Celseler yüz yüze yapılır': every celse with no setting of its own is then in person" }
+      CHOOSE_PUBLISH: { guard: "visibility == 'draft'", target: form, effect: [publishChosen], source: apps/nizam/features/courses/components/course-create-form.tsx:501, say: "they choose 'Hemen yayımla'" }
+      CHOOSE_DRAFT: { guard: "visibility == 'publish'", target: form, effect: [draftChosen], source: apps/nizam/features/courses/components/course-create-form.tsx:501, say: "they choose 'Taslak olarak aç' again" }
       SUBMIT:
         - { guard: problems, target: form, effect: [attempt], source: apps/nizam/features/courses/components/course-create-form.tsx:131, say: "they press 'Dersi aç' with something missing: nothing is sent, the messages appear, the focus stays on the button" }
         - { target: opening, source: apps/nizam/features/courses/components/course-create-form.tsx:135, say: "they press 'Dersi aç' with a name, a hoca, a date and a day" }
-      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:522, say: "they press 'Vazgeç': Dersler opens, nothing is made, what was typed is dropped without a question" }
+      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:527, say: "they press 'Vazgeç': Dersler opens, nothing is made, what was typed is dropped without a question" }
       BACK: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:216, say: "they follow the breadcrumb's 'Dersler'" }
       NAVIGATE: { target: left, say: "they follow the menu" }
     source: apps/nizam/features/courses/components/course-create-form.tsx:207
@@ -301,7 +301,7 @@ states:
       the same address typed twice says "Bu kişi zaten listede.", and the field is emptied. A person found is added at once and a hidden status
       says "<name> seçildi". "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and "Arama şu an yapılamadı…" are the field's own error while
       nobody is listed (no live region) and a role=alert paragraph once somebody is (F-W2-3, F-X-2). "Dersi aç" is off while the search
-      runs (the picker says when it starts and ends, apps/nizam/features/courses/components/team-picker.tsx:97-99; the button, apps/nizam/features/courses/components/course-create-form.tsx:529), so the course waits for the hoca
+      runs (the picker says when it starts and ends, apps/nizam/features/courses/components/team-picker.tsx:97-99; the button, apps/nizam/features/courses/components/course-create-form.tsx:534), so the course waits for the hoca
       being looked up and a press is not sent (apps/nizam/features/courses/components/course-create-form.tsx:129). A press that is itself what leaves the e-mail field starts the
       search and lands on the button already off: nothing is sent and nothing says why (not verified in a browser).
     invoke: { action: lookupUser }
@@ -311,7 +311,7 @@ states:
         - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nizam/features/courses/components/team-picker.tsx:106, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
         - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nizam/features/courses/components/team-picker.tsx:121, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
       FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nizam/features/courses/components/team-picker.tsx:123, say: "the directory is not reachable: 'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.'" }
-      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:522, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
+      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:527, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
       BACK: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:216, say: "they follow the breadcrumb while the search runs; its answer is dropped" }
     source: apps/nizam/features/courses/components/team-picker.tsx:92
 
@@ -326,7 +326,7 @@ states:
       DONE:
         - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedSecondAlone], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the first hoca was taken off while the search ran: the second person is added alone and is the imam, and the first stays off" }
         - { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the second person is added: two rows, a radio each, the first the imam" }
-      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:522, say: "they press 'Vazgeç' while the search runs" }
+      CANCEL: { target: courses_listed, source: apps/nizam/features/courses/components/course-create-form.tsx:527, say: "they press 'Vazgeç' while the search runs" }
       # The first hoca's "Çıkar" is live while the second search runs, and the row goes at once. The search adds its person to the list as it
       # is when the answer comes (a state setter's update, team-picker.tsx:114), so the hoca taken off meanwhile stays off.
       REMOVE_A: { guard: "team == 'a'", target: lookingAnother, effect: [removedAAlone], source: apps/nizam/features/courses/components/team-picker.tsx:243, say: "they take the first hoca off while the second search runs: the row goes, and the search already sent goes on" }

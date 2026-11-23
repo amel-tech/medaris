@@ -586,7 +586,7 @@ entries:
   - { from: koskCourses, to: courseCurriculum, how: link, label: KoskCourses.edit, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:275 }
   - { from: koskCourses, to: tedris, how: link, label: KoskCourses.view, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301 }
   - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.breadcrumbRoot, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:219 }
-  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:522 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:527 }
   - { from: courseNew, to: koskCourses, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:198 }
   - { from: courseNew, to: courseSessionsNew, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:191 }
   - { from: courseRequests, to: courseNew, how: button, label: CourseRequestsPage.accept, data: true, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241 }
@@ -619,7 +619,7 @@ entries:
   - { from: koskDecks, to: koskDeckNew, how: link, label: KoskDecksPage.accept, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:313 }
   - { from: koskDecks, to: legacyDeckCards, how: link, label: KoskDecksPage.editCards, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:224 }
   - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.breadcrumbRoot, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
-  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:201 }
   - { from: legacyDecks, to: legacyDeckCards, how: button, label: "the row's eye icon, which has no accessible name (F-P0-10)", data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
   # A ban notice is written for the köşk's nazımlar and for every Medaris nazımı, never for the başnazım (ban.service.ts:346-385,
   # ban.repository.ts:435-456 nazimRecipients: TRIAGE-1, TRIAGE-2), and its title is a link to the köşk's Yasaklamalar whoever holds it
