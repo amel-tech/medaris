@@ -75,7 +75,7 @@ needs:
       moment.
     evidence:
       - state: panel
-      - source: apps/tedris/features/courses/components/lesson-notes.tsx:565
+      - source: apps/tedris/features/courses/components/lesson-notes.tsx:571
       - node: useCurrent
       - source: apps/tedris/features/courses/components/lesson-notes.tsx:392
       - test: apps/tedris/test/lesson-notes.spec.ts

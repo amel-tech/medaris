@@ -192,4 +192,22 @@ describe("Deste oluştur (design tedris/27)", () => {
       expect.objectContaining({ cardType: "VOCABULARY" })
     );
   });
+
+  it("while the deck is made, the name, the description and the tags are read-only", async () => {
+    let finish: (v: { success: false; error: string }) => void = () => {};
+    mocks.create.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    await mount();
+    await type(field("title"), "Yeni deste");
+    await click(radio("Kelime"));
+    await submit();
+    // What is typed now would not be what is sent.
+    for (const name of ["title", "description", "tags"]) {
+      expect(field(name).readOnly).toBe(true);
+    }
+    await act(async () => finish({ success: false, error: "boom" }));
+    for (const name of ["title", "description", "tags"]) {
+      expect(field(name).readOnly).toBe(false);
+    }
+    expect(field("title").value).toBe("Yeni deste");
+  });
 });

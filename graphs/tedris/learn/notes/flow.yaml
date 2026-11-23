@@ -14,7 +14,7 @@
 #   WRT-13  no draft is kept: a reload or leaving the page loses what was typed, with no warning
 #   WRT-14  the note field has an aria-label ("Not") and a placeholder and no visible label
 #   NOTES-1 (new) after a refused save or delete, "Vazgeç" returns to the row and its error line stays under it until the next
-#           Edit or trash press (lesson-notes.tsx:519-523, 550, 618). Read from the code, not walked; the residue is not drawn
+#           Edit or trash press (lesson-notes.tsx:520-524, 551, 624). Read from the code, not walked; the residue is not drawn
 # The model counts to two notes (held: none, one, two) and walks a timed note first and an untimed one second; a third note is
 # the same step again.
 # E2E carried: lesson-notes#1 (UI steps; the DB reads are the binding's `effects`), #3 and #7 (the recordings tab leads to the same
@@ -184,9 +184,9 @@ states:
       TYPE: { guard: "held == 'none'", target: drafting, say: "they write a note in the text area and give it a time (a typed one, or the position the page took)" }
       TYPE_MORE: { guard: "held == 'one'", target: drafting, say: "they write another note and leave its time empty" }
       USE_CURRENT: { guard: hasSource, target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" puts the player's position or the live clock in the time field" }
-      SEEK: { guard: "hasPlayer and listed", target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:565", say: "a note's time is a button on a YouTube frame: it moves the player to that moment (no API)" }
-      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:588", say: "the pencil of the first note: its row becomes a text area, a time field and \"Kaydet\" / \"Vazgeç\"; the focus is lost and the text field is not focused (WRT-01)" }
-      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the trash of the first note: the row asks \"Silinsin mi?\"; the focus is lost (WRT-01)" }
+      SEEK: { guard: "hasPlayer and listed", target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:571", say: "a note's time is a button on a YouTube frame: it moves the player to that moment (no API)" }
+      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the pencil of the first note: its row becomes a text area, a time field and \"Kaydet\" / \"Vazgeç\"; the focus is lost and the text field is not focused (WRT-01)" }
+      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:600", say: "the trash of the first note: the row asks \"Silinsin mi?\"; the focus is lost (WRT-01)" }
       SUBMIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "nothing is typed: \"Notu ekle\" says \"Not boş olamaz.\" under the form and sends nothing (the line is not drawn here)" }
       RELOAD: reading
       NAVIGATE: left
@@ -201,9 +201,9 @@ states:
       sends nothing while either is wrong. Reloading or leaving loses the text, with no warning (WRT-13).
     on:
       USE_CURRENT: { guard: hasSource, target: drafting, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389" }
-      SEEK: { guard: "hasPlayer and listed", target: drafting, source: "apps/tedris/features/courses/components/lesson-notes.tsx:565", say: "a note's time moves the player; the draft stays" }
-      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:588", say: "the pencil of the first note: its row is changed while the draft stays in the form (not carried on: scope.outOfView)" }
-      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the trash of the first note: the row asks \"Silinsin mi?\" while the draft stays in the form (not carried on: scope.outOfView)" }
+      SEEK: { guard: "hasPlayer and listed", target: drafting, source: "apps/tedris/features/courses/components/lesson-notes.tsx:571", say: "a note's time moves the player; the draft stays" }
+      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the pencil of the first note: its row is changed while the draft stays in the form (not carried on: scope.outOfView)" }
+      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:600", say: "the trash of the first note: the row asks \"Silinsin mi?\" while the draft stays in the form (not carried on: scope.outOfView)" }
       SUBMIT:
         - { guard: badTime, target: addRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:331", say: "the time is not one the field takes" }
         - { guard: noBody, target: addRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "the text is blank" }
@@ -247,16 +247,16 @@ states:
         - { guard: noBody, target: addRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:332" }
         - { target: adding, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:334" }
       USE_CURRENT: { guard: hasSource, target: addRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" fills the time field; the error line stays" }
-      SEEK: { guard: "hasPlayer and listed", target: addRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:565", say: "a note's time moves the player" }
-      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:588", say: "the pencil of the first note: its row is changed; the form keeps its draft and its error line (not carried on: scope.outOfView)" }
-      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the trash of the first note: the row asks \"Silinsin mi?\"; the form keeps its draft and its error line (not carried on: scope.outOfView)" }
+      SEEK: { guard: "hasPlayer and listed", target: addRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:571", say: "a note's time moves the player" }
+      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:594", say: "the pencil of the first note: its row is changed; the form keeps its draft and its error line (not carried on: scope.outOfView)" }
+      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:600", say: "the trash of the first note: the row asks \"Silinsin mi?\"; the form keeps its draft and its error line (not carried on: scope.outOfView)" }
       RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
       NAVIGATE: left
 
   editing:
     title: A note is being changed
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:525
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:526
     description: >-
       The row of the note is a text area named "Not" holding its text (with the help line "Markdown yazabilirsin."), a time field
       holding its time, "Kaydet" and "Vazgeç". The create form above it is still there and still live (empty in this graph's
@@ -266,10 +266,10 @@ states:
     on:
       CHANGE: { target: editing, say: "they change the text and the time" }
       SAVE:
-        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:482" }
-        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:483" }
-        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:484" }
-      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:550", say: "\"Vazgeç\": the changes are dropped; the focus is lost (WRT-01)" }
+        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:483" }
+        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:484" }
+        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:485" }
+      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:551", say: "\"Vazgeç\": the changes are dropped; the focus is lost (WRT-01)" }
       USE_CURRENT: { guard: hasSource, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" fills the create form's time field, not the row's" }
       SUBMIT: { target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "\"Notu ekle\" checks the create form alone: it is empty, so it says \"Not boş olamaz.\" under it and sends nothing; the row stays in edit (the line is not drawn here)" }
       NAVIGATE: left
@@ -277,32 +277,32 @@ states:
   saving:
     title: The change is sent
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:487
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:488
     description: >-
       The server action updateLessonNote, PATCH /lessons/:id/notes/:noteId with { body, offsetSeconds }. "Kaydet" is busy and a
-      hidden status says "Kaydediliyor"; its "Vazgeç", and the create form with its "Notu ekle" and "Şimdiki an", stay live, and a
-      press on one of them is drawn where the call ends (duringStep: "Vazgeç" shows the row as a note at once, and the call's end
-      still applies the change, or puts its error line under that row). Success: the row is a note again, re-sorted (a changed
+      hidden status says "Kaydediliyor"; its "Vazgeç" is disabled (lesson-notes.tsx:554), as the call would go on and save a change
+      the talebe called off. The create form with its "Notu ekle" and "Şimdiki an" stays live, and a press on one of them is drawn
+      where the call ends (duringStep). Success: the row is a note again, re-sorted (a changed
       time can move it). A 403 and any other refusal say what the create form says; a 404 (the note is gone) is not treated
       specially, so it says "Not kaydedilemedi" for good (WRT-05).
     invoke: { action: updateLessonNote }
     on:
-      DONE: { guard: saved, target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:493" }
+      DONE: { guard: saved, target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:494" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: editRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/lesson-notes.tsx:212" }
-      FAIL.failed: { guard: "answer == 'failed'", target: editRefused, effect: [problemSaveFailed], source: "apps/tedris/features/courses/components/lesson-notes.tsx:499" }
+      FAIL.failed: { guard: "answer == 'failed'", target: editRefused, effect: [problemSaveFailed], source: "apps/tedris/features/courses/components/lesson-notes.tsx:500" }
 
   editRefused:
     title: The change was refused
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:519
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:520
     description: The row stays in edit mode with the same alert paragraph under it, and what was typed in it.
     on:
       SAVE:
-        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:482" }
-        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:483" }
-        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:485" }
-      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:550", say: "\"Vazgeç\": the row is a note again; its error line stays under it (NOTES-1, not drawn)" }
+        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:483" }
+        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:484" }
+        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:486" }
+      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:551", say: "\"Vazgeç\": the row is a note again; its error line stays under it (NOTES-1, not drawn)" }
       USE_CURRENT: { guard: hasSource, target: editRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" fills the create form's time field, not the row's" }
       SUBMIT: { target: editRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "\"Notu ekle\" checks the create form alone: it is empty, so it says \"Not boş olamaz.\" under it and sends nothing (the line is not drawn here)" }
       NAVIGATE: left
@@ -310,13 +310,13 @@ states:
   confirming:
     title: Delete this note?
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:606
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:612
     description: >-
       Inline, in the row: "Silinsin mi?", the destructive button "Sil" and "Vazgeç". The row's two icon buttons are gone; there
       is no dialog and no toast, and the focus is not moved to the question (WRT-01). The other note, if any, keeps its buttons.
     on:
-      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:614" }
-      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:618", say: "\"Vazgeç\": the row is a note again; the focus is lost (WRT-01)" }
+      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:620" }
+      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:624", say: "\"Vazgeç\": the row is a note again; the focus is lost (WRT-01)" }
       USE_CURRENT: { guard: hasSource, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" fills the create form's time field; the question stays" }
       SUBMIT: { target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "\"Notu ekle\" checks the create form alone: it is empty, so it says \"Not boş olamaz.\" under it and sends nothing; the question stays (the line is not drawn here)" }
       NAVIGATE: left
@@ -324,32 +324,32 @@ states:
   deleting:
     title: The note is deleted
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:509
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:510
     description: >-
       The server action deleteLessonNote, DELETE /lessons/:id/notes/:noteId: a real delete, with no history (the author may do it
       even after being removed from the course, while the course is open). "Sil" is busy and a hidden status says "Siliniyor"; its
-      "Vazgeç", and the create form with its "Notu ekle" and "Şimdiki an", stay live, and a press on one of them is drawn where
-      the call ends (duringStep: "Vazgeç" shows the row as a note at once, and the call's end still removes it, or puts "Not
-      silinemedi" under it). Success: the row goes and the focus falls to the document (WRT-01). Any refusal, a 403 and a 404
+      "Vazgeç" is disabled (lesson-notes.tsx:627), as the call would go on and delete a note the talebe kept. The create form with
+      its "Notu ekle" and "Şimdiki an" stays live, and a press on one of them is drawn where the call ends (duringStep). Success:
+      the row goes and the focus falls to the document (WRT-01). Any refusal, a 403 and a 404
       included, says "Not silinemedi. Biraz sonra yeniden dene." and the row stays (WRT-05).
     invoke: { action: deleteLessonNote }
     on:
       DONE:
-        - { guard: "saved and held == 'two'", target: panel, effect: [heldOne], source: "apps/tedris/features/courses/components/lesson-notes.tsx:511" }
-        - { guard: saved, target: panel, effect: [heldNone], source: "apps/tedris/features/courses/components/lesson-notes.tsx:511" }
+        - { guard: "saved and held == 'two'", target: panel, effect: [heldOne], source: "apps/tedris/features/courses/components/lesson-notes.tsx:512" }
+        - { guard: saved, target: panel, effect: [heldNone], source: "apps/tedris/features/courses/components/lesson-notes.tsx:512" }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.failed: { guard: "not saved", target: deleteRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:512" }
+      FAIL.failed: { guard: "not saved", target: deleteRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:513" }
 
   deleteRefused:
     title: The note could not be deleted
     by: human
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:519
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:520
     description: >-
       The row stays in its question ("Silinsin mi?", "Sil", "Vazgeç") with an alert paragraph "Not silinemedi. Biraz sonra yeniden
       dene." under it. A note that is already gone (404) is told the same way and cannot be cleared from the list (WRT-05).
     on:
-      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:614" }
-      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:618", say: "\"Vazgeç\": the error line stays under the row (NOTES-1, not drawn)" }
+      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:620" }
+      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:624", say: "\"Vazgeç\": the error line stays under the row (NOTES-1, not drawn)" }
       USE_CURRENT: { guard: hasSource, target: deleteRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:389", say: "\"Şimdiki an\" fills the create form's time field; the question stays" }
       SUBMIT: { target: deleteRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:332", say: "\"Notu ekle\" checks the create form alone: it is empty, so it says \"Not boş olamaz.\" under it and sends nothing (the line is not drawn here)" }
       NAVIGATE: left
@@ -375,4 +375,4 @@ assertions:
   - id: no-edit-of-nothing
     never: "state in ['editing', 'saving', 'confirming', 'deleting'] and held == 'none'"
     say: "A note is changed or deleted only while it is listed"
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:559
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:565

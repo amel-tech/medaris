@@ -466,6 +466,7 @@ const NoteItem = ({
   const [mode, setMode] = useState<"view" | "edit" | "confirm">("view");
   const [draft, setDraft] = useState<Draft>({ body: "", time: "" });
   const [error, setError] = useState<string | null>(null);
+  // While a change or a delete runs, its Vazgeç is off: the call would go on.
   const [busy, setBusy] = useState(false);
 
   const edit = () => {
@@ -547,7 +548,12 @@ const NoteItem = ({
           >
             {t("save")}
           </Button>
-          <Button variant="ghost" size="small" onClick={() => setMode("view")}>
+          <Button
+            variant="ghost"
+            size="small"
+            disabled={busy}
+            onClick={() => setMode("view")}
+          >
             {t("cancel")}
           </Button>
         </div>
@@ -615,7 +621,12 @@ const NoteItem = ({
           >
             {t("delete")}
           </Button>
-          <Button variant="ghost" size="mini" onClick={() => setMode("view")}>
+          <Button
+            variant="ghost"
+            size="mini"
+            disabled={busy}
+            onClick={() => setMode("view")}
+          >
             {t("cancel")}
           </Button>
         </span>

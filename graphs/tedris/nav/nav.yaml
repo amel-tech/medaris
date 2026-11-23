@@ -81,8 +81,8 @@ extract:
     deck->decksCreate Decks.create: { skip: "written below (copy-card-dialog.tsx:96), where it is signedIn: the dialog belongs to the reader view, not to a visitor's page" }
     # copy-card-dialog.tsx:82,106: the Dialog and its sentence, not a control; the button is Decks.create (:94), written below
     deck->decksCreate Decks.noOwnDecks: { skip: "the sentence of the dialog (copy-card-dialog.tsx:106), not a control: the button is Decks.create (:94), written below" }
-    # create-deck-page.tsx:203-205, "Vazgeç"; written below (:197) with back: true (the generated twin has no back, so the check reads its words against the page's title)
-    decksCreate->decks Decks.cancel: { skip: "written below (create-deck-page.tsx:203) with back: true" }
+    # create-deck-page.tsx:207-209, "Vazgeç"; written below (:197) with back: true (the generated twin has no back, so the check reads its words against the page's title)
+    decksCreate->decks Decks.cancel: { skip: "written below (create-deck-page.tsx:207) with back: true" }
     # study-session.tsx:135-137, "Çalışmayı bitir"; written below (:135) with back: true
     deckStudy->deck tedrisLearn.Study.finish: { skip: "written below as Study.finish (study-session.tsx:135) with back: true" }
     # study-session.tsx:156,163 and :167,174: an EmptyState and its title (<strong>), not a control; the button in each is Study.backToDeck (:158-160, :169-171), already an entry
@@ -466,9 +466,9 @@ entries:
   - { from: madrasah, to: signIn, how: link, label: "Sign in (the link in the invitation under the courses)", when: not signedIn, source: apps/tedris/components/anonymous-invite.tsx:41 }
   - { from: madrasah, to: register, how: link, label: "Register (the link in the same sentence)", when: not signedIn, source: apps/tedris/components/anonymous-invite.tsx:46 }
   - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.breadcrumbDiscover, source: apps/tedris/app/kosk-applications/new/page.tsx:29 }
-  - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.cancel, back: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:230 }
+  - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.cancel, back: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235 }
   - { from: newKoskApplication, to: discover, how: link, label: KoskApplication.backToDiscover, data: true, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91 } # after the application is sent
-  - { from: newKoskApplication, to: landingPrivacyNotice, how: link, label: KoskApplication.noticeLink, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:218 }
+  - { from: newKoskApplication, to: landingPrivacyNotice, how: link, label: KoskApplication.noticeLink, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:223 }
 
   # ---- the course page ----
   - { from: course, to: kosk, how: link, label: "The köşk (breadcrumb)", data: true, source: apps/tedris/features/courses/components/course-page.tsx:248 }
@@ -527,9 +527,9 @@ entries:
   - { from: decks, to: deckStudy, how: link, label: "Çalış: a deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:167 }
   - { from: decksExplore, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 } # breadcrumb
   - { from: decksExplore, to: deck, how: link, label: "A deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
-  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:105 } # breadcrumb
-  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:203 }
-  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:88 } # the new deck's page
+  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:106 } # breadcrumb
+  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:207 }
+  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89 } # the new deck's page
   - { from: deck, to: decks, how: link, label: Decks.title, when: signedIn, source: apps/tedris/features/flashcards/components/deck-header.tsx:50 } # breadcrumb
   - { from: deck, to: discover, how: link, label: PhoneMenu.discover, when: not signedIn, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:56 } # a visitor's breadcrumb starts at Keşfet
   - { from: deck, to: deckStudy, how: link, label: Decks.study, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:63 }
@@ -546,13 +546,13 @@ entries:
   - { from: deckCards, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/deck-header.tsx:50 }
   - { from: deckCards, to: deck, how: link, label: Decks.tabOverview, source: apps/tedris/features/flashcards/components/deck-header.tsx:119 }
   - { from: deckCards, to: deckExport, how: link, label: Decks.export, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:84 } # a download
-  - { from: deckCards, to: deckSample, how: link, label: "Excel (.xlsx) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136 } # the link's name is the hard-coded literal "Excel (.xlsx)", not a catalog text: it does not say "template" (the sentence before it does)
-  - { from: deckCards, to: deckSample, how: link, label: "CSV (.csv) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:142 } # the same, "CSV (.csv)"
+  - { from: deckCards, to: deckSample, how: link, label: "Excel (.xlsx) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:137 } # the link's name is the hard-coded literal "Excel (.xlsx)", not a catalog text: it does not say "template" (the sentence before it does)
+  - { from: deckCards, to: deckSample, how: link, label: "CSV (.csv) (the template link in the import dialog)", data: true, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:143 } # the same, "CSV (.csv)"
   - { from: deckCards, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 } # the forbidden screen, for a reader who is not the author
   - { from: deckCards, to: notFound, how: auto, data: true, when: signedIn, source: apps/tedris/features/flashcards/deck-page-data.ts:36 }
   - { from: deckCards, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }
-  - { from: deckEdit, to: deck, how: button, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56 } # closes the dialog: the address goes back to the deck's page
-  - { from: deckEdit, to: deck, how: button, label: Decks.save, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:90 }
+  - { from: deckEdit, to: deck, how: button, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:58 } # closes the dialog: the address goes back to the deck's page
+  - { from: deckEdit, to: deck, how: button, label: Decks.save, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:92 }
   - { from: deckEdit, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 }
   - { from: deckEdit, to: notFound, how: auto, data: true, when: signedIn, source: apps/tedris/features/flashcards/deck-page-data.ts:36 }
   - { from: deckEdit, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }

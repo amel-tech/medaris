@@ -254,6 +254,39 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
       expect.objectContaining({ tone: "error", title: "Silinemedi" })
     );
   });
+
+  it("while the deck is deleted, Vazgeç, Kapat and Esc are off (DCK-30)", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.del.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await mount();
+    await click(button("Desteyi sil"));
+    const confirm = () =>
+      document.querySelector('[role="alertdialog"]') as HTMLElement | null;
+    const inConfirm = (text: string) =>
+      [...(confirm()?.querySelectorAll("button") ?? [])].find(
+        (b) => b.textContent === text
+      ) as HTMLButtonElement;
+    await click(inConfirm("Desteyi sil"));
+    expect(mocks.del).toHaveBeenCalledWith("d1");
+
+    const close = confirm()?.querySelector(
+      ".mds-dialog__close"
+    ) as HTMLButtonElement;
+    expect(inConfirm("Vazgeç").disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(inConfirm("Vazgeç"));
+    await click(close);
+    await key(document.activeElement ?? document.body, "Escape");
+    await settle(60);
+    expect(confirm()).not.toBeNull();
+
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle(60);
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error", title: "Silinemedi" })
+    );
+    expect(confirm()).toBeNull();
+  });
 });
 
 describe("Desteyi düzenle (design tedris/33)", () => {
@@ -345,6 +378,52 @@ describe("Desteyi düzenle (design tedris/33)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "error", title: "Kaydedilemedi" })
     );
+    expect(field("title").value).toBe("Başka ad olsun");
+  });
+
+  it("while the save runs, Vazgeç, Kapat and Esc are off, so a refusal keeps the typed name in sight (EDITDEL-1)", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await open();
+    await type(field("title"), "Başka ad olsun");
+    await save();
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    const cancel = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ].find((b) => b.textContent === "Vazgeç") as HTMLButtonElement;
+    const close = document.querySelector(
+      '[role="dialog"] .mds-dialog__close'
+    ) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(cancel);
+    await click(close);
+    await key(document.activeElement ?? document.body, "Escape");
+    await settle(60);
+    expect(mocks.replace).not.toHaveBeenCalled();
+
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle();
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error", title: "Kaydedilemedi" })
+    );
+    expect(field("title").value).toBe("Başka ad olsun");
+    expect(cancel.disabled).toBe(false);
+  });
+
+  it("while the save runs, the name and the description are read-only: a change then would not be sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await open();
+    await type(field("title"), "Başka ad olsun");
+    await save();
+    expect(field("title").readOnly).toBe(true);
+    expect(
+      (field("description") as unknown as HTMLTextAreaElement).readOnly
+    ).toBe(true);
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle();
+    expect(field("title").readOnly).toBe(false);
     expect(field("title").value).toBe("Başka ad olsun");
   });
 

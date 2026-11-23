@@ -39,8 +39,9 @@ const SAMPLE_FRONT = {
  * visibility choice on the form; asking for it to be published is the deck
  * page's. Nothing is sent while a field is invalid; a refusal from the API
  * keeps what was typed and says so in a toast. While the deck is made the
- * kind and the ways out ("Vazgeç", the breadcrumb) are off: a kind chosen
- * then would not be the one sent, and leaving would not stop the deck.
+ * fields are read-only and the kind and the ways out ("Vazgeç", the
+ * breadcrumb) are off: what is changed then would not be what is sent, and
+ * leaving would not stop the deck.
  */
 export function CreateDeckPage() {
   const t = useTranslations("tedris.Decks");
@@ -131,6 +132,7 @@ export function CreateDeckPage() {
               maxLength={TITLE_MAX}
               autoComplete="off"
               required
+              readOnly={busy}
               onChange={(event) => setTitle(event.target.value)}
             />
           </Field>
@@ -140,6 +142,7 @@ export function CreateDeckPage() {
               rows={3}
               maxLength={DESCRIPTION_MAX}
               value={description}
+              readOnly={busy}
               onChange={(event) => setDescription(event.target.value)}
             />
           </Field>
@@ -193,6 +196,7 @@ export function CreateDeckPage() {
               name="tags"
               value={tagsText}
               autoComplete="off"
+              readOnly={busy}
               onChange={(event) => setTagsText(event.target.value)}
             />
           </Field>

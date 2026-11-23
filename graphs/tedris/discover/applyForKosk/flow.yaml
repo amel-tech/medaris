@@ -166,13 +166,13 @@ states:
         - { guard: "contact == 'badEmail'", target: form, effect: [saidEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the address is wrong: \"Geçerli bir e-posta adresi yaz.\"" }
         - { guard: "contact == 'badPhone'", target: form, effect: [saidPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the number is wrong: \"Telefon numarasını rakamlarla yaz.\"" }
         - { target: sending, effect: [clearSaid], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66, say: "the form passes the page's check: the errors are gone and it is sent" }
-      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:230, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
+      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
       NAVIGATE: left
 
   choosingField:
     title: The list of fields is open
     by: human
-    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:130
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:131
     description: >-
       The kit's Select (Base UI) opened on "Alan": a listbox with the eleven fields, in the design's order, from "Arapça dil
       ilimleri" to "Diğer" (e2e profile#5 counts eleven; measured). The page behind is not inert (measured: the main is
@@ -194,12 +194,14 @@ states:
     description: >-
       The server action submitKoskApplication, POST /kosk-applications with the name, field, short description, reason and
       e-mail trimmed and the telephone trimmed or null (actions.ts:14-28). "Başvuruyu gönder" is busy ("Gönderiliyor"
-      through a hidden status) and aria-disabled, and keeps the focus. The text fields are not disabled. The API files a
+      through a hidden status) and aria-disabled, and keeps the focus. The text fields are read-only and "Vazgeç" is disabled
+      (no href, aria-disabled; kosk-application-page.tsx:121, 239), as what is typed now would not be sent and leaving would not
+      stop the application. The API files a
       KoskApplication as PENDING for the caller; it sends nobody a message (the nazım sees it in the counts of nizam's
       dashboard). A 401 sends the person to sign in. Every other refusal gives one toast (DSC-08): a 400 for what the page's
       check let through, such as an address with a one-letter last part (APPLYKOSK-1). The list of fields is disabled while
-      the application is sent (the Select's `disabled`, kosk-application-page.tsx:141), as a field chosen now would not be the
-      one sent (what is typed into a text field now is not sent either).
+      the application is sent (the Select's `disabled`, kosk-application-page.tsx:142), as a field chosen now would not be the
+      one sent. The bar of the app and the browser's own ways out are not held.
     invoke: { action: createKoskApplication }
     on:
       DONE: { guard: "contact == 'valid'", target: reachesNizam, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69, say: "the API answers 201 and PENDING" }
@@ -241,7 +243,7 @@ states:
         - { guard: "contact == 'badEmail'", target: form, effect: [saidEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the address is wrong: \"Geçerli bir e-posta adresi yaz.\"" }
         - { guard: "contact == 'badPhone'", target: form, effect: [saidPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the number is wrong: \"Telefon numarasını rakamlarla yaz.\"" }
         - { target: sending, effect: [clearSaid], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66, say: "the form passes the page's check: the errors are gone and it is sent" }
-      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:230, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
+      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
       NAVIGATE: left
 
   sent:

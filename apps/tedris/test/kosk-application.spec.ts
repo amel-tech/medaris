@@ -166,4 +166,51 @@ describe("Köşk açma başvurusu (design tedris/37)", () => {
       null
     );
   });
+
+  it("holds the text fields and 'Vazgeç' while the application is sent: a change would not be sent, and leaving would not stop it", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.submit.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    const box = (name: string) =>
+      host.querySelector(`[name="${name}"]`) as
+        | HTMLInputElement
+        | HTMLTextAreaElement;
+    const type = async (name: string, value: string) => {
+      const el = box(name);
+      const proto =
+        el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(el, value);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await type("name", valid.name);
+    await type("summary", valid.summary);
+    await type("reason", valid.reason);
+    await click(host.querySelector("#application-field") as HTMLElement);
+    await settle(50);
+    await click(document.querySelector(".mds-option") as HTMLElement);
+    await settle(50);
+    const cancel = () =>
+      [...host.querySelectorAll("a")].find((a) =>
+        a.textContent?.includes("Vazgeç")
+      ) as HTMLAnchorElement;
+    expect(cancel().getAttribute("href")).toBe("/discover");
+
+    await click(host.querySelector('button[type="submit"]') as HTMLElement);
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    for (const name of ["name", "summary", "reason", "email", "phone"]) {
+      expect(box(name).readOnly).toBe(true);
+    }
+    expect(cancel().hasAttribute("href")).toBe(false);
+    expect(cancel().getAttribute("aria-disabled")).toBe("true");
+
+    await act(async () => answer({ success: false, error: "no" }));
+    for (const name of ["name", "summary", "reason", "email", "phone"]) {
+      expect(box(name).readOnly).toBe(false);
+    }
+    expect(cancel().getAttribute("href")).toBe("/discover");
+  });
 });

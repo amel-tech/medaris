@@ -37,6 +37,8 @@ needs:
         name: "ends with the way to ask for a köşk"
       - test: apps/tedris/test/kosk-application.spec.ts
         name: "holds the field list while the application is sent: a field chosen then would not be the one sent"
+      - test: apps/tedris/test/kosk-application.spec.ts
+        name: "holds the text fields and 'Vazgeç' while the application is sent: a change would not be sent, and leaving would not stop it"
       - scenario: sent
     note: P-14 of planned.md (MDRS-107); the application half of it is built (MDRS-166).
 

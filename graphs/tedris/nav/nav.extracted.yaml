@@ -267,12 +267,12 @@ entries:
   - { from: deckEdit, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 }
   - { from: deckEdit, to: decksCreate, how: link, label: Decks.noOwnDecks, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:82 }
   - { from: deckEdit, to: decksCreate, how: link, label: Decks.create, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:96 }
-  - { from: decksCreate, to: deck, how: button, label: a button in create-deck-page.tsx, data: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:88 }
+  - { from: decksCreate, to: deck, how: button, label: a button in create-deck-page.tsx, data: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89 }
   - { from: deck, to: deckStudy, how: link, label: a link in deck-detail-page.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:56 }
   - { from: deckEdit, to: deckStudy, how: link, label: a link in deck-detail-page.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:56 }
   - { from: deck, to: deckStudy, how: link, label: Decks.study, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:62 }
   - { from: deckEdit, to: deckStudy, how: link, label: Decks.study, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:62 }
-  - { from: deckEdit, to: deck, how: button, label: a button in deck-edit-dialog.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56 }
+  - { from: deckEdit, to: deck, how: button, label: a button in deck-edit-dialog.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:58 }
   - { from: deckEdit, to: decks, how: button, label: a button in deck-owner-overview.tsx, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90 }
   - { from: deckEdit, to: deckCards, how: link, label: Decks.allCards, data: true, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:160 }
   - { from: deckEdit, to: deckCards, how: link, label: Decks.addCard, data: true, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:173 }
