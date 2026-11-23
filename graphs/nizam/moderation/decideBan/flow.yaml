@@ -344,6 +344,9 @@ states:
       FAIL.moved: { guard: "answer == 'moved'", target: formReady, effect: [moved], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "someone lifted it first, or it is gone: an error toast that stays; the dialog stays open and the list is not read again" }
       FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refused], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "the caller's permission or kademe no longer reaches the ban's: an error toast, the dialog stays open with the reason" }
       FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failed], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "an error toast, the dialog stays open" }
+      # The dialog drops every way of closing while `saving` (lift-dialog.tsx:101): the press changes nothing and the lift is still sent.
+      CANCEL: { target: lifting, source: apps/nizam/features/bans/components/lift-dialog.tsx:101, say: "Vazgeç while the lift is sent: nothing happens and nothing says so (NDB-7)" }
+      CLOSE: { target: lifting, source: apps/nizam/features/bans/components/lift-dialog.tsx:101, say: "the close icon while the lift is sent: nothing happens (NDB-7)" }
     source: "apps/nizam/features/bans/components/lift-dialog.tsx:79"
 
   extending:
@@ -365,6 +368,9 @@ states:
       FAIL.moved: { guard: "answer == 'moved'", target: formReady, effect: [moved], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "the ban was lifted or is gone: an error toast that stays; the dialog stays open and the list is not read again" }
       FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refused], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "the caller may not widen to the köşk: an error toast, the dialog stays open" }
       FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failed], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "an error toast, the dialog stays open" }
+      # The same in the extend dialog (extend-dialog.tsx:92).
+      CANCEL: { target: extending, source: apps/nizam/features/bans/components/extend-dialog.tsx:92, say: "Vazgeç while the new end is sent: nothing happens and nothing says so (NDB-7)" }
+      CLOSE: { target: extending, source: apps/nizam/features/bans/components/extend-dialog.tsx:92, say: "the close icon while the new end is sent: nothing happens (NDB-7)" }
     source: "apps/nizam/features/bans/components/extend-dialog.tsx:68"
 
   widening:

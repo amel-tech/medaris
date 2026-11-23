@@ -28,7 +28,7 @@ import {
  */
 export interface SessionExamDto {
     /**
-     * "Yazılı" (WRITTEN, the default) or "Şifahi" (ORAL).
+     * "Yazılı" (WRITTEN, the default) or "Şifahi" (ORAL). MULTIPLE_CHOICE is planned only by publishing an online exam (MDRS-299).
      * @type {ExamFormat}
      * @memberof SessionExamDto
      */

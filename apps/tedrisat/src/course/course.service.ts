@@ -61,6 +61,7 @@ import {
   IWeekHide,
 } from "./course.repository.interface";
 import { CourseNotifier } from "./course-notifier";
+import type { Tx } from "./course-purge";
 import {
   isCourseMuderris,
   isEnrolledTalebe,
@@ -100,6 +101,7 @@ import {
   IPlannedSession,
   IsoWeekday,
   IWeeklyPattern,
+  localDateOf,
   placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
@@ -120,6 +122,7 @@ import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-f
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
+import { OnlineExamSessionError } from "./errors/online-exam-session.error";
 import {
   type IStoredRecording,
   RecordingRepository,
@@ -1195,6 +1198,9 @@ export class CourseService {
     data: IUpdateLesson,
     actorId?: string
   ): Promise<ILessonMutation> {
+    if (data.scheduledAt !== undefined || data.durationMinutes !== undefined) {
+      await this.assertNotOnlineExam(lessonId);
+    }
     const before =
       data.scheduledAt === undefined
         ? null
@@ -1222,6 +1228,7 @@ export class CourseService {
     actorId: string,
     replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
+    await this.assertNotOnlineExam(lessonId.toLowerCase());
     // `ParseUUIDPipe` accepts upper case; the self-reference check compares
     // the two ids as text, so both are lower-cased.
     const cancelled = await this.courseRepo.cancelLesson(
@@ -1334,6 +1341,7 @@ export class CourseService {
   ): Promise<
     Omit<ILessonMutation, "resources"> & { resources: ILessonResourceView[] }
   > {
+    await this.assertNotOnlineExam(lessonId);
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     const level = courseId
       ? await this.courseLevel(user, courseId)
@@ -1380,6 +1388,64 @@ export class CourseService {
   // three writes above.
 
   /** The sessions a pattern would create; nothing is written. */
+  /**
+   * The celse an online exam is published with (MDRS-299): one session of
+   * the course at `scheduledAt`, placed in its week as "Celse planla" places
+   * one, with its exam row. `within` runs in the same transaction, so the
+   * exam and its celse are written together or not at all. The talebe are
+   * told as of any exam celse, and the calendar invitations go out.
+   */
+  async createExamSession(
+    courseId: string,
+    session: {
+      title: string;
+      durationMinutes: number;
+      scheduledAt: Date;
+      exam: IExamPlan;
+      within: (tx: Tx, lessonIds: string[]) => Promise<void>;
+    },
+    actorId: string
+  ): Promise<{ lessonId: string; courseVersion: number }> {
+    const result = await this.courseRepo.createSessionBatch(courseId, {
+      title: session.title,
+      durationMinutes: session.durationMinutes,
+      exam: session.exam,
+      plan: (courseZone) => [
+        {
+          scheduledAt: session.scheduledAt,
+          localDate: localDateOf(session.scheduledAt, courseZone),
+          // With no dated week to go by, it goes into week 1.
+          weekNumber: 1,
+        },
+      ],
+      within: session.within,
+    });
+    const [lesson] = result.lessons;
+    await this.notifier.examScheduled(lesson, actorId);
+    this.invitations.kick();
+    return { lessonId: lesson.id, courseVersion: result.courseVersion };
+  }
+
+  /**
+   * Deletes an online exam's celse when its publication is taken back
+   * (MDRS-299); `within` puts the exam back to a draft in the same
+   * transaction. The invitation sweep sends each talebe the CANCEL.
+   */
+  async withdrawExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<void> {
+    await this.courseRepo.deleteExamSession(lessonId, actorId, within);
+    this.invitations.kick();
+  }
+
+  /** The celse of an online exam changes only from the exam's page (MDRS-299). */
+  private async assertNotOnlineExam(lessonId: string): Promise<void> {
+    const examId = await this.courseRepo.findOnlineExamOfLesson(lessonId);
+    if (examId) throw new OnlineExamSessionError(lessonId, examId);
+  }
+
   async previewSessionBatch(
     courseId: string,
     pattern: SessionPatternInput

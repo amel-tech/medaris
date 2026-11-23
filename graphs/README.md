@@ -1,7 +1,7 @@
 # Medaris graphs
 
 Medaris's [delurio](https://delur.io) graphs: what every screen and every flow of the four web apps, the Keycloak realm and the
-API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.9.0 checks it). They are meant to be
+API does, written from the code as it is (format `delurio-graph/0`, as `@delurio/cli` 0.14.0 checks it). They are meant to be
 checked in CI, walked on a local stack with delurio's replay, and later to take over the web e2e tests they can carry, and to be
 the source of tutorials.
 
@@ -11,16 +11,16 @@ lost, an error nobody announces, a refusal that reaches no one), the graph says 
 
 ## What is here
 
-Counted by script on 16 November 2026 (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
+Counted by script on 16 November 2026, and the flows and the needs again on 21 November 2026 after the online exams were added (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
 
 | What | How many |
 | -- | -- |
-| Flows (`flow.yaml`) | 175: 170 `captured`, 5 `proposed` (the planned ones) |
-| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | 175 flows with a `ui.yaml` |
+| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (5 planned ones, each drawn with its screens, and the 8 of online exams, written before their code and brought to it since) |
+| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
-| The domain `medaris.api` | one domain over 26 files: 352 actions (329 in the code, 23 sketched for the planned flows), 64 entities, 319 invariants |
-| `needs.yaml` (the product list of a flow) | 175 files, 2640 needs: 1373 met, 1267 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
-| Findings (distinct ids in `ui.yaml` `rules`) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
+| The domain `medaris.api` | one domain over 27 files: 388 actions (363 in the code, 25 sketched for planned work: 23 for the planned flows and 2 of online exams), 79 entities, 327 invariants |
+| `needs.yaml` (the product list of a flow) | 183 files, 2752 needs: 1462 met, 1290 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 672 of the met needs are walked by no scenario and no browser e2e test |
+| Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 
 ## Layout
@@ -97,9 +97,21 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 
 ## Status
 
-- Every flow is `captured` except the 5 planned ones, which are `proposed`: `landing.site.roadmap`, `nazar.sessions.inPersonSeats`, `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`. A planned flow draws a
-  feature that has no code yet (its `needs.yaml` says which Linear issue builds it, and its API is sketched in
-  `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
+- Every flow is `captured` except 13 that are `proposed`: the 5 planned ones (`landing.site.roadmap`, `nazar.sessions.inPersonSeats`,
+  `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`), which draw a feature that
+  has no code yet (each `needs.yaml` says which Linear issue builds it, and the API is sketched in `domain/planned-*.yaml`, every entry
+  marked as planned and carrying no `source`), and the 8 of online exams.
+- **Online exams** (MDRS-299) were written needs first on 21 November 2026 and built from 22 November (PRs #408 to #431):
+  `tedris.exams.mine`, `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.edit`, `nazar.exams.publish` and
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, and `nazar.exams.mine`, the team's
+  Sınavlarım across courses, which is not built (each course has its own Sınavlar page). The flows were brought to the code on 22
+  November and stay `proposed`: written before the code, their states name no `source`. Their API is `domain/online-exams.yaml`, read
+  from the code, with every entity and action naming its line; two actions not built yet say `planned` (`listMyTeachingExams`,
+  `copyOnlineExam`). Each `flow.yaml` quotes the owner's words at its top and says, apart, what was chosen in the code without him;
+  his two open questions are answered (a switch is only counted; the late window is 10 minutes by default and set in minutes). Of the
+  online exams' 112 needs, 87 are met with their code or tests and 25 are missing (what is not built, and the walks with a keyboard
+  and a screen reader). The catalogs keep the plan's keys (`planned.Exams.*`); only the words of what changed are copied from the
+  apps. No binding yet.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,
   `tedris.account.rolesOverview`, `nazar.pano.decideApplications`, `nizam.kosks.open`, `landing.site.contact`) and a number of the
@@ -107,7 +119,7 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) were walked in full. A `scenario` in a
   `needs.yaml` names a scenario that exists in a binding of the flow (`check` resolves it); it does not say that the scenario has
   passed. The output of a replay is not kept in this tree.
-- `check --strict` is the only gate in CI (below). The whole tree (179 graphs: the 175 flows and the 4 navigation graphs) checks with 7 errors and 7 warnings, all in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and goes into the baseline. No flow has an error. That a binding loads was checked with `--emit-spec`, which
+- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.14.0 the whole tree (187 graphs: the 183 flows and the 4 navigation graphs) checks with 7 errors and 12 warnings in a checkout where `pnpm install` has run (run on 22 November 2026). The 7 errors are in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. 7 warnings are the navigation graphs' own notes, and 5 are `kit-font-unembedded` (new in 0.14.0): the kit carries no fonts, so the five families its CSS draws in first are drawn only where the machine has them. 0.14.0's `event-unhandled` (a control shown enabled in a state that does not handle its event) found 1517 errors in 113 graphs on main before they were fixed (run on 22 November 2026); each was fixed in its graph, read from the code, and none is in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
   walks nothing; nothing else in the tree has been verified against the running apps.
 
 ## Commands
@@ -115,16 +127,25 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 The format checker is `@delurio/cli`, pinned to an exact version (the Graphs workflow, `.github/workflows/graphs.yaml`, installs the same one):
 
 ```bash
-# every graph, as CI does (about a minute and a half for the whole tree); run it at the repository root, which the
-# evidence of needs.yaml is relative to
-npx @delurio/cli@0.9.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
+# every graph, as CI does (about 65 seconds and 400 MB for the whole tree); run it at the repository root, which the
+# anchors and the evidence of needs.yaml are relative to
+npx @delurio/cli@0.14.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
 
 # the page of one flow (written to <flow>/viz by default, git-ignored)
-npx @delurio/cli@0.9.0 page graphs/tedris/course/apply --out viz
+npx @delurio/cli@0.14.0 page graphs/tedris/course/apply --out viz
 
 # what a change does to a flow, as markdown
-npx @delurio/cli@0.9.0 diff graphs/tedris/course/apply --base origin/main
+npx @delurio/cli@0.14.0 diff graphs/tedris/course/apply --base origin/main
+
+# which graphs a change touches, each with why (its own files, a `source:` anchor, a binding it extends or enters through, a
+# shared catalog); a changed file of graphs/ that belongs to no graph, such as this README, touches every graph. CI does not use it
+npx @delurio/cli@0.14.0 affected --base origin/main
 ```
+
+Since 0.11.0 the CLI is a native program. Its npm package asks for Node 26 or later (`engines`), where the repository's `.nvmrc`
+says 24, so CI runs it on 26. On Node 24 npm warns, and one flow checked there with 0.13.0 on 21 November 2026 gave the same output as on 26;
+that is all that was tried. The same command is also a single binary, `delurio-v0.14.0-<platform>` on the GitHub release `v0.14.0`
+of `delurio-labs/delurio`, with `SHA256SUMS`, which needs no Node.
 
 To check one flow quickly, copy `graphs/domain`, the flow's folder and the folders of every flow it `starts` into a scratch folder
 named `graphs`, and run `check <scratch>/graphs --strict` on it (the checker finds a `starts` target by id under the nearest
@@ -134,10 +155,10 @@ The baseline holds the findings `check` already knew when it was written. They s
 new since then fails the run. It is renewed on purpose, never to make a run green:
 
 ```bash
-npx @delurio/cli@0.9.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
+npx @delurio/cli@0.14.0 check graphs --format sarif --output graphs/delurio.baseline.sarif
 ```
 
-Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.9.0: they belong to delurio's engine, a separate checkout of
+Replay, `extract`, tutorials and videos are not in `@delurio/cli` 0.14.0: they belong to delurio's engine, a separate checkout of
 delurio's own repository (`apps/engine`), run from there as `node src/cli.ts <command>`. The replay walks a flow with its binding
 on the local stack, and it writes data (it applies to courses, makes köşks, sends e-mail), so run one at a time:
 
@@ -195,7 +216,7 @@ playback and every file upload (the storage keys are not set, the upload routes 
 - **Gaps.** [`needs.gaps.yaml`](needs.gaps.yaml) lists, per flow, the ids of the needs that are `missing`. `check` holds it to the
   needs: a missing need that is not listed fails (`need-unlisted`), and so does an entry whose need is met (`gap-met`), so the list
   only shrinks, and each new gap is a line a review reads. A met need that no walk covers is not a gap: it is a need whose
-  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 583.
+  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 670.
 
 ## Conventions
 
@@ -208,5 +229,11 @@ playback and every file upload (the storage keys are not set, the upload routes 
 - Two kinds of context variables in a `flow.yaml`: case variables (`initial: any`) pick the branch a walk takes, shown-state
   variables (a fixed `initial`) hold what the screen remembers. A `starts` hands a flow over with a quoted `given`, one `starts` to a
   transition, and the started flow declares the variable with `initial: any`.
-- A `source: <file>:<line>` is a claim about the code. `check` reads graph files only, never the application's, so a line that moved
-  is found by reading, not by the checker: when you change a file an app flow quotes, look for its `source:` lines.
+- A `source: <file>:<line>` is a claim about the code. `check` holds every anchor to the code, read from the repository root: the
+  file must be there and the line inside it (`source-unresolved`, an error), and a `path:line` cited in a graph's words likewise
+  (`citation-unresolved`, a warning). It does not read what the line says, so a line that moved inside its file is found by
+  reading, not by the checker: when you change a file an app flow quotes, look for its `source:` lines.
+- A binding is held to `binding.schema.json` of the CLI (rule `schema`), so a misspelt key or a value of the wrong kind fails the
+  check before any walk. Since 0.13.0 that is every binding: `binding.yaml`, a shared `<name>.binding.yaml` and the 271 variants
+  `binding.<variant>.yaml`. A locator's `nth` counts from 0, or from the end when it is negative: `nth: -1` is the last of what the
+  rest of the locator finds, such as the week or the celse a step has just added.

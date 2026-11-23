@@ -302,6 +302,10 @@ states:
       CHOOSE_FIRST: { guard: "kosk != 'gone'", target: form, effect: [pickedFirst], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses the köşk the form started with" }
       CHOOSE_OTHER: { target: form, effect: [pickedOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses another köşk: the card names it at once" }
       DISMISS: { target: form, say: "Esc: the list closes and the choice stays" }
+      OPEN_KOSK: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses the box again: the list closes and the choice stays" }
+      SUBMIT: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Talebi gönder': the open list's backdrop takes the press, the list closes and nothing is sent" }
+      CANCEL: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Vazgeç': the open list's backdrop takes the press, the list closes and the page stays" }
+      OPEN_COURSES: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "she presses 'Dersler' in the breadcrumb: the open list's backdrop takes the press, the list closes and the page stays" }
       NAVIGATE: left
     source: apps/nazar/features/offsite/components/offsite-form.tsx:132
 
@@ -327,6 +331,8 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastForbidden], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "403 AUTHZ_FORBIDDEN: the error toast" }
       FAIL.other: { guard: "answer == 'other'", target: form, effect: [toastOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "any other code: the generic error toast" }
       FAIL.signedOut: sent_to_sign_in
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç' is a plain link and is not held back while the request is on its way: Dersler opens, and the request is not taken back" }
+      OPEN_COURSES: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-page.tsx:54, say: "she follows 'Dersler' in the breadcrumb while the request is on its way: Dersler opens, and the request is not taken back" }
     source: apps/nazar/features/offsite/components/offsite-form.tsx:74
 
   recorded:

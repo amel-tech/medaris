@@ -261,6 +261,8 @@ states:
       FAIL.forbidden: { target: asking, effect: [refused], say: "403: the dialog stays, with 'Bunu yapma izniniz yok.'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
       FAIL.notYours: { target: asking, effect: [notYours], say: "403 NAZIR_NOT_APPOINTED_BY_YOU: the dialog stays", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
       FAIL.other: { target: asking, effect: [failed], say: "any other answer: the dialog stays, with 'Bir şeyler ters gitti…'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+      CANCEL: { target: dismissing, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:82, say: "Vazgeç or Esc: nothing happens, the dismissal goes on (CNDIS-3)" }
+      CLOSE: { target: dismissing, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:82, say: "the close icon: nothing happens, the dismissal goes on (CNDIS-3)" }
     source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:51
 
   settled:

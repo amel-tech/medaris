@@ -78,7 +78,7 @@ const current = (html: string) =>
   /<a [^>]*aria-current="page"[^>]*>/.exec(html)?.[0];
 
 describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
-  it("holds the five pages in order, and no 'Çıkış yap'", async () => {
+  it("holds the six pages in order, and no 'Çıkış yap'", async () => {
     const html = await render("/home");
     const labels = [...nav(html).matchAll(/<a [^>]*>(.*?)<\/a>/g)].map(
       (m) => m[1]
@@ -88,6 +88,7 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
       "Keşfet",
       "Derslerim",
       "Programım",
+      "Sınavlarım",
       "Desteler",
     ]);
     expect(html).not.toContain("Çıkış yap");
@@ -107,6 +108,10 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
     );
     expect(current(nav(await render("/my-courses")))).toContain(
       'href="/my-courses"'
+    );
+    // Sınavlarım and a past exam's own screen (MDRS-299).
+    expect(current(nav(await render("/my-exams/l1")))).toContain(
+      'href="/my-exams"'
     );
   });
 

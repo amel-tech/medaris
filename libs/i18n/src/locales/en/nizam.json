@@ -762,7 +762,8 @@
       "enrollments": "Session recordings",
       "decks": "Kiosk decks",
       "permissions": "Permissions",
-      "koskSettings": "Kiosk settings"
+      "koskSettings": "Kiosk settings",
+      "zerothAnswers": "Zeroth question answers"
     },
     "countLabels": {
       "unread": "unread",
@@ -1198,6 +1199,11 @@
         "title": "Manage the partner applications",
         "short": "Manage the partner applications",
         "help": "Adds a partner application, renames it, switches it off or on and chooses the köşks it works with."
+      },
+      "exam_zeroth_read": {
+        "title": "Read the zeroth question's answers",
+        "short": "Read the zeroth question's answers",
+        "help": "Reads in aggregate how the zeroth question of the multiple-choice exams was answered; no talebe's name or single answer is shown."
       }
     },
     "courseShort": {
@@ -1217,6 +1223,7 @@
       "session_view_content": "session content",
       "question_answer": "answering questions",
       "submission_read": "homework",
+      "exam_prepare": "exam preparation",
       "ban_course": "course bans",
       "ban_lift_course": "lifting bans",
       "deck_manage_course": "course deck",
@@ -1240,6 +1247,7 @@
       "session_view_content": "See the content and meeting links of a session",
       "question_answer": "See the course's questions and answer them",
       "submission_read": "See, download and review the homework talebe hand in on sessions",
+      "exam_prepare": "Prepare the course's multiple-choice exams: their settings, topics, questions and points",
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
@@ -2108,12 +2116,14 @@
       "session_view_content": "See the content and meeting links of a session",
       "question_answer": "See the course's questions and answer them",
       "submission_read": "See, download and review the homework talebe hand in on sessions",
+      "exam_prepare": "Prepare the course's multiple-choice exams: their settings, topics, questions and points",
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
       "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
-      "permission_group_define": "Define a permission group"
+      "permission_group_define": "Define a permission group",
+      "exam_zeroth_read": "Read in aggregate how the zeroth question of the multiple-choice exams was answered"
     },
     "permissionNotes": {
       "course_manage_all": "Reads of the content are written to the audit log.",
@@ -3797,5 +3807,41 @@
       "cancel": "Cancel",
       "close": "Close"
     }
+  },
+  "ZerothAnswersPage": {
+    "title": "Zeroth question answers",
+    "intro": "How the zeroth question of the multiple-choice exams was answered, in aggregate. No talebe's name or single answer is shown.",
+    "hadithMeaning": "Whoever deceives us is not of us.",
+    "filtersLabel": "Filters",
+    "dateSpan": "Date range",
+    "from": "From",
+    "to": "To",
+    "kosk": "Köşk",
+    "allKosks": "All köşks",
+    "madrasah": "Medrese",
+    "allMadrasahs": "All medreses",
+    "course": "Course",
+    "allCourses": "All courses",
+    "applyFilters": "Apply",
+    "questionsTitle": "Questions ({count})",
+    "askedInExams": "Asked in {exams} exams",
+    "answeredCount": "{answered} talebe answered",
+    "optionCountsLabel": "How many talebe chose each option",
+    "optionCount": "{option}: {count} talebe ({percent}%)",
+    "optionCountOnly": "{option}: {count} talebe",
+    "openExams": "Exams",
+    "openExamsLabel": "Exams that asked {question}",
+    "questionGone": "No exam in this range asks this question any more; the list stays as it was.",
+    "noAnswers": "No one answered a zeroth question in the range you chose.",
+    "examsTableLabel": "Exams that asked this question",
+    "colDate": "Date",
+    "colAnswered": "Answered",
+    "colOptions": "Options",
+    "backToQuestions": "Back to the questions",
+    "loadFailedTitle": "The counts could not be read",
+    "loadFailed": "Check your connection and try again.",
+    "retry": "Try again",
+    "spanReversed": "The start cannot be after the end.",
+    "detailFailedTitle": "This question's exams could not be read"
   }
 }

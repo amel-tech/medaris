@@ -4347,7 +4347,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or a new time or length was sent for an online exam's celse, which its exam page changes (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -4389,6 +4389,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "The session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -4447,7 +4450,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN), or the session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299)."
           }
         },
         "security": [
@@ -14435,6 +14438,1857 @@
           "nizam"
         ]
       }
+    },
+    "/courses/{id}/online-exams": {
+      "get": {
+        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.",
+        "operationId": "listOnlineExams",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OnlineExamSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's online exams",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "post": {
+        "description": "\"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.",
+        "operationId": "createOnlineExam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a new online exam",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}": {
+      "get": {
+        "description": "The settings, the zeroth question copied at publication (empty in a draft), the course's topics by number (each saying whether the exam picked it and how many questions carry it), the questions in order with their options, correct marks, answer mode, topics, points and what each still lacks, the total, where it stands, and the version every write names.",
+        "operationId": "getOnlineExamDraft",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An online exam as its page reads it",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "patch": {
+        "description": "Only what is sent changes. `topicIds` replaces the list; unpicking a topic takes it off the questions that carried it. The zeroth question is the medrese's, copied when the exam is published. Written to `audit_log` as `online_exam.update`.",
+        "operationId": "updateOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamVersionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_NOT_FOUND"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change an online exam's settings or topics",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/publish": {
+      "post": {
+        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+        "operationId": "publishOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishOnlineExamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, EXAM_TIME_PASSED"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_READY, EXAM_STALE, EXAM_LOCKED (published already)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Yayınla: now, or at a day and time, with a latest start",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/unpublish": {
+      "post": {
+        "description": "Deletes the celse it was published with (the talebe get the calendar CANCEL) and makes it a draft again, with all it had. Once it has opened it is 409 EXAM_LOCKED. Written to `audit_log` as `online_exam.unpublish`, and its celse as `lesson.delete`.",
+        "operationId": "unpublishOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamDraftResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Taslağa al: take a published exam back, until it opens",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions": {
+      "post": {
+        "description": "An empty question, last; the page shows five empty option fields. Written to `audit_log` as `exam_question.add`.",
+        "operationId": "addExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionWriteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions/{questionId}": {
+      "put": {
+        "description": "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
+        "operationId": "saveExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, QUESTION_MODE_INVALID, TOPIC_NOT_FOUND"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a question as the preparer writes it",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "delete": {
+        "description": "With its options and topics; its points, if it had its own, go back to the share. Written to `audit_log` as `exam_question.remove`.",
+        "operationId": "removeExamQuestion",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamVersionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/questions/{questionId}/points": {
+      "put": {
+        "description": "A number with at most two decimals from 0.01 to 100, or null. The points left (100 minus every question's own) are shared equally, kept exact, over the questions with none. Refused (409 POINTS_OVER_TOTAL, with `pointsLeft`) when the total would pass 100 or nothing would be left for the questions that share. Written to `audit_log` as `exam_question.points`.",
+        "operationId": "setExamQuestionPoints",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetQuestionPointsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamPointsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give a question points of its own, or put it back into the share",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/courses/{id}/exam-topics": {
+      "get": {
+        "description": "Each with its number in the course and its name, by number. The team types a topic's number to pick it.",
+        "operationId": "listCourseTopics",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseTopicResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's exam topics",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "post": {
+        "description": "One to three words (otherwise 400 TOPIC_TOO_LONG), unique in the course whatever its case (409 TOPIC_EXISTS). Its number is the one given or the next free one; a number another topic holds is 409 TOPIC_NUMBER_TAKEN. Written to `audit_log` as `exam_topic.create`.",
+        "operationId": "createCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTopicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_TOO_LONG"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_EXISTS, TOPIC_NUMBER_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a topic to the course's list",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/courses/{id}/exam-topics/{topicId}": {
+      "patch": {
+        "description": "Every exam and question that carries it reads the new name and number. Written to `audit_log` as `exam_topic.rename`.",
+        "operationId": "updateCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTopicResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, TOPIC_TOO_LONG"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, TOPIC_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_EXISTS, TOPIC_NUMBER_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename or renumber a topic, for the whole course",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "delete": {
+        "description": "A topic that questions carry is 409 TOPIC_IN_USE, whose `context.questions` names each by `examId`, `examTitle` and its `number` in that exam. Otherwise it goes, and the exams that had picked it lose the pick and their version moves on: the answer names each with its new version, so a page holding one of them writes on without EXAM_STALE. Written to `audit_log` as `exam_topic.remove`.",
+        "operationId": "removeCourseTopic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicRemovedResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, TOPIC_NOT_FOUND"
+          },
+          "409": {
+            "description": "TOPIC_IN_USE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a topic from the course's list",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/madrasahs/{id}/exam-zeroth-question": {
+      "get": {
+        "description": "Medrese ayarları' \"Sınavların sıfırıncı sorusu\": the question and its options in their order. Empty while the medrese has none; an exam of its courses is then not published.",
+        "operationId": "getMadrasahZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `madrasah.settings_edit` on the medrese."
+          },
+          "404": {
+            "description": "MADRASAH_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "put": {
+        "description": "Replaces the question and all its options. The exams already published keep the one they were published with. Written to `audit_log` as `madrasah.zeroth_question.update` with what it was and what it is; a save that changes nothing writes nothing.",
+        "operationId": "saveMadrasahZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveZerothQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `madrasah.settings_edit` on the medrese."
+          },
+          "404": {
+            "description": "MADRASAH_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save the medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/courses/{id}/exam-zeroth-question": {
+      "get": {
+        "description": "The course's own question if it has one, its medrese's (the default), and which one its exams ask as they are published. A course of a köşk alone has no medrese's question; with no question of its own, its exams are not published.",
+        "operationId": "getCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A course's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "put": {
+        "description": "Replaces the course's own question and all its options; its exams ask it instead of the medrese's from the next one published. Written to `audit_log` as `course.zeroth_question.update`; a save that changes nothing writes nothing.",
+        "operationId": "saveCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveZerothQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give the course a zeroth question of its own",
+        "tags": [
+          "online-exams"
+        ]
+      },
+      "delete": {
+        "description": "Takes the course's own question off; its exams ask the medrese's again from the next one published. Written to `audit_log` as `course.zeroth_question.delete`; nothing is written when the course had none.",
+        "operationId": "removeCourseZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseZerothQuestionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Back to the medrese's zeroth question",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam": {
+      "get": {
+        "description": "\"Bilmeniz gerekenler\": the exam's title, course, length and question count, its earliest and latest start and whether it is open now, the team's instructions, the zeroth question with its options and the caller's answer, and where the caller's attempt stands. No question of the exam is sent. An attempt whose time ran out, or whose exam was closed early, is finished on this read.",
+        "operationId": "getExamBriefing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamBriefingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the talebe reads before the exam",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/zeroth-answer": {
+      "put": {
+        "description": "The caller's choice among the zeroth question's options, none correct and none scored; a second call replaces it until the attempt starts, and it stays after.",
+        "operationId": "answerZerothQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZerothAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ZEROTH_OPTION_NOT_FOUND, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN, ZEROTH_ANSWER_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer the zeroth question",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt": {
+      "post": {
+        "description": "Starts the caller's attempt and its clock, between the earliest and the latest start, with the zeroth question answered. The questions, and each question's options, are put in an order of the caller's own; the answer carries them (never which are correct), each question's points and the time left. An attempt in progress is taken over by this page, as resume does.",
+        "operationId": "startExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN, ZEROTH_UNANSWERED, EXAM_ALREADY_TAKEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınava başla",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/resume": {
+      "post": {
+        "description": "The same order, every saved answer, the question the talebe was on and the time left. The calling page holds the attempt from now on: the one that held it is told, on its next call, that the exam is open elsewhere (409 ATTEMPT_HELD_ELSEWHERE). Called when the page is opened again and when the connection comes back; the time away is not counted.",
+        "operationId": "resumeExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Go on with an attempt in progress, here",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/answers/{questionId}": {
+      "put": {
+        "description": "The options chosen for one question, or that it was skipped, and the question the talebe is on. The last save wins by the page's own count: a save whose seq is not above the stored one writes nothing and is answered with what the server holds (`written: false`).",
+        "operationId": "saveExamAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAnswerSavedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ANSWER_INVALID, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, QUESTION_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE, ATTEMPT_ENDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save one answer the moment it is chosen",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/clock": {
+      "post": {
+        "description": "The holding page calls it every few seconds; the time since its last call, capped, is added to the time used, so the clock stops while the connection is lost. When nothing is left the attempt finishes by the time, with the answers saved so far, and the answer says FINISHED.",
+        "operationId": "tickExamClock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamClockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Count the time while the page is connected",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/switch": {
+      "post": {
+        "description": "Called by the page when the talebe comes back from another tab or window. The switch is kept with its time for the team; nothing is erased and the attempt goes on where it was.",
+        "operationId": "recordTabSwitch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE, ATTEMPT_ENDED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Count a deliberate switch to another tab or window",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/attempt/finish": {
+      "post": {
+        "description": "Ends the caller's attempt with the answers saved so far and scores it from the exact points. Only the holding page may end it. An attempt finished meanwhile, by the time or an early close, is answered as it ended.",
+        "operationId": "finishExamAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamHolderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no ENROLLED seat in its course), LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "ATTEMPT_HELD_ELSEWHERE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınavı bitir",
+        "tags": [
+          "online-exam-attempts"
+        ]
+      }
+    },
+    "/online-exams/{examId}/results": {
+      "get": {
+        "description": "Every talebe seated in the course: not started, in progress, finished (when, how, the score, right, wrong and blank) or missed once it has closed; each switch to another tab or window with its time; the answer to the zeroth question; the standing in each topic. Over them all: the counts and the average, each topic's and each question's standing, how often each option and each zeroth option was chosen, whether the results are released, and whether the caller may release them (`session.manage`, which `releaseExamResults` asks). A draft has no results (EXAM_NOT_FOUND).",
+        "operationId": "getOnlineExamResults",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamResultsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An online exam's results, talebe by talebe",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/results/{userId}": {
+      "get": {
+        "description": "Each question in the exam's order (not the talebe's), with its options, the correct marks, which ones the talebe chose, whether it was skipped, when it was saved, how the answer stands and the points it earned; over them, the talebe's name, how and when the attempt ended, the score, each switch with its time and the zeroth answer. The team reads it before the release too. A talebe not seated in the course, or with no attempt, is ATTEMPT_NOT_FOUND; a draft is EXAM_NOT_FOUND.",
+        "operationId": "getOnlineExamTalebeAnswers",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalebeAnswersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One talebe's answers on an online exam",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/online-exams/{examId}/close": {
+      "post": {
+        "description": "\"Sınavı erken bitir\": every attempt in progress ends now with the answers saved so far, is scored and stands in Değerlendirme, and no one starts the exam any more. Refused before it opens (it is taken back to a draft then) and once it has closed. Written to `audit_log` as `online_exam.close`.",
+        "operationId": "closeOnlineExamEarly",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineExamClosedResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close an open online exam early",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
+    "/me/exams": {
+      "get": {
+        "description": "The exams of the courses where the caller holds an ENROLLED or COMPLETED seat, written, oral and online: the open and coming ones first, soonest first, then the past ones, latest first. Each says where it stands for the caller; a score only once the course team released the results. A draft online exam is not listed, and neither is a cancelled or hidden celse, nor a course the caller left.",
+        "operationId": "listMyExams",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyExamResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sınavlarım: every exam of the caller's courses",
+        "tags": [
+          "my-exams"
+        ]
+      }
+    },
+    "/lessons/{id}/online-exam/my-result": {
+      "get": {
+        "description": "Before the release: that the exam was taken, when and how it ended. After it: the score out of 100, the right, wrong and blank counts, the standing in each of the exam's topics and across the course's released exams, as percentages. Once the exam has also closed for everyone (closed early, or past its latest start with no attempt in progress): every question in the caller's own order, with their answer, the correct options and the points got. Only the caller's own attempt; an ENROLLED or COMPLETED seat.",
+        "operationId": "getMyExamResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyExamResultResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATTEMPT_NOT_FOUND (the caller did not take the exam), EXAM_NOT_FOUND (the celse is not a published online exam, or the caller holds no seat in its course), LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own screen of a past online exam",
+        "tags": [
+          "my-exams"
+        ]
+      }
+    },
+    "/nizam/exam-zeroth-answers": {
+      "get": {
+        "description": "The zeroth questions of the published online exams whose celse falls in the span and the place, the same words with the same options counted together: how many exams asked each, how many talebe answered and how many chose each option, every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
+        "operationId": "listZerothAnswerCounts",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not before this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not after this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "description": "One köşk. Omitted: every köşk the caller reads, which is all of them for platform management and their own for a köşk nazımı.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "description": "One medrese's courses.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "description": "One course.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothAnswerCountsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR: a span with no end, or one that ends before it starts"
+          },
+          "403": {
+            "description": "`exam.zeroth_read` is held neither in the platform scope nor in the köşk asked for (a köşk nazımı holds it in their köşk)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How the zeroth questions were answered, in aggregate",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/exam-zeroth-answers/{questionKey}": {
+      "get": {
+        "description": "A row per exam, newest first, with a count per option, and the combined counts as their sums, which are the list's. Every count as it is. Written to `audit_log` as `exam.zeroth_read`.",
+        "operationId": "getZerothQuestionExams",
+        "parameters": [
+          {
+            "name": "questionKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not before this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Exams whose celse is not after this moment.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "koskId",
+            "required": false,
+            "in": "query",
+            "description": "One köşk. Omitted: every köşk the caller reads, which is all of them for platform management and their own for a köşk nazımı.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "madrasahId",
+            "required": false,
+            "in": "query",
+            "description": "One medrese's courses.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "description": "One course.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZerothQuestionExamsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "`exam.zeroth_read` is held neither in the platform scope nor in the köşk asked for (a köşk nazımı holds it in their köşk)."
+          },
+          "404": {
+            "description": "ZEROTH_QUESTION_NOT_FOUND: no exam in the span and the place asked it"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The exams that asked one zeroth question, each with its counts",
+        "tags": [
+          "nizam"
+        ]
+      }
     }
   },
   "info": {
@@ -18346,7 +20200,8 @@
         "type": "string",
         "enum": [
           "WRITTEN",
-          "ORAL"
+          "ORAL",
+          "MULTIPLE_CHOICE"
         ]
       },
       "LessonExamResponse": {
@@ -20482,7 +22337,7 @@
         "properties": {
           "format": {
             "default": "WRITTEN",
-            "description": "\"Yazılı\" (WRITTEN, the default) or \"Şifahi\" (ORAL).",
+            "description": "\"Yazılı\" (WRITTEN, the default) or \"Şifahi\" (ORAL). MULTIPLE_CHOICE is planned only by publishing an online exam (MDRS-299).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ExamFormat"
@@ -28956,6 +30811,2558 @@
         },
         "required": [
           "koskIds"
+        ]
+      },
+      "OnlineExamSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "OPEN",
+              "CLOSED"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it opens; null for a draft."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "questionCount",
+          "status",
+          "startsAt",
+          "updatedAt"
+        ]
+      },
+      "CreateOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Ara sınav"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "OnlineExamCreatedResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "DraftCourseTopicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "picked": {
+            "type": "boolean",
+            "description": "Whether the exam has picked it."
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "How many of the exam's questions carry it."
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "name",
+          "picked",
+          "questionCount"
+        ]
+      },
+      "ExamOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct"
+        ]
+      },
+      "AnswerMode": {
+        "type": "string",
+        "enum": [
+          "SINGLE",
+          "MULTIPLE"
+        ]
+      },
+      "Scoring": {
+        "type": "string",
+        "enum": [
+          "ALL_OR_NOTHING",
+          "IN_SHARES",
+          "ANY_CORRECT"
+        ]
+      },
+      "ExamQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in the preparer's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamOptionResponse"
+            }
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "topicIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "ownPoints": {
+            "type": "string",
+            "nullable": true,
+            "description": "Its own points (\"12.50\"); null when it shares."
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points now, own or share, with two decimals (\"1.94\")."
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "lacks": {
+            "type": "array",
+            "description": "What it still lacks, in the form's order.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "text",
+                "option",
+                "correct",
+                "topic"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "options",
+          "answerMode",
+          "scoring",
+          "topicIds",
+          "ownPoints",
+          "points",
+          "complete",
+          "lacks"
+        ]
+      },
+      "PublishProblemResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "NO_DURATION",
+              "NO_QUESTION",
+              "QUESTION",
+              "POINTS",
+              "NO_ZEROTH"
+            ],
+            "description": "NO_DURATION: its length is not typed; NO_QUESTION: none yet; QUESTION: question `number` lacks `lacks`; POINTS: they total `total`, not 100; NO_ZEROTH: neither the course nor its madrasah has a zeroth question."
+          },
+          "number": {
+            "type": "number"
+          },
+          "lacks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "text",
+                "option",
+                "correct",
+                "topic"
+              ]
+            }
+          },
+          "total": {
+            "type": "string",
+            "example": "80.00"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "OnlineExamDraftResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "\"Süre (dakika)\"; null until the team types it."
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "zerothQuestion": {
+            "type": "string",
+            "description": "The medrese's zeroth question as it was copied when the exam was published; empty in a draft."
+          },
+          "zerothOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionResponse"
+            }
+          },
+          "courseTopics": {
+            "description": "The course's topics by number, each saying whether the exam picked it.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DraftCourseTopicResponse"
+            }
+          },
+          "topicIds": {
+            "description": "The topics the exam picked, in order.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamQuestionResponse"
+            }
+          },
+          "pointsTotal": {
+            "type": "string",
+            "description": "The points of every question together (\"100.00\")."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "OPEN",
+              "CLOSED"
+            ]
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "The earliest start, its celse's time; null for a draft, which has no celse."
+          },
+          "latestStartAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "problems": {
+            "description": "What keeps it from being published; empty when it can be.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublishProblemResponse"
+            }
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "title",
+          "durationMinutes",
+          "instructions",
+          "zerothQuestion",
+          "zerothOptions",
+          "courseTopics",
+          "topicIds",
+          "questions",
+          "pointsTotal",
+          "status",
+          "startsAt",
+          "latestStartAt",
+          "problems",
+          "version"
+        ]
+      },
+      "UpdateOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "\"Süre (dakika)\"; null clears it. No default and no upper bound but the column's (the owner: \"Sınır yok\"); an exam without it is not published."
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 4000,
+            "description": "The team's own words for the briefing; blank is none."
+          },
+          "topicIds": {
+            "description": "The course topics the exam picks, in order. Unpicking one takes it off the questions that carried it.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ExamVersionResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "PublishOnlineExamDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-12-01T17:00:00.000Z",
+            "description": "The earliest start, which becomes the exam celse's time; left out, now. Seconds are dropped. Before this minute is 400 EXAM_TIME_PASSED."
+          },
+          "latestStartAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-12-01T17:10:00.000Z",
+            "description": "Until when a talebe may start; every attempt gets the whole time. Left out, the earliest start plus 10 minutes. Before the earliest start is 400 EXAM_TIME_PASSED."
+          },
+          "latestStartMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10080,
+            "example": 10,
+            "description": "How many minutes after the earliest start a talebe may still start, counted from the start the server sets (now, when `startsAt` is left out). Used when `latestStartAt` is left out; both left out, 10."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "VersionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ExamQuestionWriteResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "$ref": "#/components/schemas/ExamQuestionResponse"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "question",
+          "version"
+        ]
+      },
+      "QuestionOptionDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "correct"
+        ]
+      },
+      "SaveExamQuestionDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "options": {
+            "description": "The options in order; empty fields are not sent.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionOptionDto"
+            }
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "description": "Only with MULTIPLE, where it is required.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "topicIds": {
+            "description": "Topics of the course; one the exam has not picked yet is picked with the question.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "text",
+          "options",
+          "answerMode",
+          "topicIds"
+        ]
+      },
+      "SetQuestionPointsDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "The exam's version the page holds; an older one is refused (409 EXAM_STALE)."
+          },
+          "points": {
+            "type": "string",
+            "nullable": true,
+            "example": "12,5",
+            "description": "A number with at most two decimals, from 0.01 to 100 (a comma or a point); null shares again."
+          }
+        },
+        "required": [
+          "version",
+          "points"
+        ]
+      },
+      "QuestionPointsResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "points": {
+            "type": "string"
+          },
+          "own": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "points",
+          "own"
+        ]
+      },
+      "ExamPointsResponse": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionPointsResponse"
+            }
+          },
+          "total": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which the next write names."
+          }
+        },
+        "required": [
+          "questions",
+          "total",
+          "version"
+        ]
+      },
+      "CourseTopicResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "name"
+        ]
+      },
+      "CreateCourseTopicDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "One to three words; unique in the course whatever its case."
+          },
+          "number": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999,
+            "description": "Its number in the course; left out, the next free one."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateCourseTopicDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "number": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999
+          }
+        }
+      },
+      "ExamVersionRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "number",
+            "description": "The exam's new version, which its next write names."
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ]
+      },
+      "TopicRemovedResponse": {
+        "type": "object",
+        "properties": {
+          "exams": {
+            "description": "The exams that had picked the topic, each with the version the removal moved it to; empty when none had.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamVersionRefResponse"
+            }
+          }
+        },
+        "required": [
+          "exams"
+        ]
+      },
+      "MadrasahZerothQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Empty while the medrese has no question."
+          },
+          "options": {
+            "description": "In their order.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The last save; null while the medrese has no question."
+          }
+        },
+        "required": [
+          "text",
+          "options",
+          "updatedAt"
+        ]
+      },
+      "SaveZerothQuestionDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "The question about the hadith the page shows fixed."
+          },
+          "options": {
+            "minItems": 2,
+            "maxItems": 10,
+            "description": "Its options in their order, each different; none is correct and none carries points.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "options"
+        ]
+      },
+      "ZerothQuestionText": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "options": {
+            "description": "In their order.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "text",
+          "options",
+          "updatedAt"
+        ]
+      },
+      "ZerothQuestionSource": {
+        "type": "string",
+        "enum": [
+          "COURSE",
+          "MADRASAH",
+          "NONE"
+        ],
+        "description": "Which one the course's exams ask as they are published."
+      },
+      "CourseZerothQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "own": {
+            "nullable": true,
+            "description": "The course's own question; null while it asks its medrese's.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionText"
+              }
+            ]
+          },
+          "madrasah": {
+            "nullable": true,
+            "description": "The medrese's question, the default; null when the medrese has none, or the course belongs to a köşk alone.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionText"
+              }
+            ]
+          },
+          "applies": {
+            "description": "Which one the course's exams ask as they are published.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ZerothQuestionSource"
+              }
+            ]
+          },
+          "inMadrasah": {
+            "type": "boolean",
+            "description": "False for a course of a köşk alone: it has no medrese's question to fall back on."
+          }
+        },
+        "required": [
+          "own",
+          "madrasah",
+          "applies",
+          "inMadrasah"
+        ]
+      },
+      "ExamWindow": {
+        "type": "string",
+        "enum": [
+          "BEFORE",
+          "OPEN",
+          "CLOSED"
+        ]
+      },
+      "BriefingZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "BriefingZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question about the hadith; empty when the exam has none."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingZerothOptionResponse"
+            }
+          },
+          "answeredOptionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "question",
+          "options",
+          "answeredOptionId"
+        ]
+      },
+      "AttemptStatus": {
+        "type": "string",
+        "enum": [
+          "IN_PROGRESS",
+          "FINISHED"
+        ]
+      },
+      "FinishedBy": {
+        "type": "string",
+        "enum": [
+          "TALEBE",
+          "TIME",
+          "CLOSED_EARLY"
+        ]
+      },
+      "BriefingAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "finishedAt",
+          "finishedBy"
+        ]
+      },
+      "ExamBriefingResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "questionCount": {
+            "type": "number"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "window": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamWindow"
+              }
+            ]
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/BriefingZerothResponse"
+          },
+          "attempt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BriefingAttemptResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "title",
+          "courseTitle",
+          "durationMinutes",
+          "questionCount",
+          "startsAt",
+          "latestStartAt",
+          "instructions",
+          "window",
+          "zeroth",
+          "attempt"
+        ]
+      },
+      "ZerothAnswerDto": {
+        "type": "object",
+        "properties": {
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "optionId"
+        ]
+      },
+      "ZerothAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "optionId"
+        ]
+      },
+      "ExamHolderDto": {
+        "type": "object",
+        "properties": {
+          "holderId": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 64,
+            "description": "An id the page draws for itself, so that a second tab or device can take the attempt over."
+          }
+        },
+        "required": [
+          "holderId"
+        ]
+      },
+      "AttemptOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "AttemptQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in this talebe's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, with two decimals (\"33.33\")."
+          },
+          "options": {
+            "description": "In this talebe's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "answerMode",
+          "points",
+          "options"
+        ]
+      },
+      "AttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "skipped"
+        ]
+      },
+      "ExamAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "secondsLeft": {
+            "type": "number",
+            "description": "What is left of the exam's length."
+          },
+          "switches": {
+            "type": "number",
+            "description": "How many times the talebe switched away."
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "questions": {
+            "description": "Empty once it is finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptQuestionResponse"
+            }
+          },
+          "answers": {
+            "description": "Every answer saved; empty once it is finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptAnswerResponse"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "secondsLeft",
+          "switches",
+          "currentQuestionId",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "questions",
+          "answers"
+        ]
+      },
+      "SaveExamAnswerDto": {
+        "type": "object",
+        "properties": {
+          "holderId": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 64,
+            "description": "An id the page draws for itself, so that a second tab or device can take the attempt over."
+          },
+          "seq": {
+            "type": "number",
+            "minimum": 1,
+            "description": "The page's count of its saves, one up on each; a save at or under the one stored writes nothing."
+          },
+          "optionIds": {
+            "description": "The options chosen; none when the question is skipped or cleared.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "\"Soruyu atla\": it comes back after the last."
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The question the talebe is on now, where a resumed attempt goes on."
+          }
+        },
+        "required": [
+          "holderId",
+          "seq",
+          "optionIds",
+          "skipped"
+        ]
+      },
+      "ExamAnswerSavedResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "written": {
+            "type": "boolean",
+            "description": "False when the save's seq was not above the stored one: nothing was written, and this is what the server holds."
+          },
+          "secondsLeft": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "skipped",
+          "written",
+          "secondsLeft"
+        ]
+      },
+      "ExamClockResponse": {
+        "type": "object",
+        "properties": {
+          "secondsLeft": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "secondsLeft",
+          "status"
+        ]
+      },
+      "ResultsExamResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The exam's celse; `releaseExamResults` takes it to release the results."
+          },
+          "title": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedEarlyAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "Closed early, or past its latest start with no attempt in progress: the page stops reading again."
+          },
+          "mayClose": {
+            "type": "boolean",
+            "description": "The team may close it early: it has opened, and someone may still start it or is still in it."
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "lessonId",
+          "title",
+          "durationMinutes",
+          "startsAt",
+          "latestStartAt",
+          "closedEarlyAt",
+          "closed",
+          "mayClose"
+        ]
+      },
+      "TalebeExamState": {
+        "type": "string",
+        "enum": [
+          "NOT_STARTED",
+          "IN_PROGRESS",
+          "FINISHED",
+          "MISSED"
+        ]
+      },
+      "ResultsSwitchResponse": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "at"
+        ]
+      },
+      "ResultsTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "topicId",
+          "percent"
+        ]
+      },
+      "ResultsTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TalebeExamState"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Out of 100 with two decimals, \"87.50\"; null until finished."
+          },
+          "right": {
+            "type": "number",
+            "nullable": true
+          },
+          "wrong": {
+            "type": "number",
+            "nullable": true
+          },
+          "blank": {
+            "type": "number",
+            "nullable": true
+          },
+          "switches": {
+            "description": "Each switch to another tab or window, oldest first; nothing was erased by any.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsSwitchResponse"
+            }
+          },
+          "zerothOptionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "topics": {
+            "description": "The talebe's standing in each topic, once finished.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTopicStandingResponse"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "state",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "score",
+          "right",
+          "wrong",
+          "blank",
+          "switches",
+          "zerothOptionId",
+          "topics"
+        ]
+      },
+      "ResultsCountsResponse": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "number"
+          },
+          "started": {
+            "type": "number"
+          },
+          "inProgress": {
+            "type": "number"
+          },
+          "finished": {
+            "type": "number"
+          },
+          "missed": {
+            "type": "number",
+            "description": "Seated talebe who never started, once it has closed."
+          },
+          "average": {
+            "type": "string",
+            "nullable": true,
+            "description": "The average of the finished scores, two decimals; null when none finished."
+          }
+        },
+        "required": [
+          "seats",
+          "started",
+          "inProgress",
+          "finished",
+          "missed",
+          "average"
+        ]
+      },
+      "ResultsTopicResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true,
+            "description": "The average of the finished talebe's standing in it."
+          },
+          "questionCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "questionCount"
+        ]
+      },
+      "ResultsOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          },
+          "chosen": {
+            "type": "number",
+            "description": "How many finished talebe chose it."
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct",
+          "chosen"
+        ]
+      },
+      "ResultsQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, \"2.00\"."
+          },
+          "rightPercent": {
+            "type": "number",
+            "nullable": true,
+            "description": "The share of finished talebe who earned all of its points."
+          },
+          "blank": {
+            "type": "number",
+            "description": "How many finished talebe left it blank."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "questionId",
+          "number",
+          "text",
+          "answerMode",
+          "points",
+          "rightPercent",
+          "blank",
+          "options"
+        ]
+      },
+      "ResultsZerothOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "count"
+        ]
+      },
+      "ResultsZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsZerothOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "question",
+          "options"
+        ]
+      },
+      "OnlineExamResultsResponse": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/ResultsExamResponse"
+          },
+          "talebe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTalebeResponse"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ResultsCountsResponse"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsTopicResponse"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsQuestionResponse"
+            }
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/ResultsZerothResponse"
+          },
+          "released": {
+            "type": "boolean",
+            "description": "The results are released, by this page or by Değerlendirme."
+          },
+          "releasedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "mayRelease": {
+            "type": "boolean",
+            "description": "The caller holds `session.manage` on the course, which `releaseExamResults` asks."
+          },
+          "releasable": {
+            "type": "boolean",
+            "description": "The celse has its Değerlendirme exam row, so its scores stand there and can be released."
+          }
+        },
+        "required": [
+          "exam",
+          "talebe",
+          "counts",
+          "topics",
+          "questions",
+          "zeroth",
+          "released",
+          "releasedAt",
+          "mayRelease",
+          "releasable"
+        ]
+      },
+      "TalebeAnswersExamResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "TalebeAnswersZerothResponse": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "optionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true,
+            "description": "The text of the option the talebe chose."
+          }
+        },
+        "required": [
+          "question",
+          "optionId",
+          "answer"
+        ]
+      },
+      "AnswerVerdict": {
+        "type": "string",
+        "enum": [
+          "RIGHT",
+          "WRONG",
+          "BLANK"
+        ]
+      },
+      "TalebeAnswerOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean"
+          },
+          "chosen": {
+            "type": "boolean",
+            "description": "The talebe chose it."
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "correct",
+          "chosen"
+        ]
+      },
+      "TalebeAnswerQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "Its number in the exam's order, not the talebe's."
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "scoring": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, \"2.00\"."
+          },
+          "earned": {
+            "type": "string",
+            "description": "The points this answer earned, two decimals, \"1.00\"."
+          },
+          "verdict": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerVerdict"
+              }
+            ]
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "The talebe skipped it (\"Soruyu atla\")."
+          },
+          "savedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the answer was last saved; null when never answered."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TalebeAnswerOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "questionId",
+          "number",
+          "text",
+          "answerMode",
+          "scoring",
+          "points",
+          "earned",
+          "verdict",
+          "skipped",
+          "savedAt",
+          "options"
+        ]
+      },
+      "TalebeAnswersResponse": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/TalebeAnswersExamResponse"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TalebeExamState"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Out of 100 with two decimals, \"87.50\"; null until finished."
+          },
+          "switches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultsSwitchResponse"
+            }
+          },
+          "zeroth": {
+            "$ref": "#/components/schemas/TalebeAnswersZerothResponse"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TalebeAnswerQuestionResponse"
+            }
+          }
+        },
+        "required": [
+          "exam",
+          "userId",
+          "name",
+          "state",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "score",
+          "switches",
+          "zeroth",
+          "questions"
+        ]
+      },
+      "OnlineExamClosedResponse": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "closedEarlyAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished": {
+            "type": "number",
+            "description": "The attempts in progress the close finished."
+          }
+        },
+        "required": [
+          "examId",
+          "closedEarlyAt",
+          "finished"
+        ]
+      },
+      "MyExamFormat": {
+        "type": "string",
+        "enum": [
+          "WRITTEN",
+          "ORAL",
+          "MULTIPLE_CHOICE"
+        ]
+      },
+      "MyExamState": {
+        "type": "string",
+        "enum": [
+          "UPCOMING",
+          "OPEN",
+          "IN_PROGRESS",
+          "TAKEN",
+          "MISSED",
+          "RELEASED"
+        ]
+      },
+      "MyExamResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "An online exam's own title; a written or oral exam's celse title."
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamFormat"
+              }
+            ]
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestStartAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "An online exam's latest start; null for any other."
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamState"
+              }
+            ]
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Only once released: an online exam's score out of 100 with two decimals (\"85.50\"), a written or oral one's whole score out of `maxScore`."
+          },
+          "maxScore": {
+            "type": "number",
+            "nullable": true,
+            "description": "What the score is out of; 100 for an online exam."
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "An online exam's length in minutes."
+          },
+          "questionCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "An online exam's question count."
+          },
+          "place": {
+            "type": "string",
+            "nullable": true,
+            "description": "A written or oral exam's place, as the team typed it."
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "title",
+          "format",
+          "startsAt",
+          "latestStartAt",
+          "state",
+          "score",
+          "maxScore",
+          "durationMinutes",
+          "questionCount",
+          "place"
+        ]
+      },
+      "MyExamCountsResponse": {
+        "type": "object",
+        "properties": {
+          "right": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "number"
+          },
+          "blank": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "right",
+          "wrong",
+          "blank"
+        ]
+      },
+      "MyStandingResponse": {
+        "type": "object",
+        "properties": {
+          "taken": {
+            "type": "number",
+            "minimum": 1,
+            "description": "How many took the exam: finished, or with their time used up. One still in progress is not counted."
+          },
+          "rank": {
+            "type": "number",
+            "minimum": 1,
+            "description": "One plus those with strictly more points."
+          },
+          "tiedWith": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How many others got exactly the same points."
+          }
+        },
+        "required": [
+          "taken",
+          "rank",
+          "tiedWith"
+        ]
+      },
+      "MyTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "The points of the topic's questions that were got, as a whole percentage."
+          },
+          "right": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "number"
+          },
+          "blank": {
+            "type": "number"
+          },
+          "standing": {
+            "description": "Where the talebe stands in this topic among those who took the exam, by the topic's points got.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyStandingResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "right",
+          "wrong",
+          "blank",
+          "standing"
+        ]
+      },
+      "MyCourseTopicStandingResponse": {
+        "type": "object",
+        "properties": {
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "exams": {
+            "type": "number",
+            "minimum": 1,
+            "description": "How many exams it is counted from."
+          }
+        },
+        "required": [
+          "topicId",
+          "number",
+          "name",
+          "percent",
+          "exams"
+        ]
+      },
+      "QuestionOutcome": {
+        "type": "string",
+        "enum": [
+          "RIGHT",
+          "WRONG",
+          "BLANK"
+        ]
+      },
+      "MyAnsweredOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "chosen": {
+            "type": "boolean"
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "chosen",
+          "correct"
+        ]
+      },
+      "MyAnsweredQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 for the first, in this talebe's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionOutcome"
+              }
+            ]
+          },
+          "points": {
+            "type": "string",
+            "description": "Its points, with two decimals (\"33.33\")."
+          },
+          "got": {
+            "type": "string",
+            "description": "What the answer got of them (\"33.33\")."
+          },
+          "options": {
+            "description": "In this talebe's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAnsweredOptionResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "outcome",
+          "points",
+          "got",
+          "options"
+        ]
+      },
+      "MyExamResultResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finishedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinishedBy"
+              }
+            ]
+          },
+          "released": {
+            "type": "boolean",
+            "description": "The course team released the results."
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "The exam has closed for everyone: closed early, or past its latest start with no attempt in progress."
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "description": "Only when released: out of 100, with two decimals (\"85.50\")."
+          },
+          "counts": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyExamCountsResponse"
+              }
+            ]
+          },
+          "standing": {
+            "nullable": true,
+            "description": "Only when released: where the talebe stands among those who took the exam.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyStandingResponse"
+              }
+            ]
+          },
+          "topics": {
+            "description": "Only when released, the weakest first; a question with two topics counts in both.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyTopicStandingResponse"
+            }
+          },
+          "courseTopics": {
+            "description": "Only when released: each topic of the course over the caller's released exams of it, the weakest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyCourseTopicStandingResponse"
+            }
+          },
+          "questions": {
+            "nullable": true,
+            "description": "Only when released and closed for everyone, in the talebe's own order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAnsweredQuestionResponse"
+            }
+          }
+        },
+        "required": [
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "title",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "finishedBy",
+          "released",
+          "closed",
+          "score",
+          "counts",
+          "standing",
+          "topics",
+          "courseTopics",
+          "questions"
+        ]
+      },
+      "ZerothOptionCountResponse": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number",
+            "description": "How many talebe chose it."
+          }
+        },
+        "required": [
+          "text",
+          "count"
+        ]
+      },
+      "ZerothQuestionCountsResponse": {
+        "type": "object",
+        "properties": {
+          "questionKey": {
+            "type": "string",
+            "description": "Names the question in `GET /nizam/exam-zeroth-answers/{questionKey}`."
+          },
+          "question": {
+            "type": "string"
+          },
+          "exams": {
+            "type": "number",
+            "description": "How many exams asked it."
+          },
+          "answered": {
+            "type": "number",
+            "description": "How many talebe answered it."
+          },
+          "options": {
+            "description": "Its options in their order, with how many chose each.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionCountResponse"
+            }
+          }
+        },
+        "required": [
+          "questionKey",
+          "question",
+          "exams",
+          "answered",
+          "options"
+        ]
+      },
+      "ZerothCourseResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "madrasahId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "courseId",
+          "courseTitle",
+          "koskId",
+          "koskName",
+          "madrasahId",
+          "madrasahName"
+        ]
+      },
+      "ZerothAnswerCountsResponse": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "description": "Newest exam first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothQuestionCountsResponse"
+            }
+          },
+          "courses": {
+            "description": "Every course of the köşks the caller reads that held a published online exam, whenever: what the köşk, medrese and course fields offer.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothCourseResponse"
+            }
+          },
+          "everyKosk": {
+            "type": "boolean",
+            "description": "Whether the caller reads every köşk (\"Bütün köşkler\"); false for a köşk nazımı, who reads their own."
+          }
+        },
+        "required": [
+          "questions",
+          "courses",
+          "everyKosk"
+        ]
+      },
+      "ZerothExamCountsResponse": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Its celse's time."
+          },
+          "answered": {
+            "type": "number",
+            "description": "How many talebe answered it in this exam."
+          },
+          "options": {
+            "description": "A count per option, in the order of the question's options.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "examId",
+          "courseTitle",
+          "koskName",
+          "startsAt",
+          "answered",
+          "options"
+        ]
+      },
+      "ZerothQuestionExamsResponse": {
+        "type": "object",
+        "properties": {
+          "questionKey": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "answered": {
+            "type": "number",
+            "description": "Over every exam: the same as the list shows."
+          },
+          "options": {
+            "description": "Over every exam, as the list shows them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothOptionCountResponse"
+            }
+          },
+          "exams": {
+            "description": "Newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZerothExamCountsResponse"
+            }
+          }
+        },
+        "required": [
+          "questionKey",
+          "question",
+          "answered",
+          "options",
+          "exams"
         ]
       }
     }

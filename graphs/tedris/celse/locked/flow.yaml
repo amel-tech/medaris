@@ -188,6 +188,8 @@ states:
       FAIL.gone: { target: applyCard, effect: [toastGone] }
       FAIL.conflict: { target: applyCard, effect: [toastConflict], say: "the toast promises a refresh that does not happen (CLS-10)" }
       FAIL.other: { target: applyCard, effect: [toastFailed], say: "a barred talebe is refused with BAN_ACTIVE here" }
+      OPEN_KOSK: { target: kosk_opened, say: "the breadcrumb's köşk is a plain link and stays live while the application is sent: the page is left at once, and the call's answer is not drawn", source: apps/tedris/features/courses/components/session-header.tsx:53 }
+      OPEN_COURSE: { target: course_opened, say: "the breadcrumb's course and the course's card are plain links and stay live while the application is sent: the page is left at once, and the call's answer is not drawn", source: apps/tedris/features/courses/components/lesson-locked.tsx:262 }
 
   reachesNazar:
     title: The application is on the course's roster in nazar

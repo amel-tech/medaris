@@ -179,6 +179,7 @@ states:
         - { target: keycloakAsks, guard: "session == 'storeDown'", say: "303 to the end-session endpoint with no hint: Keycloak asks" }
         - { target: atAppRoot, say: "no session or no ID token: signed out here only, 303 to /" }
       FORM_NOT_SENT: { target: confirmPage, guard: "app == 'tedris'", say: "tedris's catch: console.error and the button is pressable again, with no message" }
+      CANCEL: { target: cut_short.landing, guard: "app == 'nazar'", source: apps/nazar/features/auth/sign-out-confirm.tsx:39, say: "nazar's Vazgeç stays a plain link while the form post is on its way (SOUT-1): the browser starts the navigation to / at once and drops the post's answer" }
 
   endingAtKeycloak:
     title: Keycloak ends the single sign-on session
@@ -273,6 +274,15 @@ states:
     type: final
     title: They are on nazar's landing for them, still signed in
     description: "Nazar's Vazgeç is a link to /, which sends a signed-in person to their medrese's Pano, their course or the no-access page (nazar.access.landingScope)."
+
+  cut_short.landing:
+    type: final
+    title: Nazar's / opens while the sign-out was on its way
+    description: >-
+      SOUT-1, from the code and not walked: nazar's Vazgeç pressed while the hidden form's POST /api/auth/signout is in flight. The
+      browser follows the link and the post's 303 is never followed, so Keycloak's end-session is not visited and its SSO session
+      stays. Whether the app's own session is gone depends on whether the post reached the route before the press: the person
+      lands on nazar's / either signed in (nazar.access.landingScope) or as a visitor, and nothing says which.
 
   left:
     type: final

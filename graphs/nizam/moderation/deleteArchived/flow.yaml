@@ -238,12 +238,14 @@ states:
       above its title, the title for the kind, "<title> ve ona bağlı her şey kalıcı olarak silinecek. Bu işlem geri alınamaz.", the
       line "Silinecekler hesaplanıyor" and the audit sentence; "Kalıcı olarak sil" is natively disabled while the count is
       awaited, "Vazgeç" and the close icon are live. The focus starts on "Vazgeç". The server action loadArchiveImpact calls GET
-      /archive/:type/:id/impact. The row's own button shows no busy state. Closing the dialog before the count arrives is possible and
-      is not drawn: the late answer then fills `impact` with no target, and PURGE-5 is the case where another dialog is already open.
+      /archive/:type/:id/impact. The row's own button shows no busy state. Closing the dialog before the count arrives is possible (CANCEL,
+      CLOSE): the late answer then fills `impact` with no target, and PURGE-5 is the case where another dialog is already open.
     invoke: { action: getArchiveImpact }
     on:
       DONE: { guard: stillThere, target: confirming, source: apps/nizam/features/archive/components/archive-view.tsx:208 }
       FAIL.gone: { guard: alreadyBrought, target: confirmingBlind, effect: [countUnknown], source: apps/nizam/features/archive/components/archive-view.tsx:208 }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç before the count arrives: the dialog closes at once with nothing deleted; the late answer fills `impact` with no target (PURGE-5)", source: apps/nizam/features/archive/components/archive-view.tsx:510 }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon before the count arrives: the same", source: apps/nizam/features/archive/components/archive-view.tsx:510 }
     source: apps/nizam/features/archive/components/archive-view.tsx:200
 
   confirming:
@@ -302,6 +304,9 @@ states:
       DONE: { guard: "row == 'there' and item == 'course'", target: settled, effect: [deleted], source: apps/nizam/features/archive/components/archive-view.tsx:231 }
       FAIL.gone: { guard: alreadyBrought, target: settled, effect: [alreadyGone], source: apps/nizam/features/archive/components/archive-view.tsx:235 }
       FAIL.other: { guard: "row == 'there' and item == 'blockedWeek'", target: confirming, effect: [deleteFailed], source: apps/nizam/features/archive/components/archive-view.tsx:244 }
+      # The dialog drops every way of closing while `deleting` (archive-view.tsx:510): the press changes nothing and the delete goes on.
+      CANCEL: { target: deleting, say: "they press Vazgeç while the delete runs: nothing happens and nothing says so (PURGE-4)", source: apps/nizam/features/archive/components/archive-view.tsx:510 }
+      CLOSE: { target: deleting, say: "they press the close icon while the delete runs: nothing happens (PURGE-4)", source: apps/nizam/features/archive/components/archive-view.tsx:510 }
     source: apps/nizam/features/archive/components/archive-view.tsx:216
 
   settled:

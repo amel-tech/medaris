@@ -243,6 +243,8 @@ states:
     on:
       FILL: { target: formFilled, effect: [fills], source: libs/ui/src/giris/register-form.tsx:121, say: "they fill every field, choose Kadın, tick the privacy box: each reason leaves as its field changes" }
       FILL_MISMATCH: { target: formMismatched, effect: [fills], say: "they fill every field, but the second password differs from the first" }
+      SUBMIT: { target: formWithReasons, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol again with the fields still empty: the same reasons, nothing is posted, the focus goes back to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   formFilled:
     title: The form filled in
@@ -253,6 +255,7 @@ states:
     by: human
     on:
       SUBMIT: { target: submitting, source: libs/ui/src/giris/register-form.tsx:177, say: "they press Kayıt ol: the checks pass and the form posts" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   formMismatched:
     title: The form filled in, with two different passwords
@@ -263,6 +266,7 @@ states:
     by: human
     on:
       SUBMIT: { target: formWithMismatch, source: libs/ui/src/giris/register-form.tsx:170, say: "they press Kayıt ol: the repeat does not match, nothing is posted" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   formWithMismatch:
     title: The form after a press with two different passwords
@@ -274,6 +278,8 @@ states:
     by: human
     on:
       FILL: { target: formFilled, effect: [fills], say: "they type the second password again, the same as the first" }
+      SUBMIT: { target: formWithMismatch, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol again with the repeat still different: the same reason, nothing is posted" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   submitting:
     title: Keycloak makes the account
@@ -290,6 +296,7 @@ states:
       FAIL.userNameTaken: { target: userNameRefused, guard: "answer == 'userNameTaken' and not fixed", source: config/keycloak/user-profile.json:41, say: "Keycloak shows the form again with the reason under Kullanıcı adı" }
       FAIL.emailTaken: { target: emailRefused, guard: "answer == 'emailTaken' and not fixed", source: config/keycloak/realms/_base.json:7, say: "Keycloak shows the form again with the reason under E-posta" }
       FAIL.expired: { target: handed_over.page_expired, guard: "answer == 'expired'", say: "Keycloak says the form's code is no longer valid" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, source: apps/keycloak-theme/src/login/pages/Register.tsx:85, say: "they take Giriş yap while the post is on its way: the link is a plain <a> and stays live, the browser leaves for the sign-in form at once, and whether Keycloak made the account is not shown to them" }
 
   userNameRefused:
     title: The form again, the user name is taken
@@ -302,6 +309,8 @@ states:
     by: human
     on:
       CHANGE_USER_NAME: { target: formFilled, effect: [fixesIt], say: "they change the user name and type both passwords again; the other fields, the choice and the box are as they left them" }
+      SUBMIT: { target: userNameRefused, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol before typing the passwords again: nothing is posted, the two empty password fields get \"Lütfen bu alanı doldurun.\" in place of their rules, the line under Kullanıcı adı stays, and the focus goes to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   emailRefused:
     title: The form again, the e-mail address is taken
@@ -313,6 +322,8 @@ states:
     by: human
     on:
       CHANGE_EMAIL: { target: formFilled, effect: [fixesIt], say: "they change the address and type both passwords again; the other fields, the choice and the box are as they left them" }
+      SUBMIT: { target: emailRefused, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol before typing the passwords again: nothing is posted, the two empty password fields get \"Lütfen bu alanı doldurun.\" in place of their rules, the line under E-posta stays, and the focus goes to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
 
   verifyEmailPage:
     title: The verification page, waiting for the mail

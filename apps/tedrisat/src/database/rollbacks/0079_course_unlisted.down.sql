@@ -1,6 +1,6 @@
--- Reverses migrations/0072_course_unlisted.sql. The app never runs this:
+-- Reverses migrations/0079_course_unlisted.sql. The app never runs this:
 -- drizzle's migrator only moves forward. To roll back by hand, run this
--- statement in one transaction, then delete 0072's row from
+-- statement in one transaction, then delete 0079's row from
 -- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
 --
 -- Lost: which courses were unlisted (MDRS-248). Every such course becomes

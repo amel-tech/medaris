@@ -762,7 +762,8 @@
       "enrollments": "Ders kayıtları",
       "decks": "Köşk desteleri",
       "permissions": "İzinler",
-      "koskSettings": "Köşk ayarları"
+      "koskSettings": "Köşk ayarları",
+      "zerothAnswers": "Sıfırıncı soru cevapları"
     },
     "countLabels": {
       "unread": "okunmamış",
@@ -1198,6 +1199,11 @@
         "title": "Ortak uygulamaları yönet",
         "short": "Ortak uygulamaları yönet",
         "help": "Ortak uygulama ekler, adını değiştirir, kapatır ya da açar ve çalışacağı köşkleri seçer."
+      },
+      "exam_zeroth_read": {
+        "title": "Sıfırıncı soru cevaplarını oku",
+        "short": "Sıfırıncı soru cevaplarını oku",
+        "help": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevapları toplu okur; talebe adı ya da tek bir cevap görünmez."
       }
     },
     "courseShort": {
@@ -1217,6 +1223,7 @@
       "session_view_content": "celse içeriği",
       "question_answer": "soru yanıtlama",
       "submission_read": "ödevler",
+      "exam_prepare": "sınav hazırlama",
       "ban_course": "ders yasağı",
       "ban_lift_course": "yasağı kaldırma",
       "deck_manage_course": "ders destesi",
@@ -1240,6 +1247,7 @@
       "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
       "question_answer": "Talebelerin sorularını gör ve yanıtla",
       "submission_read": "Talebelerin celselere yüklediği ödevleri gör, indir ve değerlendir",
+      "exam_prepare": "Dersin çoktan seçmeli sınavlarını hazırla: ayarları, konuları, soruları ve puanları",
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
@@ -2108,12 +2116,14 @@
       "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
       "question_answer": "Talebelerin sorularını gör ve yanıtla",
       "submission_read": "Talebelerin celselere yüklediği ödevleri gör, indir ve değerlendir",
+      "exam_prepare": "Dersin çoktan seçmeli sınavlarını hazırla: ayarları, konuları, soruları ve puanları",
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
       "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
-      "permission_group_define": "İzin grubu tanımla"
+      "permission_group_define": "İzin grubu tanımla",
+      "exam_zeroth_read": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevapları toplu oku"
     },
     "permissionNotes": {
       "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
@@ -3797,5 +3807,41 @@
       "cancel": "Vazgeç",
       "close": "Kapat"
     }
+  },
+  "ZerothAnswersPage": {
+    "title": "Sıfırıncı soru cevapları",
+    "intro": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevaplar, toplu olarak. Talebe adı ya da tek bir cevap gösterilmez.",
+    "hadithMeaning": "Bizi aldatan bizden değildir.",
+    "filtersLabel": "Süzgeçler",
+    "dateSpan": "Tarih aralığı",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "kosk": "Köşk",
+    "allKosks": "Bütün köşkler",
+    "madrasah": "Medrese",
+    "allMadrasahs": "Bütün medreseler",
+    "course": "Ders",
+    "allCourses": "Bütün dersler",
+    "applyFilters": "Uygula",
+    "questionsTitle": "Sorular ({count})",
+    "askedInExams": "{exams} sınavda soruldu",
+    "answeredCount": "{answered} talebe cevapladı",
+    "optionCountsLabel": "Şıkları seçen talebe sayıları",
+    "optionCount": "{option}: {count} talebe (%{percent})",
+    "optionCountOnly": "{option}: {count} talebe",
+    "openExams": "Sınavlar",
+    "openExamsLabel": "{question} sorusunu soran sınavlar",
+    "questionGone": "Bu soruyu bu aralıkta soran sınav artık yok; liste olduğu gibi kaldı.",
+    "noAnswers": "Seçtiğiniz aralıkta sıfırıncı soruya verilmiş cevap yok.",
+    "examsTableLabel": "Bu soruyu soran sınavlar",
+    "colDate": "Tarih",
+    "colAnswered": "Cevaplayan",
+    "colOptions": "Şıklar",
+    "backToQuestions": "Sorulara dön",
+    "loadFailedTitle": "Sayılar okunamadı",
+    "loadFailed": "Bağlantınızı kontrol edip yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "spanReversed": "Başlangıç, bitişten sonra olamaz.",
+    "detailFailedTitle": "Bu sorunun sınavları okunamadı"
   }
 }

@@ -214,6 +214,7 @@ states:
       (measured on the stack in a browser: the focus is on the document after the page loads).
     on:
       OPEN_RECORDINGS: { target: recordings, say: "they choose the tab \"Ders kayıtları\"", source: apps/tedris/features/courses/components/course-page.tsx:428 }
+      OPEN_PROGRAMME: { target: course, say: "they press \"Müfredat\", the tab already chosen: nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
       OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
       SIGN_IN:
@@ -242,6 +243,7 @@ states:
       resources and the block "Örnek celse" stay where they were.
     on:
       OPEN_PROGRAMME: { target: course, say: "they choose the tab \"Müfredat\"", source: apps/tedris/features/courses/components/course-page.tsx:400 }
+      OPEN_RECORDINGS: { target: recordings, say: "they press \"Ders kayıtları\", the tab already chosen: nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
       OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
       SIGN_IN:

@@ -1,0 +1,621 @@
+# The course team prepares an online multiple-choice exam in nazar-web: its settings, its topics, its questions and their points, and
+# the course's zeroth question. BUILT (MDRS-299, #408, #409, #410, #412, #413, #421, #426, #428): the course's Sınavlar page
+# (/ders/<courseId>/sinavlar, features/online-exams/components/exams-page.tsx, with the course's "Sıfırıncı soru" section) and the exam's
+# page (/ders/<courseId>/sinavlar/<examId>, exam-page.tsx, exam-workspace.tsx, exam-editor.tsx); its actions are in
+# domain/online-exams.yaml. Written graph-first on 21 November 2026; `status: proposed`, so no state names code. Publishing is
+# nazar.exams.publish, drawn in the same page under the questions.
+#
+# A draft has no celse: "Yeni sınav" makes it with a title only, and publishing makes the celse ("Celsesiz taslak", the owner, 22 Nov
+# 2026). The editor saves in the background: a topic or a question shows at once, the writes run in order, each naming the version the
+# write before it handed back, and nothing is disabled while they run (the owner, 22 Nov: "optimistic ui yok diyorum"). A write that
+# fails keeps what was typed, says "Kaydedilemedi" and offers "Yeniden dene"; what was not saved is kept in the browser and comes back
+# after a reload; a new version of Medaris deployed while the page is open says "Medaris güncellendi" with "Yenile" (#426); a page drawn
+# again by the router (a session renewal) does not start the editor over (#428).
+#
+# The owner's words this flow carries:
+#   - 21 Nov: "çoktan seçmeli"; "her soru için hangi konu hakkında olduğu işaretlenecek, bunun için önce sınav konuları girilecek 1-3
+#     kelimelik 6-7 tane mesela, her soru için bu konular işaretlenecek"; "100 puan üzerinden default'ta eşdeğer ağırlıkta her soruya
+#     puan dağıtılacak ama her soruya belirli bir puan verilebilir olacak …"; "sınav hazırlanırken taslak, yayında, 'şu gün şu saat
+#     yayında' gibi durumlar olacak".
+#   - The length, 22 Nov: "sınav süresinin varsayılanı olmasın, zorunlu olsun ama boş kalsın o olmadan sınav yayına alınamasın". This
+#     replaces his 21 Nov "sınav süresi defaultta 1 saat olacak"; the 50 suggested questions are not built.
+#   - Topic numbers, 22 Nov: "Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin
+#     kolayca"; topic deletion: "konu silebilmek de lazım sadece ekleme var".
+#   - Check boxes, 22 Nov: "doğru cevaplardan herhangi birini işaretlemesi de yeterli olsun puanı tam alması için" (ANY_CORRECT).
+#   - The zeroth question is the course's or the medrese's, no longer each exam's: "şu an vize dönemindeyiz, soruyu her sınavda aynı
+#     soralım …" (relayed) and "ders özelinde sıfırıncı soru mümkün olsun, medreseninki default olur ders özelinde değişebilir" (22 Nov).
+#     The course's question is edited on the course's Sınavlar page (zerothForm below); the medrese's in Medrese ayarları.
+#   - Arabic, 22 Nov: "arapça font boyutu küçük kalıyor … 1 rem yapalım".
+#
+# Not built: copying an earlier exam (readingCopies, copyPick, copying), the preview (preview), renaming a topic on the page (the API
+# has it), changing a scheduled exam in place (it is taken back to a draft first), and the count against 50 suggested questions.
+# Choices made in the code that are not his: a topic that questions carry is not deleted (TOPIC_IN_USE); ANY_CORRECT gives nothing for
+# a wrong mark; "Ayarları kaydet" saves the three settings at once; the course's question is changed by exam.prepare.
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.edit
+status: proposed
+domain: medaris.api
+ui: nazar.exams.edit
+title: Prepare an online exam
+summary: >-
+  A hoca, or a ders nazırı who may prepare exams, opens a draft online exam celse of a course. Its settings are the title, the
+  length (60 minutes unless changed) and the instructions; 50 questions are suggested, and the editor counts against it without
+  stopping at fewer or more. The zeroth question comes first: under the fixed hadith "Bizi aldatan bizden değildir", the preparer
+  writes a question about it and its options, none correct. Then the exam picks its topics from the course's list, six or seven
+  short names, adding new ones to the list. Each question gets its text, at least two options with the correct one (or more)
+  marked, how it is answered, and one or more topics. The 100 points are shared equally over the questions; a question can be given
+  points of its own, and the rest are shared equally over the others. The draft is saved as the team works, can be copied from an
+  earlier exam of the course, can be seen as a talebe will see it, and is published or scheduled from here (nazar.exams.publish).
+  Once the exam has opened, nothing of it can be changed.
+scope:
+  shows: the editor of one online exam in nazar-web
+  world: open
+  outOfView:
+    - "publishing, scheduling, taking back and closing early: nazar.exams.publish, which the editor's \"Yayınla\" opens"
+    - "planning the exam celse itself, and the format \"Çoktan seçmeli\" there: nazar.sessions.plan and nizam.courses.planSessions"
+    - "the results: nazar.exams.results, which an exam that has opened leads to"
+    - "an ended session (every call then sends the person to sign in: realm.auth.signIn)"
+context:
+  status:
+    values: [draft, scheduled, open, closed]
+    initial: any
+    say:
+      draft: the exam is a draft
+      scheduled: the exam is set to open at a day and time
+      open: the exam can be started, or attempts are in progress
+      closed: every attempt has ended
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person is a hoca of the exam's course, or holds the grant to prepare its exams (exam.prepare)
+      no: the person may not prepare this course's exams
+  questionsSoFar:
+    values: ["none", some]
+    initial: any
+    say:
+      "none": the exam has no question yet, so an earlier exam can be copied into it
+      some: the exam has questions
+  carried:
+    values: ["none", some]
+    initial: any
+    say:
+      "none": no question of the exam carries the topic being unpicked
+      some: questions of the exam carry the topic being unpicked
+  correct:
+    values: [one, several]
+    initial: any
+    say:
+      one: the question being written has one option marked correct
+      several: the question being written has more than one option marked correct, so how it is answered is asked
+  question:
+    values: [complete, incomplete]
+    initial: any
+    say:
+      complete: the question being saved has its text, two options or more, one marked correct and at least one topic
+      incomplete: the question being saved lacks one of these
+  ownPoints:
+    values: [fit, over]
+    initial: any
+    say:
+      fit: the points being set leave the total at 100 with something for every question that has no points of their own
+      over: the points being set would take the total over 100, or leave nothing for the questions that share
+  notice:
+    values: ["none", saved, copied, removed, topicAdded, topicExists, topicTooLong, topicEmpty, settingsInvalid, zerothInvalid, modeInvalid, pointsInvalid, copyRefused, questionGone, failed]
+    initial: "none"
+    say:
+      "none": nothing is said
+      saved: the line under the title says the change was saved, and when
+      copied: the page says the earlier exam was copied and asks to read the zeroth question again
+      removed: a toast says the question was removed and its points shared again
+      topicAdded: a toast says the topic joined the course's list
+      topicExists: the new topic's field says the course has a topic of that name
+      topicTooLong: the new topic's field says a topic is one to three words
+      topicEmpty: the new topic's field says a name is needed
+      settingsInvalid: the length's field says it is a whole number of minutes above zero
+      zerothInvalid: the zeroth question's form says it needs its question and at least two options
+      modeInvalid: the question's form says check boxes need two correct options at least
+      pointsInvalid: the points field says how points are written
+      copyRefused: the copy dialog says only a draft with no question takes a copy, from an exam of the same course
+      questionGone: a toast says the question is no longer there and the list was read again
+      failed: an alert says it could not be done
+guards:
+  mayNot: "may == 'no'"
+  locked: "status == 'open' or status == 'closed'"
+  noQuestions: "questionsSoFar == 'none'"
+  isCarried: "carried == 'some'"
+  isIncomplete: "question == 'incomplete'"
+  fits: "ownPoints == 'fit'"
+  overHundred: "ownPoints == 'over'"
+effects:
+  clearNotice: { set: { notice: "none" } }
+  saved: { set: { notice: saved } }
+  copied: { set: { notice: copied, questionsSoFar: some } }
+  removed: { havoc: [questionsSoFar], set: { notice: removed } }
+  questionAdded: { set: { questionsSoFar: some, notice: "none" } }
+  topicAdded: { set: { notice: topicAdded } }
+  topicExists: { set: { notice: topicExists } }
+  topicTooLong: { set: { notice: topicTooLong } }
+  topicEmpty: { set: { notice: topicEmpty } }
+  settingsInvalid: { set: { notice: settingsInvalid } }
+  zerothInvalid: { set: { notice: zerothInvalid } }
+  modeInvalid: { set: { notice: modeInvalid } }
+  pointsInvalid: { set: { notice: pointsInvalid } }
+  copyRefused: { set: { notice: copyRefused } }
+  questionGone: { set: { notice: questionGone } }
+  failed: { set: { notice: failed } }
+  becameOpen: { set: { status: open } }
+  clearingOwn: { set: { ownPoints: fit, notice: "none" } }
+failures:
+  opening:
+    from: getOnlineExamDraft
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [EXAM_NOT_FOUND]
+    other: [network, timeout, 5xx]
+  savingSettings:
+    from: updateOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    invalid: [VALIDATION_ERROR]
+    other: [TOPIC_NOT_FOUND, EXAM_NOT_FOUND, network, timeout, 5xx]
+  readingCopies:
+    from: listMyTeachingExams
+    other: [VALIDATION_ERROR, network, timeout, 5xx]
+  copying:
+    from: copyOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    refused: [EXAM_COPY_NOT_ALLOWED]
+    stale: [EXAM_STALE]
+    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+  savingZeroth:
+    from: saveCourseZerothQuestion
+    forbidden: [AUTHZ_FORBIDDEN]
+    invalid: [VALIDATION_ERROR]
+    other: [network, timeout, 5xx]
+  readingTopics:
+    from: listCourseTopics
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, network, timeout, 5xx]
+  savingTopics:
+    from: updateOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    other: [TOPIC_NOT_FOUND, VALIDATION_ERROR, EXAM_NOT_FOUND, network, timeout, 5xx]
+  pickingNewTopic:
+    from: updateOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    other: [TOPIC_NOT_FOUND, VALIDATION_ERROR, EXAM_NOT_FOUND, network, timeout, 5xx]
+  addingTopic:
+    from: createCourseTopic
+    forbidden: [AUTHZ_FORBIDDEN]
+    exists: [TOPIC_EXISTS]
+    tooLong: [TOPIC_TOO_LONG]
+    empty: [VALIDATION_ERROR]
+    other: [network, timeout, 5xx]
+  removingTopic:
+    from: removeCourseTopic
+    forbidden: [AUTHZ_FORBIDDEN]
+    inUse: [TOPIC_IN_USE]
+    other: [TOPIC_NOT_FOUND, network, timeout, 5xx]
+  renamingTopic:
+    from: renameCourseTopic
+    forbidden: [AUTHZ_FORBIDDEN]
+    exists: [TOPIC_EXISTS]
+    tooLong: [TOPIC_TOO_LONG]
+    other: [TOPIC_NOT_FOUND, network, timeout, 5xx]
+  addingQuestion:
+    from: addExamQuestion
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+  savingQuestion:
+    from: saveExamQuestion
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    mode: [QUESTION_MODE_INVALID]
+    gone: [QUESTION_NOT_FOUND]
+    other: [TOPIC_NOT_FOUND, VALIDATION_ERROR, network, timeout, 5xx]
+  removingQuestion:
+    from: removeExamQuestion
+    forbidden: [AUTHZ_FORBIDDEN]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    gone: [QUESTION_NOT_FOUND]
+    other: [network, timeout, 5xx]
+  settingPoints:
+    from: setExamQuestionPoints
+    forbidden: [AUTHZ_FORBIDDEN]
+    over: [POINTS_OVER_TOTAL]
+    stale: [EXAM_STALE]
+    locked: [EXAM_LOCKED]
+    invalid: [VALIDATION_ERROR]
+    gone: [QUESTION_NOT_FOUND]
+    other: [network, timeout, 5xx]
+
+# The main story: a hoca opens a new draft, writes its zeroth question, picks a topic, adds and saves a question, and goes on to publish.
+main:
+  given: { may: yes, status: draft, question: complete, ownPoints: fit }
+  events: [DONE, ZEROTH, SAVE_ZEROTH, DONE, TOPICS, DONE, PICK_TOPIC, DONE, QUESTIONS, ADD_QUESTION, DONE, SAVE_QUESTION, DONE, PUBLISH]
+initial: opening
+states:
+  opening:
+    title: The editor is opened
+    description: >-
+      The action getOnlineExamDraft, GET /online-exams/{examId}: the settings, the zeroth question and its options, the exam's
+      topics and the course's list, the questions in the preparer's order with their options and correct ones, each question's points,
+      whether each is complete and what it lacks, the status and the version every write names. Only a hoca of the exam's course, or a
+      ders nazırı who holds exam.prepare there, is answered; to anyone else the API refuses.
+    invoke: { action: getOnlineExamDraft }
+    on:
+      DONE: { guard: "may == 'yes'", target: loaded, say: "the exam is read" }
+      FAIL.forbidden: { guard: mayNot, target: forbidden, say: "the person may not prepare this course's exams" }
+      FAIL.gone: { target: notFound, say: "the celse is not an online exam, or it is gone" }
+      FAIL.other: { target: loadFailed, say: "the read failed" }
+  loaded:
+    title: The editor is drawn as the read says
+    description: A step with no screen of its own. An exam that has opened is shown read only; a draft or a scheduled exam is edited.
+    always:
+      - { guard: locked, target: readOnly, say: "the exam has opened: nothing can change" }
+      - { target: settings, say: "a draft or a scheduled exam" }
+  forbidden:
+    title: Not allowed
+    description: >-
+      The page's heading and the neutral alert "Bu sayfaya izniniz yok"; the exam's title is not shown. The API refuses every write of
+      such a person (AUTHZ_FORBIDDEN), so a page left open after the grant was taken away is refused too.
+    by: human
+    on:
+      NAVIGATE: left
+  notFound:
+    title: The exam is not found
+    description: "The read answered 404: the celse is not an online exam, or it was archived. nazar.shell.errorStates draws the page."
+    type: final
+  loadFailed:
+    title: The exam could not be read
+    description: The page says so and offers to try again; nothing is lost, since nothing was changed.
+    by: human
+    on:
+      RETRY: { target: opening, say: "they press Yeniden dene" }
+      NAVIGATE: left
+  readOnly:
+    title: The exam has opened
+    description: >-
+      Everything is shown and nothing can be changed: the settings, the zeroth question, the topics and the questions with their
+      points. The page says the exam has opened and why it no longer changes, and leads to the results (nazar.exams.results) and to
+      its publishing, where it can be closed early (nazar.exams.publish).
+    by: human
+    on:
+      RESULTS: { target: results_opened, say: "they open the results" }
+      PUBLISHING: { target: publish_opened, say: "they open its publishing, to close it early" }
+      NAVIGATE: left
+  settings:
+    title: The exam's settings
+    description: >-
+      The title, the length in minutes (60 unless changed, any whole number above zero), the instructions the briefing shows, the count
+      of questions against the suggested 50 ("12/50 soru"), and the celse's date and time, which are the earliest start. Each change is
+      saved as it is made, and the line under the title says when. A draft with no question yet can be filled from an earlier exam of
+      the course.
+    by: human
+    on:
+      CHANGE: { target: savingSettings, effect: [clearNotice], say: "they change a setting and leave the field: it is saved" }
+      COPY: { guard: noQuestions, target: readingCopies, effect: [clearNotice], say: "they choose to copy an earlier exam" }
+      ZEROTH: { target: zerothForm, effect: [clearNotice], say: "they open the zeroth question" }
+      TOPICS: { target: readingTopics, effect: [clearNotice], say: "they open the topics" }
+      QUESTIONS: { target: questions, effect: [clearNotice], say: "they open the questions" }
+      NAVIGATE: left
+  savingSettings:
+    title: Save a setting
+    description: >-
+      The action updateOnlineExam, PATCH /online-exams/{examId}, with the field changed and the version read. A length of zero or
+      less is refused at the field; a version that is no longer the stored one is refused, and the page says someone else changed the
+      exam.
+    invoke: { action: updateOnlineExam }
+    on:
+      DONE: { target: settings, effect: [saved], say: "the change is saved: the line says when" }
+      FAIL.invalid: { target: settings, effect: [settingsInvalid], say: "the field says what it takes" }
+      FAIL.stale: { target: stale, say: "someone else saved the exam since it was read" }
+      FAIL.locked: { target: opening, effect: [becameOpen], say: "the exam opened meanwhile: the page reads it again, read only" }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: settings, effect: [failed], say: "it could not be saved" }
+  readingCopies:
+    title: (not built) Read the course's earlier online exams
+    description: >-
+      The action listMyTeachingExams, GET /me/teaching-exams?courseId=&when=past: the course's earlier exams ("Aynı dersin önceki
+      sınavını kopyala"), of which the dialog keeps those of the format Çoktan seçmeli (MULTIPLE_CHOICE).
+    invoke: { action: listMyTeachingExams }
+    on:
+      DONE: copyPick
+      FAIL.other: { target: settings, effect: [failed] }
+  copyPick:
+    title: (not built) Copy an earlier exam of the course
+    description: >-
+      A dialog with the course's earlier online exams, each with its title, its date and its question count; the one picked fills this
+      draft with its settings, topics, questions, points and zeroth question, which the page asks to read again, since it changes from
+      term to term. Only a draft with no question yet takes a copy, so nothing of the team's is lost.
+    by: human
+    on:
+      PICK: { target: copying, effect: [clearNotice], say: "they pick an exam" }
+      CANCEL: { target: settings, say: "they copy nothing" }
+  copying:
+    title: (not built) Copy the exam
+    description: The action copyOnlineExam (planned), POST /online-exams/{examId}/copy, with the exam picked and the version read.
+    invoke: { action: copyOnlineExam }
+    on:
+      DONE: { target: settings, effect: [copied], say: "its contents are copied into the draft; the page asks to read the zeroth question again" }
+      FAIL.refused: { target: copyPick, effect: [copyRefused], say: "the draft has questions by now, or the exam picked is not of this course" }
+      FAIL.stale: { target: stale }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: copyPick, effect: [failed] }
+  zerothForm:
+    title: The course's zeroth question
+    description: >-
+      On the course's Sınavlar page, not in the exam: the section says whether the course asks the medrese's question ("Medresenin
+      sorusu") or its own ("Bu derse özel"); "Bu ders için değiştir" opens this form, started from the medrese's question. Above it the
+      hadith, fixed: "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" and its meaning "Bizi aldatan bizden değildir." Under it the question and its options,
+      two to ten, none correct, no points. "Medresenin sorusuna dön" deletes the course's own (removeCourseZerothQuestion, not drawn as
+      a state). A change reaches only exams published after it.
+    by: human
+    on:
+      ADD_ZEROTH_OPTION: { target: zerothForm, say: "they add an option field" }
+      REMOVE_ZEROTH_OPTION: { target: zerothForm, say: "they remove an option field, down to two" }
+      SAVE_ZEROTH: { target: savingZeroth, effect: [clearNotice], say: "they save the zeroth question" }
+      CANCEL: { target: settings, say: "they leave it unchanged" }
+  savingZeroth:
+    title: Save the zeroth question
+    description: The action saveCourseZerothQuestion, PUT /courses/{id}/exam-zeroth-question.
+    invoke: { action: saveCourseZerothQuestion }
+    on:
+      DONE: { target: settings, effect: [saved], say: "it is saved for the course" }
+      FAIL.invalid: { target: zerothForm, effect: [zerothInvalid], say: "the question, a second option or a distinct option is missing" }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: zerothForm, effect: [failed] }
+  readingTopics:
+    title: Read the course's topics
+    description: The action listCourseTopics, GET /courses/{id}/exam-topics, with how many questions of the course's exams carry each.
+    invoke: { action: listCourseTopics }
+    on:
+      DONE: topics
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: settings, effect: [failed] }
+  topics:
+    title: The exam's topics
+    description: >-
+      The course's topics, each short (one to three words), with a box to pick it for this exam and how many of the exam's questions
+      carry it; six or seven are suggested. A new topic typed here joins the course's list. A topic's name is changed in its row, for
+      the whole course; unpicking one that questions carry says how many and asks first.
+    by: human
+    on:
+      PICK_TOPIC: { target: savingTopics, effect: [clearNotice], say: "they pick a topic of the course for this exam" }
+      UNPICK_TOPIC:
+        - { guard: isCarried, target: unpickAsk, say: "they unpick a topic that questions carry: they are asked first" }
+        - { target: savingTopics, effect: [clearNotice], say: "they unpick a topic no question carries" }
+      ADD_TOPIC: { target: addingTopic, effect: [clearNotice], say: "they type a new topic and press Konu ekle" }
+      RENAME_TOPIC: { target: renamingTopic, effect: [clearNotice], say: "they change a topic's name in its row (the API has it; the page offers no control yet)" }
+      REMOVE_TOPIC: { target: removingTopic, effect: [clearNotice], say: "they press a topic's remove control and confirm" }
+      SETTINGS: { target: settings, effect: [clearNotice], say: "they go back to the settings" }
+      QUESTIONS: { target: questions, effect: [clearNotice], say: "they go on to the questions" }
+      NAVIGATE: left
+  unpickAsk:
+    title: Unpick a topic that questions carry?
+    description: >-
+      A dialog says how many of the exam's questions carry the topic, and that those left with no topic will be incomplete and keep
+      the exam from being published.
+    by: human
+    on:
+      CONFIRM: { target: savingTopics, effect: [clearNotice], say: "they press Kaldır" }
+      CANCEL: { target: topics, say: "they keep the topic" }
+  savingTopics:
+    title: Save the exam's topics
+    description: The action updateOnlineExam with the exam's topics; unpicking takes the topic off the questions that carried it.
+    invoke: { action: updateOnlineExam }
+    on:
+      DONE: { target: topics, effect: [saved], say: "the topics are saved" }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed] }
+  addingTopic:
+    title: Add a topic to the course's list
+    description: >-
+      The action createCourseTopic, POST /courses/{id}/exam-topics; the new topic joins the course's list, and is then picked for
+      this exam (pickingNewTopic).
+    invoke: { action: createCourseTopic }
+    on:
+      DONE: { target: pickingNewTopic, say: "the topic joins the course's list" }
+      FAIL.exists: { target: topics, effect: [topicExists], say: "the course has a topic of that name" }
+      FAIL.tooLong: { target: topics, effect: [topicTooLong], say: "the name is more than three words" }
+      FAIL.empty: { target: topics, effect: [topicEmpty], say: "the name is empty" }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed] }
+  pickingNewTopic:
+    title: Pick the new topic for this exam
+    description: >-
+      The action updateOnlineExam with the exam's topics and the new one, naming the version the page holds. If it fails, the topic
+      stays in the course's list, unpicked, and the page says the change was not saved.
+    invoke: { action: updateOnlineExam }
+    on:
+      DONE: { target: topics, effect: [topicAdded], say: "the new topic is picked for this exam" }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed], say: "the topic is in the course's list but not picked: the page says so" }
+  removingTopic:
+    title: Remove a topic from the course's list
+    description: >-
+      The action removeCourseTopic, DELETE /courses/{id}/exam-topics/{topicId}. The topic leaves the list at once and comes back if the
+      server refuses: a topic that questions carry is refused, naming them by exam and number (TOPIC_IN_USE). The exams that had picked
+      it lose the pick, and the answer carries their new versions, so the page's next write names the right one.
+    invoke: { action: removeCourseTopic }
+    on:
+      DONE: { target: topics, effect: [saved], say: "the topic is gone from the course's list" }
+      FAIL.inUse: { target: topics, effect: [failed], say: "questions carry it: it comes back, and the page names them" }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed] }
+  renamingTopic:
+    title: Rename a topic
+    description: The action renameCourseTopic, PATCH /courses/{id}/exam-topics/{topicId}; every exam and question of the course keeps it.
+    invoke: { action: renameCourseTopic }
+    on:
+      DONE: { target: topics, effect: [saved], say: "the topic is renamed for the whole course" }
+      FAIL.exists: { target: topics, effect: [topicExists] }
+      FAIL.tooLong: { target: topics, effect: [topicTooLong] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: topics, effect: [failed] }
+  questions:
+    title: The exam's questions
+    description: >-
+      Each question with the start of its text, its topics, its points (its own or its equal share, with two decimals), how it is
+      answered and whether it is complete; the count against 50, the count per topic with a filter by topic, and the total of the
+      points, always 100.
+    by: human
+    goal: true
+    on:
+      ADD_QUESTION: { target: addingQuestion, effect: [clearNotice], say: "they press Soru ekle" }
+      EDIT_QUESTION: { target: questionForm, effect: [clearNotice], say: "they open a question" }
+      REMOVE_QUESTION: { target: removeAsk, effect: [clearNotice], say: "they press a question's Kaldır" }
+      SET_POINTS: { target: points, effect: [clearNotice], say: "they open a question's points" }
+      PREVIEW: { target: preview, effect: [clearNotice], say: "they see the exam as a talebe will" }
+      SETTINGS: { target: settings, effect: [clearNotice], say: "they go back to the settings" }
+      TOPICS: { target: readingTopics, effect: [clearNotice], say: "they open the topics" }
+      PUBLISH: { target: publish_opened, say: "they press Yayınla" }
+      NAVIGATE: left
+  addingQuestion:
+    title: Add a question
+    description: The action addExamQuestion, POST /online-exams/{examId}/questions; it comes last, with five empty option fields.
+    invoke: { action: addExamQuestion }
+    on:
+      DONE: { target: questionForm, effect: [questionAdded], say: "the new question's form opens" }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: questions, effect: [failed] }
+  removeAsk:
+    title: Remove the question?
+    description: A dialog names the question and says its points will be shared again over the others.
+    by: human
+    on:
+      CONFIRM: { target: removingQuestion, say: "they press Kaldır" }
+      CANCEL: { target: questions, say: "they keep it" }
+  removingQuestion:
+    title: Remove the question
+    description: The action removeExamQuestion, DELETE /online-exams/{examId}/questions/{questionId}.
+    invoke: { action: removeExamQuestion }
+    on:
+      DONE: { target: questions, effect: [removed], say: "the question is removed and the points are shared again" }
+      FAIL.gone: { target: questions, effect: [questionGone] }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: questions, effect: [failed] }
+  questionForm:
+    title: A question
+    description: >-
+      The text; the options, five fields at first, at least two and as many as wanted, each with a box "Doğru", one marked or more;
+      with more than one correct, how it is answered: "Tek seçim" (radio buttons: one choice, any correct option gets the points) or
+      "Çoklu seçim" (check boxes), scored "Hepsi ya da hiç" or "Kesirli, yanlış düşer"; and the topics it is about, at least one of
+      the exam's. Arabic text is set right to left.
+    by: human
+    on:
+      ADD_OPTION: { target: questionForm, say: "they press Şık ekle" }
+      REMOVE_OPTION: { target: questionForm, say: "they remove an option" }
+      SAVE_QUESTION: { target: savingQuestion, effect: [clearNotice], say: "they press Kaydet" }
+      CANCEL: { target: questions, say: "they leave the question unchanged" }
+  savingQuestion:
+    title: Save the question
+    description: >-
+      The action saveExamQuestion, PUT /online-exams/{examId}/questions/{questionId}. A question that lacks something is saved as
+      incomplete, and the answer says what it lacks; check boxes with fewer than two correct options are refused.
+    invoke: { action: saveExamQuestion }
+    on:
+      DONE:
+        - { guard: isIncomplete, target: questionInvalid, say: "it is saved as incomplete: what it lacks is said" }
+        - { target: questions, effect: [saved], say: "the question is saved and complete" }
+      FAIL.mode: { target: questionForm, effect: [modeInvalid], say: "check boxes with one correct option" }
+      FAIL.gone: { target: questions, effect: [questionGone] }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: questionForm, effect: [failed] }
+  questionInvalid:
+    title: The question lacks something
+    description: >-
+      The question is kept as incomplete. What is missing is said at its field (the text, a second option, the correct one, a topic),
+      and the focus goes to the first; an incomplete question keeps the exam from being published.
+    by: human
+    on:
+      FIX: { target: questionForm, say: "they fill it in" }
+      LATER: { target: questions, say: "they leave it incomplete for now" }
+  points:
+    title: A question's points
+    description: >-
+      The question's points: its equal share of what the questions with points of their own leave over, or its own. Typing its own
+      says, before it is saved, what each other question will get; "Eşit paya döndür" puts the question back into the share.
+    by: human
+    on:
+      SET_OWN: { target: settingPoints, effect: [clearNotice], say: "they give the question points of its own" }
+      CLEAR_OWN: { target: settingPoints, effect: [clearingOwn], say: "they put the question back into the share" }
+      CANCEL: { target: questions, say: "they leave the points unchanged" }
+  settingPoints:
+    title: Save the points
+    description: >-
+      The action setExamQuestionPoints, PUT /online-exams/{examId}/questions/{questionId}/points. Points that would take the total
+      over 100, or leave nothing for the questions that share, are refused with how many points are left to give.
+    invoke: { action: setExamQuestionPoints }
+    on:
+      DONE: { guard: fits, target: questions, effect: [saved], say: "the points are saved and the rest are shared again" }
+      FAIL.over: { guard: overHundred, target: pointsRefused, say: "the points do not fit in 100" }
+      FAIL.invalid: { target: points, effect: [pointsInvalid] }
+      FAIL.gone: { target: questions, effect: [questionGone] }
+      FAIL.stale: { target: stale }
+      FAIL.locked: { target: opening, effect: [becameOpen] }
+      FAIL.forbidden: { target: forbidden }
+      FAIL.other: { target: points, effect: [failed] }
+  pointsRefused:
+    title: The points do not fit
+    description: The field says how many points are left to give and why these do not fit; nothing is changed.
+    by: human
+    on:
+      FIX: { target: points, say: "they change the points" }
+  preview:
+    title: (not built) The exam as a talebe sees it
+    description: >-
+      The briefing with the zeroth question, and the questions with their options in a drawn order, as a talebe will see them, with
+      nothing saved and no clock running.
+    by: human
+    on:
+      BACK: { target: questions, say: "they leave the preview" }
+  stale:
+    title: Someone else has changed the exam
+    description: >-
+      An alert dialog says someone else saved the exam since this page read it, and that the last change made here was not saved; the
+      page reads the exam again, so neither overwrites the other unseen.
+    by: human
+    on:
+      RELOAD: { target: opening, effect: [clearNotice], say: "they press Yeniden oku" }
+  publish_opened:
+    title: Publishing is opened
+    description: nazar.exams.publish.
+    type: final
+  results_opened:
+    title: The results are opened
+    description: nazar.exams.results.
+    type: final
+  left:
+    title: The person left the editor
+    description: Nothing is lost; the draft was saved as they worked.
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: nothing-changes-once-open
+    never: "state in ['settings', 'savingSettings', 'zerothForm', 'savingZeroth', 'topics', 'savingTopics', 'questions', 'questionForm', 'savingQuestion', 'points', 'settingPoints'] and (status == 'open' or status == 'closed')"
+    say: "An exam that has opened is never edited: its editor shows it read only"
+  - id: copy-only-into-an-empty-draft
+    never: "state == 'copying' and questionsSoFar == 'some'"
+    say: "An earlier exam is copied only into a draft with no question, so nothing of the team's is lost"

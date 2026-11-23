@@ -208,6 +208,7 @@ states:
     on:
       OPEN_WEEK: { guard: weekShut, target: curriculum, effect: [openWeek], say: "they open a week that is shut: its rows show, locked", source: libs/ui/src/mds/week-accordion.tsx:115 }
       CLOSE_WEEK: { guard: weekOpened, target: curriculum, effect: [closeWeek], say: "they close it again", source: libs/ui/src/mds/week-accordion.tsx:115 }
+      OPEN_CURRICULUM: { target: curriculum, say: "the tab already shown: Base UI ignores a press on the selected tab, and the weeks stay as they are", source: libs/ui/src/mds/tabs.tsx:110 }
       OPEN_TEACHERS: { target: teachers, effect: [closeWeek], say: "the tab Hocalar: the panel of Müfredat is taken out of the page, and the weeks it had opened are forgotten", source: libs/ui/src/mds/tabs.tsx:110 }
       CONTINUE:
         - { guard: canContinueOpen, target: celse_opened, starts: { flow: tedris.celse.attend }, say: "\"Derse devam et\" (\"Celse sayfasını aç\" when the seat is completed) goes to the next celse's page", source: apps/tedris/features/courses/components/course-aside.tsx:289 }
@@ -240,6 +241,7 @@ states:
       lands on Müfredat. Focus stays on the tab button that was pressed.
     source: apps/tedris/features/courses/components/course-page.tsx:474
     on:
+      OPEN_TEACHERS: { target: teachers, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
       OPEN_CURRICULUM: { target: curriculum, effect: [closeWeek], say: "the tab Müfredat, in place; the address is not touched", source: libs/ui/src/mds/tabs.tsx:110 }
       CONTINUE:
         - { guard: canContinueOpen, target: celse_opened, starts: { flow: tedris.celse.attend }, say: "\"Derse devam et\" is the card's, and the card stays", source: apps/tedris/features/courses/components/course-aside.tsx:289 }

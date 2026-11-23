@@ -274,9 +274,17 @@ states:
       with the current köşk's row `aria-current="true"`; there is no heading and no note. Each row is a plain anchor, so choosing
       one is a whole page load and not a client navigation (MENU-4): on a köşk's home it opens that köşk's home
       (/kosks/<id>/ana-sayfa), anywhere else /kosks/<id>, which redirects a köşk nazımı to that köşk's Dersler. The popup does not
-      make the page inert (Base UI leaves its focus manager non-modal for a plain menu: not seen here), so the sidebar stays.
+      make the page inert (Base UI leaves its focus manager non-modal for a plain menu: not seen here), so the sidebar stays in the
+      accessibility tree. For the pointer the menu is modal all the same: Base UI lays a backdrop over the page with a hole for the
+      button (MenuPositioner.js:242-256, `modal` defaults to true), so a press on the sidebar lands on the backdrop and only closes the
+      popup, and a second press on the button closes it too. From the code, not seen in a browser.
     on:
       ESCAPE: { target: kept, say: "Esc closes the popup", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      OPEN_PICKER: { target: kept, say: "a second press on the button: the button is the hole in the backdrop, and its press toggles the popup shut", source: libs/ui/src/mds/scope-picker.tsx:60 }
+      PICK_HOME: { target: kept, say: "a press on Ana sayfa lands on the menu's backdrop: the popup closes and the link is not followed", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_NOTIFICATIONS: { target: kept, say: "a press on Bildirimler lands on the backdrop: the popup closes, nothing opens", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_PAGE: { target: kept, say: "a press on another entry lands on the backdrop: the popup closes, nothing opens", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_PERSON: { target: kept, say: "a press on the person's row lands on the backdrop: the popup closes, Hesap does not open", source: libs/ui/src/mds/scope-picker.tsx:59 }
       CHOOSE_KOSK:
         - { guard: "place == 'notifications'", target: courses_opened, say: "on Bildirimler a row opens /kosks/<id>, which redirects to that köşk's Dersler", source: apps/nizam/components/shell/shell-frame.tsx:149 }
         - { guard: "scope == 'landing'", target: wide, effect: [toNewest], say: "on a köşk's home the other row opens that köşk's home, drawn in this frame again", source: apps/nizam/components/shell/shell-frame.tsx:149 }
@@ -350,6 +358,12 @@ states:
       start.
     on:
       ESCAPE: { target: sheet, say: "Esc closes the popup only", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      CLOSE_SHEET: { target: sheet, say: "a press on Kapat lands on the menu's backdrop: the popup closes and the sheet stays", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      OPEN_PICKER: { target: sheet, say: "a second press on the button closes the popup; the sheet stays", source: libs/ui/src/mds/scope-picker.tsx:60 }
+      PICK_HOME: { target: sheet, say: "a press on Ana sayfa lands on the backdrop: the popup closes, the sheet stays, nothing opens", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_NOTIFICATIONS: { target: sheet, say: "a press on Bildirimler lands on the backdrop: the popup closes, the sheet stays", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_PAGE: { target: sheet, say: "a press on another entry lands on the backdrop: the popup closes, the sheet stays", source: libs/ui/src/mds/scope-picker.tsx:59 }
+      PICK_PERSON: { target: sheet, say: "a press on the person's row lands on the backdrop: the popup closes, the sheet stays", source: libs/ui/src/mds/scope-picker.tsx:59 }
       CHOOSE_KOSK:
         - { guard: "place == 'notifications'", target: courses_opened, say: "a row opens /kosks/<id>, which redirects to that köşk's Dersler", source: apps/nizam/components/shell/shell-frame.tsx:149 }
         - { target: kosk_home_opened, say: "a row opens that köşk's home", source: apps/nizam/components/shell/shell-frame.tsx:149 }

@@ -161,7 +161,7 @@ nodes:
   stepKosk: { css: '[data-testid=platform-settings] ol > li', hasText: '/Köşk politikası/' }
   stepMadrasah: { css: '[data-testid=platform-settings] ol > li', hasText: '/Medrese politikası/' }
   stepCourse: { css: '[data-testid=platform-settings] ol > li', hasText: '/Ders politikası/' }
-  combineWarning: { role: status, hasText: Üst kademenin verdiği izin, alttaki politikayı aşar }
+  combineWarning: { role: status, hasText: 'Üst kademenin verdiği izin, alttaki politikayı aşar' }
   scopedSection: { css: 'section[aria-labelledby=scoped-title]' }
   scopedHeading: { role: heading, name: '/^Köşk ve medrese politikaları$/' }
   scopedTable: { role: table, name: '/^Köşk ve medrese politikaları$/' }

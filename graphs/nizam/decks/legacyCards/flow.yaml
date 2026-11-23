@@ -526,6 +526,9 @@ states:
     on:
       EXPORT_CSV: { target: exporting, say: "they press CSV", source: apps/nizam/features/decks/components/cards-table-header.tsx:79 }
       EXPORT_XLSX: { target: exporting, say: "they press Excel", source: apps/nizam/features/decks/components/cards-table-header.tsx:82 }
+      PICK_IMPORT: { target: choosingFile, say: "they press Excel'den İçe Aktar in the menu beside the submenu: the menu closes and the hidden file input is clicked", source: apps/nizam/features/decks/components/cards-table-header.tsx:69 }
+      OPEN_EXPORT: { target: exportMenu, say: "they press Dışa Aktar again: Radix's sub trigger opens a submenu only when it is closed, so nothing changes", source: apps/nizam/features/decks/components/cards-table-header.tsx:74 }
+      OPEN_SAMPLE: { target: sampleMenu, say: "they open Örnek Dosyayı İndir: its submenu takes the place of this one", source: apps/nizam/features/decks/components/cards-table-header.tsx:88 }
       ESCAPE: { target: bulkMenu, say: "they press Esc" }
     source: apps/nizam/features/decks/components/cards-table-header.tsx:74
 
@@ -537,6 +540,9 @@ states:
     on:
       SAMPLE_CSV: { target: sampling, say: "they press CSV", source: apps/nizam/features/decks/components/cards-table-header.tsx:93 }
       SAMPLE_XLSX: { target: sampling, say: "they press Excel", source: apps/nizam/features/decks/components/cards-table-header.tsx:98 }
+      PICK_IMPORT: { target: choosingFile, say: "they press Excel'den İçe Aktar in the menu beside the submenu: the menu closes and the hidden file input is clicked", source: apps/nizam/features/decks/components/cards-table-header.tsx:69 }
+      OPEN_EXPORT: { target: exportMenu, say: "they open Dışa Aktar: its submenu takes the place of this one", source: apps/nizam/features/decks/components/cards-table-header.tsx:74 }
+      OPEN_SAMPLE: { target: sampleMenu, say: "they press Örnek Dosyayı İndir again: the open submenu stays as it is", source: apps/nizam/features/decks/components/cards-table-header.tsx:88 }
       ESCAPE: { target: bulkMenu, say: "they press Esc" }
     source: apps/nizam/features/decks/components/cards-table-header.tsx:88
 

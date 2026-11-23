@@ -651,7 +651,8 @@
     "resourcesOwn": "هذه الحلقة",
     "resourcesCourse": "الدرس كله",
     "rowRecording": "يوجد تسجيل",
-    "download": " (يُنزَّل)"
+    "download": " (يُنزَّل)",
+    "examMultipleChoice": "اختيار من متعدد"
   },
   "AccountPage": {
     "pageTitle": "الحساب",
@@ -731,7 +732,8 @@
       "deck_manage_course": "إنشاء مجموعة الدرس وتعديلها",
       "deck_propose_kosk": "اقتراح مجموعة للكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس ومنح إذن أو مجموعة دون تجاوز أذونات صاحبها",
-      "permission_group_define": "تعريف مجموعة أذونات"
+      "permission_group_define": "تعريف مجموعة أذونات",
+      "exam_zeroth_read": "قراءة إجابات السؤال الصفري في الاختبارات متعددة الخيارات إجمالًا"
     },
     "permissionNotes": {
       "course_manage_all": "تُسجَّل قراءات المحتوى في سجل التدقيق.",
@@ -814,7 +816,8 @@
     "accountLabel": "حسابي: {name}",
     "notifications": "الإشعارات",
     "homeLabel": "مدارس تدريس، الصفحة الرئيسية",
-    "liveIntro": "درس {course} مباشر الآن."
+    "liveIntro": "درس {course} مباشر الآن.",
+    "exams": "امتحاناتي"
   },
   "SchedulePage": {
     "pageTitle": "جدولي",

@@ -2,7 +2,7 @@ import type { ScopeRef } from "@medaris/common";
 import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { HideLevel } from "../archive/hide-level";
 import type { CourseRestoreOutcome } from "../archive/restore-course";
-import type { IPurgeCounts } from "./course-purge";
+import type { IPurgeCounts, Tx } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
@@ -518,6 +518,12 @@ export interface ICreateSessionBatch {
    * the zone cannot slip between the expansion and the insert.
    */
   plan: (courseTimeZone: string) => IBatchSession[];
+  /**
+   * Runs in the same transaction once the sessions are in, after the course
+   * row is locked: publishing an online exam (MDRS-299) links its exam to the
+   * celse here, so a refusal there plans nothing.
+   */
+  within?: (tx: Tx, lessonIds: string[]) => Promise<void>;
 }
 
 export interface ISessionBatchWeek {
@@ -669,6 +675,14 @@ export interface ICourseRepository {
     courseId: string,
     batch: ICreateSessionBatch
   ): Promise<ISessionBatchResult>;
+  /** Deletes an online exam's celse, `within` first, in one transaction (MDRS-299). */
+  deleteExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<{ courseVersion: number }>;
+  /** The online exam a celse was planned for; null for any other (MDRS-299). */
+  findOnlineExamOfLesson(lessonId: string): Promise<string | null>;
   enroll(
     userId: string,
     courseId: string,

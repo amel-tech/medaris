@@ -269,6 +269,8 @@ states:
       CANCEL: { target: listed, say: "she presses Vazgeç" }
       CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
       SUBMIT_LINK: { target: handed_over.add, say: "she presses Kaydı ekle or Kaydet" }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      CHANGE_RELEASE: { guard: "can == 'both' and mode != 'resume'", target: linkForm, effect: [releaseChanged], say: "she chooses another time for talebe to watch it, and gives a valid one", source: apps/nazar/features/recordings/components/release-fields.tsx:22 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:593
 
   choosing:
@@ -295,6 +297,7 @@ states:
       TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır", source: apps/nazar/features/recordings/components/recording-dialog.tsx:596 }
       CANCEL: { target: listed, say: "she presses Vazgeç" }
       CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: choosing, say: "she takes the tab Bunny’ye yükle: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:409
 
   beginsUpload:
@@ -322,6 +325,13 @@ states:
       DONE: { target: beginsUpload, effect: [releaseWritten] }
       FAIL.gone: { target: failed, effect: [whyReleaseGone] }
       FAIL.forbidden: { target: failed, effect: [whyReleaseForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: savingRelease, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: savingRelease, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: savingRelease, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      STOP: { target: savingRelease, say: "she presses İptal while the release time is written: no upload exists yet, so it does nothing, and the upload follows", source: apps/nazar/features/recordings/components/recording-dialog.tsx:383 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:263
 
   starting:
@@ -343,6 +353,12 @@ states:
       FAIL.exists: { target: failed, effect: [whyExists] }
       FAIL.gone: { target: failed, effect: [whyGone] }
       FAIL.forbidden: { target: failed, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: starting, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: starting, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: starting, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/tedrisat/src/course/recording-upload.service.ts:73
 
   resigning:
@@ -362,6 +378,12 @@ states:
       FAIL.notConfigured: { target: failed, effect: [whyNotConfigured] }
       FAIL.gone: { target: failed, effect: [whyGone] }
       FAIL.forbidden: { target: failed, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: resigning, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: resigning, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: resigning, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/bunny-upload.ts:331
 
   resuming:
@@ -378,6 +400,12 @@ states:
       FAIL.notConfigured: { target: failedHalfway, effect: [whyNotConfigured] }
       FAIL.gone: { target: failedHalfway, effect: [whyGone] }
       FAIL.forbidden: { target: failedHalfway, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: resuming, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: resuming, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: resuming, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/bunny-upload.ts:330
 
   sending:
@@ -394,6 +422,9 @@ states:
       NETWORK_DROPS: { target: failedHalfway, effect: [whyNetwork], say: "the connection drops and the retries run out", source: apps/nazar/features/recordings/bunny-upload.ts:209 }
       BUNNY_REFUSES: { target: failedHalfway, effect: [whyRefused], say: "Bunny answers 401 or 403", source: apps/nazar/features/recordings/bunny-upload.ts:208 }
       BUNNY_BREAKS: { target: failedHalfway, effect: [whyFailed], say: "Bunny answers with another error", source: apps/nazar/features/recordings/bunny-upload.ts:210 }
+      CLOSE: { target: sending, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: sending, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: sending, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/bunny-upload.ts:299
 
   stopped:
@@ -407,6 +438,8 @@ states:
       SUBMIT: { target: resuming, say: "she presses Devam et", source: apps/nazar/features/recordings/components/recording-dialog.tsx:371 }
       CANCEL: { target: listed, say: "she presses Vazgeç" }
       CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: stopped, say: "she takes the tab Bunny’ye yükle: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: stopped, say: "she takes the tab Bağlantı yapıştır: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:302
 
   failed:
@@ -424,6 +457,9 @@ states:
       CHOOSE_FILE: { guard: "file == 'video'", target: choosing, effect: [chooseGood], say: "she picks the video again, or another one", source: apps/nazar/features/recordings/components/recording-dialog.tsx:237 }
       CANCEL: { target: listed, say: "she presses Vazgeç" }
       CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: failed, say: "she takes the tab Bunny’ye yükle: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır: nothing was made, so the tab is free (nazar.recordings.add)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      CHANGE_RELEASE: { guard: "can == 'both' and mode != 'resume'", target: failed, effect: [releaseChanged], say: "she chooses another time for talebe to watch it, and gives a valid one", source: apps/nazar/features/recordings/components/release-fields.tsx:22 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:306
 
   failedHalfway:
@@ -440,6 +476,8 @@ states:
       SUBMIT: { guard: "mode == 'resume' or why in ['network', 'refused', 'failed']", target: resuming, effect: [clearWhy], say: "she presses Devam et", source: apps/nazar/features/recordings/components/recording-dialog.tsx:371 }
       CANCEL: { target: listed, say: "she presses Vazgeç" }
       CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: failedHalfway, say: "she takes the tab Bunny’ye yükle: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: failedHalfway, say: "she takes the tab Bağlantı yapıştır: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:378
 
   processing:

@@ -292,6 +292,10 @@ states:
       CHOOSE_LINK: { target: addForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır'" }
       CANCEL: { target: listed, say: "she presses Vazgeç, Esc or the close icon" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      # The switch sits under both tabs (recording-dialog.tsx:617): turned here, it is what the upload or the link form sends.
+      TOGGLE_PUBLIC:
+        - { guard: isPublic, target: addUpload, effect: [madePrivate], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' off again" }
+        - { target: addUpload, effect: [madePublic], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' on: everyone may watch it, unless the course is closed or the platform or the köşk says otherwise" }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:173
 
   addForm:
@@ -321,6 +325,7 @@ states:
         - { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:336, say: "she presses 'Kaydı ekle'" }
       CANCEL: { target: listed, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon: what was typed is lost" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      CHOOSE_LINK: { target: addForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': it is the tab already shown, nothing changes" }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:552
 
   adding:
@@ -340,6 +345,10 @@ states:
       FAIL.linkInvalid: { guard: "answer == 'linkInvalid'", target: addForm, effect: [linkInvalidToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "the error toast says what is wrong with the link (a YouTube address that names no video, a foreign Bunny library…); the dialog stays" }
       FAIL.refused: { guard: "answer == 'refused'", target: addForm, effect: [refusedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
       FAIL.failed: { guard: "answer == 'failed'", target: addForm, effect: [failedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "an error toast, 'Başlığı ve https bağlantısını denetleyip yeniden deneyin.' or the general sentence; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (recording-dialog.tsx:556): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
+      CHOOSE_LINK: { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': the tabs ignore a press while the write runs (:597)" }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:331
 
   editForm:
@@ -368,6 +377,7 @@ states:
         - { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:333, say: "she presses 'Kaydet'" }
       CANCEL: { target: listed, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      CHOOSE_LINK: { target: editForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': it is the tab already shown, nothing changes" }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:160
 
   saving:
@@ -384,6 +394,10 @@ states:
       FAIL.linkInvalid: { guard: "editAnswer == 'linkInvalid'", target: editForm, effect: [linkInvalidToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "the error toast says what is wrong with the link; the dialog stays" }
       FAIL.refused: { guard: "editAnswer == 'refused'", target: editForm, effect: [refusedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
       FAIL.failed: { guard: "editAnswer == 'failed'", target: editForm, effect: [failedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "an error toast; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (recording-dialog.tsx:556): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
+      CHOOSE_LINK: { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': the tabs ignore a press while the write runs (:597)" }
     source: apps/nazar/features/recordings/components/recording-dialog.tsx:333
 
   addingStream:
@@ -441,6 +455,9 @@ states:
       FAIL.gone: { guard: "releaseAnswer == 'gone'", target: listed, effect: [releaseGoneToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:84, say: "the celse is gone: the error toast says so, the dialog closes and the list is read again" }
       FAIL.refused: { guard: "releaseAnswer == 'refused'", target: releaseForm, effect: [releaseRefusedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
       FAIL.failed: { guard: "releaseAnswer == 'failed'", target: releaseForm, effect: [releaseFailedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "an error toast, 'Açılış zamanı okunamadı…' or the general sentence; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (release-dialog.tsx:112): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: releasing, source: apps/nazar/features/recordings/components/release-dialog.tsx:112, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
     source: apps/nazar/features/recordings/components/release-dialog.tsx:72
 
   not_found:

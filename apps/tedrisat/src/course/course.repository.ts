@@ -45,6 +45,7 @@ import {
   madrasahSettings,
   madrasahs,
 } from "../database/schema/madrasah.schema";
+import { onlineExams } from "../database/schema/online-exam.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -87,7 +88,13 @@ import {
   IUpdateLesson,
   IWeekHide,
 } from "./course.repository.interface";
-import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import {
+  deleteSession,
+  IPurgeCounts,
+  purgeCourses,
+  recordDeletion,
+  Tx,
+} from "./course-purge";
 import { BULK_ENROLLMENT_ACTION } from "./domain/bulk-enrollment";
 import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -1897,6 +1904,10 @@ export class CourseRepository implements ICourseRepository {
           }))
         );
       }
+      await batch.within?.(
+        tx,
+        rows.map((row) => row.id)
+      );
       const weekNumberOf = new Map(touched.map((w) => [w.id, w.weekNumber]));
       return {
         courseVersion: stamp.version,
@@ -1917,6 +1928,43 @@ export class CourseRepository implements ICourseRepository {
           ),
       };
     });
+  }
+
+  /**
+   * Deletes the celse a published online exam made (MDRS-299), when the team
+   * takes it back before it opens: `within` puts the exam back to a draft
+   * first, under the course row's lock, then the celse goes with whatever
+   * hangs off it.
+   */
+  async deleteExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<{ courseVersion: number }> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      const course = await this.bumpVersion(tx, courseId, undefined);
+      await within(tx);
+      await deleteSession(tx, lessonId, "lesson.purge");
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "lesson.delete",
+        entity: "lesson",
+        entityId: lessonId,
+        details: { courseId, via: "online_exam.unpublish" },
+      });
+      return { courseVersion: course.version };
+    });
+  }
+
+  /** The online exam a celse was planned for (MDRS-299); null for any other celse. */
+  async findOnlineExamOfLesson(lessonId: string): Promise<string | null> {
+    const [exam] = await this.db
+      .select({ id: onlineExams.id })
+      .from(onlineExams)
+      .where(eq(onlineExams.lessonId, lessonId))
+      .limit(1);
+    return exam?.id ?? null;
   }
 
   async findKoskId(id: string): Promise<string | null> {

@@ -144,6 +144,10 @@ states:
       TYPE_NOTE: { target: pageOpen, guard: onProtectedPage, effect: [typesNote], say: "they type a note in the Not field and do not save it yet" }
       SESSION_ENDED: { target: keycloakCallsBack, effect: [endsAtKeycloak], say: "Keycloak ends the session: a sign-out in another app, an administrator, or too long idle" }
       TOKEN_REFUSED: { target: staleSession, guard: onProtectedPage, effect: [refusedByApi], say: "tedrisat starts answering 401 to the access token the session holds" }
+      ADD_NOTE:
+        - { target: pageOpen, guard: "onProtectedPage and draftTyped", effect: [savesNote], source: apps/tedris/features/courses/components/lesson-notes.tsx:321, say: "they press Notu ekle while the session is alive: the note is saved and the field is empty again (the save is tedris.learn.notes's, not drawn here)" }
+        - { target: pageOpen, guard: onProtectedPage, source: apps/tedris/features/courses/components/lesson-notes.tsx:324, say: "they press Notu ekle with the field empty: the panel says \"Not boş olamaz.\" and saves nothing (tedris.learn.notes)" }
+      FOLLOW_LINK: { target: courses_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the session is alive: /my-courses opens" }
       NAVIGATE: { target: left, say: "they close the page" }
 
   keycloakCallsBack:
@@ -217,6 +221,13 @@ states:
       FAIL.unauthenticated:
         - { target: startingSignIn, guard: endedAndKnown, say: "no token: sendToSignIn goes to /api/auth/signin?callbackUrl=<the page>&locale=tr at once, not through the app's sign-in page" }
         - { target: handed_over.reauth, guard: refusedToken, say: "the API refused the token: sendToSignIn goes to /api/auth/signin?callbackUrl=<the page>&locale=tr&reauth=1" }
+      # Derslerim is a next/link and stays live while the action runs; a navigation pre-empts a pending Server Action in Next's
+      # router (the action's router state is dropped), so the person leaves at once and the proxy gates /my-courses as from
+      # staleSession; the panel that would draw the action's answer is gone with the page.
+      FOLLOW_LINK:
+        - { target: handed_over.sign_in_page_link, guard: endedAndKnown, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'", session: "'none'" } }, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way: the proxy answers /my-courses with 307 to /auth/signin?callbackUrl=%2Fmy-courses" }
+        - { target: handed_over.reauth, guard: refusedToken, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way: the page asks tedrisat with the refused token, gets 401 and redirects to sign in with reauth=1" }
+        - { target: courses_opened, guard: endedNotYetKnown, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way, inside the minute: /my-courses opens; the note reaches tedrisat, and the page that would show it is gone" }
 
   startingSignIn:
     title: The start route sends the browser to Keycloak
@@ -297,6 +308,12 @@ states:
     type: final
     title: They close the page
     leavesPage: true
+
+  courses_opened:
+    type: final
+    title: Derslerim opens
+    leavesPage: true
+    description: "The top bar's Derslerim, a next/link to /my-courses, opened while the app still took the session as good: the page tedris.learning.myCourses draws."
 
 assertions:
   - id: a-store-knows-at-once

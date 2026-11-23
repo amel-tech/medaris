@@ -4,6 +4,8 @@ DELETE /courses/:id/decks/:deckId -> deck.manage_course on course
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
+DELETE /courses/:id/exam-topics/:topicId -> exam.prepare on course
+DELETE /courses/:id/exam-zeroth-question -> exam.prepare on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
@@ -29,6 +31,7 @@ DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madras
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
+DELETE /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
 DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public
 GET /appeals -> no AuthzGuard
@@ -47,11 +50,14 @@ GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/evaluations -> session.manage on byExistingCourse
 GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
+GET /courses/:id/exam-topics -> exam.prepare on course
+GET /courses/:id/exam-zeroth-question -> exam.prepare on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
 GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
+GET /courses/:id/online-exams -> exam.prepare on course
 GET /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
@@ -102,6 +108,8 @@ GET /lessons/:id/assignment/files/:fileId -> course.view_details on byLessonCour
 GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/evaluation -> course.view on byLessonCourse
 GET /lessons/:id/notes -> course.view on byLessonCourse
+GET /lessons/:id/online-exam -> course.view on byLessonCourse
+GET /lessons/:id/online-exam/my-result -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
 GET /lessons/:id/submission -> course.view on byLessonCourse
 GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
@@ -116,6 +124,7 @@ GET /madrasahs/:id/courses -> madrasah.course_open | madrasah.course_hide | madr
 GET /madrasahs/:id/dashboard -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/deactivation-preview -> platform.madrasah_edit on byExistingMadrasah
 GET /madrasahs/:id/exam-summary -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
+GET /madrasahs/:id/exam-zeroth-question -> madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/head-muderris/delegations -> platform.head_muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/hosting-kosks -> madrasah.course_open on byExistingMadrasah
 GET /madrasahs/:id/nazirs -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -133,6 +142,7 @@ GET /me -> no AuthzGuard
 GET /me/assignments -> no AuthzGuard
 GET /me/calendar-feed -> no AuthzGuard
 GET /me/effective-permissions -> no AuthzGuard
+GET /me/exams -> no AuthzGuard
 GET /me/grants -> no AuthzGuard
 GET /me/permissions -> no AuthzGuard
 GET /me/public-profile -> no AuthzGuard
@@ -144,6 +154,8 @@ GET /nizam/chief-nazim -> no AuthzGuard
 GET /nizam/dashboard -> no AuthzGuard
 GET /nizam/deck-publish-requests -> no AuthzGuard
 GET /nizam/deck-publish-requests/:id/cards -> no AuthzGuard
+GET /nizam/exam-zeroth-answers -> no AuthzGuard
+GET /nizam/exam-zeroth-answers/:questionKey -> no AuthzGuard
 GET /nizam/inactive-scopes -> no AuthzGuard
 GET /nizam/kosk-applications -> no AuthzGuard
 GET /nizam/kosk-applications/:id -> no AuthzGuard
@@ -157,6 +169,9 @@ GET /nizam/platform-policies -> no AuthzGuard
 GET /nizam/scoped-policies -> no AuthzGuard
 GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
+GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
+GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
+GET /online-exams/:examId/results/:userId -> exam.prepare on byOnlineExamCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -164,6 +179,7 @@ GET /users/lookup -> no AuthzGuard
 PATCH /courses/:id -> course.edit on course
 PATCH /courses/:id/decks/:deckId -> deck.manage_course on course
 PATCH /courses/:id/enrollments/:userId -> enrollment.complete on course
+PATCH /courses/:id/exam-topics/:topicId -> exam.prepare on course
 PATCH /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 PATCH /flashcard/cards/:id -> deck.manage_cards on custom
 PATCH /flashcard/decks/:id -> deck.manage_private on flashcard-deck
@@ -177,6 +193,7 @@ PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
 PATCH /nizam/partner-applications/:clientId -> no AuthzGuard
+PATCH /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 PATCH /questions/:questionId -> course.view on byQuestionCourse
 PATCH /recordings/:id -> recording.manage on byRecordingCourse
 POST /appeals/:id/accept -> no AuthzGuard
@@ -199,7 +216,9 @@ POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
 POST /courses/:id/enrollments/bulk -> enrollment.decide on course
+POST /courses/:id/exam-topics -> exam.prepare on course
 POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
+POST /courses/:id/online-exams -> exam.prepare on course
 POST /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
@@ -234,6 +253,11 @@ POST /lessons/:id/assignment/files -> session.manage on byLessonCourse
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/exam-results/release -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/clock -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/finish -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/resume -> course.view on byLessonCourse
+POST /lessons/:id/online-exam/attempt/switch -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /lessons/:id/recordings -> recording.manage on byLessonCourse
 POST /lessons/:id/recordings/uploads -> recording.upload on byLessonCourse
@@ -264,7 +288,12 @@ POST /nizam/partner-applications -> no AuthzGuard
 POST /nizam/permission-groups -> no AuthzGuard
 POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
+POST /online-exams/:examId/close -> exam.prepare on byOnlineExamCourse
+POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
+POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
+POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse
 PUT /courses/:id -> course.edit on course
+PUT /courses/:id/exam-zeroth-question -> exam.prepare on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
 PUT /courses/:id/progress -> course.view_details on course
@@ -277,13 +306,18 @@ PUT /lessons/:id/assignment -> session.manage on byLessonCourse
 PUT /lessons/:id/evaluations/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/exam-results/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
+PUT /lessons/:id/online-exam/attempt/answers/:questionId -> course.view on byLessonCourse
+PUT /lessons/:id/online-exam/zeroth-answer -> course.view on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
+PUT /madrasahs/:id/exam-zeroth-question -> madrasah.settings_edit on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
 PUT /nizam/partner-applications/:clientId/kosks -> no AuthzGuard
 PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
+PUT /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
+PUT /online-exams/:examId/questions/:questionId/points -> exam.prepare on byOnlineExamCourse
 PUT /questions/:questionId/answer -> course.view on byQuestionCourse

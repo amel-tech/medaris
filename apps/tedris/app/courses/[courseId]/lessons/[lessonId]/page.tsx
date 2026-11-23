@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
-import { getTimeZone } from "next-intl/server";
+import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { getCourse, getKosk } from "~/features/courses/actions";
 import { LessonLocked } from "~/features/courses/components/lesson-locked";
 import { SessionPage } from "~/features/courses/components/session-page";
 import { lessonLockReason } from "~/features/courses/lesson-lock";
 import { getSession } from "~/features/courses/public-reads";
+import { ExamEntry } from "~/features/online-exams/components/exam-entry";
+import { readBriefing } from "~/features/online-exams/reads";
 import { auth } from "~/lib/auth";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 
@@ -42,12 +44,46 @@ export default async function Page({
     );
   }
 
+  // An exam celse that is a published online exam (MDRS-299) leads to it.
+  const online = session.exam ? await readBriefing(session.id) : null;
+  let examEntry = null;
+  if (online?.status === "ok") {
+    const t = await getTranslations("tedrisLearn.OnlineExam");
+    const words = new Intl.DateTimeFormat(await getLocale(), {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: await getTimeZone(),
+    });
+    // A finished one leads to the talebe's own screen of it (Sınavlarım).
+    const taken = online.briefing.attempt?.status === "FINISHED";
+    examEntry = (
+      <ExamEntry
+        briefing={online.briefing}
+        href={
+          taken
+            ? `/my-exams/${session.id}`
+            : `/courses/${course.id}/lessons/${session.id}/sinav`
+        }
+        labels={{
+          title: t("entryTitle"),
+          when: t("entryWhen", {
+            opens: words.format(online.briefing.startsAt),
+            latest: words.format(online.briefing.latestStartAt),
+          }),
+          action: t(taken ? "entryResult" : "entryAction"),
+          taken: t("entryTaken"),
+        }}
+      />
+    );
+  }
+
   return (
     <SessionPage
       course={course}
       session={session}
       koskName={kosk?.name ?? null}
       now={new Date()}
+      examEntry={examEntry}
     />
   );
 }

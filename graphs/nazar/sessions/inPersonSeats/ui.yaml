@@ -43,7 +43,7 @@ nodes:
   # --- the new page --------------------------------------------------------------------------------------------------------------------
   seatsPage: { type: page, component: Page, role: main, in: [unset, applications, saving, approving, forbidden] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
   crumbs: { type: list, component: List, role: navigation, name: { key: SessionPlan.breadcrumbLabel }, in: [unset, applications, saving, approving, forbidden] } # the same breadcrumb as "Celse planla"
-  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SessionPlan.breadcrumbRoot }, in: [unset, applications, saving, approving, forbidden], emits: BREADCRUMB } # to Celseler
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SessionPlan.breadcrumbRoot }, in: [unset, applications, saving, approving, forbidden], emits: BREADCRUMB, duringStep: true } # to Celseler; a link, live while a call runs, as "Celse planla"'s is: the page goes at once, the call runs on, and the flow takes the press where its answer leads
   crumbCurrent: { type: text, component: Text, text: { key: planned.InPersonSeats.title }, in: [unset, applications, saving, approving, forbidden] } # aria-current=page, not a link
   seatsTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.title }, in: [unset, applications, saving, approving, forbidden] } # h1
   seatsIntro: { type: text, component: Text, text: { key: planned.InPersonSeats.intro, params: { when: when } }, in: [unset, applications, saving, approving] }
@@ -55,7 +55,7 @@ nodes:
   seatsFormTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.formTitle }, in: [unset, applications, saving, approving] } # h2
   femaleSeats: { type: field, component: TextField, role: spinbutton, text: { key: planned.InPersonSeats.femaleLabel }, in: [unset, applications, saving, approving], disabledIn: [saving] } # a whole number from 0; empty before the first save
   maleSeats: { type: field, component: TextField, role: spinbutton, text: { key: planned.InPersonSeats.maleLabel }, in: [unset, applications, saving, approving], disabledIn: [saving] } # a count of its own: there is no field for a total
-  saveSeats: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [unset, applications, saving, approving], disabledIn: [saving], emits: SAVE_SEATS } # the word the other forms of Celseler use
+  saveSeats: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [unset, applications, saving, approving], disabledIn: [saving, approving], emits: SAVE_SEATS } # the word the other forms of Celseler use; off while a seat is given too, so the page sends one call at a time, as Celseler's forms share one busy flag (sessions-table.tsx:149). Not decided with the owner
   unsetNote: { type: text, component: Text, text: { key: planned.InPersonSeats.unset }, in: [unset, saving], when: isUnset }
 
   # --- the applications, in order --------------------------------------------------------------------------------------------------------

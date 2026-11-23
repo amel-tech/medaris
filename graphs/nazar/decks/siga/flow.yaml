@@ -165,6 +165,7 @@ effects:
   saidWeak: { set: { said: weak } }
   saidDoubled: { set: { said: doubled } }
   saidKips: { set: { said: kips } }
+  typedAfterTry: { set: { said: none } } # a try was made before anything was typed; the root typed now reads, so its message goes
   draftsBlank: { set: { backs: blank, said: none } }
   draftsFilled: { set: { backs: filled, said: none } }
   flagged: { set: { backs: flagged } }
@@ -229,10 +230,22 @@ states:
       "Bâb" (a Base UI select standing on "Nasara – yensuru", its Arabic model verb under it), "Kipler" (two ticked checkboxes,
       "Mâzî · 14 sîga" and "Muzâri · 14 sîga") and, for each ticked tense, its meaning field with a hint ("“O …” diye: ör. yardım
       etti"). The asterisks on "Kök" and "Bâb" are drawn and never given to the controls (F-D1-03). The scrim does not close this
-      step (a form dialog); "Vazgeç", the close icon and Esc do. Where the page behind sits is inert.
+      step (a form dialog); "Vazgeç", the close icon and Esc do. Where the page behind sits is inert. The tenses can be unticked before
+      anything is typed, and "Önizle" is never disabled: pressed now it says "Kökü yazın." under the root (and "En az bir kip seçin."
+      when nothing is ticked), and from then on the messages follow what is typed.
     source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:149
     on:
-      TYPE: { target: rootTyped, say: "they type a root, and the meanings of the tenses that are ticked" }
+      TYPE:
+        - { guard: "said == 'none'", target: rootTyped, say: "they type a root, and the meanings of the tenses that are ticked" }
+        - { guard: "root == 'empty'", target: rootTyped, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259, say: "after the try they type only the meanings: 'Kökü yazın.' stays" }
+        - { guard: "root == 'letters'", target: rootTyped, effect: [saidLetters], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259, say: "after the try the message follows the root they type: 'Kök üç Arapça harf olmalı.'" }
+        - { guard: "root == 'weak'", target: rootTyped, effect: [saidWeak], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259, say: "after the try: 'Hemzeli ya da illetli kök bu üreticide yok; yalnız sâlim fiil.'" }
+        - { guard: "root == 'doubled'", target: rootTyped, effect: [saidDoubled], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259, say: "after the try: 'Muzâaf kök bu üreticide yok.'" }
+        - { guard: "kips == 'none'", target: rootTyped, effect: [saidKips], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:84, say: "the root reads: its message goes, and the tenses' message stays" }
+        - { target: rootTyped, effect: [typedAfterTry], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259, say: "the root reads: its message goes at once" }
+      UNTICK_MUZARI: { guard: "tenses != 'both' and kips == 'both'", target: rootStep, effect: [untickedMuzari], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:307, say: "they untick 'Muzâri · 14 sîga' before typing: its meaning field goes" }
+      UNTICK_MAZI: { guard: "tenses == 'none' and kips == 'mazi'", target: rootStep, effect: [untickedMazi], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:298, say: "they untick 'Mâzî · 14 sîga' too: no meaning field is left" }
+      PREVIEW: { target: rootStep, effect: [saidRequired], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99, say: "they press 'Önizle' (or Enter) before typing: 'Kökü yazın.' under the root, and nothing is drafted" }
       CANCEL: { target: deck, say: "Vazgeç: nothing was made" }
       CLOSE: { target: deck, say: "the close icon or Esc: nothing was made" }
 
@@ -317,6 +330,7 @@ states:
       FAIL.gone: { guard: "answer == 'gone'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "the deck is not there: the same sentence as any refusal, and nothing the person can do about it (SIGA-7)" }
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "she may not: the same sentence" }
       FAIL.other: { guard: "answer == 'failed'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "any other refusal: the same sentence" }
+      CLOSE: { target: saving, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:154, say: "the close icon or Esc: nothing happens, the cards are still sent" }
     source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:113
 
   left:

@@ -253,12 +253,17 @@ states:
       router.refresh() reads the page again and nothing says it worked (DCK-09). A refusal flips the button and the badge back and raises the error
       toast "Deste eklenemedi" with "Bir sorun oluştu. Yeniden dene.", which stays until it is closed; a deck that stopped being readable (404), or
       staff who are not enrolled (403, READCOPY-2), are told "try again" too. The kit's busy button keeps the focus (read from the code, not seen).
-      A second press while busy is ignored (the button is aria-disabled and `toggleCollection` returns at once).
+      A second press while busy is ignored (the button is aria-disabled and `toggleCollection` returns at once). Only this button is busy: "Çalış" and
+      the breadcrumb are plain links and leave the page at once, the answer not awaited; "Kendi desteme kopyala", "Daha fazla göster" and the toast's
+      "Kapat" act at once too while the call goes on, and the graph draws them `duringStep`, handled in `reader` once the answer is in, where the page
+      ends with the answer applied (a dialog opened meanwhile stays open over it).
     invoke: { action: collectDeck }
     on:
       DONE: { guard: collectAccepted, target: reader, say: "the badge and the button stay flipped and the page is read again, with no word", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:70 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: collectRefused, target: reader, effect: [markNotCollected, toastAddFailed], say: "the button and the badge go back and the error toast says so", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74 }
+      STUDY: { target: study_opened, say: "\"Çalış\" is a plain link and is not disabled while the call is out: the page is left at once", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:101 }
+      OPEN_DECKS: { target: decks_opened, say: "the breadcrumb's \"Desteler\" is a plain link and stays live while the call is out: the page is left at once", source: apps/tedris/features/flashcards/components/deck-header.tsx:48 }
 
   uncollecting:
     title: Take the deck out of the collection, or wait for the answer
@@ -269,11 +274,14 @@ states:
       from the read check so that leaving does not depend on still being allowed to read the deck. So the tedrisat of the stack gives no refusal for it
       (HTTP_400 for a malformed id, which the page never sends); the failure the page draws is the network's, which `attempt` turns into one. The
       refusal flips the button and the badge back and raises "Deste çıkarılamadı" with "Bir sorun oluştu. Yeniden dene.". Success is silent (DCK-09).
+      The rest of the page stays live, as in `collecting`.
     invoke: { action: uncollectDeck }
     on:
       DONE: { guard: collectAccepted, target: reader, say: "the button stays flipped and the page is read again, with no word", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:70 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.refused: { guard: collectRefused, target: reader, effect: [markCollected, toastRemoveFailed], say: "the button and the badge go back and the error toast says so (the stack cannot make this refusal)", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74 }
+      STUDY: { target: study_opened, say: "\"Çalış\" is a plain link and is not disabled while the call is out: the page is left at once", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:101 }
+      OPEN_DECKS: { target: decks_opened, say: "the breadcrumb's \"Desteler\" is a plain link and stays live while the call is out: the page is left at once", source: apps/tedris/features/flashcards/components/deck-header.tsx:48 }
 
   copyDialog:
     title: The copy dialog is open
@@ -306,7 +314,10 @@ states:
     source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:53
     description: >-
       "Kopyala" is busy (aria-disabled and a hidden <output> "Yükleniyor"); the dialog stays open and "Vazgeç", "Kapat" and Esc still work, but closing
-      does not stop the call: the card is copied and the success toast still comes (READCOPY-1, not drawn). The server action copyCard, through
+      does not stop the call: the card is copied and the success toast still comes (READCOPY-1). The graph draws "Vazgeç" and "Kapat" `duringStep`:
+      their press is handled where the answer leads, which is where the page ends (a success closes the dialog anyway; after a refusal the dialog the
+      person closed is gone and the error toast is up). The radios stay live too, but a radio chosen now does not change where the card goes: the
+      deck was taken when "Kopyala" was pressed (copy-card-dialog.tsx:50). The server action copyCard, through
       `attempt`, is POST /flashcard/decks/{target}/cards with a one-item array holding the card's own type, front, back and meta (its source), so the
       copy keeps the source line; the card is added as it is to the chosen own deck, the API makes a new row each time (nothing stops the same card
       being copied twice into one deck), and the deck being read is untouched (e2e decks#24 counts its cards before and after). Success: the toast

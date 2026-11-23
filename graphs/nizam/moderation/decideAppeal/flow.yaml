@@ -278,6 +278,8 @@ states:
       DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
       FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
+      # 'Tekrar dene' is not held back while the read runs (appeals-view.tsx:250): a second press asks for the list again beside the first.
+      RETRY: { target: retrying, source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene' again while the read runs: the button is not busy, and a second read is asked" }
     source: apps/nizam/features/appeals/actions.ts:18
 
   listed:
@@ -298,6 +300,7 @@ states:
       REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/appeals/components/appeals-view.tsx:225, say: "they press 'Reddet': the dialog asks for the note" }
       ACCEPT: { target: accepting, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:222, say: "they press 'Kabul et': nothing is asked, the decision is sent (DAPP-1)" }
       NAVIGATE: left
+      OPEN_PENDING: { target: listed, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown: nothing happens (a Base UI tab ignores a press while it is selected)" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:283
 
   empty:
@@ -310,6 +313,7 @@ states:
     on:
       OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they open 'Karara bağlanan'" }
       NAVIGATE: left
+      OPEN_PENDING: { target: empty, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown: nothing happens" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:281
 
   loadingDecided:
@@ -325,6 +329,7 @@ states:
         - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:283, say: "the decided appeals are listed, the newest decision selected" }
       FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "the read fails: the sticky toast, and the Alert replaces the tabs (same as CREQ-3 of nizam.courseRequests.decide)" }
       FAIL.signedOut: sent_to_sign_in
+      OPEN_DECIDED: { target: loadingDecided, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown while its list is read: nothing happens, the read goes on" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:60
 
   decidedList:
@@ -338,6 +343,7 @@ states:
     on:
       OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
       NAVIGATE: left
+      OPEN_DECIDED: { target: decidedList, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown: nothing happens" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:283
 
   decidedEmpty:
@@ -347,6 +353,7 @@ states:
     on:
       OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'" }
       NAVIGATE: left
+      OPEN_DECIDED: { target: decidedEmpty, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown: nothing happens" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:281
 
   decidedFailed:
@@ -369,6 +376,7 @@ states:
       DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the decided appeals (the model draws a list, not the empty line)" }
       FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
+      RETRY_DECIDED: { target: retryingDecided, source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene' again while the read runs: a second read is asked" }
     source: apps/nizam/features/appeals/actions.ts:18
 
   accepting:
@@ -392,6 +400,7 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: listed, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the page stays as it was, with an error toast" }
       FAIL.other: { guard: "answer == 'other'", target: listed, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the page stays as it was, with an error toast" }
       FAIL.signedOut: sent_to_sign_in
+      OPEN_PENDING: { target: accepting, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown, while 'Kabul et' runs: nothing happens, the decision goes on" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:115
 
   acceptedHandOver:
@@ -465,6 +474,8 @@ states:
       FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the dialog stays open with an error toast" }
       FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the dialog stays open with an error toast" }
       FAIL.signedOut: sent_to_sign_in
+      # The dialog drops every way of closing while `saving` (reject-dialog.tsx:81): the press changes nothing and the refusal is still sent.
+      CANCEL: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç or Esc while the refusal is sent: nothing happens and nothing says so" }
     source: apps/nizam/features/appeals/components/appeals-view.tsx:131
 
   home_opened:

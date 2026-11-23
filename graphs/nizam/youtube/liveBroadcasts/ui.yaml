@@ -92,8 +92,8 @@ nodes:
   useHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.useHelp }, in: [courseSetting, savingSetting] }
   privacyLegend: { type: text, component: Text, text: { key: planned.Broadcast.settings.privacyLegend }, in: [courseSetting, savingSetting] }
   privacyGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: privacyLegend }, in: [courseSetting, savingSetting] } # the visibility is stated explicitly, never left to a default (YouTube's policy)
-  radioUnlisted: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.unlisted }, checked: "privacy == 'unlisted'", in: [courseSetting, savingSetting], emits: PICK_UNLISTED }
-  radioPublic: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.public }, checked: "privacy == 'public'", in: [courseSetting, savingSetting], emits: PICK_PUBLIC }
+  radioUnlisted: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.unlisted }, checked: "privacy == 'unlisted'", in: [courseSetting, savingSetting], disabledIn: [savingSetting], emits: PICK_UNLISTED }
+  radioPublic: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.public }, checked: "privacy == 'public'", in: [courseSetting, savingSetting], disabledIn: [savingSetting], emits: PICK_PUBLIC }
   unlistedHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.unlistedHelp }, in: [courseSetting, savingSetting] }
   publicHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.publicHelp }, in: [courseSetting, savingSetting] }
   saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseSettings.save }, in: [courseSetting, savingSetting], disabledIn: [savingSetting], emits: SAVE }
@@ -141,7 +141,7 @@ nodes:
   panelStateMissed: { type: text, component: Text, text: { key: planned.Broadcast.state.missed }, in: [panel, revealingKey, panelShown], when: "phase == 'missed'" }
   addressLabel: { type: text, component: Text, text: { key: planned.Broadcast.dialog.address }, in: [panel, revealingKey, panelShown] }
   addressValue: { type: text, component: Text, text: { key: planned.Broadcast.dialog.addressValue, params: { address: stream.address } }, in: [panel, revealingKey, panelShown] } # not secret
-  copyAddress: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.copyAddressLabel }, text: { key: planned.Broadcast.dialog.copy }, in: [panel, revealingKey, panelShown], emits: COPY_ADDRESS }
+  copyAddress: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.copyAddressLabel }, text: { key: planned.Broadcast.dialog.copy }, in: [panel, revealingKey, panelShown], emits: COPY_ADDRESS, duringStep: true } # the address is no secret and does not wait for the key: it may be copied while 'Göster' reads it
   keyLabel: { type: text, component: Text, text: { key: planned.Broadcast.dialog.key }, in: [panel, revealingKey, panelShown] }
   keyMasked: { type: text, component: Text, text: { literal: "••••••••••••" }, in: [panel, revealingKey] } # dots, never the key and never a length that says it (D3); a read-only text and not a password input, which has no role
   keyValue: { type: text, component: Text, text: { key: planned.Broadcast.dialog.keyValue, params: { streamKey: stream.key } }, in: [panelShown] } # THE SECRET: its sample says it is not a key, and the catalog holds no key

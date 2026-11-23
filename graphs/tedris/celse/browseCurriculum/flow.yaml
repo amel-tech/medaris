@@ -46,7 +46,7 @@ scope:
     - "the cancelled celse's own page and the make-up link: tedris.celse.cancelled"
     - "the same row on the page of a talebe with no seat: the locked page has no pager: tedris.celse.locked"
     - "the keys that move inside the list (arrows, Home, End, Page keys), Space on a row, a typed letter that starts a search, Backspace: they move the active row or the query, and the popup stays in one of the states drawn"
-    - "closing without Esc: a second press on the button (closes, the focus stays on it), a press outside the popup (closes; the focus goes to the button only when the press landed on nothing focusable), Tab out of the popup (closes, the focus goes on to the next control)"
+    - "closing without Esc, other than by the button or a card: a press outside the popup (closes; the focus goes to the button only when the press landed on nothing focusable), Tab out of the popup (closes, the focus goes on to the next control)"
     - "a click on a row, which the pointer-move highlights first: the same step as Enter on that row"
     - "the clock: nothing here moves while the page is open (CLS-09); a row's mark is the one the page was drawn with"
     - "the course page's programme tab the link leads to: tedris.course.readProgramme"
@@ -132,6 +132,9 @@ states:
       CHOOSE_OTHER: { target: celse_opened, say: "Enter on another row (or a click on it): router.push to that celse, a soft navigation", source: apps/tedris/features/courses/components/session-curriculum.tsx:175 }
       OPEN_PROGRAMME: { target: programme_opened, say: "the link \"Ders sayfasında aç\" is followed", source: apps/tedris/features/courses/components/session-curriculum.tsx:419 }
       CLOSE: { target: page, say: "Esc: the popup closes and the focus goes back to the button", source: apps/tedris/features/courses/components/session-curriculum.tsx:297 }
+      OPEN_POPUP: { target: page, say: "a second press on the button closes the popup; the focus stays on it", source: apps/tedris/features/courses/components/session-curriculum.tsx:364 }
+      PREVIOUS: { guard: hasPrevious, target: previous_opened, say: "a press on the previous card: the pointerdown outside closes the popup, and the click follows the link, a full page load", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
+      NEXT: { guard: hasNext, target: next_opened, say: "a press on the next card: the same, forward", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
       NAVIGATE: left
 
   filtered:
@@ -154,6 +157,9 @@ states:
         - { guard: hitIsThis, target: page, say: "the first row kept is this celse: the popup closes and nothing is loaded", source: apps/tedris/features/courses/components/session-curriculum.tsx:322 }
       OPEN_PROGRAMME: { target: programme_opened, say: "the link \"Ders sayfasında aç\" is followed", source: apps/tedris/features/courses/components/session-curriculum.tsx:419 }
       CLOSE: { target: page, say: "Esc in the field: the popup closes and the focus goes back to the button", source: apps/tedris/features/courses/components/session-curriculum.tsx:325 }
+      OPEN_POPUP: { target: page, say: "a second press on the button closes the popup; the focus stays on it", source: apps/tedris/features/courses/components/session-curriculum.tsx:364 }
+      PREVIOUS: { guard: hasPrevious, target: previous_opened, say: "a press on the previous card: the pointerdown outside closes the popup, and the click follows the link, a full page load", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
+      NEXT: { guard: hasNext, target: next_opened, say: "a press on the next card: the same, forward", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
       NAVIGATE: left
 
   noMatch:
@@ -170,6 +176,9 @@ states:
       TYPE_QUERY_THIS: { target: filtered, effect: [typedThis], say: "a query that keeps rows, the first this celse", source: apps/tedris/features/courses/components/session-curriculum.tsx:179 }
       OPEN_PROGRAMME: { target: programme_opened, say: "the link \"Ders sayfasında aç\" is followed", source: apps/tedris/features/courses/components/session-curriculum.tsx:419 }
       CLOSE: { target: page, say: "Esc in the field: the popup closes and the focus goes back to the button", source: apps/tedris/features/courses/components/session-curriculum.tsx:325 }
+      OPEN_POPUP: { target: page, say: "a second press on the button closes the popup; the focus stays on it", source: apps/tedris/features/courses/components/session-curriculum.tsx:364 }
+      PREVIOUS: { guard: hasPrevious, target: previous_opened, say: "a press on the previous card: the pointerdown outside closes the popup, and the click follows the link, a full page load", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
+      NEXT: { guard: hasNext, target: next_opened, say: "a press on the next card: the same, forward", source: apps/tedris/features/courses/components/session-curriculum.tsx:257 }
       NAVIGATE: left
 
   previous_opened:

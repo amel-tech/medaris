@@ -1,0 +1,156 @@
+# What must exist for the course team's results of an online exam: written needs-first on 21 November 2026 from the owner's rules, then
+# met by MDRS-299 (#417, #423); each met need names its code or test. One is still missing: no walk with a screen reader.
+schema: delurio-graph/0
+kind: needs
+id: nazar.exams.results
+status: proposed
+needs:
+  - id: only-the-course-team-reads
+    need: >-
+      Only the course team reads an exam's results: to anyone else they are not there, and the API refuses them. Reading a talebe's
+      answers is audited, as other reads of a talebe's content are.
+    evidence:
+      - state: opening
+      - state: forbidden
+      - node: forbiddenAlert
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "is read by those who prepare the exam, and says who may release it"
+
+  - id: every-talebe-and-where-they-are
+    need: >-
+      The overview lists every talebe of the course, those who never started too, with where they are (not started, in progress,
+      handed in, ended by the time), the score out of 100, and the right, wrong and blank answers. It sorts by any of these.
+    evidence:
+      - state: overview
+      - state: empty
+      - node: talebeTable
+      - node: rowState
+      - node: sortField
+      - source: apps/tedrisat/src/online-exam/exam-results.controller.ts:56
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "draws a talebe's state, switches and zeroth answer"
+    note: "Owner, for nazar: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+
+  - id: live-while-it-is-open
+    need: "While the exam is open, the overview follows it: who started, who handed in, how many are in progress."
+    evidence:
+      - state: overview
+      - node: liveNote
+      - node: countsLine
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "reads again while the exam is open, and not once it has closed"
+
+  - id: the-topics-across-the-talebe
+    need: >-
+      The team sees the average of each topic over the talebe, and, for a topic, its questions and the talebe from the weakest in it
+      to the strongest.
+    evidence:
+      - state: overview
+      - state: topicDetail
+      - node: topicsTable
+      - node: topicTalebeTable
+      - source: apps/tedrisat/src/online-exam/domain/exam-results.ts
+    note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\": what the talebe sees of themselves, the team sees of all."
+
+  - id: a-question-that-misled-is-found
+    need: >-
+      For each question, the team sees the share of talebe who got it right, how often each option was chosen and how many left it
+      blank.
+    evidence:
+      - state: overview
+      - state: questionDetail
+      - node: questionRight
+      - node: optionChosen
+      - node: questionBlank
+      - source: apps/tedrisat/src/online-exam/domain/exam-results.ts
+
+  - id: a-talebe-s-attempt
+    need: >-
+      A talebe's attempt shows each question in the order that talebe got, with their answer, the correct one and the points got, and
+      when they started and handed in.
+    evidence:
+      - state: talebeDetail
+      - node: attemptQuestions
+      - node: attemptTimes
+      - test: apps/nazar/test/exam-answers.spec.tsx
+        name: "marks the talebe's choice with a check and words, the correct option with the badge, and the points earned"
+      - test: apps/nazar/test/exam-answers.spec.tsx
+        name: "opens a talebe's answers from the results row of one who started, and not of one who did not"
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "opens one talebe's answers: the exam's order, the correct marks, the choices and the points, and only that talebe's"
+    note: >-
+      Owner, 22 Nov 2026: "sınav sonuçlarında talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım" (#423). The
+      questions come in the exam's order, not the talebe's (my choice).
+
+  - id: the-switches-are-shown
+    need: >-
+      The team sees, for each talebe, how many times they switched to another tab or window and when, and each time the exam started
+      again.
+    evidence:
+      - state: overview
+      - state: talebeDetail
+      - node: rowSwitches
+      - node: switchItem
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "draws a talebe's state, switches and zeroth answer"
+    note: "Owner, asked whether the team sees the switches: \"Evet, sayı ve zaman\"."
+
+  - id: the-zeroth-answers-per-talebe
+    need: >-
+      The team reads each talebe's answer to the zeroth question, and how many chose each option. The answer is no part of the score,
+      and nothing marks one as right or wrong.
+    evidence:
+      - state: overview
+      - state: talebeDetail
+      - node: rowZeroth
+      - node: zerothCounts
+      - node: zerothNoScore
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "reads a finished talebe's score, counts and zeroth answer, and writes the score to Değerlendirme"
+    note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\" (management's view is nizam.exams.zerothAnswers)."
+
+  - id: saved-answers-count-for-an-unfinished-attempt
+    need: >-
+      An attempt that was never handed in, because the talebe left or lost the connection until the end, is scored on the answers it
+      saved, and says that the time ended it.
+    evidence:
+      - state: overview
+      - node: rowState
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "closes early: an attempt in progress ends with its saved answers, and nothing starts or closes again"
+    note: "From the owner's \"verilen cevap kabul edilecek\"."
+
+  - id: release-the-results
+    need: >-
+      "Sonuçları talebelere aç" releases the results after a question that says the talebe will read their scores; the release is
+      once and for all, and the page says when and by whom.
+    evidence:
+      - state: released
+      - node: releaseButton
+      - node: releaseDialog
+      - node: releasedLine
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "releases at once, and offers no release to one who may not"
+    note: "As Değerlendirme releases an exam celse's results today (nazar.evaluation.examScores); owner, asked whether the team releases them: \"evet\"."
+
+  - id: in-degerlendirme-with-the-other-exams
+    need: >-
+      The scores also stand in Değerlendirme beside the course's other exams, as the exam celse's results; a talebe who never
+      started is "Girmedi" there, and the release is the one Değerlendirme has.
+    evidence:
+      - state: overview
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "reads a finished talebe's score, counts and zeroth answer, and writes the score to Değerlendirme"
+    note: >-
+      An online exam is an exam celse (owner, 21 Nov 2026). Değerlendirme keeps whole scores, so 87.50 is written as 88 (half up);
+      "Girmedi" is not written by itself: the team marks it there as today (choices of #417, not his).
+
+  - id: words-and-numbers-not-colour-alone
+    need: >-
+      Every figure is said in words and numbers; a bar or a colour only repeats it, the tables have headers a screen reader reads, and
+      a chart has the same figures as text.
+    evidence:
+      - state: overview
+      - node: countsLine
+      - node: topicBar
+    missing: "MDRS-299: the results say each figure in text, but the page was not walked with a screen reader"

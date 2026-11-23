@@ -179,6 +179,8 @@ effects:
   alreadyToast: { set: { toast: already } }
   groupGoneToast: { set: { toast: groupGone } }
   refusedToast: { set: { toast: refused } }
+  inOffice: { set: { roster: some } } # the list behind the dialog has the row of the person just appointed
+  anotherPerson: { havoc: [person] } # a second appointment is of another address, which may be anyone's
 
 failures:
   reading:
@@ -295,6 +297,7 @@ states:
         - { guard: found, target: picked, source: apps/nizam/features/permissions/components/nazim-picker.tsx:47, say: "the person is found: the field is replaced by 'Seçilen kişi' with their name and address, and 'Kaydet' is on" }
       FAIL.unavailable: { guard: "person == 'down'", target: asking, effect: [downNote], source: apps/nizam/features/permissions/components/nazim-picker.tsx:54, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field; the same address may be searched again" }
       CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "they close the dialog while the search runs; its answer is dropped" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle' while the search runs: a plain link, never disabled, so the page is loaded anew and the answer is dropped with everything typed (MAPPT-10)" }
     source: apps/nizam/features/madrasahs/actions.ts:123
 
   picked:
@@ -350,9 +353,12 @@ states:
       person held), the permissions and the audit rows medaris_nazim.appoint and permission.grant in one transaction, all ending at the same
       instant. "Kaydet" is busy (aria-disabled, aria-busy; its hidden word is the kit's default "Yükleniyor", not a catalogue message, MAPPT-8)
       and the group, the boxes, the end and "Seçimi kaldır" are disabled. "Vazgeç", the close icon and Esc stay on and do nothing meanwhile
-      (`if (!saving) onOpenChange(next)`, MAPPT-6).
+      (`if (!saving) onOpenChange(next)`, MAPPT-6). "İzin gruplarını düzenle" is a plain link and stays on: following it loads the
+      other page while the call is out.
     invoke: { action: appointMedarisNazim }
     on:
+      CANCEL: { target: appointing, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Esc: nothing happens, the save goes on (MAPPT-6)" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle' while the save is out: the page is loaded anew, so no toast and no list tell what became of the POST, which has already gone (not verified in a browser; MAPPT-10)" }
       DONE: { guard: appointable, target: appointed, effect: [appointedToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162, say: "a toast says 'Medaris nazımı atandı', the dialog closes, the list is read again and has the new person's row" }
       FAIL.alreadyAppointed: { guard: "person == 'already'", target: picked, effect: [alreadyToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155, say: "MEDARIS_NAZIM_ALREADY_APPOINTED: a sticky error toast 'Medaris nazımı atanamadı' says 'Bu kişi zaten Medaris nazımı.'; the dialog stays open with the person chosen" }
       FAIL.groupGone: { guard: "person == 'groupGone' and group == 'chosen'", target: picked, effect: [groupGoneToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155, say: "PERMISSION_GROUP_NOT_FOUND: an error toast says 'Bu grup artık yok.'; the dialog stays open, the group still chosen (its option is not taken out)" }
@@ -372,6 +378,7 @@ states:
     by: human
     goal: true
     on:
+      OPEN_APPOINT: { target: asking, effect: [reset, inOffice, anotherPerson], source: apps/nizam/features/permissions/components/nazims-view.tsx:211, say: "they press 'Medaris nazımı ata' again: the same dialog opens empty, for another person; the list behind it keeps the new row" }
       APPOINTEE_OPENS_HOME:
         - { guard: "person != 'chief' and givesSomething", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'some'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed signs in and opens Ana sayfa: her menu and home are cut to what she was given (nizam.home.medarisNazimCut)" }
         - { guard: "person != 'chief'", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'none'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed with nothing opens Ana sayfa: a bare home that says nothing was given" }

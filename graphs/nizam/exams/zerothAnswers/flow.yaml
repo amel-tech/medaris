@@ -1,0 +1,136 @@
+# Medaris management reads, in nizam-web, how the zeroth question of the online exams was answered, in aggregate: never one talebe's
+# answer. BUILT (MDRS-299, #420, #427): apps/nizam/app/sifirinci-soru-cevaplari and app/kosks/[id]/sifirinci-soru-cevaplari
+# (features/zeroth-answers), reached from the menu by a person who holds exam.zeroth_read; its reads are listZerothAnswerCounts and
+# getZerothQuestionExams of domain/online-exams.yaml (GET /nizam/exam-zeroth-answers). Written graph-first on 21 November 2026;
+# `status: proposed`, so no state names code.
+#
+# The owner's words this flow carries: the zeroth question, "'bizi aldatan bizden değildir' hadisi hakkında soru olacak … doğru yanlış
+# cevabı olan bi soru değil" (21 Nov); who reads the answers, "Yönetim toplu, ekip talebe bazında" (21 Nov); "Köşk nazımı kendi
+# köşkünü" (21 Nov). The question is the course's or the medrese's since 22 Nov, so exams of one medrese can ask different ones; they
+# count together only when their words and options match letter for letter (my choice).
+#
+# The counts are exact. The first draft hid every count under five and called it his rule; it was not: "ben böyle bi karar vermedim,
+# saçma bu zaten neden gizleyeyim tabi ki görünecek" (22 Nov 2026). #427 removed the hiding.
+#
+# Choices made in the code that are not his: the span is the last 90 days when the page opens, sent as UTC+3 day bounds; the filters
+# apply with "Uygula"; every read is written to the audit log (exam.zeroth_read).
+schema: delurio-graph/0
+kind: flow
+id: nizam.exams.zerothAnswers
+status: proposed
+domain: medaris.api
+ui: nizam.exams.zerothAnswers
+title: Read how the zeroth question was answered, across exams
+summary: >-
+  The Medaris başnazımı, a Medaris nazımı who holds the grant, or a köşk nazımı for their own köşk, opens the zeroth question's
+  page in nizam. It lists the zeroth questions of the online exams, with exams that asked the same words counted together, and for
+  each how many talebe answered and how many chose each option. It filters by a span of dates, by köşk, by medrese and by course. No
+  talebe's name and no single answer is shown; every count is exact.
+scope:
+  shows: one page of nizam-web
+  world: open
+  outOfView:
+    - "the course team's view of its own talebe's answers, by name: nazar.exams.results"
+    - "the menu of nizam, where the page's entry would sit: nizam.nav (captured from the code; the entry is planned and not drawn there)"
+    - "a read that fails outright and an ended session (the page then says it could not be read, or sends the person to sign in: realm.auth.signIn)"
+context:
+  answers:
+    values: [none, some]
+    initial: any
+    say:
+      none: no zeroth question has been answered in the span chosen
+      some: answers are counted
+  toast:
+    values: [none, gone]
+    initial: none
+    say:
+      none: no toast
+      gone: the toast says no exam in the span asks that question any more
+effects:
+  refilter: { havoc: [answers], set: { toast: none } }
+  clearToast: { set: { toast: none } }
+  toastGone: { set: { toast: gone } }
+failures:
+  opening:
+    from: listZerothAnswerCounts
+    forbidden: [AUTHZ_FORBIDDEN]
+  questionReading:
+    from: getZerothQuestionExams
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [ZEROTH_QUESTION_NOT_FOUND]
+main:
+  given: { answers: some }
+  events: [DONE, FILTER, DONE, OPEN, DONE]
+initial: opening
+states:
+  opening:
+    title: The page is opened
+    description: >-
+      The action listZerothAnswerCounts, GET /nizam/exam-zeroth-answers, with the span and the place chosen (the last 90 days and
+      every place the person may read, when the page opens): the zeroth questions, the same words counted together, each with how
+      many exams asked it, how many talebe answered and how many chose each option.
+      read is audited. A person who holds exam.zeroth_read neither in the platform scope nor in a köşk is refused.
+    invoke: { action: listZerothAnswerCounts }
+    on:
+      DONE: loaded
+      FAIL.forbidden: forbidden
+  loaded:
+    title: The page is drawn as the read says
+    description: A step with no screen of its own.
+    always:
+      - { guard: "answers == 'none'", target: empty, say: "no answer in the span" }
+      - { target: listed, say: "answers are counted" }
+  forbidden:
+    title: Not allowed
+    description: >-
+      The page is not in the menu for this person, and opened by its address it shows the shell's own refusal, "Bu bölüm için izniniz
+      yok"; the API refuses the counts.
+    by: human
+    on:
+      GO_HOME: { target: home_opened, say: "'Ana sayfaya dön' goes to '/'" }
+      NAVIGATE: left
+  listed:
+    title: The zeroth questions and their answers
+    description: >-
+      Each zeroth question, the same words of several exams counted together, with how many exams asked it, how many talebe answered,
+      and how many chose each option, as a number and a percentage, every count exact.
+    by: human
+    goal: true
+    on:
+      FILTER: { target: opening, effect: [refilter], say: "they filter by dates, köşk, medrese or course: the counts are read again" }
+      OPEN: { target: questionReading, effect: [clearToast], say: "they open a question" }
+      NAVIGATE: left
+  questionReading:
+    title: Read one question's exams
+    description: >-
+      The action getZerothQuestionExams, GET /nizam/exam-zeroth-answers/{questionKey}, in the same span and place: the exams that
+      asked it, each with its counts, and the counts over them all. The read is audited.
+    invoke: { action: getZerothQuestionExams }
+    on:
+      DONE: questionDetail
+      FAIL.forbidden: forbidden
+      FAIL.gone: { target: listed, effect: [toastGone], say: "no exam in the span asks it any more: a toast says so and the list stays as it was" }
+  questionDetail:
+    title: A zeroth question
+    description: >-
+      The exams that asked it, each with its course, its köşk and its date and the counts of its options, and the counts over them
+      all; every count is exact.
+    by: human
+    on:
+      BACK: listed
+      NAVIGATE: left
+  empty:
+    title: No answer yet
+    description: The page says no zeroth question has been answered in the span chosen.
+    by: human
+    on:
+      FILTER: { target: opening, effect: [refilter], say: "they choose another span" }
+      NAVIGATE: left
+  home_opened:
+    title: The home page is opened
+    description: nizam's home page.
+    type: final
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true
