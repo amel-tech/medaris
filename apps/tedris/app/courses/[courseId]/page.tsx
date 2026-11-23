@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { getKosk } from "~/features/courses/actions";
 import {
@@ -9,7 +8,7 @@ import {
 import { CoursePage } from "~/features/courses/components/course-page";
 import { courseViewState, holdsSeat } from "~/features/courses/course-view";
 import { introMetadata } from "~/features/courses/intro-metadata";
-import { loadCourse } from "~/features/courses/load-course";
+import { loadCourseOrLeave } from "~/features/courses/load-course";
 import {
   getCourseDecks,
   getCourseForMetadata,
@@ -25,8 +24,8 @@ type Params = Promise<{ courseId: string }>;
 type SearchParams = Promise<{ tab?: string | string[] }>;
 
 // Open to signed-out visitors (MDRS-122); its lessons are not. The metadata
-// is read with no token: a draft, a hidden course or a course of an unlisted
-// köşk gets the generic title.
+// is read with no token: a draft, a hidden course, an unlisted course
+// (MDRS-248) or a course of an unlisted köşk gets the generic title.
 export async function generateMetadata({
   params,
 }: {
@@ -54,8 +53,7 @@ export default async function Page({
 }) {
   const { courseId } = await params;
   const { tab } = await searchParams;
-  const course = await loadCourse(courseId);
-  if (!course) notFound();
+  const course = await loadCourseOrLeave(courseId);
 
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
@@ -92,7 +90,9 @@ export default async function Page({
     <CoursePage
       course={course}
       koskName={kosk?.name ?? null}
-      approvalRequired={course.requiresApproval || Boolean(kosk?.isPrivate)}
+      approvalRequired={
+        course.requiresApproval || course.isUnlisted || Boolean(kosk?.isPrivate)
+      }
       signedIn={signedIn}
       signInHref={hrefs.signIn}
       registerHref={hrefs.register}

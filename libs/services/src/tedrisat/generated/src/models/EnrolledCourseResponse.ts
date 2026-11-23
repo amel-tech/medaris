@@ -132,6 +132,12 @@ export interface EnrolledCourseResponse {
      */
     isClosed: boolean;
     /**
+     * Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only; every enrollment waits for approval.
+     * @type {boolean}
+     * @memberof EnrolledCourseResponse
+     */
+    isUnlisted: boolean;
+    /**
      * The word printed on the cover; null when none.
      * @type {string}
      * @memberof EnrolledCourseResponse
@@ -259,6 +265,7 @@ export function instanceOfEnrolledCourseResponse(value: object): value is Enroll
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
     if (!('isClosed' in value) || value['isClosed'] === undefined) return false;
+    if (!('isUnlisted' in value) || value['isUnlisted'] === undefined) return false;
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
@@ -297,6 +304,7 @@ export function EnrolledCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'grantsCertificate': json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'],
         'isClosed': json['isClosed'],
+        'isUnlisted': json['isUnlisted'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'inPerson': json['inPerson'],
         'timeZone': json['timeZone'],
@@ -341,6 +349,7 @@ export function EnrolledCourseResponseToJSONTyped(value?: EnrolledCourseResponse
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
+        'isUnlisted': value['isUnlisted'],
         'coverLabel': value['coverLabel'],
         'inPerson': value['inPerson'],
         'timeZone': value['timeZone'],

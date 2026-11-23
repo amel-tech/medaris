@@ -52,6 +52,7 @@ const course = (over: Record<string, unknown> = {}) =>
 /** A müderris's controls: everything open (`controlsOf` is pinned in course-settings.spec.ts). */
 const OPEN: CourseSettingsControls = {
   closed: "open",
+  unlisted: "open",
   approval: "open",
   inPerson: true,
   zone: true,
