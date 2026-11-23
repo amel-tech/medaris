@@ -92,6 +92,9 @@ export function CourseCreateForm({ kosk, request }: Props) {
   const [publish, setPublish] = useState<"draft" | "publish">("draft");
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
+  // A hoca search is running: the course waits for it, or it would be opened
+  // without the hoca being looked up.
+  const [lookingUp, setLookingUp] = useState(false);
 
   const zones = useMemo(() => listTimeZones(timeZone), [timeZone]);
   const base = `/kosks/${kosk.id}`;
@@ -123,6 +126,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving || lookingUp) return;
     const payload = teamPayload(team, 0);
     if (hasProblem || !pattern || !payload) {
       setSent(true);
@@ -207,10 +211,15 @@ export function CourseCreateForm({ kosk, request }: Props) {
       data-testid="course-create"
     >
       <header className="flex max-w-[48rem] flex-col gap-3">
+        {/* No way out while "Dersi aç" runs its three calls: leaving then
+            can leave a course with no celses and its request unanswered. */}
         <Breadcrumb
           label={t("breadcrumbLabel")}
           items={[
-            { label: t("breadcrumbRoot"), href: `${base}/dersler` },
+            {
+              label: t("breadcrumbRoot"),
+              href: saving ? undefined : `${base}/dersler`,
+            },
             t("breadcrumbCurrent"),
           ]}
         />
@@ -310,6 +319,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
               onChange={setTeam}
               disabled={saving}
               withUnvan
+              onSearchingChange={setLookingUp}
               error={show(teamProblem === "team", "team")}
             />
             {sent && teamProblem === "imam" ? (
@@ -503,11 +513,21 @@ export function CourseCreateForm({ kosk, request }: Props) {
               },
             ]}
           />
+          {saving ? (
+            <p className="mds-caption" data-testid="course-opening">
+              {t("opening")}
+            </p>
+          ) : null}
           <div className="flex items-center justify-end gap-3">
             <Button variant="ghost" href={`${base}/dersler`} disabled={saving}>
               {t("cancel")}
             </Button>
-            <Button type="submit" loading={saving} loadingLabel={t("saving")}>
+            <Button
+              type="submit"
+              loading={saving}
+              loadingLabel={t("saving")}
+              disabled={lookingUp}
+            >
               {t("submit")}
             </Button>
           </div>

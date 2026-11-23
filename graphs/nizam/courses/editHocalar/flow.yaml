@@ -290,7 +290,7 @@ states:
       may save the course while it is open (`OTHER_SAVES`); nothing on the page tells her.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:80, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:92, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
       REMOVE_IMAM:
         - { guard: "list == 'lone'", target: settle, effect: [imamLeftLone], source: apps/nizam/features/courses/present.ts:310, say: "they press the one hoca's 'Çıkar': the list is empty and says 'En az bir hoca olmalı.'" }
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar': the other account is the imam now" }
@@ -300,8 +300,8 @@ states:
         - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press a non-imam account's 'Çıkar'" }
         - { guard: "list == 'pairNoImam'", target: settle, effect: [otherLeftPairNoImam], source: apps/nizam/features/courses/present.ts:310, say: "they press an account's 'Çıkar' while the imam is missing: the account left is the imam" }
       PICK_IMAM:
-        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
-        - { guard: "list == 'pairNoImam'", target: settle, effect: [imamMarkedOfNoImam], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark one of the two accounts as the imam" }
+        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark another account as the imam" }
+        - { guard: "list == 'pairNoImam'", target: settle, effect: [imamMarkedOfNoImam], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark one of the two accounts as the imam" }
       OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and nothing here says so" }
       CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
       CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
@@ -312,7 +312,7 @@ states:
     description: The same dialog with "Kaydet" on; pressing it sends the whole list with the version it was read at.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:80, say: "they look up another hoca" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:92, say: "they look up another hoca" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [imamLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar': nobody is the imam, the button goes off" }
@@ -321,7 +321,7 @@ states:
         - { guard: "list == 'pair'", target: settle, effect: [otherLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the other account's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press a non-imam account's 'Çıkar'" }
       PICK_IMAM:
-        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
+        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark another account as the imam" }
       OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and 'Kaydet' is still on" }
       SAVE: { target: saving, effect: [clearToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:95, say: "they press 'Kaydet'" }
       CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
@@ -341,15 +341,15 @@ states:
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and list == 'empty'", target: settle, effect: [addedToEmpty], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added and is the imam: one account" }
-        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added; there are two accounts now and the imam stays who it was" }
-        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added; there are three accounts" }
-        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nizam/features/courses/components/team-picker.tsx:93, say: "'Bu kişi zaten listede.' and nobody is added; the field is cleared" }
-        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/courses/components/team-picker.tsx:108, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'; the address stays in the field and is not searched again until it changes" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/courses/components/team-picker.tsx:110, say: "'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.': every failure of the search is this one sentence, the 403 included" }
+        - { guard: "lookup == 'found' and list == 'empty'", target: settle, effect: [addedToEmpty], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added and is the imam: one account" }
+        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added; there are two accounts now and the imam stays who it was" }
+        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added; there are three accounts" }
+        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nizam/features/courses/components/team-picker.tsx:107, say: "'Bu kişi zaten listede.' and nobody is added; the field is cleared" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/courses/components/team-picker.tsx:121, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'; the address stays in the field and is not searched again until it changes" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/courses/components/team-picker.tsx:123, say: "'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.': every failure of the search is this one sentence, the 403 included" }
       CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "they close the dialog while the search runs: its answer is dropped" }
       CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
-    source: apps/nizam/features/courses/components/team-picker.tsx:85
+    source: apps/nizam/features/courses/components/team-picker.tsx:98
 
   saving:
     title: The list is on its way

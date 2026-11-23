@@ -28,7 +28,7 @@ needs:
       - node: breadcrumbRoot
       - node: cancel
       - node: planTitle
-      - source: apps/nizam/features/courses/components/sessions-view.tsx:494
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:498
       - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/sessions/new/page.tsx:20"
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 1, 3, 5: three Fridays are previewed, created in their weeks, and nothing is sent while a field is missing"
@@ -204,7 +204,7 @@ needs:
       - node: arrivalTitle
       - node: arrivalBody
       - state: form
-      - source: apps/nizam/features/courses/components/course-create-form.tsx:181
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:185
     note: >-
       replay: none here; nizam.courses.open reaches it (this flow's `fromOpen: true`), and the stack cannot make the celses fail
 

@@ -198,7 +198,8 @@ export function SessionsView({
 
   const saveEditing = async (event: FormEvent) => {
     event.preventDefault();
-    if (!editing) return;
+    // A cancelled celse takes no link, time or mark: the form is not sent.
+    if (!editing || target?.state === "cancelled") return;
     if (editing.kind === "stream") {
       const problemKey = liveStreamProblem(editing.value);
       const url = normalizeYoutubeLiveUrl(editing.value);
@@ -273,6 +274,9 @@ export function SessionsView({
       return;
     }
     setVersion(result.data.courseVersion);
+    // A form left open beneath the confirmation was for this celse: it closes
+    // with the cancel, or it would stay open, Kaydet live, for a cancelled one.
+    if (editing?.id === cancelling.id) setEditing(null);
     toast.success(t("cancelledToast"), {
       description: t("cancelledBody", { name: cancelling.title }),
     });
@@ -532,7 +536,7 @@ export function SessionsView({
             rowKey={(r) => r.id}
             empty={t("upcomingEmpty")}
           />
-          {editing && target ? (
+          {editing && target && target.state !== "cancelled" ? (
             <form
               className="mds-card flex flex-col gap-3"
               onSubmit={saveEditing}

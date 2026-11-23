@@ -2583,6 +2583,7 @@
     "cancel": "Vazgeç",
     "submit": "Dersi aç",
     "saving": "Kaydediliyor…",
+    "opening": "Ders açılıyor. Bitene kadar bu sayfadan ayrılmayın.",
     "failed": "Ders açılamadı",
     "created": "Ders açıldı",
     "createdBody": "{name} açıldı.",

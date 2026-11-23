@@ -554,7 +554,6 @@ gaps:
     - unsaved-edits-survive-a-link
     - a-save-keeps-the-focus-and-says-it
     - a-failed-call-is-told
-    - the-form-is-locked-while-it-is-sent
     - name-each-row-and-field
     - buttons-land-on-the-page-they-name
   nizam.courses.decideApplications:
@@ -997,7 +996,6 @@ gaps:
     - ask-before-a-platform-wide-change
     - a-switch-names-who-applies-it
     - the-table-covers-medreses
-    - two-switches-do-not-fight
     - a-change-that-changes-nothing-is-not-logged
   nizam.shell.landingByRole:
     - a-failed-read-on-the-root-says-so

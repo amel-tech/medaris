@@ -61,7 +61,7 @@ needs:
       - node: searchDownAlert
       - node: added
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nizam/features/courses/components/team-picker.tsx:80
+      - source: apps/nizam/features/courses/components/team-picker.tsx:92
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
 
@@ -79,7 +79,7 @@ needs:
       - node: imamBadge
       - node: imamRequired
       - source: apps/nizam/features/courses/present.ts:289
-      - source: apps/nizam/features/courses/components/team-picker.tsx:182
+      - source: apps/nizam/features/courses/components/team-picker.tsx:195
       - source: apps/tedrisat/src/course/course.controller.ts:368
       - test: apps/nizam/e2e/courses.e2e.ts
         name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
