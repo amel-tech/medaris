@@ -209,28 +209,20 @@ test.describe("tedris/12: an enrolled talebe", () => {
     await expect(main.getByRole("tab", { name: /Ders destesi/ })).toBeVisible();
   });
 
-  test("updates the progress, refuses a number over 100", async ({ page }) => {
+  test("counts the progress from the celses watched, with nothing to type (MDRS-248)", async ({
+    page,
+  }) => {
     await page.goto(coursePath());
     const main = page.locator("main").first();
-    await main.getByRole("button", { name: "İlerlemeni güncelle" }).click();
-    const dialog = page.getByRole("dialog", { name: "İlerlemeni güncelle" });
-    await dialog.getByLabel("İlerleme (yüzde)").fill("101");
-    await dialog.getByRole("button", { name: "Kaydet" }).click();
+    await expect(main.getByText("%40")).toBeVisible();
     await expect(
-      dialog.getByText("0 ile 100 arasında bir tam sayı yaz.")
+      main.getByText(
+        "İzlediğin celselerden kendiliğinden hesaplanır; dersi tamamladığını ders kadrosu onaylar."
+      )
     ).toBeVisible();
-    expect(await fixture.enrollmentOf(talebe.sub as string)).toMatchObject({
-      progress: 40,
-    });
-
-    await dialog.getByLabel("İlerleme (yüzde)").fill("55");
-    await dialog.getByRole("button", { name: "Kaydet" }).click();
-    await expect(dialog).toBeHidden();
-    await page.reload();
-    await expect(page.locator("main").first().getByText("%55")).toBeVisible();
-    expect(await fixture.enrollmentOf(talebe.sub as string)).toMatchObject({
-      progress: 55,
-    });
+    await expect(
+      main.getByRole("button", { name: "İlerlemeni güncelle" })
+    ).toHaveCount(0);
   });
 
   test("follows 'Derse devam et' to the session page", async ({ page }) => {
