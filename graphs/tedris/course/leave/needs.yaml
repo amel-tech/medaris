@@ -29,8 +29,14 @@ needs:
       - state: leaving
       - state: seat_left
       - source: apps/tedrisat/src/course/course.controller.ts:773
-      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:49
+      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:50
       - source: apps/tedris/features/courses/components/my-courses-page.tsx:108
+      - node: leaveCancel
+      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:88
+      - test: apps/tedris/test/course-actions-menu.spec.ts
+        name: "'Vazgeç' before the leave is sent closes the window and leaves nothing"
+      - test: apps/tedris/test/course-actions-menu.spec.ts
+        name: "once the leave is sent, Vazgeç, Kapat and Esc are off until the answer, which closes the window and says it"
       - scenario: leavesSeat
 
   - id: leave-from-the-course-page-and-meet-the-apply-card
@@ -102,7 +108,7 @@ needs:
       - state: course_read_again
       - state: seat_left
       - source: apps/tedrisat/src/course/course.controller.ts:773
-      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:55
+      - source: apps/tedris/features/courses/components/course-actions-menu.tsx:56
     note: >-
       the stack cannot make a leave answer 404 or 409 without taking something from the seed (a REVOKED row blocks a person for
       good); read from the code only

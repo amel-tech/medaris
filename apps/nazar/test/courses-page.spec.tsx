@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Filters } from "~/features/courses/courses";
 import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
@@ -556,6 +556,88 @@ describe("'Hocaları değiştir' (nazir 17)", () => {
       muderrisUserIds: ["u-1", "u-2", "u-9"],
       imamUserId: "u-1",
     });
+  });
+
+  it("will not save while a hoca is being looked up, and sends them once they are listed", async () => {
+    let answer: (value: unknown) => void = () => {};
+    lookupPerson.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    replaceMuderris.mockResolvedValue({ success: true, data: null });
+    await open();
+    // the list already differs, so Kaydet would be on
+    await click(byLabel("Çıkar: Abdülhamit Karaosmanoğlu"));
+    expect(save().disabled).toBe(false);
+    await search("a.kilicarslan@example.com");
+    expect(emailField().disabled).toBe(true);
+    expect(save().disabled).toBe(true);
+    // Enter in a field sends the form without the button: it is refused as well
+    const form = (dialog().closest("form") ??
+      dialog().querySelector("form")) as HTMLFormElement;
+    await act(async () => {
+      form.requestSubmit();
+    });
+    await settle(20);
+    expect(replaceMuderris).not.toHaveBeenCalled();
+
+    await act(async () => {
+      answer(found);
+    });
+    await settle(40);
+    expect(save().disabled).toBe(false);
+    await click(save());
+    await settle(60);
+    expect(replaceMuderris).toHaveBeenCalledExactlyOnceWith("m-1", "c-1", {
+      muderrisUserIds: ["u-1", "u-9"],
+      imamUserId: "u-1",
+    });
+  });
+
+  it("holds the list while it is saved, so what is saved is what is shown", async () => {
+    lookupPerson.mockResolvedValue(found);
+    let answer: (value: unknown) => void = () => {};
+    replaceMuderris.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await search("a.kilicarslan@example.com");
+    expect(dialog().textContent).toContain("3 hoca");
+    await click(save());
+    await settle(20);
+
+    expect(replaceMuderris).toHaveBeenCalledExactlyOnceWith("m-1", "c-1", {
+      muderrisUserIds: ["u-1", "u-2", "u-9"],
+      imamUserId: "u-1",
+    });
+    expect(emailField().disabled).toBe(true);
+    const other = byLabel(
+      "Çıkar: Abdülhamit Karaosmanoğlu"
+    ) as HTMLButtonElement;
+    expect(other.disabled).toBe(true);
+    expect(
+      (byLabel("Çıkar: Mehmet Emin Işıkoğlu") as HTMLButtonElement).disabled
+    ).toBe(true);
+    const radio = dialog().querySelector(
+      '[role=radio][aria-label="Dersin imamı: Abdülhamit Karaosmanoğlu"]'
+    );
+    expect(radio?.hasAttribute("data-disabled")).toBe(true);
+    await click(other);
+    await click(radio as Element);
+    expect(dialog().textContent).toContain("3 hoca");
+    expect(radio?.getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(20);
+    expect(other.disabled).toBe(false);
+    expect(emailField().disabled).toBe(false);
+    expect(radio?.hasAttribute("data-disabled")).toBe(false);
   });
 
   it("says so when the person is already listed, when no account has the address and when the directory is down", async () => {

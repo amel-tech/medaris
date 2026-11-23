@@ -288,6 +288,7 @@ export const CalendarSubscription = ({
         cancelLabel={t("confirmCancel")}
         confirmVariant="primary"
         confirmLoading={pending}
+        dismissDisabled={pending}
         onConfirm={issue}
       >
         {t("confirmText")}

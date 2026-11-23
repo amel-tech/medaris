@@ -33,6 +33,7 @@
   "CourseCreate.muderrisSection": "Hocalar",
   "CourseCreate.nameHelp": "Talebeler bu adı görür; hocalar sonradan değiştirebilir.",
   "CourseCreate.nameLabel": "Ders adı",
+  "CourseCreate.opening": "Ders açılıyor. Bitene kadar bu sayfadan ayrılmayın.",
   "CourseCreate.previewLabel": "Kapak önizlemesi",
   "CourseCreate.publishDesc": "Tanıtım sayfası herkese açılır ve talebeler derse başvurabilir.",
   "CourseCreate.publishLabel": "Hemen yayımla",

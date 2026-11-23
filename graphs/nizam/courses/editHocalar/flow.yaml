@@ -152,7 +152,7 @@ context:
       other: "an error toast says something went wrong"
 
 guards:
-  # `ready` is `disabled={!ready || loading || failed}` of "Kaydet" (muderris-dialog.tsx:93, 138): somebody is on the list and the imam
+  # `ready` is `disabled={!ready || loading || failed}` of "Kaydet" (muderris-dialog.tsx:96, 138): somebody is on the list and the imam
   # is one of them (`teamReady`), and the list differs from where it was read (`teamChanged`)
   ready: "changed and list in ['lone', 'pair', 'trio']"
   # what a search the model draws can lead to: one person is added once, to a list that is not past two accounts; an address nobody has
@@ -235,20 +235,20 @@ states:
       `course.content_read` each time (F-W4-hocalar-1). Two empty skeleton bars in an `aria-busy` box stand for the list and say
       nothing to a screen reader (F-W4-hocalar-2); "Kaydet" is off; "Vazgeç" and the close icon are live, and a close drops the
       answer. The dialog's own opening focus is on the close icon, the first thing it can focus; once the course is read the page
-      moves the focus to the e-mail field (muderris-dialog.tsx:87), which this graph does not draw (rule `focus-not-set`). After a
+      moves the focus to the e-mail field (muderris-dialog.tsx:90), which this graph does not draw (rule `focus-not-set`). After a
       refused save for a moved version the same read runs again, with the error toast still up, and the list is what the server
       has now.
     invoke: { action: getCourse }
     on:
       DONE:
-        - { guard: "read == 'ok' and behind == 'moved' and team == 'lone'", target: settle, effect: [reloadedPair], source: apps/nizam/features/courses/components/muderris-dialog.tsx:74, say: "the list is read again: the hoca and the one who saved in the meantime; what she built is gone" }
-        - { guard: "read == 'ok' and behind == 'moved' and team == 'pair'", target: settle, effect: [reloadedTrio], source: apps/nizam/features/courses/components/muderris-dialog.tsx:74, say: "the list is read again with the person who saved in the meantime; what she built is gone" }
-        - { guard: "read == 'ok' and team == 'lone'", target: settle, effect: [openedLone], source: apps/nizam/features/courses/components/muderris-dialog.tsx:74, say: "the list is the course's one hoca, the imam" }
-        - { guard: "read == 'ok' and team == 'pair'", target: settle, effect: [openedPair], source: apps/nizam/features/courses/components/muderris-dialog.tsx:74, say: "the list is the course's two hocas, the first the imam" }
-      FAIL.failed: { guard: "read == 'failed'", target: readFailed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:70, say: "the read fails: 'Hocalar okunamadı' with 'Yeniden dene'" }
-      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç while the course is read: the dialog closes and the answer is dropped" }
-      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon or Esc while the course is read" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:64
+        - { guard: "read == 'ok' and behind == 'moved' and team == 'lone'", target: settle, effect: [reloadedPair], source: apps/nizam/features/courses/components/muderris-dialog.tsx:77, say: "the list is read again: the hoca and the one who saved in the meantime; what she built is gone" }
+        - { guard: "read == 'ok' and behind == 'moved' and team == 'pair'", target: settle, effect: [reloadedTrio], source: apps/nizam/features/courses/components/muderris-dialog.tsx:77, say: "the list is read again with the person who saved in the meantime; what she built is gone" }
+        - { guard: "read == 'ok' and team == 'lone'", target: settle, effect: [openedLone], source: apps/nizam/features/courses/components/muderris-dialog.tsx:77, say: "the list is the course's one hoca, the imam" }
+        - { guard: "read == 'ok' and team == 'pair'", target: settle, effect: [openedPair], source: apps/nizam/features/courses/components/muderris-dialog.tsx:77, say: "the list is the course's two hocas, the first the imam" }
+      FAIL.failed: { guard: "read == 'failed'", target: readFailed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:73, say: "the read fails: 'Hocalar okunamadı' with 'Yeniden dene'" }
+      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:137, say: "Vazgeç while the course is read: the dialog closes and the answer is dropped" }
+      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:132, say: "the close icon or Esc while the course is read" }
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:67
 
   readFailed:
     title: The course did not read
@@ -258,10 +258,10 @@ states:
       not answer. "Yeniden dene" reads the course again.
     by: human
     on:
-      RETRY: { target: reading, source: apps/nizam/features/courses/components/muderris-dialog.tsx:159, say: "they press 'Yeniden dene'" }
-      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç" }
-      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon or Esc" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:156
+      RETRY: { target: reading, source: apps/nizam/features/courses/components/muderris-dialog.tsx:162, say: "they press 'Yeniden dene'" }
+      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:137, say: "Vazgeç" }
+      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:132, say: "the close icon or Esc" }
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:159
 
   settle:
     title: Is "Kaydet" on?
@@ -273,7 +273,7 @@ states:
     always:
       - { guard: ready, target: formReady, say: "the list is complete and has changed: the button is on" }
       - { target: form, say: "the list has not changed, or is not complete: the button is off" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:93
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:96
 
   form:
     title: The dialog, "Kaydet" off
@@ -290,7 +290,7 @@ states:
       may save the course while it is open (`OTHER_SAVES`); nothing on the page tells her.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:80, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:92, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
       REMOVE_IMAM:
         - { guard: "list == 'lone'", target: settle, effect: [imamLeftLone], source: apps/nizam/features/courses/present.ts:310, say: "they press the one hoca's 'Çıkar': the list is empty and says 'En az bir hoca olmalı.'" }
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar': the other account is the imam now" }
@@ -300,19 +300,19 @@ states:
         - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press a non-imam account's 'Çıkar'" }
         - { guard: "list == 'pairNoImam'", target: settle, effect: [otherLeftPairNoImam], source: apps/nizam/features/courses/present.ts:310, say: "they press an account's 'Çıkar' while the imam is missing: the account left is the imam" }
       PICK_IMAM:
-        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
-        - { guard: "list == 'pairNoImam'", target: settle, effect: [imamMarkedOfNoImam], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark one of the two accounts as the imam" }
+        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark another account as the imam" }
+        - { guard: "list == 'pairNoImam'", target: settle, effect: [imamMarkedOfNoImam], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark one of the two accounts as the imam" }
       OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and nothing here says so" }
-      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
-      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:119
+      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:137, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:132, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:122
 
   formReady:
     title: The dialog, "Kaydet" on
     description: The same dialog with "Kaydet" on; pressing it sends the whole list with the version it was read at.
     by: human
     on:
-      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:80, say: "they look up another hoca" }
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nizam/features/courses/components/team-picker.tsx:92, say: "they look up another hoca" }
       REMOVE_IMAM:
         - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [imamLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press the imam's 'Çıkar': nobody is the imam, the button goes off" }
@@ -321,12 +321,12 @@ states:
         - { guard: "list == 'pair'", target: settle, effect: [otherLeftPair], source: apps/nizam/features/courses/present.ts:310, say: "they press the other account's 'Çıkar'" }
         - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nizam/features/courses/present.ts:310, say: "they press a non-imam account's 'Çıkar'" }
       PICK_IMAM:
-        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:189, say: "they mark another account as the imam" }
+        - { guard: "list in ['pair', 'trio']", target: settle, effect: [imamMarked], source: apps/nizam/features/courses/components/team-picker.tsx:202, say: "they mark another account as the imam" }
       OTHER_SAVES: { guard: "behind == 'none'", target: settle, effect: [courseMoved], source: apps/tedrisat/src/course/course.repository.ts:834, say: "somebody else saves the course's hocas while this dialog is open: its version moves and 'Kaydet' is still on" }
-      SAVE: { target: saving, effect: [clearToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:95, say: "they press 'Kaydet'" }
-      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "Vazgeç: the list is thrown away, nothing is saved" }
-      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc: the list is thrown away" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:135
+      SAVE: { target: saving, effect: [clearToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:98, say: "they press 'Kaydet'" }
+      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:137, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:132, say: "the close icon, or Esc: the list is thrown away" }
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:138
 
   looking:
     title: Look the person up
@@ -337,19 +337,21 @@ states:
       gives it back (F-W4-hocalar-6); the hidden output says "Aranıyor…". A person found who is not on the list is added to it and
       the field is cleared, the output says "{name} seçildi" (F-W4-hocalar-8); a person already on the list, no account, or a
       directory that does not answer is the field's own error while the list is empty (no live region) and a live alert once
-      somebody is on it. The rest of the dialog stays live; "Kaydet" keeps the state it had and is not drawn here.
+      somebody is on it. The rest of the dialog stays live, but "Kaydet" is off until the search is back and a send of the form is
+      refused meanwhile (muderris-dialog.tsx:100, :141), so the list is never saved without the hoca being looked up (fixed 23 Nov
+      2026: Kaydet once kept the state it had).
     invoke: { action: lookupUser }
     on:
       DONE:
-        - { guard: "lookup == 'found' and list == 'empty'", target: settle, effect: [addedToEmpty], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added and is the imam: one account" }
-        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added; there are two accounts now and the imam stays who it was" }
-        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nizam/features/courses/components/team-picker.tsx:95, say: "the person is added; there are three accounts" }
-        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nizam/features/courses/components/team-picker.tsx:93, say: "'Bu kişi zaten listede.' and nobody is added; the field is cleared" }
-        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/courses/components/team-picker.tsx:108, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'; the address stays in the field and is not searched again until it changes" }
-      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/courses/components/team-picker.tsx:110, say: "'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.': every failure of the search is this one sentence, the 403 included" }
-      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:134, say: "they close the dialog while the search runs: its answer is dropped" }
-      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:129, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
-    source: apps/nizam/features/courses/components/team-picker.tsx:85
+        - { guard: "lookup == 'found' and list == 'empty'", target: settle, effect: [addedToEmpty], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added and is the imam: one account" }
+        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added; there are two accounts now and the imam stays who it was" }
+        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nizam/features/courses/components/team-picker.tsx:114, say: "the person is added; there are three accounts" }
+        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nizam/features/courses/components/team-picker.tsx:107, say: "'Bu kişi zaten listede.' and nobody is added; the field is cleared" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/courses/components/team-picker.tsx:121, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'; the address stays in the field and is not searched again until it changes" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/courses/components/team-picker.tsx:123, say: "'Arama şu an yapılamadı. Biraz sonra yeniden deneyin.': every failure of the search is this one sentence, the 403 included" }
+      CANCEL: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:137, say: "they close the dialog while the search runs: its answer is dropped" }
+      CLOSE: { target: closed, source: apps/nizam/features/courses/components/muderris-dialog.tsx:132, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
+    source: apps/nizam/features/courses/components/team-picker.tsx:98
 
   saving:
     title: The list is on its way
@@ -363,16 +365,16 @@ states:
       is the generic toast.
     invoke: { action: setCourseMuderris }
     on:
-      DONE: { guard: "answer == 'saved' and behind != 'moved'", target: saved, source: apps/nizam/features/courses/components/muderris-dialog.tsx:111, say: "the list is saved" }
-      FAIL.conflict: { guard: "answer == 'saved' and behind == 'moved'", target: reading, effect: [conflictToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:108, say: "somebody else saved the course: an error toast says so and the dialog reads the course again, which throws away the list she built" }
-      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: settle, effect: [unknownUserToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says an account was not found; the dialog stays open with her list" }
-      FAIL.duplicate: { guard: "answer == 'duplicate'", target: settle, effect: [duplicateToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says a person is listed twice; the page itself never lists a person twice" }
-      FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says the course needs a hoca and an imam among them; the page itself never sends such a list" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says she may not; the dialog stays open (F-W4-hocalar-3)" }
-      FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:104, say: "an error toast says it could not be done, try again; a course that is gone is this one too (F-W4-hocalar-9); the dialog stays open" }
-      CANCEL: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:122, say: "they press Vazgeç, or Esc, while the list is saved: nothing happens, the save goes on (onOpenChange is ignored while saving, F-W4-hocalar-7)" }
-      CLOSE: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:122, say: "they press the close icon: nothing happens, the save goes on" }
-    source: apps/nizam/features/courses/components/muderris-dialog.tsx:99
+      DONE: { guard: "answer == 'saved' and behind != 'moved'", target: saved, source: apps/nizam/features/courses/components/muderris-dialog.tsx:114, say: "the list is saved" }
+      FAIL.conflict: { guard: "answer == 'saved' and behind == 'moved'", target: reading, effect: [conflictToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:111, say: "somebody else saved the course: an error toast says so and the dialog reads the course again, which throws away the list she built" }
+      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: settle, effect: [unknownUserToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:107, say: "an error toast says an account was not found; the dialog stays open with her list" }
+      FAIL.duplicate: { guard: "answer == 'duplicate'", target: settle, effect: [duplicateToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:107, say: "an error toast says a person is listed twice; the page itself never lists a person twice" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:107, say: "an error toast says the course needs a hoca and an imam among them; the page itself never sends such a list" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:107, say: "an error toast says she may not; the dialog stays open (F-W4-hocalar-3)" }
+      FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nizam/features/courses/components/muderris-dialog.tsx:107, say: "an error toast says it could not be done, try again; a course that is gone is this one too (F-W4-hocalar-9); the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:125, say: "they press Vazgeç, or Esc, while the list is saved: nothing happens, the save goes on (onOpenChange is ignored while saving, F-W4-hocalar-7)" }
+      CLOSE: { target: saving, source: apps/nizam/features/courses/components/muderris-dialog.tsx:125, say: "they press the close icon: nothing happens, the save goes on" }
+    source: apps/nizam/features/courses/components/muderris-dialog.tsx:102
 
   saved:
     type: final
@@ -396,5 +398,5 @@ states:
 assertions:
   - { id: a-list-with-no-imam-is-never-sent, never: "state == 'saving' and list == 'pairNoImam'", say: "A list with several accounts and no imam is never sent: Kaydet is off and the page says 'Birden çok hoca var; dersin imamını işaretleyin.'.", source: apps/nizam/features/courses/present.ts:321 }
   - { id: an-empty-list-is-never-sent, never: "state == 'saving' and list == 'empty'", say: "A course always keeps a hoca: the empty list is never sent, Kaydet is off and the page says 'En az bir hoca olmalı.'.", source: apps/nizam/features/courses/present.ts:321 }
-  - { id: an-unchanged-list-is-never-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nizam/features/courses/components/muderris-dialog.tsx:92 }
+  - { id: an-unchanged-list-is-never-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nizam/features/courses/components/muderris-dialog.tsx:95 }
   - { id: a-moved-course-is-never-overwritten, never: "state == 'saved' and behind == 'moved'", say: "A list built on a version somebody else has moved past is never saved: the API refuses it and the dialog reads the course again.", source: apps/tedrisat/src/course/course.repository.ts:834 }

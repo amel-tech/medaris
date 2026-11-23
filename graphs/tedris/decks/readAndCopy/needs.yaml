@@ -115,7 +115,7 @@ needs:
       - node: copySubmit
       - node: copiedToast
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
-      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:46
+      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:47
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Kendi desteme kopyala' puts the card into the chosen own deck and leaves the source alone"
     note: >-
@@ -132,7 +132,7 @@ needs:
       - node: noTargetsText
       - node: createLink
       - state: create_opened
-      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:93
+      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:95
     note: >-
       Carried by a unit spec only (apps/tedris/test/deck-detail-page.spec.ts, "without an own deck of that kind it says to create
       one"), no e2e check. binding.yaml's `noTarget` is bound for it and was not walked in this phase.
@@ -147,7 +147,7 @@ needs:
       - node: addFailedToast
       - node: copyFailedToast
       - source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74
-      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:62
+      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:63
     note: >-
       No e2e check; a unit spec checks the two toasts (deck-detail-page.spec.ts "undoes the collection change when the API
       refuses", "a refused copy is a toast and the dialog stays"). binding.refused.yaml makes both refusals on the stack by a
@@ -184,12 +184,18 @@ needs:
     need: >-
       "Vazgeç", the close icon and Esc on the copy dialog do what they say: while the call is out they are ignored, or they stop
       it, so the card is never copied after the person chose not to.
-    missing: no Linear issue; READCOPY-1
+    evidence:
+      - state: copying
+      - node: copyCancel
+      - node: copyClose
+      - source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:89
+      - source: libs/ui/src/mds/dialog.tsx:129
+      - test: apps/tedris/test/deck-detail-page.spec.ts
+        name: "while the copy runs, the choice and every way to close are off (READCOPY-1)"
     note: |-
-      Drawn on the state copying and on the nodes copyCancel and copyClose, which the code has: they are not evidence, so that a
-      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
-      READCOPY-1 (decision D2), the same shape as DCK-30 on the delete dialog; a defect, no Linear key. Read from the code, not
-      seen.
+      Met on 23 Nov 2026 (READCOPY-1, fixed): while the copy runs "Vazgeç" and the close icon are disabled and Esc does nothing,
+      so the dialog stays until the answer; the radios are disabled too. Walked by the unit spec only, not in a browser. The same
+      shape is still open as DCK-30 on the delete dialog (tedris.decks.editOrDelete).
 
   - id: changes-are-announced
     need: >-

@@ -307,9 +307,9 @@ states:
         - { guard: "files != 'full' and file == 'empty'", target: panel, effect: [rowEmpty], source: "apps/tedris/features/courses/components/session-homework.tsx:421", say: "a file of no bytes: the same" }
         - { guard: "files != 'full'", target: uploading, effect: [heardNone], source: "apps/tedris/features/courses/components/session-homework.tsx:429", say: "they choose a file (or several: one request each, in the order chosen); the status is cleared and each file gets a row" }
       DISMISS: { guard: "row != 'none'", target: panel, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:599", say: "\"Kapat: <file>\" on a refused row removes the row (no API); the focus is lost (WRT-01)" }
-      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:962", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\"; the focus is lost (WRT-01)" }
-      TYPE_NOTE: { target: drafting, effect: [typedWords], source: "apps/tedris/features/courses/components/session-homework.tsx:1056", say: "they write in \"Notun\": the button \"Notu kaydet\" is enabled, and \"Not kaydedildi.\" goes" }
-      CLEAR_NOTE: { guard: "note == 'saved'", target: drafting, effect: [typedBlank], source: "apps/tedris/features/courses/components/session-homework.tsx:1056", say: "they empty the field of a stored note: saving it clears the note" }
+      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:963", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\"; the focus is lost (WRT-01)" }
+      TYPE_NOTE: { target: drafting, effect: [typedWords], source: "apps/tedris/features/courses/components/session-homework.tsx:1057", say: "they write in \"Notun\": the button \"Notu kaydet\" is enabled, and \"Not kaydedildi.\" goes" }
+      CLEAR_NOTE: { guard: "note == 'saved'", target: drafting, effect: [typedBlank], source: "apps/tedris/features/courses/components/session-homework.tsx:1057", say: "they empty the field of a stored note: saving it clears the note" }
       SEAT_ENDS: { guard: seatHeld, target: panel, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "they leave the course in another tab, or the team removes them: the page is not told (HAND-2)" }
       RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "the page is read again: refused rows, the status and an unsaved note are gone (WRT-13)" }
       NAVIGATE: left
@@ -363,7 +363,7 @@ states:
       files, if any, keep their trash buttons.
     on:
       CONFIRM: { target: removing, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:946" }
-      CANCEL_REMOVE: { target: panel, source: "apps/tedris/features/courses/components/session-homework.tsx:953", say: "\"Vazgeç\": the row returns to its trash; the focus is lost (WRT-01)" }
+      CANCEL_REMOVE: { target: panel, source: "apps/tedris/features/courses/components/session-homework.tsx:954", say: "\"Vazgeç\": the row returns to its trash; the focus is lost (WRT-01)" }
       SEAT_ENDS: { guard: seatHeld, target: confirming, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "the seat ends while the question is up (HAND-2)" }
       DISMISS: { guard: "row != 'none'", target: confirming, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:604", say: "\"Kapat: <file>\" removes the refused row; the question stays" }
       NAVIGATE: left
@@ -375,10 +375,9 @@ states:
     description: >-
       The server action deleteMySubmissionFile, DELETE /lessons/:id/submission/files/:fileId: the row goes at once and the object
       is queued for the store's sweep (which does nothing without a store); the homework's last change moves and the removal is
-      audited. "Kaldır" is busy (aria-disabled, aria-busy) and a hidden status says "Kaldırılıyor"; "Vazgeç" and a refused row's
-      "Kapat" stay live, and a press on one of them is drawn where the call ends (duringStep: "Vazgeç" gives the row its trash
-      back at once, and the call's end still takes the row out, or puts its error line under the row and its trash; the graph
-      draws that end as removeRefused and its "Vazgeç", which leave the panel without the line). Success, or a 404 ("gone already
+      audited. "Kaldır" is busy (aria-disabled, aria-busy) and a hidden status says "Kaldırılıyor"; "Vazgeç" is disabled
+      (session-homework.tsx:953), as the call would go on and take out a file the talebe kept. A refused row's "Kapat" stays live,
+      and a press on it is drawn where the call ends (duringStep). Success, or a 404 ("gone already
       is what was asked"), takes the row out of the list, sets the polite status "<file> kaldırıldı." and reads the homework again
       without a sound for the new time. A 403 says "Ödev teslim etmek için derse kayıtlı olman gerekir."; any other status, or a
       throw, says "Dosya kaldırılamadı. Biraz sonra yeniden dene." under the row, which stays (a 503 would read "Dosyalar şu an
@@ -406,20 +405,20 @@ states:
   removeRefused:
     title: The file could not be removed
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:973
+    source: apps/tedris/features/courses/components/session-homework.tsx:974
     description: >-
       The row stays in its question ("Bu dosya kaldırılsın mı?", "Kaldır", "Vazgeç") with a paragraph with role alert under it: the 403
       sentence or "Dosya kaldırılamadı. Biraz sonra yeniden dene.". "Vazgeç" clears it; pressing "Kaldır" again clears it and tries again.
     on:
       CONFIRM: { target: removing, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:946" }
-      CANCEL_REMOVE: { target: panel, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:953", say: "\"Vazgeç\" clears the error line with the question" }
+      CANCEL_REMOVE: { target: panel, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:954", say: "\"Vazgeç\" clears the error line with the question" }
       DISMISS: { guard: "row != 'none'", target: removeRefused, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:604", say: "\"Kapat: <file>\" removes the refused upload row; the question and its error line stay" }
       NAVIGATE: left
 
   drafting:
     title: A note is typed
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:1056
+    source: apps/tedris/features/courses/components/session-homework.tsx:1057
     description: >-
       The note's field differs from what is stored (a text, or an emptied field over a stored note), so "Notu kaydet" is enabled;
       from 3600 characters the help line becomes the count. "Notu kaydet" is the form's submit: Enter does nothing in a textarea.
@@ -427,9 +426,9 @@ states:
       works in the page and is not drawn from here; a file's trash opens its question (the draft is not carried on:
       scope.outOfView), and a refused row's "Kapat" removes that row.
     on:
-      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1003" }
       SEAT_ENDS: { guard: seatHeld, target: drafting, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "the seat ends while a note is typed (HAND-2)" }
-      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:966", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\" while the typed note stays in its field (not carried on: scope.outOfView)" }
+      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:967", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\" while the typed note stays in its field (not carried on: scope.outOfView)" }
       DISMISS: { guard: "row != 'none'", target: drafting, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:604", say: "\"Kapat: <file>\" removes the refused row; the typed note stays" }
       RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "what was typed is lost (WRT-13)" }
       NAVIGATE: left
@@ -437,7 +436,7 @@ states:
   noteSaving:
     title: The note is sent
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:1010
+    source: apps/tedris/features/courses/components/session-homework.tsx:1011
     description: >-
       The server action saveMySubmissionNote, PUT /lessons/:id/submission with { note }; a blank text sends null, which clears the
       note, and the API makes the row if there is none. "Notu kaydet" is busy and a hidden status says "Kaydediliyor"; the trash
@@ -450,23 +449,23 @@ states:
     invoke: { action: saveMySubmissionNote }
     on:
       DONE:
-        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words' and not handedIn", target: onTeamList, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016", say: "the first thing handed in: the badge turns to \"Teslim edildi\"" }
-        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words'", target: panel, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016" }
-        - { guard: "noteAnswer == 'saved' and seat == 'held'", target: panel, effect: [noteCleared, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016", say: "a blank field stored null: the note is gone, and with no file the badge turns back to \"Teslim edilmedi\"" }
+        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words' and not handedIn", target: onTeamList, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1017", say: "the first thing handed in: the badge turns to \"Teslim edildi\"" }
+        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words'", target: panel, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1017" }
+        - { guard: "noteAnswer == 'saved' and seat == 'held'", target: panel, effect: [noteCleared, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1017", say: "a blank field stored null: the note is gone, and with no file the badge turns back to \"Teslim edilmedi\"" }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.forbidden: { guard: lostSeat, target: noteRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/session-homework.tsx:1022", say: "403 SUBMISSION_FORBIDDEN: the seat is gone (HAND-2)" }
-      FAIL.failed: { guard: "noteAnswer == 'failed' and seat == 'held'", target: noteRefused, effect: [problemNoteFailed], source: "apps/tedris/features/courses/components/session-homework.tsx:1026" }
+      FAIL.forbidden: { guard: lostSeat, target: noteRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/session-homework.tsx:1023", say: "403 SUBMISSION_FORBIDDEN: the seat is gone (HAND-2)" }
+      FAIL.failed: { guard: "noteAnswer == 'failed' and seat == 'held'", target: noteRefused, effect: [problemNoteFailed], source: "apps/tedris/features/courses/components/session-homework.tsx:1027" }
 
   noteRefused:
     title: The note was refused
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:1085
+    source: apps/tedris/features/courses/components/session-homework.tsx:1086
     description: >-
       A paragraph with role alert after the form says why. The textarea is marked invalid but is not tied to the paragraph (WRT-03); the
       typed text stays and the button stays enabled. Pressing it again clears the line and tries again.
     on:
-      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
-      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:966", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\"; the typed note and its error line stay (not carried on: scope.outOfView)" }
+      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1003" }
+      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:967", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\"; the typed note and its error line stay (not carried on: scope.outOfView)" }
       DISMISS: { guard: "row != 'none'", target: noteRefused, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:604", say: "\"Kapat: <file>\" removes the refused upload row; the note's error line stays" }
       RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "what was typed is lost (WRT-13)" }
       NAVIGATE: left

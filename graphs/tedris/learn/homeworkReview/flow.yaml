@@ -216,7 +216,7 @@ states:
       note. A download toast, if one was raised, is on the page too. Nothing moves the focus here.
     on:
       OPEN_FILE: { guard: hasFiles, target: downloading, source: "apps/tedris/features/courses/components/session-homework.tsx:759", say: "they press a returned file's link: a plain request to this app's route, no script" }
-      TYPE_NOTE: { target: drafting, effect: [typedAgain], source: "apps/tedris/features/courses/components/session-homework.tsx:1058", say: "they change their own note in \"Notun\": \"Notu kaydet\" turns on" }
+      TYPE_NOTE: { target: drafting, effect: [typedAgain], source: "apps/tedris/features/courses/components/session-homework.tsx:1059", say: "they change their own note in \"Notun\": \"Notu kaydet\" turns on" }
       CLOSE_TOAST: { guard: toasting, target: reviewShown, effect: [toastNone], source: "libs/ui/src/components/sonner.tsx:75", say: "an error toast stays until it is closed; \"Kapat\" removes it" }
       RELOAD: { target: reading, say: "the page is read again: what the talebe finds is what tedrisat holds now" }
       NAVIGATE: left
@@ -224,7 +224,7 @@ states:
   drafting:
     title: The talebe changes their note
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:1058
+    source: apps/tedris/features/courses/components/session-homework.tsx:1059
     description: >-
       "Notu kaydet" is on while the text differs from the saved note (a trimmed comparison). The review above is as it was. A
       reload throws the typed text away (WRT-13). A returned file's link works from here as from the review shown: a file that is
@@ -232,7 +232,7 @@ states:
       refusal can be closed here too.
     on:
       TYPE_NOTE: { target: drafting, effect: [typedAgain], say: "they go on typing" }
-      SAVE: { target: saving, source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      SAVE: { target: saving, source: "apps/tedris/features/courses/components/session-homework.tsx:1003" }
       OPEN_FILE: { guard: hasFiles, target: downloading, source: "apps/tedris/features/courses/components/session-homework.tsx:759", say: "they press a returned file's link while the note is typed" }
       CLOSE_TOAST: { guard: toasting, target: drafting, effect: [toastNone], source: "libs/ui/src/components/sonner.tsx:75", say: "\"Kapat\" removes the toast; the typed text stays" }
       RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
@@ -241,7 +241,7 @@ states:
   saving:
     title: The note is sent
     by: human
-    source: apps/tedris/features/courses/components/session-homework.tsx:1010
+    source: apps/tedris/features/courses/components/session-homework.tsx:1011
     description: >-
       The server action saveMySubmissionNote, PUT /lessons/:id/submission with the note as typed (a blank one clears it). "Notu
       kaydet" is busy (aria-disabled, aria-busy) and a hidden status says "Kaydediliyor"; a returned file's link and the toast's
@@ -253,9 +253,9 @@ states:
       in.
     invoke: { action: saveMySubmissionNote }
     on:
-      DONE: { guard: "answer == 'saved'", target: reviewShown, effect: [homeworkChanged], source: "apps/tedris/features/courses/components/session-homework.tsx:1016" }
+      DONE: { guard: "answer == 'saved'", target: reviewShown, effect: [homeworkChanged], source: "apps/tedris/features/courses/components/session-homework.tsx:1017" }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.refused: { guard: "answer == 'refused'", target: drafting, source: "apps/tedris/features/courses/components/session-homework.tsx:1020" }
+      FAIL.refused: { guard: "answer == 'refused'", target: drafting, source: "apps/tedris/features/courses/components/session-homework.tsx:1021" }
 
   downloading:
     title: A returned file is asked for

@@ -37,7 +37,7 @@ needs:
       - node: toastOnTitle
       - node: toastOffTitle
       - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:66
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:70
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/19 — a switch is saved at once and written to the log, and the table lists the köşks that apply a rule themselves (criteria 1, 4)"
       - test: apps/nizam/test/platform-admin.spec.tsx
@@ -88,7 +88,7 @@ needs:
       - node: rowAt
       - node: scopedEmpty
       - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:226
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:237
       - test: apps/nizam/test/platform-admin.spec.tsx
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
@@ -109,7 +109,7 @@ needs:
       - node: loadFailedAlert
       - node: loadFailedText
       - node: retryButton
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:134
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:145
       - test: apps/nizam/test/platform-admin.spec.tsx
 
   - id: a-refused-save-puts-the-switch-back
@@ -123,7 +123,7 @@ needs:
       - node: toastForbiddenBody
       - node: toastFailedBody
       - node: toastClose
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:73
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:81
 
   - id: a-medaris-nazim-with-the-permission-finds-the-page
     need: >-
@@ -139,7 +139,7 @@ needs:
       While a switch saves, a keyboard or screen-reader user is told that it is saving and keeps the focus where it was; the
       switch is not simply disabled.
     evidence:
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:166
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:177
     missing: >-
       no Linear issue; F-W3-6: disabled while it saves, nothing says so (whether the focus drops is not verified); code exists in
       part
@@ -152,7 +152,7 @@ needs:
       DECISION OPEN: a press that changes every köşk, medrese and course at once is asked about first, or the line that says so is
       read before the switches. Today it is one press, and the line sits under the list.
     evidence:
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:177
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:188
     missing: no Linear issue; POL-1; code exists in part
     note: >-
       Drawn on the state policies and on the node instantNote, which the code has: they are not evidence, so that a replay still
@@ -161,7 +161,7 @@ needs:
   - id: a-switch-names-who-applies-it
     need: A person on a switch hears, with its description, which köşks already apply the same rule on their own.
     evidence:
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:169
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:180
     missing: >-
       no Linear issue; POL-2: the caption is a paragraph beside the switch, not part of its description; code exists in part
     note: >-
@@ -186,11 +186,14 @@ needs:
       Two switches pressed in quick succession each keep their own busy state and their own answer: neither is enabled while it
       saves, and an answer to one never undoes the other.
     evidence:
-      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:57
-    missing: "no Linear issue; POL-5: one `busy` for both; code exists in part"
+      - state: savingApproval
+      - state: savingRecordings
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:58
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:82
+      - test: apps/nizam/test/policies-switches.spec.tsx
+        name: "keeps both off until their own answers, and a refusal puts back only its own switch"
     note: >-
-      Drawn on the states savingApproval and savingRecordings, which the code has: they are not evidence, so that a replay still
-      walks them (SPEC.md §13 leaves out what only missing needs name).
+      Met on 23 Nov 2026 (POL-5): a busy mark, a rollback and an answer per switch. Walked by no scenario and no browser e2e test.
 
   - id: a-change-that-changes-nothing-is-not-logged
     need: A request that sets a policy to the value it already holds changes nothing and writes no row to the audit log.

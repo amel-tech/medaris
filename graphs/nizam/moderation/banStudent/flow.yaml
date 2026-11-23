@@ -219,7 +219,7 @@ states:
       PICK_COURSE: { guard: "chosen == 'kosk'", target: settle, effect: [choseCourse], source: apps/nizam/features/bans/components/ban-dialog.tsx:170, say: "they pick 'Yalnızca bu ders' again" }
       CANCEL: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Vazgeç or the close icon: nothing is written; the focus goes back to the row's 'Yasakla' (not verified)" }
       PRESS_ESCAPE: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Escape: the same" }
-      PRESS_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens, and nothing typed is lost" }
+      PRESS_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens, and nothing typed is lost" }
       NAVIGATE: { target: left, say: "they leave the page by its address" }
 
   formReady:
@@ -236,7 +236,7 @@ states:
       SUBMIT: { guard: sendsWhatWasWanted, target: submitting, effect: [clearToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:77, say: "they press 'Yasakla' in the window" }
       CANCEL: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Vazgeç or the close icon: nothing is written" }
       PRESS_ESCAPE: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Escape: the same" }
-      PRESS_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens" }
+      PRESS_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens" }
       NAVIGATE: { target: left, say: "they leave the page by its address" }
 
   submitting:

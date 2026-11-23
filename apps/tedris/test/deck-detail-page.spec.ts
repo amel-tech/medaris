@@ -2,7 +2,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cardRow, deckResponse, summary } from "./decks-harness";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -254,6 +254,39 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
       expect.objectContaining({ tone: "error", title: "Silinemedi" })
     );
   });
+
+  it("while the deck is deleted, Vazgeç, Kapat and Esc are off (DCK-30)", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.del.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await mount();
+    await click(button("Desteyi sil"));
+    const confirm = () =>
+      document.querySelector('[role="alertdialog"]') as HTMLElement | null;
+    const inConfirm = (text: string) =>
+      [...(confirm()?.querySelectorAll("button") ?? [])].find(
+        (b) => b.textContent === text
+      ) as HTMLButtonElement;
+    await click(inConfirm("Desteyi sil"));
+    expect(mocks.del).toHaveBeenCalledWith("d1");
+
+    const close = confirm()?.querySelector(
+      ".mds-dialog__close"
+    ) as HTMLButtonElement;
+    expect(inConfirm("Vazgeç").disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(inConfirm("Vazgeç"));
+    await click(close);
+    await key(document.activeElement ?? document.body, "Escape");
+    await settle(60);
+    expect(confirm()).not.toBeNull();
+
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle(60);
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error", title: "Silinemedi" })
+    );
+    expect(confirm()).toBeNull();
+  });
 });
 
 describe("Desteyi düzenle (design tedris/33)", () => {
@@ -345,6 +378,52 @@ describe("Desteyi düzenle (design tedris/33)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "error", title: "Kaydedilemedi" })
     );
+    expect(field("title").value).toBe("Başka ad olsun");
+  });
+
+  it("while the save runs, Vazgeç, Kapat and Esc are off, so a refusal keeps the typed name in sight (EDITDEL-1)", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await open();
+    await type(field("title"), "Başka ad olsun");
+    await save();
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    const cancel = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ].find((b) => b.textContent === "Vazgeç") as HTMLButtonElement;
+    const close = document.querySelector(
+      '[role="dialog"] .mds-dialog__close'
+    ) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(cancel);
+    await click(close);
+    await key(document.activeElement ?? document.body, "Escape");
+    await settle(60);
+    expect(mocks.replace).not.toHaveBeenCalled();
+
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle();
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error", title: "Kaydedilemedi" })
+    );
+    expect(field("title").value).toBe("Başka ad olsun");
+    expect(cancel.disabled).toBe(false);
+  });
+
+  it("while the save runs, the name and the description are read-only: a change then would not be sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.update.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    await open();
+    await type(field("title"), "Başka ad olsun");
+    await save();
+    expect(field("title").readOnly).toBe(true);
+    expect(
+      (field("description") as unknown as HTMLTextAreaElement).readOnly
+    ).toBe(true);
+    await act(async () => answer({ success: false, error: "no" }));
+    await settle();
+    expect(field("title").readOnly).toBe(false);
     expect(field("title").value).toBe("Başka ad olsun");
   });
 
@@ -542,6 +621,53 @@ describe("Deste, okuyan kişinin görünümü (design tedris/31)", () => {
         expect.objectContaining({ tone: "error", title: "Kart kopyalanamadı" })
       );
       expect(dialogs()).toHaveLength(1);
+    });
+
+    it("while the copy runs, the choice and every way to close are off (READCOPY-1)", async () => {
+      let answer: (value: unknown) => void = () => {};
+      mocks.copy.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await reader({
+        ownDecks: [
+          own[0],
+          summary({ id: "h2", title: "Hadis defterim", cardType: "HADEETH" }),
+        ],
+      });
+      await click(copyButton(1));
+      const radios = () =>
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            '[role="dialog"] [role="radio"]'
+          ),
+        ] as HTMLElement[];
+      await click(radios()[0] as HTMLElement);
+      await click(dialogButton("Kopyala"));
+      expect(mocks.copy).toHaveBeenCalledTimes(1);
+
+      const close = document.querySelector(
+        '[role="dialog"] .mds-dialog__close'
+      ) as HTMLButtonElement;
+      expect(dialogButton("Vazgeç")).toHaveProperty("disabled", true);
+      expect(close.disabled).toBe(true);
+      await click(dialogButton("Vazgeç"));
+      await click(close);
+      await key(document.activeElement ?? document.body, "Escape");
+      // A deck chosen now would not be where the card goes.
+      await click(radios()[1] as HTMLElement);
+      await settle(60);
+      expect(dialogs()).toHaveLength(1);
+      expect(radios()[0]?.getAttribute("aria-checked")).toBe("true");
+      expect(radios()[1]?.getAttribute("aria-checked")).toBe("false");
+
+      await act(async () => answer({ success: true, data: {} }));
+      await settle(60);
+      expect(mocks.copy).toHaveBeenCalledWith("h1", expect.anything());
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: "success",
+          description: "“Hadislerim” destesine eklendi.",
+        })
+      );
+      expect(dialogs()).toHaveLength(0);
     });
   });
 });

@@ -59,6 +59,9 @@ export function MuderrisDialog({
   });
   const [team, setTeam] = useState<TeamState>(stored);
   const [saving, setSaving] = useState(false);
+  // A hoca search is running: Kaydet waits for it, or the list would be
+  // saved without the hoca being looked up.
+  const [lookingUp, setLookingUp] = useState(false);
   const emailRef = useRef<HTMLElement | null>(null);
 
   const load = useCallback(async () => {
@@ -94,7 +97,7 @@ export function MuderrisDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!payload || !ready) return;
+    if (!payload || !ready || lookingUp) return;
     setSaving(true);
     const result = await setCourseMuderris(koskId, courseId, payload);
     setSaving(false);
@@ -135,7 +138,7 @@ export function MuderrisDialog({
           <Button
             type="submit"
             loading={saving}
-            disabled={!ready || loading || failed}
+            disabled={!ready || loading || failed || lookingUp}
           >
             {t("submit")}
           </Button>
@@ -168,6 +171,7 @@ export function MuderrisDialog({
           onChange={setTeam}
           disabled={saving}
           inputRef={emailRef}
+          onSearchingChange={setLookingUp}
           error={t("emptyError")}
         />
       )}

@@ -57,4 +57,9 @@ export class ScheduleSessionResponse {
       'The celse is an exam ("Sınav", MDRS-248): the schedule and the home page mark it.',
   })
   isExam!: boolean;
+  @ApiProperty({
+    description:
+      "The celse is a published online exam (MDRS-299): it is taken on its exam page (`/courses/:courseId/lessons/:id/sinav`) and has no meeting link.",
+  })
+  isOnlineExam!: boolean;
 }

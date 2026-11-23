@@ -28,7 +28,9 @@ const firstField = {
  * "Kart ekle" and "Düzenle" on the card list (design tedris/29): the two faces
  * of one card in a form dialog. Adding takes the deck's kind; editing takes the
  * card. Both faces must hold at least three characters, which is what the API
- * takes, and are said so on the field. A refusal keeps what was typed.
+ * takes, and are said so on the field. A refusal keeps what was typed, so
+ * while the write runs the dialog cannot be closed and the faces are
+ * read-only: closing would not stop it, and a change then would not be sent.
  */
 export function CardFormDialog({
   deckId,
@@ -93,12 +95,13 @@ export function CardFormDialog({
       }}
       form
       onSubmit={submit}
+      dismissDisabled={busy}
       size="md"
       title={card ? t("editCardTitle") : t("addCard")}
       initialFocus={firstField}
       footer={
         <>
-          <DialogClose>{t("cancel")}</DialogClose>
+          <DialogClose disabled={busy}>{t("cancel")}</DialogClose>
           <Button type="submit" loading={busy}>
             {t("save")}
           </Button>
@@ -124,6 +127,7 @@ export function CardFormDialog({
             maxLength={FACE_MAX}
             value={front}
             dir={isArabic(front) ? "rtl" : "auto"}
+            readOnly={busy}
             onChange={(event) => setFront(event.target.value)}
           />
         </Field>
@@ -140,6 +144,7 @@ export function CardFormDialog({
             rows={4}
             maxLength={FACE_MAX}
             value={back}
+            readOnly={busy}
             onChange={(event) => setBack(event.target.value)}
           />
         </Field>

@@ -506,8 +506,8 @@ states:
       DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file in the dialog" }
       DOWNLOAD_REVIEW_FILE: { guard: hasFiles, target: dialogReviewDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:292", say: "they follow the link of a file of the review" }
       CLOSE:
-        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:97", say: "the header's X; what was typed is gone (NHWREV-6)" }
-        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:97" }
+        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:100", say: "the header's X; what was typed is gone (NHWREV-6)" }
+        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:100" }
       CANCEL:
         - { guard: "shown == 'one'", target: filtered, source: "apps/nazar/features/homework/components/review-dialog.tsx:216", say: "the footer's \"Kapat\"" }
         - { target: listed, source: "apps/nazar/features/homework/components/review-dialog.tsx:216" }
@@ -529,8 +529,8 @@ states:
       DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file; the line under the note stays" }
       SEND: { target: reviewingEmpty, source: "apps/nazar/features/homework/components/review-dialog.tsx:157", say: "pressed again, the same line" }
       CLOSE:
-        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:97" }
-        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:97" }
+        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:100" }
+        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:100" }
       CANCEL:
         - { guard: "shown == 'one'", target: filtered, source: "apps/nazar/features/homework/components/review-dialog.tsx:216" }
         - { target: listed, source: "apps/nazar/features/homework/components/review-dialog.tsx:216" }
@@ -567,8 +567,8 @@ states:
       DOWNLOAD_HAND_IN: { target: dialogHandInDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:234", say: "they follow the link of the talebe's file with the panel open" }
       DOWNLOAD_REVIEW_FILE: { guard: hasFiles, target: dialogReviewDownload, effect: [toastNone], source: "apps/nazar/features/homework/components/review-dialog.tsx:292", say: "they follow the link of a file of the review with the panel open" }
       CLOSE:
-        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:97" }
-        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:97" }
+        - { guard: "shown == 'one'", target: filtered, source: "libs/ui/src/mds/dialog.tsx:100" }
+        - { target: listed, source: "libs/ui/src/mds/dialog.tsx:100" }
       CANCEL:
         - { guard: "shown == 'one'", target: filtered, source: "apps/nazar/features/homework/components/review-dialog.tsx:216" }
         - { target: listed, source: "apps/nazar/features/homework/components/review-dialog.tsx:216" }

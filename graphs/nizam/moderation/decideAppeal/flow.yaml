@@ -238,9 +238,9 @@ states:
       Not a screen: the Bekleyen tab shows its list, or its empty line when nothing waits any more (the last waiting appeal was decided here or
       none waited when the page was read).
     always:
-      - { guard: nothingWaits, target: empty, source: apps/nizam/features/appeals/components/appeals-view.tsx:280, say: "no appeal waits: 'Karar bekleyen itiraz yok.'" }
-      - { target: listed, source: apps/nizam/features/appeals/components/appeals-view.tsx:282, say: "at least one appeal waits: the list and the card of the selected one" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+      - { guard: nothingWaits, target: empty, source: apps/nizam/features/appeals/components/appeals-view.tsx:287, say: "no appeal waits: 'Karar bekleyen itiraz yok.'" }
+      - { target: listed, source: apps/nizam/features/appeals/components/appeals-view.tsx:289, say: "at least one appeal waits: the list and the card of the selected one" }
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:287
 
   noAccess:
     title: The page says the person has no permission here
@@ -264,9 +264,9 @@ states:
       dene" takes the place of the tabs and the list (the view's `failed` is true and no tab has been read). After a failed retry a sticky error
       toast says the same. The Alert has role alert, so it is announced when it appears.
     on:
-      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene'" }
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:257, say: "they press 'Tekrar dene'" }
       NAVIGATE: left
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:254
 
   retrying:
     title: The waiting appeals are read again
@@ -275,11 +275,11 @@ states:
       cleared only by a success). A success draws the tabs and the list; a failure puts up the sticky error toast and leaves the Alert.
     invoke: { action: listAppeals }
     on:
-      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
-      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
+      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/appeals/components/appeals-view.tsx:84, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:77, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
-      # 'Tekrar dene' is not held back while the read runs (appeals-view.tsx:250): a second press asks for the list again beside the first.
-      RETRY: { target: retrying, source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene' again while the read runs: the button is not busy, and a second read is asked" }
+      # 'Tekrar dene' is not held back while the read runs (appeals-view.tsx:257): a second press asks for the list again beside the first.
+      RETRY: { target: retrying, source: apps/nizam/features/appeals/components/appeals-view.tsx:257, say: "they press 'Tekrar dene' again while the read runs: the button is not busy, and a second read is asked" }
     source: apps/nizam/features/appeals/actions.ts:18
 
   listed:
@@ -295,13 +295,13 @@ states:
       so the list and the card are not a tab panel; choosing a row or switching a tab announces nothing and moves no focus (F-W5-6). A toast
       of the last decision may still be up.
     on:
-      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:160, say: "they choose another row: the card shows that appeal" }
-      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they open 'Karara bağlanan'" }
-      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/appeals/components/appeals-view.tsx:225, say: "they press 'Reddet': the dialog asks for the note" }
-      ACCEPT: { target: accepting, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:222, say: "they press 'Kabul et': nothing is asked, the decision is sent (DAPP-1)" }
+      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:167, say: "they choose another row: the card shows that appeal" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:95, say: "they open 'Karara bağlanan'" }
+      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/appeals/components/appeals-view.tsx:232, say: "they press 'Reddet': the dialog asks for the note" }
+      ACCEPT: { target: accepting, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:229, say: "they press 'Kabul et': nothing is asked, the decision is sent (DAPP-1)" }
       NAVIGATE: left
       OPEN_PENDING: { target: listed, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown: nothing happens (a Base UI tab ignores a press while it is selected)" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:283
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:290
 
   empty:
     title: Nothing waits
@@ -311,10 +311,10 @@ states:
       and the page after the last waiting appeal was decided here: the counts follow, and the focus that the dialog gave back to the card's
       "Reddet" (or that "Kabul et" held) is lost with the card (F-W5-5). A toast of the last decision may still be up.
     on:
-      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they open 'Karara bağlanan'" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:95, say: "they open 'Karara bağlanan'" }
       NAVIGATE: left
       OPEN_PENDING: { target: empty, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown: nothing happens" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:281
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:288
 
   loadingDecided:
     title: The decided appeals are read
@@ -325,12 +325,15 @@ states:
     invoke: { action: listAppeals }
     on:
       DONE:
-        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/appeals/components/appeals-view.tsx:281, say: "nothing was decided: 'Karara bağlanmış itiraz yok.'" }
-        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:283, say: "the decided appeals are listed, the newest decision selected" }
-      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "the read fails: the sticky toast, and the Alert replaces the tabs (same as CREQ-3 of nizam.courseRequests.decide)" }
+        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/appeals/components/appeals-view.tsx:288, say: "nothing was decided: 'Karara bağlanmış itiraz yok.'" }
+        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:290, say: "the decided appeals are listed, the newest decision selected" }
+      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:77, say: "the read fails: the sticky toast, and the Alert replaces the tabs (same as CREQ-3 of nizam.courseRequests.decide)" }
       FAIL.signedOut: sent_to_sign_in
       OPEN_DECIDED: { target: loadingDecided, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown while its list is read: nothing happens, the read goes on" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:60
+      # 'Bekleyen' shows its list at once (it was kept), and the read already sent is dropped when it lands (a ticket,
+      # appeals-view.tsx:61-73, and a tab switch takes a new one, :96), so the waiting appeal stays selected (fixed 23 Nov 2026).
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:96, say: "they go back to 'Bekleyen' while the decided appeals are read: its list is there at once, and the read is dropped when it lands" }
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:63
 
   decidedList:
     title: The decided appeals are listed
@@ -341,20 +344,20 @@ states:
       appeal, and no buttons; for a refusal, a neutral Alert "Karar notu" carries the note the başnazım wrote (a status, not an alert). An accepted
       appeal has no note, so its card ends after the two reasons (DAPP-1). Within one visit a decision made here is the newest.
     on:
-      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:95, say: "they go back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
       NAVIGATE: left
       OPEN_DECIDED: { target: decidedList, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown: nothing happens" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:283
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:290
 
   decidedEmpty:
     title: Nothing was decided
     by: human
     description: "The Karara bağlanan tab is selected and says \"Karara bağlanmış itiraz yok.\" (an EmptyState)."
     on:
-      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'" }
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:95, say: "they go back to 'Bekleyen'" }
       NAVIGATE: left
       OPEN_DECIDED: { target: decidedEmpty, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Karara bağlanan', the tab shown: nothing happens" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:281
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:288
 
   decidedFailed:
     title: The decided appeals could not be read
@@ -364,19 +367,19 @@ states:
       included: "İtirazlar okunamadı" with "Tekrar dene" and a sticky toast with the same words. The tabs are gone, so there is no way back to
       the Bekleyen list that was read, except reloading the page (the twin of CREQ-3).
     on:
-      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene'" }
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:257, say: "they press 'Tekrar dene'" }
       NAVIGATE: left
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:254
 
   retryingDecided:
     title: The decided appeals are read again
     description: "The same call as loadingDecided; the Alert stays while it runs. A success draws the tabs with the Karara bağlanan tab selected and its list."
     invoke: { action: listAppeals }
     on:
-      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the decided appeals (the model draws a list, not the empty line)" }
-      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
+      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:84, say: "the read works: the decided appeals (the model draws a list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:77, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
-      RETRY_DECIDED: { target: retryingDecided, source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene' again while the read runs: a second read is asked" }
+      RETRY_DECIDED: { target: retryingDecided, source: apps/nizam/features/appeals/components/appeals-view.tsx:257, say: "they press 'Tekrar dene' again while the read runs: a second read is asked" }
     source: apps/nizam/features/appeals/actions.ts:18
 
   accepting:
@@ -394,14 +397,14 @@ states:
       nothing catches it: the button stays busy (not verified).
     invoke: { action: acceptAppeal }
     on:
-      DONE: { guard: "answer == 'accepted'", target: acceptedHandOver, effect: [acceptedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:125, say: "204: the toast 'İtiraz kabul edildi', the appeal leaves the list" }
-      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "409: the row leaves, an error toast says it was decided" }
-      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "404: the row leaves, an error toast says it is gone" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: listed, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the page stays as it was, with an error toast" }
-      FAIL.other: { guard: "answer == 'other'", target: listed, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the page stays as it was, with an error toast" }
+      DONE: { guard: "answer == 'accepted'", target: acceptedHandOver, effect: [acceptedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:132, say: "204: the toast 'İtiraz kabul edildi', the appeal leaves the list" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:115, say: "409: the row leaves, an error toast says it was decided" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:115, say: "404: the row leaves, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: listed, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:116, say: "403: the page stays as it was, with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: listed, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:116, say: "any other failure: the page stays as it was, with an error toast" }
       FAIL.signedOut: sent_to_sign_in
       OPEN_PENDING: { target: accepting, source: libs/ui/src/mds/tabs.tsx:110, say: "they press 'Bekleyen', the tab shown, while 'Kabul et' runs: nothing happens, the decision goes on" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:115
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:122
 
   acceptedHandOver:
     title: The request waits for the köşk again
@@ -468,15 +471,15 @@ states:
       (not verified).
     invoke: { action: rejectAppeal }
     on:
-      DONE: { guard: "answer == 'rejected'", target: waitingTab, effect: [refusedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:139, say: "204: the toast 'İtiraz reddedildi', the appeal leaves the list, the dialog closes" }
-      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "409: the row leaves, the dialog closes, an error toast says it was decided" }
-      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the dialog stays open with an error toast" }
-      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the dialog stays open with an error toast" }
+      DONE: { guard: "answer == 'rejected'", target: waitingTab, effect: [refusedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:146, say: "204: the toast 'İtiraz reddedildi', the appeal leaves the list, the dialog closes" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:115, say: "409: the row leaves, the dialog closes, an error toast says it was decided" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:115, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:116, say: "403: the dialog stays open with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:116, say: "any other failure: the dialog stays open with an error toast" }
       FAIL.signedOut: sent_to_sign_in
       # The dialog drops every way of closing while `saving` (reject-dialog.tsx:81): the press changes nothing and the refusal is still sent.
       CANCEL: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç or Esc while the refusal is sent: nothing happens and nothing says so" }
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:131
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:138
 
   home_opened:
     title: The home page opens
@@ -509,16 +512,16 @@ assertions:
   - id: empty-means-nothing-waits
     never: "state == 'empty' and read == 'many'"
     say: The empty line shows only when no appeal waits.
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:287
   - id: rows-mean-something-waits
     never: "(state == 'listed' or state == 'accepting') and read == 'nothing'"
     say: The list is drawn only while an appeal waits.
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:287
   - id: the-accepted-toast-comes-only-after-the-api-took-it
     never: "last == 'accepted' and settledHere != 'accepted'"
     say: '"İtiraz kabul edildi" shows only after the API answered 204.'
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:125
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:132
   - id: the-refused-toast-comes-only-after-the-api-took-it
     never: "last == 'rejected' and settledHere != 'rejected'"
     say: '"İtiraz reddedildi" shows only after the API answered 204.'
-    source: apps/nizam/features/appeals/components/appeals-view.tsx:139
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:146

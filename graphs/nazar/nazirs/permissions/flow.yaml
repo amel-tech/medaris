@@ -302,16 +302,16 @@ states:
       (permissions.ts:170-178). Esc, Vazgeç and the close icon close it and drop the form, with no question (decision D1).
     by: human
     on:
-      PICK_GROUP: { target: editing, effect: [pickedGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:264, say: "they open 'Hazır izin grubu' and pick the walk's group: its two permissions are ticked and locked and the footer counts them" }
-      PICK_NO_GROUP: { target: editing, effect: [pickedNoGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:264, say: "they pick 'Grup yok': the locked boxes are free again" }
+      PICK_GROUP: { target: editing, effect: [pickedGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:265, say: "they open 'Hazır izin grubu' and pick the walk's group: its two permissions are ticked and locked and the footer counts them" }
+      PICK_NO_GROUP: { target: editing, effect: [pickedNoGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:265, say: "they pick 'Grup yok': the locked boxes are free again" }
       TICK_COURSE_PERMISSION: { guard: "extra == 'none'", target: editing, effect: [tickedCourseCode], source: apps/nazar/features/nazirs/permissions.ts:110, say: "they tick 'Hafta ve celse gizle, geri al'" }
       TICK_MADRASAH_PERMISSION: { guard: "extra == 'none'", target: editing, effect: [tickedMadrasahCode], source: apps/nazar/features/nazirs/permissions.ts:110, say: "they tick 'Medrese nazırı ata'" }
-      CHOOSE_CHOSEN: { guard: "limit == 'all'", target: editing, effect: [limitedToChosen], source: apps/nazar/features/nazirs/components/permission-editor.tsx:322, say: "they choose 'Seçtiğim dersler' in 'Hangi derslerde': the courses are listed" }
-      CHOOSE_ALL: { guard: "limit == 'chosen'", target: editing, effect: [limitedToAll], source: apps/nazar/features/nazirs/components/permission-editor.tsx:322, say: "they go back to 'Bütün medrese dersleri'" }
-      TICK_COURSE: { guard: "limit == 'chosen' and courses == 'none'", target: editing, effect: [tickedCourse], source: apps/nazar/features/nazirs/components/permission-editor.tsx:342, say: "they tick the walk's course" }
-      TYPE_FUTURE_END: { target: editing, effect: [typedFutureEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:371, say: "they type a moment ahead in the end field" }
-      TYPE_PAST_END: { target: editing, effect: [typedPastEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:371, say: "they type a moment that is not after now" }
-      CLEAR_END: { target: editing, effect: [clearedEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:371, say: "they empty the end field: the permissions then have no end" }
+      CHOOSE_CHOSEN: { guard: "limit == 'all'", target: editing, effect: [limitedToChosen], source: apps/nazar/features/nazirs/components/permission-editor.tsx:323, say: "they choose 'Seçtiğim dersler' in 'Hangi derslerde': the courses are listed" }
+      CHOOSE_ALL: { guard: "limit == 'chosen'", target: editing, effect: [limitedToAll], source: apps/nazar/features/nazirs/components/permission-editor.tsx:323, say: "they go back to 'Bütün medrese dersleri'" }
+      TICK_COURSE: { guard: "limit == 'chosen' and courses == 'none'", target: editing, effect: [tickedCourse], source: apps/nazar/features/nazirs/components/permission-editor.tsx:343, say: "they tick the walk's course" }
+      TYPE_FUTURE_END: { target: editing, effect: [typedFutureEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they type a moment ahead in the end field" }
+      TYPE_PAST_END: { target: editing, effect: [typedPastEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they type a moment that is not after now" }
+      CLEAR_END: { target: editing, effect: [clearedEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they empty the end field: the permissions then have no end" }
       SAVE:
         - { guard: blocked, target: editing, effect: [tryFailed], source: apps/nazar/features/nazirs/components/permission-editor.tsx:156, say: "they press 'Kaydet' against a rule of the page: nothing is sent and the messages show" }
         - { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:163, say: "they press 'Kaydet'" }
@@ -324,7 +324,8 @@ states:
     description: >-
       saveNazirPermissions calls PUT /madrasahs/:id/nazirs/:userId/permissions with the group, the single permissions in the
       dictionary's order (the group's own left out), the courses (null for every course) and the end as an instant. "Kaydet" is
-      busy (aria-disabled, a hidden "Yükleniyor" that is hard-coded: F-B-2) and the form stays as it is; Vazgeç, the close icon and
+      busy (aria-disabled, a hidden "Yükleniyor" that is hard-coded: F-B-2) and every field of the form is disabled, so the form
+      shown is the form sent; Vazgeç, the close icon and
       Esc do nothing while it runs (permission-editor.tsx:199). One transaction replaces what the nazır held: kept rows stay, others
       are revoked or made, and every permission ends at the one end the form carries.
     invoke: { action: setMadrasahNazirPermissions }

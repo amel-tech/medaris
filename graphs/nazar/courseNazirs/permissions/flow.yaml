@@ -231,9 +231,9 @@ states:
       TOGGLE_SESSION:
         - { guard: "session == 'ticked'", target: editing, effect: [sessionUnticked], source: apps/nazar/features/nazirs/components/permission-section.tsx:50, say: "they untick 'Celse ekle, ...': the count falls to 1" }
         - { target: editing, effect: [sessionTicked], source: apps/nazar/features/nazirs/components/permission-section.tsx:50, say: "they tick 'Celse ekle, ...' again" }
-      CLEAR_END: { guard: "end != 'cleared'", target: editing, effect: [endCleared], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they empty the end field: the post will have no end" }
-      TYPE_FUTURE_END: { guard: "end != 'later'", target: editing, effect: [endTypedLater], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they type another moment ahead in the end field" }
-      TYPE_PAST_END: { guard: "end != 'past'", target: editing, effect: [endTypedPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they type a moment that is not after now" }
+      CLEAR_END: { guard: "end != 'cleared'", target: editing, effect: [endCleared], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:411, say: "they empty the end field: the post will have no end" }
+      TYPE_FUTURE_END: { guard: "end != 'later'", target: editing, effect: [endTypedLater], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:411, say: "they type another moment ahead in the end field" }
+      TYPE_PAST_END: { guard: "end != 'past'", target: editing, effect: [endTypedPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:411, say: "they type a moment that is not after now" }
       SAVE:
         - { guard: endIsPast, target: editing, effect: [blocked], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:167, say: "they press 'Kaydet' against a rule of the page: nothing is sent and the end's message shows" }
         - { guard: unchanged, target: listed, effect: [closedUnchanged], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:168, say: "they press 'Kaydet' with the same codes and the same end: the dialog closes and nothing is written, with no toast" }
@@ -246,7 +246,7 @@ states:
     title: The permissions are on their way
     description: >-
       changeCourseNazir calls PATCH /courses/:id/nazirs/:postId with the whole set of codes the boxes say (the catalog's order) and the end as an instant, or null
-      for none. "Kaydet" is busy (aria-disabled, its hidden status says "Kaydediliyor…"), the end field is off, and Vazgeç, the close icon and Esc do nothing
+      for none. "Kaydet" is busy (aria-disabled, its hidden status says "Kaydediliyor…"), the boxes and the end field are off, and Vazgeç, the close icon and Esc do nothing
       while it runs (course-nazir-dialog.tsx:230). One transaction replaces what the person holds: what stays keeps its giver and date, the rest is revoked,
       shortened, lengthened or added, and the post's end moves with them. A success toasts "İzinler kaydedildi", closes the dialog and reads the list again. The
       post that is not there any more closes the dialog too, with an error toast and the list read again without the row (CNP-1); any other refusal keeps the

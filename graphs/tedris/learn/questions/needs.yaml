@@ -87,7 +87,7 @@ needs:
       - state: editing
       - state: confirming
       - source: apps/tedris/features/courses/components/course-questions.tsx:119
-      - source: apps/tedris/features/courses/components/course-questions.tsx:422
+      - source: apps/tedris/features/courses/components/course-questions.tsx:424
     note: unwalked; the stack cannot make tedrisat refuse these calls. The typed text is lost on a reload (WRT-13).
 
   - id: questions-paged

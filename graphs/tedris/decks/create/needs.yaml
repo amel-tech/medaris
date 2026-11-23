@@ -29,7 +29,7 @@ needs:
       - state: creating
       - state: deck_opened
       - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:193
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:203
       - source: apps/tedris/features/flashcards/actions/index.ts:33
       - source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:169
       - test: apps/tedris/e2e/decks.e2e.ts
@@ -54,8 +54,8 @@ needs:
       - node: kindRequired
       - node: radioVocabulary
       - node: radioHadeeth
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:63
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:169
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:66
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:178
       - source: apps/tedris/features/flashcards/deck-model.ts:155
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "an empty form says what is missing and sends nothing"
@@ -74,7 +74,7 @@ needs:
       - node: sampleFrontHadeeth
       - node: sampleBackVocabulary
       - node: sampleBackHadeeth
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:206
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:216
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "the card type changes the preview"
 
@@ -85,7 +85,7 @@ needs:
     evidence:
       - node: tagsTooMany
       - node: tagsTooLong
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:175
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:184
       - source: apps/tedris/features/flashcards/deck-model.ts:128
       - source: apps/tedris/features/flashcards/deck-model.ts:141
     note: >-
@@ -127,10 +127,14 @@ needs:
       - state: creating
       - state: deck_opened
       - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:73
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "creates a private deck with a type and trimmed tags, and opens its page"
+      - test: apps/tedris/test/create-deck-page.spec.ts
+        name: "while the deck is made, the kind, 'Vazgeç' and the breadcrumb are off, and back after a refusal"
+      - test: apps/tedris/test/create-deck-page.spec.ts
+        name: "while the deck is made, the name, the description and the tags are read-only"
     note: >-
       The second press is `if (busy) return` and is walked by the unit spec create-deck-page.spec.ts:147 only (unwalked as to a
       browser); decks#11 a4 (the new deck among Desteler with "Özel") is tedris.decks.browse's list and is not carried here.
@@ -143,7 +147,7 @@ needs:
       - node: cancel
       - node: trailDecks
       - state: decks_opened
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:207
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Vazgeç' goes back to Desteler and creates nothing"
 
@@ -157,7 +161,7 @@ needs:
       - node: refusedBody
       - node: refusedClose
       - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:92
     note: >-
       unwalked: no e2e file makes the API refuse; the unit spec create-deck-page.spec.ts:129 does, with a mocked action. The
       graph's scenario `refused` (a name of three emoji, DCKCREATE-1) is the one refusal a replay can make on the local stack;
@@ -168,7 +172,7 @@ needs:
       A refusal tells the talebe which field the API refused and why, and does not say "try again" when trying again cannot help
       (a name the API counts as too short, a tag it refuses).
     evidence:
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:92
     missing: no Linear issue; findings DCKCREATE-1; code exists in part
     note: |-
       Drawn on the node refusedBody, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
@@ -195,7 +199,7 @@ needs:
       A press of "Oluştur" that is refused by the page's own checks is announced to a screen-reader user and the focus goes to the
       first control that is wrong; the radios are marked invalid when the kind is missing.
     evidence:
-      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:71
+      - source: apps/tedris/features/flashcards/components/create-deck-page.tsx:74
       - source: libs/ui/src/mds/field.tsx:50
     missing: no Linear issue
     note: |-

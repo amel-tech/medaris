@@ -40,7 +40,7 @@ needs:
       - state: looking
       - state: form
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:59
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:65
       - test: apps/nizam/e2e/kosks.e2e.ts
         name: "nizam/10 — 'Köşk aç' stays off until the name and a nazım are right, then opens the köşk with its nazım (criteria 1-5)"
       - scenario: opened
@@ -132,6 +132,6 @@ needs:
     evidence:
       - state: start
       - state: form
-      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:421
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:429
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/15 — Köşkü aç opens the köşk form with the application's values and accepts it once the köşk exists (criteria 3, 4)"

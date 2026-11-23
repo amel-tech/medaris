@@ -112,7 +112,7 @@ needs:
       - node: dismissDialog
       - state: roster
       - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:147
-      - source: libs/ui/src/mds/dialog.tsx:126
+      - source: libs/ui/src/mds/dialog.tsx:133
       - test: apps/nazar/e2e/dismiss.e2e.ts
         name: "nazir/15 — Vazgeç closes the dialog and changes nothing"
       - test: apps/nazar/e2e/dismiss.e2e.ts

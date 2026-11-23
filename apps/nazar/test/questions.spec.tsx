@@ -310,6 +310,33 @@ describe("answering", () => {
     expect(cards()[0].textContent).toContain("Yeni cevap");
   });
 
+  it("keeps Vazgeç off while a change is sent, so a refusal is said in the form it came from", async () => {
+    state.questions = page([question("Birinci", { answer: ANSWERED })]);
+    let answer: (value: unknown) => void = () => undefined;
+    answerQuestion.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await mount();
+    await click(buttonIn(cards()[0], tr.change) as Element);
+    await set(boxIn(cards()[0]), "Yeni cevap");
+    await click(buttonIn(cards()[0], tr.save) as Element);
+    expect(answerQuestion).toHaveBeenCalledWith("q-Birinci", "Yeni cevap");
+    const cancel = buttonIn(cards()[0], tr.cancel) as HTMLButtonElement;
+    expect(cancel.disabled).toBe(true);
+    await click(cancel);
+    expect(boxIn(cards()[0])).not.toBeNull();
+
+    await act(async () =>
+      answer({ success: false, code: "LESSON_QUESTION_NOT_FOUND" })
+    );
+    await settle();
+    expect(cards()[0].textContent).toContain(tr.errors.gone);
+    expect(boxIn(cards()[0]).value).toBe("Yeni cevap");
+    expect(buttonIn(cards()[0], tr.cancel)?.disabled).toBe(false);
+  });
+
   it("says the question is gone, or not theirs to answer, on the API's 404", async () => {
     state.questions = page([question("Birinci")]);
     answerQuestion.mockResolvedValue({

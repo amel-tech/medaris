@@ -191,7 +191,7 @@ states:
     on:
       OPEN_HEADER:
         - { guard: "way == 'noCourses'", target: headerForm, effect: [openedWithoutCourses], source: apps/nazar/features/bans/components/bans-page.tsx:63, say: "she presses 'Yasakla' in the header; the courses could not be read, so only the whole medrese is on" }
-        - { target: headerForm, source: apps/nazar/features/bans/components/ban-dialog.tsx:315, say: "she presses 'Yasakla' in the header" }
+        - { target: headerForm, source: apps/nazar/features/bans/components/ban-dialog.tsx:316, say: "she presses 'Yasakla' in the header" }
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
 
   settle:
@@ -221,10 +221,10 @@ states:
       whole body is the dialog's description (F-B-12).
     source: apps/nazar/features/bans/components/ban-dialog.tsx:198
     on:
-      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:290, say: "she writes the reason" }
-      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently, and the button stays off" }
-      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the talebe's courses" }
-      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she writes the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:292, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently, and the button stays off" }
+      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks one of the talebe's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks 'Medrese düzeyi'" }
       CANCEL: { target: closedRow, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to the row's 'Yasakla' (not verified)" }
       NAVIGATE: { target: left, say: "she leaves the page by its address" }
 
@@ -234,8 +234,8 @@ states:
     description: The same dialog with "Yasakla" on; pressing it sends the ban.
     source: apps/nazar/features/bans/components/ban-dialog.tsx:214
     on:
-      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the talebe's courses" }
-      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks one of the talebe's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks 'Medrese düzeyi'" }
       SUBMIT: { guard: "chosen == scope", target: rowSubmitting, effect: [clearToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:162, say: "she presses 'Yasakla' in the dialog" }
       CANCEL: { target: closedRow, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "she leaves the page by its address" }
@@ -273,12 +273,12 @@ states:
       could not be read.
     source: apps/nazar/features/bans/components/ban-dialog.tsx:198
     on:
-      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:290, say: "she writes the reason" }
-      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently" }
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she writes the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:292, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently" }
       SEARCH: { guard: "who == 'nobody'", target: headerLooking, source: apps/nazar/features/bans/components/ban-dialog.tsx:55, say: "she types an address and presses Enter, or leaves the field" }
-      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:244, say: "she presses 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved (F-B-8)" }
-      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the medrese's courses" }
-      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:245, say: "she presses 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved (F-B-8)" }
+      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks one of the medrese's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks 'Medrese düzeyi'" }
       CANCEL: { target: closedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to the header's 'Yasakla' (not verified)" }
       NAVIGATE: { target: left, say: "she leaves the page by its address" }
 
@@ -289,9 +289,9 @@ states:
       A person is chosen and the reason is written, so "Yasakla" is on.
     source: apps/nazar/features/bans/components/ban-dialog.tsx:214
     on:
-      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:244, say: "she presses 'Seçimi kaldır': the button goes off" }
-      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the medrese's courses" }
-      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:245, say: "she presses 'Seçimi kaldır': the button goes off" }
+      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks one of the medrese's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:260, say: "she picks 'Medrese düzeyi'" }
       SUBMIT: { guard: "chosen == scope", target: headerSubmitting, effect: [clearToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:162, say: "she presses 'Yasakla' in the dialog" }
       CANCEL: { target: closedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "she leaves the page by its address" }
@@ -318,9 +318,9 @@ states:
   headerSubmitting:
     title: The ban is on its way (from the header)
     description: >-
-      As rowSubmitting, for the person the address found. The "Seçimi kaldır" button stays live while the ban is sent and takes
-      the person out of the dialog under the call (BAN-3). A success closes the dialog, shows the toast and reads Yasaklamalar
-      again, whose "Etkin" tab then lists the new row (a ban already standing is not a new row: BAN-4).
+      As rowSubmitting, for the person the address found. The "Seçimi kaldır" button is natively disabled while the ban is sent
+      (ban-dialog.tsx:244), so the person shown is the one the ban is for. A success closes the dialog, shows the toast and reads
+      Yasaklamalar again, whose "Etkin" tab then lists the new row (a ban already standing is not a new row: BAN-4).
     invoke: { action: createMadrasahBan }
     on:
       DONE: { guard: "answer == 'saved'", target: savedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:176, say: "the ban stands" }

@@ -31,7 +31,7 @@ needs:
       - node: toastAdded
       - node: tabCards
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
-      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:70
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72
       - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:98
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "lists every card with its own status, and adds, edits and deletes one"
@@ -44,7 +44,7 @@ needs:
       - state: addForm
       - node: frontRequired
       - node: backRequired
-      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:53
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:55
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "lists every card with its own status, and adds, edits and deletes one"
     note: Also drawn as the assertion a-card-is-sent-only-with-long-enough-faces.
@@ -57,7 +57,7 @@ needs:
       - node: frontShort
       - node: backShort
       - node: editBackShort
-      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:58
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:60
     note: |-
       no e2e types a face of one or two characters; the unit spec of the page (apps/tedris/test/deck-cards-page.spec.ts) is not a
       walk
@@ -89,7 +89,7 @@ needs:
       - state: updating
       - node: toastUpdated
       - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:291
-      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:69
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:71
       - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:170
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "lists every card with its own status, and adds, edits and deletes one"
@@ -167,10 +167,23 @@ needs:
     need: >-
       A dialog closed while its write is still out either stops the write or the page says what happened to it; a toast never
       reports the result of something the author believes they cancelled.
-    missing: no Linear issue; MCARDS-4 (DCK-30 for a deck)
+    evidence:
+      - state: adding
+      - state: updating
+      - state: deleting
+      - node: addCancel
+      - node: addCloseIcon
+      - node: confirmCancel
+      - node: confirmCloseIcon
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:98
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:222
+      - test: apps/tedris/test/deck-cards-page.spec.ts
+        name: "while the card is saved, Vazgeç, Kapat and Esc are off, so a refusal keeps the typed faces in sight (MCARDS-4)"
+      - test: apps/tedris/test/deck-cards-page.spec.ts
+        name: "while the card is deleted, Vazgeç, Kapat and Esc are off (MCARDS-4)"
     note: >-
-      Drawn on the states adding, updating and deleting, which the code has: they are not evidence, so that a replay still walks
-      them (SPEC.md §13 leaves out what only missing needs name).
+      Met on 23 Nov 2026 (MCARDS-4, fixed): no dialog can be closed while its write is out, so no toast reports the result of
+      something the author believes they cancelled. Walked by the unit spec only, not in a browser.
 
   - id: a-refused-write-is-said-and-keeps-what-was-typed
     need: >-
@@ -183,7 +196,7 @@ needs:
       - state: deleting
       - node: toastSaveFailed
       - node: toastDeleteFailed
-      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74
       - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:60
       - source: apps/tedris/features/flashcards/attempt.ts:16
     note: |-

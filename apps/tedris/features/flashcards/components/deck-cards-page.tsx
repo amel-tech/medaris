@@ -219,6 +219,7 @@ export function DeckCardsPage({
           confirmLabel={t("cardDeleteConfirm")}
           confirmVariant="destructive"
           confirmLoading={deleting}
+          dismissDisabled={deleting}
           onConfirm={() => remove(dialog.card)}
         >
           {t("cardDeleteText")}

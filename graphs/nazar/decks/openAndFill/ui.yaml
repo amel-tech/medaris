@@ -19,7 +19,7 @@
 #   composed.Decks.batchSummary  "{count} kart hazır · atlanacak satırlar: {lines}"  Decks.pasteReady in a <strong>, " · " and
 #                                                     Decks.pasteSkipped, in one <span> (card-quick-add.tsx:157-163)
 #   composed.Button.loading      "Yükleniyor"         the busy button's hidden status, the kit's hard-coded default (libs/ui/src/mds/button.tsx:114)
-# The dialogs' "Kapat" and "Vazgeç" are the primitives' hard-coded words (libs/ui/src/mds/dialog.tsx:97, alert-dialog.tsx:42, F-D1-24);
+# The dialogs' "Kapat" and "Vazgeç" are the primitives' hard-coded words (libs/ui/src/mds/dialog.tsx:100, alert-dialog.tsx:44, F-D1-24);
 # the graph names them with Shell.close and Decks.cancel, which say the same.
 schema: delurio-graph/0
 kind: ui
@@ -78,7 +78,7 @@ nodes:
   draftHelp: { type: text, component: Text, text: { key: Decks.draftHelp }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:174 }
   newDeckAlert: { type: alert, component: Alert, role: alert, text: { key: Decks.failed }, in: [newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:178 } # tone error: announced
   newDeckCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: CANCEL, duringStep: true, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:106 }
-  newDeckClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: CLOSE, duringStep: true, source: libs/ui/src/mds/dialog.tsx:97 } # an icon button named only by aria-label, the primitive's hard-coded "Kapat" (F-D1-24)
+  newDeckClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: CLOSE, duringStep: true, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label, the primitive's hard-coded "Kapat" (F-D1-24)
   newDeckSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.create }, in: [newDeck, newDeckProblem, creating, newDeckFailed], disabledIn: [creating], emits: SUBMIT_DECK, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:107 } # never disabled: busy (aria-disabled) while the call runs
   creatingBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [creating], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> of the busy button (F-D1-24)
 
@@ -138,9 +138,9 @@ nodes:
   removeDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: removeTitle }, in: [confirmRemove], initialFocus: removeCancel, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:111 }
   removeTitle: { type: text, component: Heading, role: heading, text: { key: Decks.remove }, in: [confirmRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:114 }
   removeBody: { type: text, component: Text, text: { key: Decks.removeConfirm }, in: [confirmRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:119 }
-  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [confirmRemove], emits: CANCEL_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:95 } # the focus starts here; the primitive's hard-coded "Vazgeç" (F-D1-24)
+  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [confirmRemove], emits: CANCEL_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here; the primitive's hard-coded "Vazgeç" (F-D1-24)
   removeConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.removeYes }, in: [confirmRemove], emits: CONFIRM_REMOVE, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:115 } # destructive
-  removeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmRemove], emits: CLOSE_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:82 } # an icon button named only by aria-label
+  removeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmRemove], emits: CLOSE_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:88 } # an icon button named only by aria-label
 
 edges:
   - { labelledBy: [newDeckDialog, newDeckTitle] }
@@ -165,7 +165,7 @@ rules:
   - { id: F-D1-17, rule: "Neither route has a loading.tsx (app/ders/[dersId]/deste, .../[desteId]): the portal-wide app/loading.tsx draws a whole-shell skeleton while a deck page loads. Not verified visually. Fix: a loading.tsx in each." }
   - { id: F-D1-20, rule: "No try/catch around the server-action calls (every startTransition(async ...) of features/decks): when the browser cannot reach Next the rejection escapes, 'Deste aç' and 'Ekle' stay busy and nothing is said. Not verified. Fix: try/catch/finally and a network message." }
   - { id: F-D1-23, rule: "The deck's tile is one link holding the cover's initials, the title, the facts, a progressbar named 'Ezber oranı %n' and the same sentence visibly: its accessible name is a long run with the percent twice (decks-page.tsx:103-149). Not verified exactly. Fix: aria-hidden on the cover's label and on the visible duplicate." }
-  - { id: F-D1-24, rule: "The dialog and the confirmation pass no closeLabel or cancelLabel, so 'Kapat' and 'Vazgeç' are the primitives' hard-coded words, and a busy button says 'Yükleniyor' from a hard-coded default (dialog.tsx:97, alert-dialog.tsx:42, button.tsx:62). Fix: pass Shell.close, Decks.cancel and a loadingLabel from the catalog." }
+  - { id: F-D1-24, rule: "The dialog and the confirmation pass no closeLabel or cancelLabel, so 'Kapat' and 'Vazgeç' are the primitives' hard-coded words, and a busy button says 'Yükleniyor' from a hard-coded default (dialog.tsx:100, alert-dialog.tsx:44, button.tsx:62). Fix: pass Shell.close, Decks.cancel and a loadingLabel from the catalog." }
   - { id: F-D1-25, rule: "Every tile's icon buttons are named just 'Düzenle' and 'Sil' (card-tile.tsx:139-152): a screen-reader user in a deck of two dozen cards hears 24 identical names. Fix: put the card's front in the label." }
   - { id: F-D1-26, rule: "The two boxes of the Kart ekle row carry an aria-label and a placeholder and no visible label (card-quick-add.tsx:125-150): once text is typed nothing on screen names them. Fix: a visible label, or a visually hidden one with column headers." }
   - { id: F-D1-01, rule: "The list's failed state draws a SystemState with its own h1 under the page's h1 (decks-page.tsx:45, 59). Not drawn here (a failed read is not a refusal of the API's)." }
@@ -176,6 +176,6 @@ rules:
   - { id: OPENFILL-4, rule: "The document's title is 'Ders desteleri · Medaris Nazar' on the list and on every deck (generateMetadata of both routes reads Decks.title), so the title does not tell the decks apart (app/ders/[dersId]/deste/[desteId]/page.tsx:5-8). Fix: use the deck's own title on its page." }
   - { id: OPENFILL-5, rule: "A saved card edit says nothing: the tile returns to view and the deck is read again, with no toast and no line; 'Decks.cardSaved' is in the catalog and never used (card-tile.tsx:61-62). Decision D2. Fix: say 'Kart kaydedildi' in the status line and return the focus to the tile's Düzenle." }
   - { id: F-D1-27, rule: "CardQuickAdd and CardTile use Input outside a Field, although the primitive says it is always inside one (libs/ui/src/mds/input.tsx doc comment): it works, but it is outside the documented contract, and it is why the boxes have no label of their own (F-D1-26)." }
-  - { id: focus-not-set, rule: "No page of this flow sets an initial focus (nothing in features/decks does). The code moves the focus in three places only: back to Ön yüz after an add or a batch (card-quick-add.tsx:54, 82, 112), to the edit form's front box (card-tile.tsx:84), and to 'Vazgeç' in the delete confirmation (alert-dialog.tsx:64). Not verified in a browser." }
+  - { id: focus-not-set, rule: "No page of this flow sets an initial focus (nothing in features/decks does). The code moves the focus in three places only: back to Ön yüz after an add or a batch (card-quick-add.tsx:54, 82, 112), to the edit form's front box (card-tile.tsx:84), and to 'Vazgeç' in the delete confirmation (alert-dialog.tsx:70). Not verified in a browser." }
   - { id: label-in-name, rule: "A button's visible text is in its accessible name where it has any: 'Deste aç', 'Ekle', 'Hepsini ekle', 'Vazgeç', 'Evet, sil'. The icon buttons have no visible text. Holds." }
   - { id: confirm-before-deleting, rule: "Sil asks first, in an alertdialog whose focus starts on 'Vazgeç'; a card edit does not ask. The confirmation does not say that a delete cannot be undone." }

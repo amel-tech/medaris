@@ -66,7 +66,7 @@ export default () => ({
   otel: {
     enabled: process.env.OTEL_ENABLED === "true" || false,
     otelEndpoint:
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
+      process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318",
     serviceName: process.env.SERVICE_NAME || pkg.name,
     serviceVersion: version,
   },

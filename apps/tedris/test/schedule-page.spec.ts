@@ -200,6 +200,21 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain("Celseye katıl");
   });
 
+  it("leads an online exam to its exam page, says it is open, and claims no meeting (MDRS-299)", async () => {
+    const open = s({
+      id: "e1",
+      startsAt: new Date("2026-10-01T06:50:00Z"),
+      isExam: true,
+      isOnlineExam: true,
+    } as Partial<ScheduleSessionResponse>);
+    const html = await render([open]);
+    expect(html).toContain('href="/courses/c1/lessons/e1/sinav"');
+    expect(html).toContain("Sınav açık");
+    expect(html).toContain("Sınava gir");
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi");
+    expect(html).not.toContain("Şu an canlı");
+  });
+
   it("offers the next seven days, and the way back once it has moved on", async () => {
     const first = await render([s({})]);
     expect(first).toContain('href="/schedule?from=2026-10-08"');

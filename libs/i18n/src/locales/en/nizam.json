@@ -2583,6 +2583,7 @@
     "cancel": "Cancel",
     "submit": "Open the course",
     "saving": "Saving…",
+    "opening": "The course is being opened. Stay on this page until it is done.",
     "failed": "The course could not be opened",
     "created": "Course opened",
     "createdBody": "{name} was opened.",

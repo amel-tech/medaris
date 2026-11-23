@@ -950,6 +950,7 @@ const FileRow = ({
           <Button
             variant="ghost"
             size="mini"
+            disabled={busy}
             onClick={() => {
               setConfirming(false);
               setError(null);

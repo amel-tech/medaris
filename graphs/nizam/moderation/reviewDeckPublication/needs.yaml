@@ -57,7 +57,7 @@ needs:
       - node: cardsTotal
       - node: auditNote
       - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:109
-      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:166
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:176
       - test: apps/nizam/e2e/deck-review.e2e.ts
         name: "nizam/16 — looking at the sample and at every card writes an audit row each time (criterion 4)"
     note: >-
@@ -73,7 +73,7 @@ needs:
       - state: handsBackPublished
       - node: toastPublished
       - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
-      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:230
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:243
       - test: apps/nizam/e2e/deck-review.e2e.ts
         name: "nizam/16 — Yayımla makes the deck public: the open list carries it and the request leaves (criterion 2)"
     note: >-
@@ -125,7 +125,7 @@ needs:
       - state: handsBackPrivate
       - node: toastUnpublished
       - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:167
-      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:261
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:274
     note: no e2e of deck-review.e2e.ts takes a deck back (MDRS-148 added the button after them); bound by `decides` and `quiet`
 
   - id: reviewer-never-answers-own-deck
@@ -159,7 +159,7 @@ needs:
     need: >-
       More than twelve requests in a tab are reached with "Daha fazla göster", which adds the next page without repeating a row.
     evidence:
-      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:529
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:542
     note: the stack never holds twelve requests, so nothing walks it; not drawn (the flow's outOfView)
 
   - id: look-only-when-asked

@@ -30,7 +30,7 @@ needs:
       - state: selecting
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
-      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:268
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:276
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/15 — the tab counts are the table's, and the detail shows the applicant and 'Verilmedi' for a missing phone (criterion 1)"
     note: >-
@@ -64,7 +64,7 @@ needs:
       - state: approving
       - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
-      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:164
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:172
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/15 — Köşkü aç opens the köşk form with the application's values and accepts it once the köşk exists (criteria 3, 4)"
     note: >-
@@ -128,7 +128,7 @@ needs:
       - state: decidedDetail
       - state: empty
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
-      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:381
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:389
       - test: apps/nizam/e2e/platform-admin.e2e.ts
         name: "nizam/15 — the tab counts are the table's, and the detail shows the applicant and 'Verilmedi' for a missing phone (criterion 1)"
     note: "Bound, not yet run: tabs, none. Each list stops at 100 rows with no word (APPDEC-6, below)."

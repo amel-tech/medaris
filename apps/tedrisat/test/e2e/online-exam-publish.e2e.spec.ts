@@ -187,6 +187,21 @@ describe("online exams, publishing (e2e)", () => {
     expect(
       told.filter((n) => n.type === "EXAM_SCHEDULED").map((n) => n.targetId)
     ).toEqual([lessonId]);
+    // The talebe's schedule and home page see it as an online exam, taken on
+    // its exam page rather than through a meeting.
+    const upcoming = await http()
+      .get("/me/upcoming-lessons")
+      .set("Authorization", bearerOf(CAST.TALEBE))
+      .expect(200);
+    expect(
+      (
+        upcoming.body as Array<{
+          id: string;
+          isExam: boolean;
+          isOnlineExam: boolean;
+        }>
+      ).find((row) => row.id === lessonId)
+    ).toMatchObject({ isExam: true, isOnlineExam: true });
     const [celse] = await db()
       .select()
       .from(lessons)

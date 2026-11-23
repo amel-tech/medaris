@@ -83,6 +83,9 @@ export function CourseSettingsPage({
   const [unpublishing, setUnpublishing] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
   const zones = useMemo(() => listTimeZones(form.timeZone), [form.timeZone]);
+  // Kaydet's writes and Yayımla's are one at a time: an edit made while either
+  // runs would be read again over, or left out of what is sent.
+  const writing = saving || publishBusy;
 
   const base = `/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${course.id}`;
@@ -105,7 +108,7 @@ export function CourseSettingsPage({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!dirty) return;
+    if (!dirty || writing) return;
     setSaving(true);
     let version = course.version;
     // The sample session moves with its own writes, one after the other: each
@@ -168,6 +171,7 @@ export function CourseSettingsPage({
   };
 
   const changeStatus = async (status: "DRAFT" | "PUBLISHED") => {
+    if (writing) return;
     setPublishBusy(true);
     const res = await patchCourse(kosk.id, course.id, { status });
     setPublishBusy(false);
@@ -223,7 +227,7 @@ export function CourseSettingsPage({
             label={t("closedLabel")}
             description={t("closedDesc")}
             checked={form.isClosed}
-            disabled={saving}
+            disabled={writing}
             onCheckedChange={(v) => set("isClosed", v === true)}
             name="isClosed"
           />
@@ -233,7 +237,7 @@ export function CourseSettingsPage({
             label={t("unlistedLabel")}
             description={t("unlistedDesc")}
             checked={form.isUnlisted}
-            disabled={saving}
+            disabled={writing}
             onCheckedChange={(v) => set("isUnlisted", v === true)}
             name="isUnlisted"
           />
@@ -242,7 +246,7 @@ export function CourseSettingsPage({
               name="sample"
               value={form.sampleLessonId || NONE}
               onChange={(v) => set("sampleLessonId", !v || v === NONE ? "" : v)}
-              disabled={saving}
+              disabled={writing}
               options={options.map((o) => ({
                 value: o.value || NONE,
                 label:
@@ -267,7 +271,7 @@ export function CourseSettingsPage({
                   : "approvalDesc"
             )}
             checked={effectiveApproval(form, fixed || form.isUnlisted)}
-            disabled={saving || fixed || form.isUnlisted}
+            disabled={writing || fixed || form.isUnlisted}
             onCheckedChange={(v) => set("requiresApproval", v === true)}
             name="requiresApproval"
           />
@@ -277,7 +281,7 @@ export function CourseSettingsPage({
             label={t("inPersonLabel")}
             description={t("inPersonDesc")}
             checked={form.inPerson}
-            disabled={saving}
+            disabled={writing}
             onCheckedChange={(v) => set("inPerson", v === true)}
             name="inPerson"
           />
@@ -286,7 +290,7 @@ export function CourseSettingsPage({
               name="timeZone"
               value={form.timeZone}
               onChange={(v) => v && set("timeZone", v)}
-              disabled={saving}
+              disabled={writing}
               options={zones.map((zone) => ({
                 value: zone,
                 label:
@@ -311,7 +315,7 @@ export function CourseSettingsPage({
             label={t("neverPublicLabel")}
             description={t("neverPublicDesc")}
             checked={neverPublic}
-            disabled={saving || !manager}
+            disabled={writing || !manager}
             onCheckedChange={(v) => setNeverPublic(v === true)}
             name="recordingsNeverPublic"
           />
@@ -320,7 +324,7 @@ export function CourseSettingsPage({
             <Button
               variant="ghost"
               type="button"
-              disabled={saving || !dirty}
+              disabled={writing || !dirty}
               onClick={() => {
                 setForm(stored);
                 setNeverPublic(kosk.recordingsNeverPublic);
@@ -332,7 +336,7 @@ export function CourseSettingsPage({
               type="submit"
               loading={saving}
               loadingLabel={t("saving")}
-              disabled={!dirty}
+              disabled={!dirty || publishBusy}
             >
               {t("save")}
             </Button>
@@ -364,6 +368,7 @@ export function CourseSettingsPage({
               {published ? (
                 <Button
                   variant="secondary"
+                  disabled={saving}
                   onClick={() => setUnpublishing(true)}
                 >
                   {t("unpublish")}
@@ -372,6 +377,7 @@ export function CourseSettingsPage({
                 <Button
                   variant="secondary"
                   loading={publishBusy}
+                  disabled={saving}
                   onClick={() => void changeStatus("PUBLISHED")}
                 >
                   {t("publish")}
@@ -426,6 +432,7 @@ export function CourseSettingsPage({
                 <Button
                   variant="outline"
                   iconLeft={<Icon name="eye" size="sm" />}
+                  disabled={writing}
                   onClick={() => setHiding(true)}
                 >
                   {t("hide")}

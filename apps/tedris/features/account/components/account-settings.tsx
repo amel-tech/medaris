@@ -201,6 +201,8 @@ function TimeZoneCard({ timeZone }: Pick<AccountSettingsProps, "timeZone">) {
     label: zone.replaceAll("_", " "),
   }));
 
+  // One save at a time: two in flight could leave the list on a zone that
+  // is not the stored one, so both lists are off while one runs.
   const save = (zone: string, previousChoice: string) => {
     const previous = saved;
     setSaved(zone);
@@ -240,6 +242,7 @@ function TimeZoneCard({ timeZone }: Pick<AccountSettingsProps, "timeZone">) {
             options={options}
             value={choice}
             onChange={pick}
+            disabled={pending}
           />
         </Field>
         {choice === OTHER_ZONE ? (
@@ -253,6 +256,7 @@ function TimeZoneCard({ timeZone }: Pick<AccountSettingsProps, "timeZone">) {
               onChange={(zone) => {
                 if (zone) save(zone, OTHER_ZONE);
               }}
+              disabled={pending}
             />
           </Field>
         ) : null}

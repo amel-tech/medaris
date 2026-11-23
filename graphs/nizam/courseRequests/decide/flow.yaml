@@ -213,9 +213,9 @@ states:
       Not a screen: the Bekleyen tab shows its list, or its empty line when nothing waits any more (the last waiting request was answered here
       or no request waited when the page was read).
     always:
-      - { guard: nothingWaits, target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:295, say: "no request waits: 'Karar bekleyen ders talebi yok.'" }
-      - { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:297, say: "at least one request waits: the list and the card of the selected one" }
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:295
+      - { guard: nothingWaits, target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302, say: "no request waits: 'Karar bekleyen ders talebi yok.'" }
+      - { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:304, say: "at least one request waits: the list and the card of the selected one" }
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
 
   noAccess:
     title: The page says the person has no permission here
@@ -240,9 +240,9 @@ states:
       "Tekrar dene" takes the place of the tabs and the list (the view's `failed` is true and no tab has been read). After a failed retry a
       sticky error toast says the same. The Alert has role alert, so it is announced when it appears.
     on:
-      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene'" }
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene'" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:262
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:269
 
   retrying:
     title: The waiting requests are read again
@@ -251,11 +251,11 @@ states:
       is cleared only by a success). A success draws the tabs and the list; a failure puts up the sticky error toast and leaves the Alert.
     invoke: { action: listCourseRequests }
     on:
-      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:85, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
-      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:79, say: "it fails again: the sticky toast" }
+      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:90, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:84, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
-      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :66-93).
-      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :69-98).
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
     source: apps/nizam/features/platform-admin/actions.ts:95
 
   listed:
@@ -270,13 +270,13 @@ states:
       TabsPanel, so the list and the card are not a tab panel; choosing a row or switching a tab announces nothing and moves no focus (F-W3-5).
       Nothing on the page says which köşk it is (the köşk's name is in the card only, F-W3-9). A toast of the last decision may still be up.
     on:
-      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:149, say: "she chooses another row: the card shows that request" }
-      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she opens 'Karara bağlanan'" }
-      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:238, say: "she presses 'Reddet': the dialog asks for the reason" }
-      ACCEPT: { target: acceptHandOver, effect: [openedCourseForm], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234, say: "she presses 'Kabul et': the Ders aç form opens with the request's name; nothing is written yet (CREQ-4)" }
-      OPEN_PENDING: { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
+      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:156, say: "she chooses another row: the card shows that request" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she opens 'Karara bağlanan'" }
+      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:245, say: "she presses 'Reddet': the dialog asks for the reason" }
+      ACCEPT: { target: acceptHandOver, effect: [openedCourseForm], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241, say: "she presses 'Kabul et': the Ders aç form opens with the request's name; nothing is written yet (CREQ-4)" }
+      OPEN_PENDING: { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305
 
   empty:
     title: Nothing waits
@@ -286,10 +286,10 @@ states:
       was sent, and the page after the last waiting request was answered here: the counts follow, and the focus that the dialog gave back to
       the card's "Reddet" is lost with the card (CREQ-2). A toast of the last decision may still be up.
     on:
-      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she opens 'Karara bağlanan'" }
-      OPEN_PENDING: { target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she opens 'Karara bağlanan'" }
+      OPEN_PENDING: { target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:296
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303
 
   loadingDecided:
     title: The answered requests are read
@@ -300,15 +300,16 @@ states:
     invoke: { action: listCourseRequests }
     on:
       DONE:
-        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:296, say: "nothing was answered: 'Karara bağlanmış talep yok.'" }
-        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298, say: "the answered requests are listed, the newest decision selected" }
-      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:77, say: "the read fails: the sticky toast, and the Alert replaces the tabs (CREQ-3)" }
+        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303, say: "nothing was answered: 'Karara bağlanmış talep yok.'" }
+        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305, say: "the answered requests are listed, the newest decision selected" }
+      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:82, say: "the read fails: the sticky toast, and the Alert replaces the tabs (CREQ-3)" }
       FAIL.signedOut: sent_to_sign_in
       # The tabs stay live while the answered requests are read, and 'Bekleyen' shows its list at once (it was kept). The read already sent
-      # still lands: it fills the other tab and sets the selection to its first request, which is none of this tab's (setSelectedId, :91),
-      # so the card goes blank; that late answer is not drawn.
-      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen' while the answered requests are read: its list is there at once" }
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:66
+      # is dropped when it lands (each read carries a ticket, course-requests-view.tsx:67-79, and a tab switch takes a new one, :102), so
+      # it no longer sets the selection to a request of the other tab and the card stays (fixed 23 Nov 2026; test:
+      # apps/nizam/test/requests-late-answers.spec.tsx).
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen' while the answered requests are read: its list is there at once" }
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:69
 
   decidedList:
     title: The answered requests are listed
@@ -320,20 +321,20 @@ states:
       family). An accepted request does not link to the course made from it, though the API sends its id (CREQ-6). Within one visit a refusal
       made here is the newest.
     on:
-      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
-      OPEN_DECIDED: { target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
+      OPEN_DECIDED: { target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:298
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305
 
   decidedEmpty:
     title: Nothing was answered
     by: human
     description: "The Karara bağlanan tab is selected and says \"Karara bağlanmış talep yok.\" (an EmptyState)."
     on:
-      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96, say: "she goes back to 'Bekleyen'" }
-      OPEN_DECIDED: { target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:271, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen'" }
+      OPEN_DECIDED: { target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:296
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303
 
   decidedFailed:
     title: The answered requests could not be read
@@ -343,20 +344,20 @@ states:
       included: "Talepler okunamadı" with "Tekrar dene" and a sticky toast with the same words. The tabs are gone, so there is no way back to
       the Bekleyen list that was read, except reloading the page (CREQ-3).
     on:
-      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene'" }
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene'" }
       NAVIGATE: left
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:262
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:269
 
   retryingDecided:
     title: The answered requests are read again
     description: "The same call as loadingDecided; the Alert stays while it runs. A success draws the tabs with the Karara bağlanan tab selected and its list."
     invoke: { action: listCourseRequests }
     on:
-      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:85, say: "the read works: the answered requests (the model draws a list, not the empty line)" }
-      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:79, say: "it fails again: the sticky toast" }
+      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:90, say: "the read works: the answered requests (the model draws a list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:84, say: "it fails again: the sticky toast" }
       FAIL.signedOut: sent_to_sign_in
-      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :66-93).
-      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :69-98).
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
     source: apps/nizam/features/platform-admin/actions.ts:95
 
   confirmReject:
@@ -413,14 +414,14 @@ states:
       ended is sent to sign in, with no toast. If the call itself fails (no network) nothing catches it: the button stays busy (not verified).
     invoke: { action: rejectCourseRequest }
     on:
-      DONE: { guard: "answer == 'rejected'", target: rejectedHandOver, effect: [refusedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125, say: "204: the toast 'Talep reddedildi', the row leaves, the dialog closes" }
-      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:118, say: "409: the row leaves, the dialog closes, an error toast says someone answered it" }
-      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:118, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
-      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:119, say: "403: the dialog stays open with an error toast" }
-      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:119, say: "any other failure: the dialog stays open with an error toast" }
+      DONE: { guard: "answer == 'rejected'", target: rejectedHandOver, effect: [refusedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:132, say: "204: the toast 'Talep reddedildi', the row leaves, the dialog closes" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125, say: "409: the row leaves, the dialog closes, an error toast says someone answered it" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:126, say: "403: the dialog stays open with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:126, say: "any other failure: the dialog stays open with an error toast" }
       FAIL.signedOut: sent_to_sign_in
       CANCEL: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "she presses Vazgeç or Esc while the refusal is sent: nothing happens, the refusal goes on (onOpenChange is ignored while saving)" }
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:115
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:122
 
   rejectedHandOver:
     title: The refusal waits for the başmüderris
@@ -481,12 +482,12 @@ assertions:
   - id: empty-means-nothing-waits
     never: "state == 'empty' and read == 'many'"
     say: The empty line shows only when no request waits.
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:295
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
   - id: rows-mean-something-waits
     never: "state == 'listed' and read == 'nothing'"
     say: The list is drawn only while a request waits.
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:295
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
   - id: the-success-toast-comes-only-after-the-api-took-it
     never: "last == 'rejected' and settledHere != 'rejected'"
     say: '"Talep reddedildi" shows only after the API answered 204.'
-    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:132

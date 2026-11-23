@@ -48,7 +48,7 @@ needs:
       - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
       - source: apps/tedrisat/src/user/users.controller.ts:57
       - source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
-      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:59
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:65
       - test: apps/nizam/e2e/kosks.e2e.ts
         name: "nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, the row, the audit entry, and nothing twice (criteria 1-5)"
     note: kosks.e2e.ts kosks#12 (a1 to a-last)
@@ -64,7 +64,7 @@ needs:
       - state: adding
       - node: toastExists
       - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
-      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:76
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:83
       - test: apps/tedrisat/test/e2e/kosk-admin.e2e.spec.ts
     note: "kosk-admin.e2e.spec.ts kosk-admin: refuses the whole call when anyone is a nazım already"
 
@@ -190,7 +190,7 @@ needs:
       - node: pickerNotFound
       - node: pickerAlertAlready
       - source: apps/tedrisat/src/user/users.controller.ts:57
-      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:138
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:145
       - test: apps/nizam/e2e/kosks.e2e.ts
         name: "nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, the row, the audit entry, and nothing twice (criteria 1-5)"
     note: kosks.e2e.ts kosks#12 (the address no account has, then a real one; the audit row of the search is not read)
