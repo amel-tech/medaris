@@ -90,7 +90,7 @@ needs:
       - node: deleteDialog
       - node: deleteCancel
       - source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254
-      - source: libs/ui/src/mds/alert-dialog.tsx:62
+      - source: libs/ui/src/mds/alert-dialog.tsx:68
       - test: apps/tedris/e2e/decks.e2e.ts
         name: "'Desteyi sil' deletes only after the confirmation, with its cards"
     note: Also drawn as the assertion delete-only-after-the-confirmation, the rule confirm-before-deleting.

@@ -155,4 +155,41 @@ describe("Deste oluştur (design tedris/27)", () => {
     expect(mocks.create).toHaveBeenCalledTimes(1);
     await act(async () => finish({ success: true, data: { id: "x" } }));
   });
+
+  it("while the deck is made, the kind, 'Vazgeç' and the breadcrumb are off, and back after a refusal", async () => {
+    let finish: (v: { success: false; error: string }) => void = () => {};
+    mocks.create.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    await mount();
+    await type(field("title"), "Yeni deste");
+    await click(radio("Kelime"));
+    await submit();
+    const cancel = () =>
+      [...document.querySelectorAll("a")].find(
+        (a) => a.textContent === "Vazgeç"
+      ) as HTMLAnchorElement;
+    const trailLink = () =>
+      document.querySelector(".mds-breadcrumb a") as HTMLAnchorElement | null;
+    const checked = () =>
+      document
+        .querySelector('[role="radio"][aria-checked="true"]')
+        ?.closest("label")?.textContent;
+
+    // A kind chosen now would not be the one sent.
+    expect(radio("Hadis").hasAttribute("data-disabled")).toBe(true);
+    await click(radio("Hadis"));
+    expect(checked()).toContain("Kelime");
+    expect(document.body.textContent).toContain("Kelime kartı böyle görünür");
+    // Leaving now would not stop the deck from being made.
+    expect(cancel().hasAttribute("href")).toBe(false);
+    expect(cancel().getAttribute("aria-disabled")).toBe("true");
+    expect(trailLink()).toBeNull();
+
+    await act(async () => finish({ success: false, error: "boom" }));
+    expect(radio("Hadis").hasAttribute("data-disabled")).toBe(false);
+    expect(cancel().getAttribute("href")).toBe("/decks");
+    expect(trailLink()?.getAttribute("href")).toBe("/decks");
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ cardType: "VOCABULARY" })
+    );
+  });
 });

@@ -138,6 +138,7 @@ function Content({
                   value={draft.field || null}
                   onChange={(v) => set("field", v ?? "")}
                   required
+                  disabled={pending}
                 />
               </Field>
             </div>

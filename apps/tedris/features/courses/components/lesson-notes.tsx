@@ -221,11 +221,13 @@ const BodyField = ({
   onChange,
   onFocus,
   placeholder,
+  readOnly,
 }: {
   value: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
   placeholder?: string;
+  readOnly?: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
   const help =
@@ -244,6 +246,7 @@ const BodyField = ({
         placeholder={placeholder}
         className={GROWING}
         value={value}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
         onFocus={onFocus}
       />
@@ -260,12 +263,14 @@ const TimeField = ({
   onChange,
   describedBy,
   video,
+  readOnly,
 }: {
   value: string;
   onChange: (value: string) => void;
   /** The id of the line that says what the field takes. */
   describedBy: string;
   video: boolean;
+  readOnly?: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
   return (
@@ -280,6 +285,7 @@ const TimeField = ({
         placeholder={t("timePlaceholder")}
         leading={<Icon name="clock" size="sm" />}
         value={value}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
     </Field>
@@ -310,6 +316,8 @@ const NoteForm = ({
   // The player's position, or, with no video on screen, the time since the
   // live celse began (MDRS-266).
   const source = player ?? clock;
+  // While the note is sent the form holds still: its success empties the
+  // form, so a time or a word put in meanwhile would be lost without a word.
 
   const takePosition = () => {
     const seconds = source?.position();
@@ -356,11 +364,12 @@ const NoteForm = ({
       <BodyField
         value={draft.body}
         placeholder={t("bodyPlaceholder")}
+        readOnly={saving}
         onChange={(body) => setDraft((d) => ({ ...d, body }))}
         onFocus={() => {
           // The moment the talebe starts writing is the moment the note is
           // about, unless they already gave a time themselves.
-          if (!touched && draft.time === "") takePosition();
+          if (!saving && !touched && draft.time === "") takePosition();
         }}
       />
       <div className="flex flex-col gap-1">
@@ -369,6 +378,7 @@ const NoteForm = ({
             value={draft.time}
             describedBy={hintId}
             video={video}
+            readOnly={saving}
             onChange={(time) => {
               setTouched(true);
               setDraft((d) => ({ ...d, time }));
@@ -379,6 +389,7 @@ const NoteForm = ({
               <Button
                 variant="outline"
                 size="small"
+                disabled={saving}
                 onClick={() => {
                   setTouched(true);
                   takePosition();

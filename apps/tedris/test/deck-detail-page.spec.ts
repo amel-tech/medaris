@@ -2,7 +2,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cardRow, deckResponse, summary } from "./decks-harness";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -542,6 +542,53 @@ describe("Deste, okuyan kişinin görünümü (design tedris/31)", () => {
         expect.objectContaining({ tone: "error", title: "Kart kopyalanamadı" })
       );
       expect(dialogs()).toHaveLength(1);
+    });
+
+    it("while the copy runs, the choice and every way to close are off (READCOPY-1)", async () => {
+      let answer: (value: unknown) => void = () => {};
+      mocks.copy.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await reader({
+        ownDecks: [
+          own[0],
+          summary({ id: "h2", title: "Hadis defterim", cardType: "HADEETH" }),
+        ],
+      });
+      await click(copyButton(1));
+      const radios = () =>
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            '[role="dialog"] [role="radio"]'
+          ),
+        ] as HTMLElement[];
+      await click(radios()[0] as HTMLElement);
+      await click(dialogButton("Kopyala"));
+      expect(mocks.copy).toHaveBeenCalledTimes(1);
+
+      const close = document.querySelector(
+        '[role="dialog"] .mds-dialog__close'
+      ) as HTMLButtonElement;
+      expect(dialogButton("Vazgeç")).toHaveProperty("disabled", true);
+      expect(close.disabled).toBe(true);
+      await click(dialogButton("Vazgeç"));
+      await click(close);
+      await key(document.activeElement ?? document.body, "Escape");
+      // A deck chosen now would not be where the card goes.
+      await click(radios()[1] as HTMLElement);
+      await settle(60);
+      expect(dialogs()).toHaveLength(1);
+      expect(radios()[0]?.getAttribute("aria-checked")).toBe("true");
+      expect(radios()[1]?.getAttribute("aria-checked")).toBe("false");
+
+      await act(async () => answer({ success: true, data: {} }));
+      await settle(60);
+      expect(mocks.copy).toHaveBeenCalledWith("h1", expect.anything());
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: "success",
+          description: "“Hadislerim” destesine eklendi.",
+        })
+      );
+      expect(dialogs()).toHaveLength(0);
     });
   });
 });

@@ -33,7 +33,7 @@ needs:
       - node: agendaTitle
       - source: apps/tedrisat/src/course/lesson.controller.ts:230
       - source: apps/tedrisat/src/course/course.controller.ts:260
-      - source: apps/tedris/features/courses/components/lesson-locked.tsx:169
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:179
       - test: apps/tedris/e2e/celse-states.e2e.ts
         name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
       - test: apps/tedris/e2e/session.e2e.ts
@@ -65,10 +65,12 @@ needs:
       - state: received
       - state: pendingCard
       - source: apps/tedrisat/src/course/course.controller.ts:497
-      - source: apps/tedris/features/courses/components/lesson-locked.tsx:87
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:89
       - source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
       - test: apps/tedris/e2e/celse-states.e2e.ts
         name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
+      - test: apps/tedris/test/lesson-locked-apply.spec.ts
+        name: "while the application is sent, the page's ways out are no links: leaving would not stop it"
 
   - id: the-team-hears-of-the-application
     need: >-

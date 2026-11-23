@@ -51,7 +51,7 @@ needs:
       - state: deleting
       - source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:123
       - source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:146
-      - source: apps/tedris/features/courses/components/lesson-notes.tsx:439
+      - source: apps/tedris/features/courses/components/lesson-notes.tsx:450
       - test: apps/tedris/e2e/lesson-notes.e2e.ts
         name: "on a YouTube recording's watch page, reached by Kaydı izle: adds a note with a time and one without, edits, deletes, and finds them after a reload"
       - scenario: writes
@@ -75,10 +75,15 @@ needs:
       moment.
     evidence:
       - state: panel
-      - source: apps/tedris/features/courses/components/lesson-notes.tsx:554
+      - source: apps/tedris/features/courses/components/lesson-notes.tsx:565
+      - node: useCurrent
+      - source: apps/tedris/features/courses/components/lesson-notes.tsx:392
+      - test: apps/tedris/test/lesson-notes.spec.ts
+        name: "holds the form while a note is sent, so 'Şimdiki an' or text given then is not wiped by its success"
     note: >-
       unwalked; the player's position comes from YouTube's real player API (lesson-notes#2 needs it too), which the local stack
-      does not stub.
+      does not stub. The unit spec walks "Şimdiki an" with a stubbed player: off while a note is sent, so the moment it takes
+      is not wiped by the note's success (23 Nov 2026).
 
   - id: player-position-on-bunny
     need: >-
@@ -111,7 +116,7 @@ needs:
       - state: addRefused
       - state: editRefused
       - state: deleteRefused
-      - source: apps/tedris/features/courses/components/lesson-notes.tsx:424
+      - source: apps/tedris/features/courses/components/lesson-notes.tsx:435
     note: >-
       the page's own refusal of a time is bound (scenarios refused and live) and not yet run: walk phase. The server's refusals
       cannot be made on the local stack, and the alert is not tied to its field (WRT-03).

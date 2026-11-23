@@ -241,6 +241,40 @@ describe("with the YouTube player", () => {
     expect(timeInput(host).value).toBe("");
   });
 
+  it("holds the form while a note is sent, so 'Şimdiki an' or text given then is not wiped by its success", async () => {
+    const control = player(90);
+    mocks.player.current = control;
+    let answer: (value: unknown) => void = () => {};
+    mocks.create.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount({ frameId: "live-stream-frame" });
+    await set(timeInput(host), "0:30");
+    await set(textarea(host), "İlk not");
+    await submit(host);
+    expect(mocks.create).toHaveBeenCalledWith("l1", {
+      body: "İlk not",
+      offsetSeconds: 30,
+    });
+
+    // The success empties the form: what is put in now could only be lost.
+    const asked = control.position.mock.calls.length;
+    expect(button(host, "Şimdiki an").disabled).toBe(true);
+    await click(button(host, "Şimdiki an"));
+    expect(control.position.mock.calls.length).toBe(asked);
+    expect(textarea(host).readOnly).toBe(true);
+    expect(timeInput(host).readOnly).toBe(true);
+
+    await act(async () =>
+      answer(ok(note("n1", { body: "İlk not", offsetSeconds: 30 })))
+    );
+    await settle();
+    expect(host.textContent).toContain("İlk not");
+    expect(textarea(host).value).toBe("");
+    expect(textarea(host).readOnly).toBe(false);
+    expect(timeInput(host).readOnly).toBe(false);
+    await click(button(host, "Şimdiki an"));
+    expect(timeInput(host).value).toBe("1:30");
+  });
+
   it("moves the player when a note's time is pressed", async () => {
     const control = player(0);
     mocks.player.current = control;

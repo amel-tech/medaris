@@ -52,7 +52,11 @@ needs:
       - source: apps/tedris/features/account/profile-actions.ts:35
       - test: apps/tedris/e2e/profile.e2e.ts
         name: "Hesap: the time zone saves as it is chosen and survives a reload"
-    note: "profile#2: the short list only; the second list (\"Diğer…\") has no e2e"
+      - test: apps/tedris/test/account-profile.spec.ts
+        name: "saves one zone at a time: both lists are off while a save runs"
+      - test: apps/tedris/test/account-profile.spec.ts
+        name: "holds the full zone list too while its save runs"
+    note: "profile#2: the short list only; the second list (\"Diğer…\") has no e2e. One zone is saved at a time: both lists are disabled while a save runs (unit spec only)"
 
   - id: invitation-switch
     need: >-
@@ -62,7 +66,7 @@ needs:
       - state: account
       - state: savingInvitations
       - source: apps/tedrisat/src/user/me.controller.ts:40
-      - source: apps/tedris/features/account/components/account-settings.tsx:270
+      - source: apps/tedris/features/account/components/account-settings.tsx:274
       - source: apps/tedrisat/src/lesson-invitation/lesson-invitation.repository.ts:166
     note: >-
       walked: nothing. No e2e touches the switch; the unit spec apps/tedris/test/account-profile.spec.ts proves the markup and the
@@ -76,8 +80,8 @@ needs:
       - state: savingZone
       - state: savingInvitations
       - state: savingName
-      - source: apps/tedris/features/account/components/account-settings.tsx:215
-      - source: apps/tedris/features/account/components/account-settings.tsx:292
+      - source: apps/tedris/features/account/components/account-settings.tsx:217
+      - source: apps/tedris/features/account/components/account-settings.tsx:296
     note: >-
       walked: nothing. tedrisat cannot be made to refuse a valid zone or switch here; the unit spec proves the rollback. (The
       over-long name's refusal is carried by the binding's FILL_TOO_LONG path once it is walked.)
@@ -132,7 +136,7 @@ needs:
     evidence:
       - state: account
       - state: account_console_opened
-      - source: apps/tedris/features/account/components/account-settings.tsx:349
+      - source: apps/tedris/features/account/components/account-settings.tsx:353
       - source: apps/tedris/features/account/connected-apps.ts:8
     note: >-
       walked: nothing. The page behind the link is Keycloak's account console; a GET of its address answers 200 and nothing else
@@ -143,7 +147,7 @@ needs:
     evidence:
       - state: account
       - state: handed_over.calendar_feed
-      - source: apps/tedris/features/account/components/account-settings.tsx:313
+      - source: apps/tedris/features/account/components/account-settings.tsx:317
       - test: apps/tedris/e2e/profile.e2e.ts
         name: "Hesap: the calendar card leads to the subscription page and 'Çıkış yap' ends the session"
     note: "profile#3: the link and the address only; the page is tedris.account.calendarFeed's"
@@ -153,7 +157,7 @@ needs:
     evidence:
       - state: account
       - state: handed_over.sign_out
-      - source: apps/tedris/features/account/components/account-settings.tsx:365
+      - source: apps/tedris/features/account/components/account-settings.tsx:369
       - test: apps/tedris/e2e/profile.e2e.ts
         name: "Hesap: the calendar card leads to the subscription page and 'Çıkış yap' ends the session"
     note: "profile#3: the link and the confirmation page's address; the confirmation itself is realm.auth.signOut's"
@@ -227,7 +231,8 @@ needs:
     missing: "ACC-10, ACC-09, ACC-20: no Linear issue"
     note: >-
       Drawn on the states account and savingInvitations, which the code has: they are not evidence, so that a replay still walks
-      them (SPEC.md §13 leaves out what only missing needs name).
+      them (SPEC.md §13 leaves out what only missing needs name). Since 23 Nov 2026 the two time-zone lists are disabled while a
+      zone is saved (one save at a time), so the list just used loses the focus as the switch does (ACC-10).
 
   - id: choose-the-language
     need: >-

@@ -48,7 +48,9 @@ import { SessionStateBadge } from "./session-state-badge";
  * reached this server. What is left is the programme the course page shows
  * anyway, with the one thing to do about it. The state is 200 with a locked
  * body, not a 403. Since MDRS-289 it has the detail page's header and its
- * main card's frame, which holds today's lock and the way in.
+ * main card's frame, which holds today's lock and the way in. While the
+ * application is sent the page's ways out (the breadcrumb's links, the
+ * course's card) are no links: leaving would not stop it.
  */
 export function LessonLocked({
   course,
@@ -119,6 +121,14 @@ export function LessonLocked({
     ) : undefined;
 
   const viewerTimeZone = timeZone ?? course.timeZone;
+  const header = sessionHeaderProps(tedris, {
+    course,
+    session,
+    koskName,
+    locale,
+    viewerTimeZone,
+    imamStar,
+  });
   const renderedAt = new Date(now).toISOString();
   const startsAt = session.startsAt?.toISOString() ?? null;
   const cancelled = Boolean(session.cancelledAt);
@@ -168,14 +178,12 @@ export function LessonLocked({
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <SessionHeader
-        {...sessionHeaderProps(tedris, {
-          course,
-          session,
-          koskName,
-          locale,
-          viewerTimeZone,
-          imamStar,
-        })}
+        {...header}
+        crumbs={
+          sending
+            ? header.crumbs.map(({ label }) => ({ label }))
+            : header.crumbs
+        }
         badge={
           startsAt || cancelled ? (
             <SessionStateBadge
@@ -262,7 +270,7 @@ export function LessonLocked({
           <Card
             title={course.title}
             headingLevel={2}
-            href={`/courses/${course.id}`}
+            href={sending ? undefined : `/courses/${course.id}`}
             media={<CoverPattern {...courseCover(course)} size="md" />}
             footer={[
               koskName,

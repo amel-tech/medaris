@@ -288,11 +288,11 @@ states:
       TYPE:
         target: drafting
         say: "they type a note"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:242
       SUBMIT:
         target: celsePanels
         say: "\"Notu ekle\" with nothing typed: the panel says \"Not boş olamaz.\" and sends nothing, whatever the seat is (that line is tedris.learn.notes', not drawn here)"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:324
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:332
       SEAT_REMOVED:
         target: celsePanels
         effect: [lostRemoved]
@@ -319,12 +319,12 @@ states:
     by: human
     description: >-
       The same page with the text in the form. The button is enabled whatever the seat is: nothing in the page asks the API first.
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:242
     on:
       SUBMIT:
         target: adding
         say: "\"Notu ekle\": the server action createLessonNote sends POST /lessons/{id}/notes"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:328
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:336
       SEAT_REMOVED:
         target: drafting
         effect: [lostRemoved]
@@ -361,7 +361,7 @@ states:
         target: celsePanels
         effect: [noteListed]
         say: "the seat held: the note is listed and the form is empty (tedris.learn.notes)"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:333
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:341
       FAIL.forbidden:
         guard: "standing != 'kept'"
         target: addRefused
@@ -377,12 +377,12 @@ states:
       status alone (403, lesson-notes.tsx:212), so it is the same for a talebe who was removed (true), one a ban bars (false: they are enrolled)
       and one whose course went passive (false), WG-2. What was typed stays in the field. The alert takes no focus (WRT-02). The page is as
       stale as before: the person learns the seat is gone only from this line, and sees the lock card only after they read the page again.
-    source: apps/tedris/features/courses/components/lesson-notes.tsx:424
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:435
     on:
       SUBMIT:
         target: adding
         say: "\"Notu ekle\" again: the typed note is sent again, and the API refuses it again (the line is replaced by the same one)"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:325
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:333
       RELOAD:
         target: opened
         say: "the page is read again, and the seat is what the API now says"
@@ -403,7 +403,7 @@ states:
       SUBMIT:
         target: watchPanels
         say: "\"Notu ekle\" with nothing typed: the panel says \"Not boş olamaz.\" and sends nothing (that line is tedris.learn.notes', not drawn here)"
-        source: apps/tedris/features/courses/components/lesson-notes.tsx:324
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:332
       RELOAD:
         target: opened
         say: "the page is read again"
@@ -458,7 +458,7 @@ states:
       MDRS-265: pressing it answers 403 BAN_ACTIVE for a barred talebe and the same ENROLLED row for a passive course; from the code). The
       watch address ends here too. What this person wrote earlier, and may still read and delete through the API, is not in the page (MDRS-268,
       the exit own_writing_read).
-    source: apps/tedris/features/courses/components/lesson-locked.tsx:169
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:179
     on:
       TRY_NOTE:
         target: noteTried

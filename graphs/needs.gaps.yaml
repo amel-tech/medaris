@@ -1338,7 +1338,6 @@ gaps:
   tedris.decks.readAndCopy:
     - staff-and-the-bashnazim-are-not-offered-the-collection
     - a-refusal-tells-its-cause
-    - closing-the-dialog-stops-the-copy
     - changes-are-announced
     - the-copy-dialog-starts-in-its-form
   tedris.decks.study:

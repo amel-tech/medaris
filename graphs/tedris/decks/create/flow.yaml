@@ -77,9 +77,9 @@ context:
     say: { none: "no toast", refused: "the toast \"Deste oluşturulamadı\" is on the screen; it stays until it is closed" }
 
 guards:
-  # what the page checks before it sends (create-deck-page.tsx:55-61, deck-model.ts:141-162)
+  # what the page checks before it sends (create-deck-page.tsx:57-63, deck-model.ts:141-162)
   ready: "typed and name != 'short' and kind != 'none' and tags == 'fine'"
-  # what each field says once "Oluştur" has been pressed, which is the state `formAttempted` (create-deck-page.tsx:63-69, 169-173,
+  # what each field says once "Oluştur" has been pressed, which is the state `formAttempted` (create-deck-page.tsx:65-71, 175-179,
   # 175-185); the error replaces the help line
   nameSaysRequired: "state == 'formAttempted' and not typed"
   nameSaysShort: "state == 'formAttempted' and typed and name == 'short'"
@@ -88,7 +88,7 @@ guards:
   tagsSaysMany: "state == 'formAttempted' and typed and tags == 'tooMany'"
   tagsSaysLong: "state == 'formAttempted' and typed and tags == 'tooLong'"
   tagsSaid: "tagsSaysMany or tagsSaysLong"
-  # the preview follows the radio; with no radio chosen it draws the Kelime card (create-deck-page.tsx:97)
+  # the preview follows the radio; with no radio chosen it draws the Kelime card (create-deck-page.tsx:99)
   hadithPreview: "kind == 'hadeeth'"
 
 effects:
@@ -117,7 +117,7 @@ states:
   form:
     title: The form, before "Oluştur" has been pressed
     by: human
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:98
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:100
     description: >-
       The page "Deste oluştur": a breadcrumb "Desteler / Deste oluştur", the h1 and one sentence, the form (named "Deste oluştur") with
       "* zorunlu alan", "Deste adı" (required, at most a hundred characters typed), "Açıklama" (a textarea of three rows, at most a
@@ -129,22 +129,22 @@ states:
       before it is counted, and the page counts UTF-16 units (DCKCREATE-1). Typed text is lost, without asking, when the person leaves
       by "Vazgeç", the breadcrumb or the address.
     on:
-      FILL_IN: { target: form, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:129, say: "they type the name, the description and the tags (the case says which name and which tags); nothing is said yet" }
-      CHOOSE_VOCABULARY: { target: form, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Kelime: the radio is checked and the preview is the Kelime card" }
-      CHOOSE_HADEETH: { target: form, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Hadis: the radio is checked and the preview is the Hadis card with its sentence and its source" }
+      FILL_IN: { target: form, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:134, say: "they type the name, the description and the tags (the case says which name and which tags); nothing is said yet" }
+      CHOOSE_VOCABULARY: { target: form, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:161, say: "they choose Kelime: the radio is checked and the preview is the Kelime card" }
+      CHOOSE_HADEETH: { target: form, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:161, say: "they choose Hadis: the radio is checked and the preview is the Hadis card with its sentence and its source" }
       SUBMIT:
-        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76, say: "the form passes the page's checks: it is sent, and the button is busy" }
-        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75, say: "something is wrong: nothing is sent, each fault is said under its field from now on, and the focus stays on the button (DCK-06)" }
-      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing was sent, nothing is made, and what was typed is gone" }
+        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:78, say: "the form passes the page's checks: it is sent, and the button is busy" }
+        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77, say: "something is wrong: nothing is sent, each fault is said under its field from now on, and the focus stays on the button (DCK-06)" }
+      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:203, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing was sent, nothing is made, and what was typed is gone" }
       BREADCRUMB: { target: decks_opened, effect: [dropForm], source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\": the same plain link to /decks" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   formAttempted:
     title: The form, after "Oluştur" has been pressed
     by: human
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:74
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76
     description: >-
-      The same page once "Oluştur" has been pressed (`attempted`, set by every press, a send that passes included: create-deck-page.tsx:74).
+      The same page once "Oluştur" has been pressed (`attempted`, set by every press, a send that passes included: create-deck-page.tsx:76).
       Each fault is said under its field and follows what is typed and chosen, with no new press: "Bir deste adı yaz." (the name is empty)
       or "Deste adı en az 5 karakter olmalı." under the name, "Bir kart türü seç." under the radios (a <p role="alert">, the only message
       that is announced; the radios are not marked invalid, DCK-06), "En çok 20 etiket yazabilirsin." or "Bir etiket en çok 40 karakter
@@ -153,14 +153,14 @@ states:
       as before. This is also the state the form is in after a refusal of the API: the values are kept and the toast "Deste
       oluşturulamadı" stands over the page until it is closed (`toast`).
     on:
-      FILL_IN: { target: formAttempted, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:129, say: "they type: a message that was there follows what they typed at once (\"Deste adı en az 5 karakter olmalı.\" for a short name, the tags' messages for a bad list)" }
-      CHOOSE_VOCABULARY: { target: formAttempted, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Kelime: \"Bir kart türü seç.\" goes at once and the preview is the Kelime card" }
-      CHOOSE_HADEETH: { target: formAttempted, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Hadis: \"Bir kart türü seç.\" goes at once and the preview is the Hadis card" }
+      FILL_IN: { target: formAttempted, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:134, say: "they type: a message that was there follows what they typed at once (\"Deste adı en az 5 karakter olmalı.\" for a short name, the tags' messages for a bad list)" }
+      CHOOSE_VOCABULARY: { target: formAttempted, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:161, say: "they choose Kelime: \"Bir kart türü seç.\" goes at once and the preview is the Kelime card" }
+      CHOOSE_HADEETH: { target: formAttempted, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:161, say: "they choose Hadis: \"Bir kart türü seç.\" goes at once and the preview is the Hadis card" }
       SUBMIT:
-        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76, say: "the form passes the page's checks: it is sent, and the button is busy" }
-        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75, say: "still something wrong: nothing is sent; the messages are as they are" }
+        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:78, say: "the form passes the page's checks: it is sent, and the button is busy" }
+        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77, say: "still something wrong: nothing is sent; the messages are as they are" }
       CLOSE_TOAST: { guard: "toast != 'none'", target: formAttempted, effect: [clearToast], source: libs/ui/src/mds/toast.tsx:95, say: "they close the toast of a refusal with its own \"Kapat\"" }
-      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing is sent now and what was typed is gone" }
+      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:203, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing is sent now and what was typed is gone" }
       BREADCRUMB: { target: decks_opened, effect: [dropForm], source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\": the same plain link to /decks" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
@@ -173,25 +173,23 @@ states:
       refused with 400 (deck-born-private); it trims and de-duplicates the tags again and refuses a name of fewer than five characters,
       counted as characters, not as UTF-16 units (DCKCREATE-1), more than twenty tags, a tag of more than forty, and a description of
       more than a thousand (deck-limits). "Oluştur" is busy: aria-busy and aria-disabled, never `disabled`, with a hidden status
-      "Yükleniyor" (the kit's own word, DCK-23); a second press while it runs does nothing (create-deck-page.tsx:73). The fields stay
+      "Yükleniyor" (the kit's own word, DCK-23); a second press while it runs does nothing (create-deck-page.tsx:75). The fields stay
       as they are. On success the page pushes /decks/<new id> and says nothing else: no toast, and the button stays busy until the
       new page has come. On any refusal the button is released and the toast "Deste oluşturulamadı" / "Bir sorun oluştu; yazdıkların
       korundu. Yeniden dene." is raised: tone error, so it stays until it is closed and is announced with priority high; the API's
       code and message are thrown away, so a refusal that retrying can never cure says "try again" (DCKCREATE-1). A session that is
-      over is not a refusal: the page goes to sign in and back, and the button stays busy until it leaves. "Vazgeç" and the
-      breadcrumb are links and stay live: they leave the page at once, and the server action is not stopped, so the deck is made
-      all the same. The radios are not disabled either (the RadioGroup is given no `disabled`): a kind chosen now is checked and
-      previewed at once but is not the one sent, which the request already holds; the graph draws the choice where the answer
-      leads (`duringStep`): it goes with the form when the new deck's page opens, and stays in the form after a refusal.
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77
+      over is not a refusal: the page goes to sign in and back, and the button stays busy until it leaves. The ways out are off
+      while the deck is made, because leaving would not stop it and would invite a second one: "Vazgeç" is disabled (no href,
+      aria-disabled) and the breadcrumb's "Desteler" is given no href, so it is text (create-deck-page.tsx:106, 203). The radios
+      are disabled too (the RadioGroup's `disabled`, :159), as a kind chosen now would not be the one sent; the text fields stay
+      as they are and are not held (what is typed now is not sent either). The bar of the app (tedris.shell.frame) and the
+      browser's own ways out are not held.
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:79
     invoke: { action: createDeck }
     on:
-      DONE: { guard: "name == 'valid'", target: deck_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86, say: "the API answers 201 with the new deck: the page opens its own page" }
-      FAIL.refused: { guard: "name == 'astral'", target: formAttempted, effect: [toastRefused], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89, say: "the API answers 400 for what the page let through: the button is released, the toast is raised and the form keeps its values" }
+      DONE: { guard: "name == 'valid'", target: deck_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:88, say: "the API answers 201 with the new deck: the page opens its own page" }
+      FAIL.refused: { guard: "name == 'astral'", target: formAttempted, effect: [toastRefused], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:91, say: "the API answers 400 for what the page let through: the button is released, the toast is raised and the form keeps its values" }
       FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the page goes to sign in and back, and the form is lost" }
-      # no dropForm here: its binding checks that no deck was made, and this one is
-      CANCEL: { target: decks_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\" while the send runs: a plain link, so the page is left at once for /decks; the server action is not stopped and the deck is made all the same (from the code, not seen)" }
-      BREADCRUMB: { target: decks_opened, source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\" while the send runs: the same plain link, the same" }
 
   deck_opened:
     type: final
@@ -227,7 +225,7 @@ assertions:
   - id: a-form-with-a-fault-is-never-sent
     never: "state == 'creating' and not ready"
     say: "Nothing is sent while the name is empty or short, no kind is chosen, or the tags are over the limit: the page's own check stops it (deck-limits)"
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77
   - id: a-name-under-five-is-never-sent
     never: "state == 'creating' and (not typed or name == 'short')"
     say: "A name that the page counts as fewer than five characters, or no name at all, is never sent (deck-limits)"
@@ -235,7 +233,7 @@ assertions:
   - id: no-deck-without-a-kind
     never: "state == 'creating' and kind == 'none'"
     say: "A deck is never sent without a kind of card: the type has no default, so the choice is the author's"
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77
   - id: too-many-or-too-long-tags-are-never-sent
     never: "state == 'creating' and tags != 'fine'"
     say: "More than twenty tags, or a tag of more than forty characters, is never sent (deck-limits)"
@@ -243,8 +241,8 @@ assertions:
   - id: the-deck-page-opens-only-after-the-api-accepted
     never: "state == 'deck_opened' and name != 'valid'"
     say: "The new deck's page opens only after the API answered that it made the deck; a refusal keeps the form (DCKCREATE-1)"
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:85
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:87
   - id: a-refusal-keeps-the-form
     never: "state == 'formAttempted' and toast == 'refused' and not typed"
     say: "A refused create leaves what was typed where it was: the form after the toast still holds the values"
-    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:91

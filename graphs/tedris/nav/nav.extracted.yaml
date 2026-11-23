@@ -234,9 +234,9 @@ entries:
   - { from: frame:app, to: notifications, how: link, label: PhoneMenu.notifications, source: apps/tedris/components/phone-menu/desktop-bar.tsx:83, when: signedIn }
   - { from: frame:app, to: account, how: link, label: PhoneMenu.account, source: apps/tedris/components/phone-menu/desktop-bar.tsx:93, when: signedIn }
   - { from: frame:app, to: account, how: link, label: PhoneMenu.accountLabel, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:96, when: signedIn }
-  - { from: account, to: accountCalendar, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:313 }
-  - { from: account, to: accountPublicProfile, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:335 }
-  - { from: account, to: signOut, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:372 }
+  - { from: account, to: accountCalendar, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:317 }
+  - { from: account, to: accountPublicProfile, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:339 }
+  - { from: account, to: signOut, how: link, label: a link in account-settings.tsx, source: apps/tedris/features/account/components/account-settings.tsx:376 }
   - { from: register, to: start, how: link, label: a link in auth-entry.tsx, source: apps/tedris/features/auth/auth-entry.tsx:87 }
   - { from: signIn, to: start, how: link, label: a link in auth-entry.tsx, source: apps/tedris/features/auth/auth-entry.tsx:87 }
   - { from: register, to: start, how: link, label: Auth.backHome, source: apps/tedris/features/auth/auth-entry.tsx:100 }
@@ -250,7 +250,7 @@ entries:
   - { from: course, to: kosk, how: link, label: a link in course-page.tsx, data: true, source: apps/tedris/features/courses/components/course-page.tsx:215 }
   - { from: kosk, to: madrasah, how: link, label: a link in kosk-page.tsx, data: true, source: apps/tedris/features/courses/components/kosk-page.tsx:116 }
   - { from: kosk, to: deck, how: link, label: KoskPage.deckMeta, data: true, source: apps/tedris/features/courses/components/kosk-page.tsx:256 }
-  - { from: celse, to: course, how: link, label: a link in lesson-locked.tsx, data: true, source: apps/tedris/features/courses/components/lesson-locked.tsx:262 }
+  - { from: celse, to: course, how: link, label: a link in lesson-locked.tsx, data: true, source: apps/tedris/features/courses/components/lesson-locked.tsx:270 }
   - { from: madrasah, to: kosk, how: link, label: a link in madrasah-page.tsx, data: true, source: apps/tedris/features/courses/components/madrasah-page.tsx:91 }
   - { from: myCourses, to: course, how: link, label: a link in my-courses-page.tsx, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:163 }
   - { from: myCourses, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/courses/components/my-courses-page.tsx:205 }
@@ -265,9 +265,9 @@ entries:
   - { from: deckEdit, to: deck, how: link, label: SystemPages.forbiddenDeckText, data: true, source: apps/tedris/features/errors/system-page.tsx:81 }
   - { from: deckCards, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 }
   - { from: deckEdit, to: deck, how: link, label: SystemPages.forbiddenDeckAction, data: true, source: apps/tedris/features/errors/system-page.tsx:87 }
-  - { from: deckEdit, to: decksCreate, how: link, label: Decks.noOwnDecks, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81 }
-  - { from: deckEdit, to: decksCreate, how: link, label: Decks.create, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94 }
-  - { from: decksCreate, to: deck, how: button, label: a button in create-deck-page.tsx, data: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86 }
+  - { from: deckEdit, to: decksCreate, how: link, label: Decks.noOwnDecks, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:82 }
+  - { from: deckEdit, to: decksCreate, how: link, label: Decks.create, source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:96 }
+  - { from: decksCreate, to: deck, how: button, label: a button in create-deck-page.tsx, data: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:88 }
   - { from: deck, to: deckStudy, how: link, label: a link in deck-detail-page.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:56 }
   - { from: deckEdit, to: deckStudy, how: link, label: a link in deck-detail-page.tsx, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:56 }
   - { from: deck, to: deckStudy, how: link, label: Decks.study, data: true, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:62 }

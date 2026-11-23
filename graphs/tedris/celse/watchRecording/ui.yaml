@@ -14,7 +14,7 @@
 #   composed.WatchRecording.facts          WatchPage.recordingBadge, " · ", the day, " · ", WatchPage.minutes              watch-page.tsx:76-82
 #   composed.WatchRecording.recordingTitle "{recording}", the recording's own title as the API gives it                    media-player.tsx:89
 #   composed.WatchRecording.frameTitle     "{recording}", the frame's title (for a Bunny frame WatchPage.bunnyFrameTitle, "Ders kaydı oynatıcısı: {recording}", which this stack cannot draw)   media-player.tsx:65
-#   composed.WatchRecording.lockedFacts    SessionPage.recordingKind, " · ", the day with its weekday, " · ", SessionPage.minutes   lesson-locked.tsx:173-195
+#   composed.WatchRecording.lockedFacts    SessionPage.recordingKind, " · ", the day with its weekday, " · ", SessionPage.minutes   lesson-locked.tsx:257-267
 # `changes` is not written: the flow only reads (no writing action of the domain is invoked).
 # Samples are invented and neutral; the binding gives the walk's own titles where it needs the real ones.
 schema: delurio-graph/0
@@ -76,12 +76,12 @@ nodes:
   notesHeading: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:297 } # h2
 
   # ---- the locked celse page, as far as the recording it plays ----
-  lockedPage: { type: page, component: Page, role: main, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:156 }
-  lockedReason: { type: text, component: Text, text: { key: LessonLocked.description.apply }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:206 } # tedris.celse.locked draws the rest of the card and its button
+  lockedPage: { type: page, component: Page, role: main, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:166 }
+  lockedReason: { type: text, component: Text, text: { key: LessonLocked.description.apply }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:214 } # tedris.celse.locked draws the rest of the card and its button
   lockedPlayerRegion: { type: page, component: Page, role: region, name: { labelledBy: lockedPlayerTitle }, in: [lockedPlayer], source: apps/tedris/features/courses/components/media-player.tsx:58 }
   lockedPlayerTitle: { type: text, component: Heading, role: heading, text: { key: composed.WatchRecording.recordingTitle, params: { recording: recording } }, in: [lockedPlayer], source: apps/tedris/features/courses/components/media-player.tsx:89 } # h2
   lockedFrame: { type: text, component: Text, name: { key: composed.WatchRecording.frameTitle, params: { recording: recording } }, in: [lockedPlayer], when: framed, source: apps/tedris/features/courses/components/media-player.tsx:61 } # the same player card, with no id on the frame and no player API (the title stays)
-  lockedFacts: { type: text, component: Text, text: { key: composed.WatchRecording.lockedFacts, params: { day: date, length: length } }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:173 }
+  lockedFacts: { type: text, component: Text, text: { key: composed.WatchRecording.lockedFacts, params: { day: date, length: length } }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:257 }
 
 edges:
   - { labelledBy: [cardRegion, cardTitle] }
