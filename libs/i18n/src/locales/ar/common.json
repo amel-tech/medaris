@@ -17,6 +17,61 @@
     "en": "English",
     "tr": "Türkçe"
   },
+  "sarf": {
+    "kip": {
+      "mazi": "الماضي",
+      "muzari": "المضارع",
+      "masdar": "المصدر",
+      "ismi_fail": "اسم الفاعل",
+      "ismi_meful": "اسم المفعول",
+      "cehdi_mutlak": "الجحد المطلق",
+      "cehdi_mustagrak": "الجحد المستغرق",
+      "nefyi_hal": "نفي الحال",
+      "nefyi_istikbal": "نفي الاستقبال",
+      "tekidi_nefyi_istikbal": "تأكيد نفي الاستقبال",
+      "emri_gaib": "أمر الغائب",
+      "nehyi_gaib": "نهي الغائب",
+      "emri_hazir": "أمر الحاضر",
+      "nehyi_hazir": "نهي الحاضر",
+      "ismi_zaman": "اسم الزمان",
+      "ismi_mekan": "اسم المكان",
+      "ismi_alet": "اسم الآلة",
+      "masdar_merre": "مصدر المرّة",
+      "masdar_nev": "مصدر النوع",
+      "ismi_tasgir": "اسم التصغير",
+      "ismi_mensub": "الاسم المنسوب",
+      "mubalaga": "مبالغة اسم الفاعل",
+      "ismi_tafdil": "اسم التفضيل",
+      "fiili_taaccub": "فعل التعجّب",
+      "taaccub_evvel": "فعل التعجّب الأوّل",
+      "taaccub_sani": "فعل التعجّب الثاني"
+    },
+    "bina": {
+      "malum": "المعلوم",
+      "mechul": "المجهول"
+    },
+    "row": {
+      "gaib": "غائب",
+      "gaibe": "غائبة",
+      "muhatab": "مخاطَب",
+      "muhataba": "مخاطَبة",
+      "mutekellim": "متكلّم",
+      "muzekker": "مذكّر",
+      "muennes": "مؤنّث"
+    },
+    "sayi": {
+      "mufred": "مفرد",
+      "tesniye": "مثنّى",
+      "cem": "جمع"
+    },
+    "bab": "الباب:",
+    "speakerForms": "وحده · مع الغير",
+    "cellNone": "لا صيغة هنا",
+    "taslak": "مسودّة",
+    "taslakHelp": "سماعيّ: اقتُرح أشهر الأوزان، ويؤكّده المدرّس.",
+    "extraPlurals": "جموع أخرى",
+    "meaning": "المعنى"
+  },
   "toast": {
     "close": "إغلاق"
   },

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2022"],
+    "outDir": "./.tsbuild",
+    "rootDir": "./src",
+    "noEmit": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "composite": true,
+    "incremental": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { narrowTable, sigaLayout } from "@medaris/sarf";
 import type {
   FlashcardResponse,
   ReviewRating,
@@ -31,7 +32,6 @@ import {
   startSelfTest,
   summarize,
 } from "../self-test";
-import { narrowTable, sigaLayout } from "../siga-table";
 import { CourseSigaTable } from "./course-siga-table";
 import { DeckFlipCard } from "./deck-flip-card";
 
@@ -310,7 +310,7 @@ export const CourseDeckGrid = ({
         <>
           {tables.map((table) => (
             <CourseSigaTable
-              key={`${table.kok}-${table.bab}-${table.kip}`}
+              key={`${table.kok}-${table.bab}-${table.kip}-${table.bina}`}
               table={table}
               renderCard={(card) => renderCard(card, true)}
               onlyFilledRows={test !== null}

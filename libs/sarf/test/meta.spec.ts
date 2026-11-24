@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  cekim,
+  cekimDrafts,
+  generateSigas,
   narrowTable,
+  readSarf,
   readSiga,
+  type SigaRow,
   sigaCellApplies,
   sigaLayout,
   sigaRow,
-} from "~/features/courses/siga-table";
-import { nasaraMazi } from "./siga-fixture";
+} from "../src";
+
+/** نَصَرَ's fourteen mâzî sîgas as the generator drafts them, with an id each. */
+const nasaraMazi = () =>
+  (
+    generateSigas({
+      root: "ن ص ر",
+      bab: "nasara",
+      kips: ["mazi"],
+      maziMeaning: "yardım etti",
+      muzariMeaning: "",
+    }) ?? []
+  ).map((draft, i) => ({ ...draft, id: `s${i + 1}` }));
 
 const meta = (over: Record<string, unknown> = {}) => ({
   kok: "ن ص ر",
@@ -20,7 +36,7 @@ const meta = (over: Record<string, unknown> = {}) => ({
 
 describe("readSiga", () => {
   it("reads the generator's contract, key for key", () => {
-    expect(readSiga(meta())).toEqual(meta());
+    expect(readSiga(meta())).toEqual({ ...meta(), bina: "malum" });
   });
 
   it("refuses a meta that is not a sîga", () => {
@@ -78,14 +94,13 @@ describe("sigaLayout", () => {
     expect(tables).toHaveLength(1);
     const [table] = tables;
     expect(table).toMatchObject({ kok: "ن ص ر", bab: "nasara", kip: "mazi" });
-    const front = (
-      row: keyof typeof table.cells,
-      n: "mufred" | "tesniye" | "cem"
-    ) => table.cells[row][n]?.contentFront ?? null;
+    // Typed Arabic may order a shadda and its vowel either way: compare in NFC.
+    const front = (row: SigaRow, n: "mufred" | "tesniye" | "cem") =>
+      table?.cells[row]?.[n]?.contentFront.normalize("NFC") ?? null;
     expect(front("gaib", "mufred")).toBe("نَصَرَ");
     expect(front("gaib", "cem")).toBe("نَصَرُوا");
     expect(front("gaibe", "cem")).toBe("نَصَرْنَ");
-    expect(front("muhataba", "cem")).toBe("نَصَرْتُنَّ");
+    expect(front("muhataba", "cem")).toBe("نَصَرْتُنَّ".normalize("NFC"));
     expect(front("mutekellim", "mufred")).toBe("نَصَرْتُ");
     expect(front("mutekellim", "tesniye")).toBeNull();
     expect(front("mutekellim", "cem")).toBe("نَصَرْنَا");
@@ -118,7 +133,7 @@ describe("sigaLayout", () => {
     const twin = { id: "2", contentMeta: meta() };
     const plain: { id: string; contentMeta?: unknown } = { id: "3" };
     const { tables, rest } = sigaLayout([first, twin, plain]);
-    expect(tables[0].cells.gaib.mufred).toBe(first);
+    expect(tables[0]?.cells.gaib?.mufred).toBe(first);
     expect(rest).toEqual([twin, plain]);
   });
 });
@@ -126,10 +141,81 @@ describe("sigaLayout", () => {
 describe("narrowTable", () => {
   it("keeps only the cards asked for, and gives no table when none stays", () => {
     const [table] = sigaLayout(nasaraMazi()).tables;
+    if (!table) throw new Error("no table");
     const narrowed = narrowTable(table, (card) => card.id === "s3");
-    expect(narrowed?.cells.gaib.cem?.id).toBe("s3");
-    expect(narrowed?.cells.gaib.mufred).toBeNull();
-    expect(narrowed?.cells.mutekellim.cem).toBeNull();
+    expect(narrowed?.cells.gaib?.cem?.id).toBe("s3");
+    expect(narrowed?.cells.gaib?.mufred).toBeNull();
+    expect(narrowed?.cells.mutekellim?.cem).toBeNull();
     expect(narrowTable(table, () => false)).toBeNull();
+  });
+});
+
+describe("the kips beyond the mâzî and the muzâri", () => {
+  it("reads the mechûl, and a card with no binâ as ma'lûm", () => {
+    expect(readSiga(meta({ bina: "mechul" }))?.bina).toBe("mechul");
+    expect(readSiga(meta())?.bina).toBe("malum");
+    expect(readSiga(meta({ bina: "passive" }))).toBeNull();
+  });
+
+  it("reads an isim by gender and number, with no person", () => {
+    expect(
+      readSiga(meta({ kip: "ismi_fail", sahis: null, cinsiyet: "muennes" }))
+    ).toMatchObject({ kip: "ismi_fail", sahis: null, cinsiyet: "muennes" });
+    expect(
+      readSiga(meta({ kip: "ismi_fail", sahis: null, cinsiyet: null }))
+    ).toBeNull();
+  });
+
+  it("refuses a sîga its kip does not have", () => {
+    expect(readSiga(meta({ kip: "emri_hazir" }))).toBeNull();
+    expect(
+      readSiga(meta({ kip: "emri_hazir", sahis: "muhatab" }))
+    ).not.toBeNull();
+    expect(readSiga(meta({ kip: "emri_gaib", sahis: "muhatab" }))).toBeNull();
+    expect(
+      readSiga(meta({ kip: "ismi_zaman", sahis: null, cinsiyet: "muennes" }))
+    ).toBeNull();
+  });
+
+  it("lays a whole çekim's drafts out as one table of the kip's own rows", () => {
+    const sarf = readSarf({ root: "ن ص ر", bab: "nasara" });
+    if (!sarf) throw new Error("no sarf");
+    for (const [kip, bina, rows] of [
+      ["emri_hazir", "malum", ["muhatab", "muhataba"]],
+      [
+        "cehdi_mutlak",
+        "mechul",
+        ["gaib", "gaibe", "muhatab", "muhataba", "mutekellim"],
+      ],
+      ["ismi_fail", "malum", ["muzekker", "muennes"]],
+      ["masdar_merre", "malum", ["muzekker"]],
+    ] as const) {
+      const table = cekim(sarf, kip, bina);
+      if (!table) throw new Error(`no table for ${kip}`);
+      const drafts = cekimDrafts(sarf, table);
+      const { tables, rest } = sigaLayout(drafts);
+      expect(tables).toHaveLength(1);
+      expect(tables[0]).toMatchObject({ kip, bina, rows });
+      // Only the plurals beside the table (cem'-i mükesser) stay free cards.
+      expect(rest).toHaveLength(table.ekler.length);
+    }
+  });
+
+  it("orders one root's tables as the Emsile does, ma'lûm before mechûl", () => {
+    const card = (kip: string, bina: string) => ({
+      contentMeta: meta({ kip, bina }),
+    });
+    const { tables } = sigaLayout([
+      card("muzari", "mechul"),
+      card("cehdi_mutlak", "malum"),
+      card("muzari", "malum"),
+      card("mazi", "mechul"),
+    ]);
+    expect(tables.map((t) => `${t.kip} ${t.bina}`)).toEqual([
+      "mazi mechul",
+      "muzari malum",
+      "muzari mechul",
+      "cehdi_mutlak malum",
+    ]);
   });
 });

@@ -1,17 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { type ReactNode, useId } from "react";
 import {
   BAB_NAMES,
   SIGA_COLUMNS,
-  SIGA_ROWS,
-  type SigaKip,
-  type SigaRow,
-  type SigaSayi,
   type SigaTable,
   sigaCellApplies,
-} from "../siga-table";
+} from "@medaris/sarf";
+import { useTranslations } from "next-intl";
+import { type ReactNode, useId } from "react";
 
 // Every row is a grid, so the cards of one row stretch to one height; a table
 // whose rows change their display loses its implied roles in some engines, so
@@ -24,30 +20,15 @@ const role = (name: string) => name;
 const ROW =
   "grid grid-cols-[8rem_repeat(3,minmax(0,1fr))] gap-2 max-md:grid-cols-3";
 
-// The course page's catalogue is flat (one string per key), so each sîga key
-// maps to its own message.
-const KIP_KEY = {
-  mazi: "sigaKipMazi",
-  muzari: "sigaKipMuzari",
-} as const satisfies Record<SigaKip, string>;
-const SAYI_KEY = {
-  mufred: "sigaSayiMufred",
-  tesniye: "sigaSayiTesniye",
-  cem: "sigaSayiCem",
-} as const satisfies Record<SigaSayi, string>;
-const ROW_KEY = {
-  gaib: "sigaRowGaib",
-  gaibe: "sigaRowGaibe",
-  muhatab: "sigaRowMuhatab",
-  muhataba: "sigaRowMuhataba",
-  mutekellim: "sigaRowMutekellim",
-} as const satisfies Record<SigaRow, string>;
-
 /**
  * One sîga table: the persons down the side (gâib, gâibe, muhâtab, muhâtaba,
- * mütekellim), the numbers across (müfred, tesniye, cem), a card in each cell.
- * The mütekellim has no dual: its row fills the singular (vahde) and the
- * plural (maa'l-gayr) only.
+ * mütekellim; for an isim, müzekker and müennes), the numbers across (müfred,
+ * tesniye, cem), a card in each cell. The rows are the kip's own (`table.rows`):
+ * an emr-i hâzır has only the muhâtab's. The mütekellim has no dual: its row
+ * fills the singular (vahde) and the plural (maa'l-gayr) only.
+ *
+ * The sîga's names come from `common.sarf`, the one catalogue nazar-web's
+ * generator names them from too.
  *
  * Below 768 px the table does not scroll sideways: each row becomes a group,
  * its person above and its three cells under it, under one header line of the
@@ -68,12 +49,13 @@ export const CourseSigaTable = <T extends { id: string }>({
   emptyLabel?: string;
 }) => {
   const t = useTranslations("tedris.CoursePage");
+  const sarf = useTranslations("common.sarf");
   const captionId = useId();
   const bab = BAB_NAMES[table.bab];
-  const rows = SIGA_ROWS.filter(
+  const rows = table.rows.filter(
     (row) =>
       !onlyFilledRows ||
-      SIGA_COLUMNS.some((column) => table.cells[row][column] !== null)
+      SIGA_COLUMNS.some((column) => table.cells[row]?.[column] != null)
   );
 
   return (
@@ -85,13 +67,16 @@ export const CourseSigaTable = <T extends { id: string }>({
     >
       <caption id={captionId} className="pbe-2 text-start">
         <span className="flex flex-wrap items-baseline gap-2">
-          <span className="mds-h4">{t(KIP_KEY[table.kip])}</span>
+          <span className="mds-h4">
+            {sarf(`kip.${table.kip}`)}
+            {table.bina === "mechul" ? ` · ${sarf("bina.mechul")}` : null}
+          </span>
           <span className="mds-arabic" dir="rtl" lang="ar">
             {table.kok}
           </span>
           {bab ? (
             <span className="mds-caption">
-              {t("sigaBab")}{" "}
+              {sarf("bab")}{" "}
               <span className="mds-arabic" dir="rtl" lang="ar">
                 {bab}
               </span>
@@ -112,7 +97,7 @@ export const CourseSigaTable = <T extends { id: string }>({
               scope="col"
               className="mds-caption text-center font-medium"
             >
-              {t(SAYI_KEY[column])}
+              {sarf(`sayi.${column}`)}
             </th>
           ))}
         </tr>
@@ -129,21 +114,21 @@ export const CourseSigaTable = <T extends { id: string }>({
               className="self-center text-start max-md:col-span-3"
             >
               <span className="mds-body-sm block font-semibold">
-                {t(ROW_KEY[row])}
+                {sarf(`row.${row}`)}
               </span>
               {row === "mutekellim" ? (
                 <span className="mds-caption block">
-                  {t("sigaSpeakerForms")}
+                  {sarf("speakerForms")}
                 </span>
               ) : null}
             </th>
             {SIGA_COLUMNS.map((column) => {
-              const card = table.cells[row][column];
+              const card = table.cells[row]?.[column] ?? null;
               return (
                 <td key={column} role={role("cell")} className="flex flex-col">
                   {!sigaCellApplies(row, column) ? (
                     <span className="mds-visually-hidden">
-                      {t("sigaCellNone")}
+                      {sarf("cellNone")}
                     </span>
                   ) : card ? (
                     renderCard(card)

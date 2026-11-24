@@ -102,6 +102,7 @@ describe("Sîga üretici", () => {
         kok: "ن ص ر",
         bab: "nasara",
         kip: "mazi",
+        bina: "malum",
         sahis: "gaib",
         cinsiyet: "muzekker",
         sayi: "mufred",

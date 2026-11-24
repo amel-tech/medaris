@@ -2,7 +2,7 @@
 
 Medaris brings the classical medrese education method — mütalaa, ders, müzakere, ezber, ödev, and icazet — onto an open-source online platform.
 
-This repository is the monorepo: two NestJS APIs, five web apps, and nine shared libraries in a single pnpm workspace orchestrated by Nx. The former `madrasah-backend` and `madrasah-frontend` repositories were merged in here with their history preserved.
+This repository is the monorepo: two NestJS APIs, five web apps, and twelve shared libraries in a single pnpm workspace orchestrated by Nx. The former `madrasah-backend` and `madrasah-frontend` repositories were merged in here with their history preserved.
 
 ## Requirements
 
@@ -39,7 +39,7 @@ Nx project names are not always the directory names — commands take the **proj
 | `apps/landing` | `landing-web` | Next.js | 4003 |
 | `apps/keycloak-theme` | `keycloak-theme` | Keycloakify + Vite | Vite default |
 
-Libraries live in `libs/` and resolve as `@medaris/*`: `common`, `hooks`, `i18n`, `icons`, `services`, `tokens`, `types`, `ui`, `utils`.
+Libraries live in `libs/` and resolve as `@medaris/*`: `auth`, `common`, `env`, `hooks`, `i18n`, `icons`, `sarf`, `services`, `tokens`, `types`, `ui`, `utils`.
 
 `design-system/` is not a package. It is a byte-for-byte mirror of the **Medaris Design System** project on claude.ai/design — tokens, component specs, rendered cards and the three open accessibility decisions — for people and agents who cannot reach that project. Read it through the `medaris-design-system` skill in `.claude/skills/`, which prefers the live project when the session can reach it and explains how the mirror is refreshed. Nothing builds from it, Biome does not format it, and edits belong in the claude.ai/design project, not here. A subdirectory with its own `PROVENANCE.md` (today `design-system/madrasah-frontend/`) is the opposite direction: a design exported from another claude.ai/design project, parked here verbatim until it is pulled into the canonical one — the skill's §6 describes that route.
 

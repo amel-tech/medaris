@@ -37,7 +37,7 @@ const SCOPES = [
   "nazar-web",
   "landing-web",
   "keycloak-theme",
-  // ── Libs (10) — @medaris/<dirname> ───────────────────────────────────────
+  // ── Libs (11) — @medaris/<dirname> ───────────────────────────────────────
   // None of these is a release-please component: the 7 components are the 7
   // deployable apps, and `tools/ci/assert-release-config.mjs` pins that list.
   // A lib gets a scope so its changes are attributable in `git log`; it gets no
@@ -53,6 +53,7 @@ const SCOPES = [
   "i18n",
   "types",
   "utils",
+  "sarf",
   // ── Cross-cutting, releases nothing on its own ───────────────────────────
   "repo", // workspace wiring: pnpm, Nx, tsconfig, Biome, hooks
   "deps", // dependency bumps (the catalog in pnpm-workspace.yaml)

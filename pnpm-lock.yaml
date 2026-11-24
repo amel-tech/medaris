@@ -567,6 +567,9 @@ importers:
       '@medaris/i18n':
         specifier: workspace:*
         version: link:../../libs/i18n
+      '@medaris/sarf':
+        specifier: workspace:*
+        version: link:../../libs/sarf
       '@medaris/services':
         specifier: workspace:*
         version: link:../../libs/services
@@ -740,6 +743,9 @@ importers:
       '@medaris/icons':
         specifier: workspace:*
         version: link:../../libs/icons
+      '@medaris/sarf':
+        specifier: workspace:*
+        version: link:../../libs/sarf
       '@medaris/services':
         specifier: workspace:*
         version: link:../../libs/services
@@ -1183,6 +1189,18 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.17)
+
+  libs/sarf:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@21.0.4)(vite@7.3.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   libs/services:
     dependencies:
@@ -8091,6 +8109,7 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+    deprecated: This package is no longer needed on supported Node.js versions. Node.js 16+ includes AbortController and AbortSignal as built-in globals. All Node.js versions requiring this polyfill are end-of-life. Use the built-in globals instead.
 
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}

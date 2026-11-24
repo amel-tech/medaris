@@ -19,6 +19,7 @@
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
+    "@medaris/sarf": "workspace:*",
     "@medaris/services": "workspace:*",
     "@medaris/tokens": "workspace:*",
     "@medaris/ui": "workspace:*",
