@@ -1337,6 +1337,11 @@
     },
     "new": "Yeni",
     "permanentPending": "Kalıcı yasak talebi bekliyor",
+    "permanentOutcome": {
+      "APPROVED": "Kalıcı yasak talebi onaylandı",
+      "REJECTED": "Kalıcı yasak talebi reddedildi",
+      "note": "Ret gerekçesi:"
+    },
     "scope": {
       "COURSE": "Ders",
       "MADRASAH": "Medrese"

@@ -46,6 +46,8 @@ interface Props {
   viewerId: string | null;
   /** how the viewer is called in the lift dialog's info line */
   viewerRoleLabel: string;
+  /** the search the address opened the list with (`?q=`), already applied to `initial` */
+  initialSearch?: string;
 }
 
 interface Query {
@@ -56,14 +58,19 @@ interface Query {
 
 /**
  * Yasaklamalar for Medaris administration (nizam 48): every köşk's bans, with
- * a scope filter, a search and "Daha fazla göster". The scopes that exist are
- * the ones the model has — Ders and Köşk; Medrese and Platform chips wait for
- * bans of those scopes (nizam 49 draws "Platformdan yasakla"). "Yasağı
+ * a scope filter, a search and "Daha fazla göster". The scope chips are Ders,
+ * Köşk and, since an approved permanent ban request opens one (MDRS-194),
+ * Platform; nizam 49 ("Platformdan yasakla") is not built. "Yasağı
  * kaldır" and "Yasağı genişlet" are offered where the server's per-row flags
  * say so; the device events tab waits for a device-trace backend and is not
  * drawn.
  */
-export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
+export function AllBansView({
+  initial,
+  viewerId,
+  viewerRoleLabel,
+  initialSearch = "",
+}: Props) {
   const tm = useTranslations("nizam.BansPage");
   const t = tm as unknown as Messages;
   const ta = useTranslations("nizam.AllBansPage");
@@ -73,9 +80,9 @@ export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
   const [query, setQuery] = useState<Query>({
     status: "ACTIVE",
     scope: "",
-    q: "",
+    q: initialSearch,
   });
-  const [typed, setTyped] = useState("");
+  const [typed, setTyped] = useState(initialSearch);
   const [items, setItems] = useState<BanResponse[]>(initial?.items ?? []);
   const [total, setTotal] = useState(initial?.total ?? 0);
   const [counts, setCounts] = useState({
@@ -424,6 +431,7 @@ export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
                       { value: ALL, label: ta("scopeAll") },
                       { value: "COURSE", label: t("scope.COURSE") },
                       { value: "KOSK", label: t("scope.KOSK") },
+                      { value: "PLATFORM", label: t("scope.PLATFORM") },
                     ]}
                     value={query.scope === "" ? ALL : query.scope}
                     onChange={(chosen) =>

@@ -13,7 +13,8 @@ import { isBlank, REASON_MAX } from "../present";
  * (nizam 16, 30), and, since MDRS-181, a köşk application (nizam 15) and a
  * medrese's course request (nizam 39); since MDRS-148, the başnazım's
  * taking a published deck back, which words its own button and label; and a
- * medrese's appeal (İtirazlar), whose field is "Karar notu".
+ * medrese's appeal (İtirazlar), whose field is "Karar notu"; and, since
+ * MDRS-194, a permanent ban request (nizam 45).
  */
 export type RejectKind =
   | "request"
@@ -21,6 +22,7 @@ export type RejectKind =
   | "application"
   | "courseRequest"
   | "appeal"
+  | "permanentBan"
   | "unpublish";
 
 interface Props {

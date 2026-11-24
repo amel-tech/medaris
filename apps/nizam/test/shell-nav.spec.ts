@@ -144,6 +144,25 @@ describe("the menus as the canvases draw them", () => {
     }
   });
 
+  it("Medaris başnazımı and nazımı: every entry is a page that exists, but the one known gap (MDRS-194)", () => {
+    const appDir = fileURLToPath(new URL("../app", import.meta.url));
+    // YouTube bağlantısı is drawn in the menu and not built yet. Listed here
+    // so that a second missing page fails, and so that building this one
+    // fails too until the entry leaves the list.
+    const unbuilt = ["youtube"];
+    for (const variant of ["chief", "medaris"] as const) {
+      for (const g of navGroups(variant)) {
+        for (const i of g.items) {
+          const dir = i.path === "/" ? "(home)" : i.path;
+          expect(
+            existsSync(join(appDir, dir, "page.tsx")),
+            `${variant} ${i.id}: ${i.path}`
+          ).toBe(!unbuilt.includes(i.id));
+        }
+      }
+    }
+  });
+
   it("has no sign-out entry in any of them (canvas rule 18)", () => {
     for (const variant of ["chief", "medaris", "kosk"] as const) {
       for (const g of navGroups(variant)) {

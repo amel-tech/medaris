@@ -66,7 +66,8 @@ export const isRecent = (ban: Pick<BanResponse, "createdAt">, now: Date) =>
 /**
  * "Ders" or "Köşk", and what it names: the course, or the köşk (and where it
  * was widened from). `withKosk` adds the köşk's name under a course ban, as
- * the Medaris-wide list does (nizam 48: "ders · köşk · medrese").
+ * the Medaris-wide list does (nizam 48: "ders · köşk · medrese"). A platform
+ * ban (MDRS-194) names all of Medaris; a medrese ban names its medrese.
  */
 export function scopeParts(
   ban: Pick<
@@ -85,6 +86,15 @@ export function scopeParts(
         withKosk ? koskName : null,
         ban.madrasahName,
       ].filter((x): x is string => Boolean(x)),
+    };
+  }
+  if (ban.scope === "PLATFORM") {
+    return { label: t("scope.PLATFORM"), detail: [t("platformDetail")] };
+  }
+  if (ban.scope === "MADRASAH") {
+    return {
+      label: t("scope.MADRASAH"),
+      detail: [ban.madrasahName].filter((x): x is string => Boolean(x)),
     };
   }
   return {
@@ -118,7 +128,7 @@ export function banErrorKey(errorBody: unknown): string {
 }
 
 /** The scopes the Medaris-wide list can be narrowed to; "" is "Tümü". */
-export const SCOPE_FILTERS = ["", "COURSE", "KOSK"] as const;
+export const SCOPE_FILTERS = ["", "COURSE", "KOSK", "PLATFORM"] as const;
 export type ScopeFilter = (typeof SCOPE_FILTERS)[number];
 
 /** Narrows a chip's value to a known filter; anything else is "Tümü". */

@@ -144,10 +144,30 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
     </HomeSection>
   ) : null;
 
+  // A Medaris nazımı always sees the section (nizam/05); the başnazım, whose
+  // home (nizam/01) does not draw it, only while a request waits, so the
+  // number in the greeting has somewhere to go (MDRS-194).
   const permanentBans =
-    data.pendingTotals.permanentBanRequests != null && !chief ? (
-      <HomeSection id="home-permanent-bans" title={t("permanentBans.title")}>
-        <EmptyState>{t("permanentBans.empty")}</EmptyState>
+    data.pendingTotals.permanentBanRequests != null &&
+    (!chief || data.pendingTotals.permanentBanRequests > 0) ? (
+      <HomeSection
+        id="home-permanent-bans"
+        title={t("permanentBans.title")}
+        link={
+          data.pendingTotals.permanentBanRequests > 0
+            ? { href: "/talepler/kalici-yasak", label: t("seeAll") }
+            : undefined
+        }
+      >
+        {data.pendingTotals.permanentBanRequests > 0 ? (
+          <p className="m-0" data-testid="home-permanent-bans-count">
+            {t("permanentBans.pending", {
+              count: data.pendingTotals.permanentBanRequests,
+            })}
+          </p>
+        ) : (
+          <EmptyState>{t("permanentBans.empty")}</EmptyState>
+        )}
       </HomeSection>
     ) : null;
 
@@ -339,6 +359,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
         <div className="grid items-start gap-section lg:grid-cols-2">
           {applications}
           {decks}
+          {permanentBans}
           {passive}
           {bans}
         </div>

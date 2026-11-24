@@ -248,6 +248,42 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
     expect(html).toContain("Karar bekleyen 7 talep var.");
   });
 
+  it("counts the waiting permanent ban requests and links to their page (MDRS-194)", () => {
+    expect(html).toContain("Karar bekleyen 2 kalıcı yasak talebi var.");
+    expect(html).toContain('href="/talepler/kalici-yasak"');
+    const none = render(
+      <MedarisHome
+        data={{
+          ...nazim,
+          pendingTotals: { ...nazim.pendingTotals, permanentBanRequests: 0 },
+        }}
+        grants={grants}
+        nowIso={NOW}
+      />
+    );
+    expect(none).toContain("Bekleyen kalıcı yasak talebi yok.");
+    expect(none).not.toContain('href="/talepler/kalici-yasak"');
+  });
+
+  it("shows the başnazım the section only while a request waits (MDRS-194)", () => {
+    const quiet = render(
+      <MedarisHome data={chief} grants={grants} nowIso={NOW} />
+    );
+    expect(quiet).not.toContain("home-permanent-bans");
+    const waiting = render(
+      <MedarisHome
+        data={{
+          ...chief,
+          pendingTotals: { ...chief.pendingTotals, permanentBanRequests: 1 },
+        }}
+        grants={grants}
+        nowIso={NOW}
+      />
+    );
+    expect(waiting).toContain("Karar bekleyen 1 kalıcı yasak talebi var.");
+    expect(waiting).toContain('href="/talepler/kalici-yasak"');
+  });
+
   it("draws neither the course numbers nor the passive scopes", () => {
     expect(html).not.toContain("Kayıtlı talebe");
     expect(html).not.toContain("Pasif kapsamlar");

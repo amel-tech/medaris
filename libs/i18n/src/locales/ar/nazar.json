@@ -1337,6 +1337,11 @@
     },
     "new": "جديد",
     "permanentPending": "طلب الحظر الدائم بانتظار القرار",
+    "permanentOutcome": {
+      "APPROVED": "تمت الموافقة على طلب الحظر الدائم",
+      "REJECTED": "رُفض طلب الحظر الدائم",
+      "note": "سبب الرفض:"
+    },
     "scope": {
       "COURSE": "درس",
       "MADRASAH": "مدرسة"

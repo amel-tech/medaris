@@ -49,7 +49,7 @@ export const liftBan = async (
 /** One page of every köşk's bans for Medaris administration (nizam 48). */
 export const loadAllBans = async (query: {
   status: "ACTIVE" | "LIFTED";
-  scope?: "COURSE" | "KOSK";
+  scope?: "COURSE" | "KOSK" | "PLATFORM";
   q?: string;
   offset?: number;
 }): Promise<AuthenticatedActionResult<AllBansListResponse>> =>

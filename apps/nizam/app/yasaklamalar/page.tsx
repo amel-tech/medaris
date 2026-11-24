@@ -20,8 +20,16 @@ export async function generateMetadata(): Promise<Metadata> {
  * anyone but the başnazım and a Medaris nazımı 403, which shows the "Bu bölüm
  * için izniniz yok" screen (nizam/06).
  */
-export default async function Page() {
-  const [bans, me] = await Promise.all([getAllBans(), getMe()]);
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  // "Yasaklamalar'da gör" of a permanent ban request opens the list searched
+  // for that person (MDRS-194).
+  const { q } = await searchParams;
+  const search = (typeof q === "string" ? q : "").trim().slice(0, 200);
+  const [bans, me] = await Promise.all([getAllBans(search), getMe()]);
   if (bans === "forbidden") forbidden();
 
   const [t, locale] = await Promise.all([
@@ -32,6 +40,7 @@ export default async function Page() {
     <div className="mx-auto w-full max-w-[80rem]">
       <AllBansView
         initial={bans}
+        initialSearch={search}
         viewerId={me?.id ?? null}
         viewerRoleLabel={t(
           me?.roles.systemAdmin ? "roles.SYSTEM_ADMIN" : "roles.MEDARIS_NAZIM"

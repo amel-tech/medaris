@@ -164,7 +164,14 @@ export interface BanRow {
   email: string | null;
   /** placed in the last 24 hours and still open */
   recent: boolean;
+  /** a permanent ban request waits for Medaris administration */
   permanentPending: boolean;
+  /** how Medaris administration answered the request (MDRS-194); null while none is decided */
+  permanentOutcome: {
+    status: "APPROVED" | "REJECTED";
+    /** the note of a refusal, for whoever asked */
+    note: string | null;
+  } | null;
   scope: { kind: "COURSE" | "MADRASAH"; label: string; detail: string[] };
   courseId: string | null;
   courseTitle: string | null;
@@ -185,6 +192,28 @@ const stamp = (
   label: whenLabel(new Date(at), where.now, where, t),
   iso: new Date(at).toISOString(),
 });
+
+/** Where a ban's permanent request stands; a request older than the status column reads as waiting. */
+export function permanentStatus(
+  ban: Pick<
+    MadrasahBanResponse,
+    "permanentRequestedAt" | "permanentRequestStatus"
+  >
+): "PENDING" | "APPROVED" | "REJECTED" | null {
+  if (ban.permanentRequestStatus) return ban.permanentRequestStatus;
+  return ban.permanentRequestedAt ? "PENDING" : null;
+}
+
+function permanentOutcome(
+  ban: Pick<
+    MadrasahBanResponse,
+    "permanentRequestedAt" | "permanentRequestStatus" | "permanentDecisionNote"
+  >
+): BanRow["permanentOutcome"] {
+  const status = permanentStatus(ban);
+  if (status !== "APPROVED" && status !== "REJECTED") return null;
+  return { status, note: ban.permanentDecisionNote ?? null };
+}
 
 export function banRows(
   items: readonly MadrasahBanResponse[],
@@ -229,7 +258,8 @@ export function banRows(
       name,
       email: ban.user.email,
       recent: !ban.liftedAt && isRecent(ban.createdAt, where.now),
-      permanentPending: ban.permanentRequestedAt !== null,
+      permanentPending: permanentStatus(ban) === "PENDING",
+      permanentOutcome: permanentOutcome(ban),
       scope: { kind, label, detail },
       courseId: ban.courseId,
       courseTitle: ban.courseTitle,
@@ -277,6 +307,9 @@ export function fromKoskBan(ban: BanResponse): MadrasahBanResponse {
     viewerMayEscalate: false,
     viewerMayRequestPermanent: false,
     permanentRequestedAt: null,
+    permanentRequestStatus: null,
+    permanentDecidedAt: null,
+    permanentDecisionNote: null,
   };
 }
 
