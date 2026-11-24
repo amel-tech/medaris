@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.17.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.16.1...tedris-web-v2.17.0) (2026-11-24)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web, i18n:** MDRS-248 unlisted course via its link ([#401](https://github.com/amel-tech/medaris/issues/401)) ([ed2b70d](https://github.com/amel-tech/medaris/commit/ed2b70d35ef939875c6f0ca5d53d7a5e9565e139))
+* **tedrisat, tedris-web, services, i18n:** MDRS-248 count how far a talebe watched a celse ([#402](https://github.com/amel-tech/medaris/issues/402)) ([ddd75bd](https://github.com/amel-tech/medaris/commit/ddd75bd91713276cdfb470b374825cbc3e1071d0))
+
+
+### Bug Fixes
+
+* **tedris-web, i18n, docs:** MDRS-299 points as 25,00 and "Cevabın kaydedildi." on the exam ([#440](https://github.com/amel-tech/medaris/issues/440)) ([0d57a26](https://github.com/amel-tech/medaris/commit/0d57a265c0e5fb3427709a495d9c39db49501367))
+* **tedris-web, ui, docs:** hold windows, fields and ways out while a write is in flight ([#442](https://github.com/amel-tech/medaris/issues/442)) ([2816a7d](https://github.com/amel-tech/medaris/commit/2816a7df9526949d6f63222df0c96485616afc43))
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 home and Programım show an online exam ([#439](https://github.com/amel-tech/medaris/issues/439)) ([63ff453](https://github.com/amel-tech/medaris/commit/63ff453e479a79b1068a45054bdcee0d1f47af39))
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [2.16.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.16.0...tedris-web-v2.16.1) (2026-11-22)
 
 
