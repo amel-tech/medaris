@@ -154,7 +154,9 @@ entries:
   celse->filesReviewFile: { skip: 'a file returned with a review: the seeded hand-in is not reviewed' }
 
   # Derslerim and Programım
-  myCourses->course the course card's title: { css: 'a.mds-card__link[href="/courses/{seed.courses.open}"]' }
+  # the card's title link: its label is the course's own title, not a key, so it is bound by its ends alone; the recordings link
+  # below shares the ends and is found first by its label key
+  myCourses->course: { css: 'a.mds-card__link[href="/courses/{seed.courses.open}"]' }
   myCourses->course MyCoursesPage.recordings: { skip: "the link of a completed course (my-courses-page.tsx:406): the seeded talebe has none" }
   myCourses->discover: { skip: 'the empty state: the seeded talebe holds three courses' }
   schedule->celse: { css: 'a[href^="/courses/{seed.courses.open}/lessons/"]', nth: 0 }
