@@ -31,7 +31,9 @@ const P = PERMISSIONS;
  * place one; every role that holds it by default holds `ban.course` too.
  * `ban.manage_kosk` is "ders ve köşk düzeyinde yasakla ya da yasağı kaldır", so
  * it is in the course row as well. `platform.ban_account` is the platform's own
- * scope (the account closes, MDRS-197) and bans nothing yet; it reads.
+ * scope: it reads every ban, decides the requests for a permanent ban, and so
+ * places and lifts the PLATFORM ban an approval opens (MDRS-194). Closing the
+ * sign-in account is not part of it yet (MDRS-197).
  */
 
 /** Placing a ban at a level: the permission, held where the ban would sit. */
@@ -39,6 +41,7 @@ export const IMPOSE_CODES: Record<BanScope, readonly PermissionCode[]> = {
   [BAN_SCOPES.COURSE]: [P.BAN_COURSE, P.BAN_MANAGE_KOSK, P.MADRASAH_BAN],
   [BAN_SCOPES.KOSK]: [P.BAN_MANAGE_KOSK, P.PLATFORM_BAN_SCOPED],
   [BAN_SCOPES.MADRASAH]: [P.MADRASAH_BAN, P.PLATFORM_BAN_SCOPED],
+  [BAN_SCOPES.PLATFORM]: [P.PLATFORM_BAN_ACCOUNT],
 };
 
 /** Lifting a ban placed at a level: the same permissions, and `ban.lift_course` for a course. */
@@ -55,6 +58,14 @@ export const LIFT_CODES: Record<BanScope, readonly PermissionCode[]> = {
 /** Asking Medaris administration to make a ban permanent: the medrese's own permission. */
 export const PERMANENT_REQUEST_CODES: readonly PermissionCode[] = [
   P.MADRASAH_PERMANENT_BAN_REQUEST,
+];
+
+/**
+ * Reading and deciding the requests for a permanent ban (nizam/45): the
+ * başnazım, and a Medaris nazımı holding `platform.ban_account`.
+ */
+export const DECIDE_PERMANENT_CODES: readonly PermissionCode[] = [
+  P.PLATFORM_BAN_ACCOUNT,
 ];
 
 /** Reading a köşk's bans: those who may act on them, and who may read all of them. */

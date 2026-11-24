@@ -533,6 +533,13 @@
       "when": 1795415390606,
       "tag": "0080_lesson_views",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795500612351,
+      "tag": "0081_permanent_ban_decisions",
+      "breakpoints": true
     }
   ]
 }

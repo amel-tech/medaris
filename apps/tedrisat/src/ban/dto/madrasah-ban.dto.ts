@@ -8,7 +8,10 @@ import {
   MaxLength,
   ValidateIf,
 } from "class-validator";
-import { BAN_SCOPES } from "../../database/schema/ban.schema";
+import {
+  BAN_SCOPES,
+  PERMANENT_BAN_REQUEST_STATUSES,
+} from "../../database/schema/ban.schema";
 import { BAN_REASON_MAX, BanResponse } from "./ban.dto";
 
 /** What a nazır places a ban over: one of the medrese's courses, or the whole medrese. */
@@ -93,9 +96,28 @@ export class MadrasahBanResponse extends OmitType(BanResponse, [
     format: "date-time",
     nullable: true,
     description:
-      "When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase.",
+      "When the medrese asked for the ban to be permanent; null when it has not.",
   })
   permanentRequestedAt!: Date | null;
+
+  @ApiProperty({
+    enum: PERMANENT_BAN_REQUEST_STATUSES,
+    enumName: "PermanentBanRequestStatus",
+    nullable: true,
+    description:
+      "What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made.",
+  })
+  permanentRequestStatus!: string | null;
+
+  @ApiProperty({ type: String, format: "date-time", nullable: true })
+  permanentDecidedAt!: Date | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "The note of a refusal, for whoever asked; null otherwise.",
+  })
+  permanentDecisionNote!: string | null;
 }
 
 export class MadrasahBanListResponse {

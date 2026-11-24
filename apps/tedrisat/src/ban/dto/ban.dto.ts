@@ -101,7 +101,8 @@ export class BanResponse {
     type: String,
     format: "uuid",
     nullable: true,
-    description: "Null for a MADRASAH ban, which belongs to no single köşk.",
+    description:
+      "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all.",
   })
   koskId!: string | null;
 

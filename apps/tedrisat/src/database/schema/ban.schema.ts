@@ -15,6 +15,7 @@ export const BAN_SCOPES = {
   COURSE: "COURSE",
   KOSK: "KOSK",
   MADRASAH: "MADRASAH",
+  PLATFORM: "PLATFORM",
 } as const;
 export type BanScope = (typeof BAN_SCOPES)[keyof typeof BAN_SCOPES];
 
@@ -22,6 +23,7 @@ export const banScope = pgEnum("ban_scope", [
   BAN_SCOPES.COURSE,
   BAN_SCOPES.KOSK,
   BAN_SCOPES.MADRASAH,
+  BAN_SCOPES.PLATFORM,
 ]);
 
 // A talebe barred from one course or from a whole köşk (MDRS-177, screens
@@ -38,6 +40,12 @@ export const banScope = pgEnum("ban_scope", [
 // that outlives the scope it names, and SYSTEM_ADMIN's real delete of a köşk
 // or a course need not know about it. `user_id`, `banned_by` and `lifted_by`
 // are user columns like every other and not foreign keys either.
+//
+// A PLATFORM ban (MDRS-194) bars the person from every köşk, medrese and course
+// of Medaris: it names no scope, so `kosk_id`, `madrasah_id` and `course_id`
+// are all null. Medaris administration places it by approving a request for a
+// permanent ban; it is a ban inside Medaris only, and the sign-in account
+// stays open.
 //
 // `banned_tier` is what decides who may lift (see `ban/ban-tier.ts`): the
 // rank of the role the banner acted in, written once when the ban is made.
@@ -81,6 +89,14 @@ export const bans = table(
     uniqueIndex("bans_open_madrasah_uq")
       .on(t.userId, t.madrasahId)
       .where(sql`${t.liftedAt} is null and ${t.madrasahId} is not null`),
+    // One open platform ban per person. Keyed on the two null scope columns,
+    // which only a PLATFORM ban has (`bans_madrasah_scope_columns`), for the
+    // same reason as the medrese's index: no enum literal in the predicate.
+    uniqueIndex("bans_open_platform_uq")
+      .on(t.userId)
+      .where(
+        sql`${t.liftedAt} is null and ${t.koskId} is null and ${t.madrasahId} is null`
+      ),
     // The köşk's list: open or lifted, newest first.
     index("bans_kosk_created_idx").on(t.koskId, t.createdAt.desc()),
     check(
@@ -91,7 +107,7 @@ export const bans = table(
     // one transaction, which Postgres refuses for the enum literal itself.
     check(
       "bans_madrasah_scope_columns",
-      sql`(${t.scope}::text = 'MADRASAH') = (${t.madrasahId} is not null) and (${t.scope}::text = 'MADRASAH') = (${t.koskId} is null)`
+      sql`(${t.scope}::text = 'MADRASAH') = (${t.madrasahId} is not null) and (${t.scope}::text in ('MADRASAH', 'PLATFORM')) = (${t.koskId} is null)`
     ),
     check(
       "bans_lift_complete",
@@ -101,11 +117,24 @@ export const bans = table(
   ]
 );
 
+export const PERMANENT_BAN_REQUEST_STATUSES = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+] as const;
+export type PermanentBanRequestStatus =
+  (typeof PERMANENT_BAN_REQUEST_STATUSES)[number];
+
+export const PERMANENT_BAN_NOTE_MAX = 1000;
+
 // A medrese's request that a ban become permanent (MDRS-187, nazir/11 "Kalıcı
-// yasak talebi aç"). It asks Medaris administration to decide, and nothing
-// here decides: deciding is a later phase (MDRS-194), which adds its columns
-// (who decided, when, what) to this table. One request per ban, so asking
-// again is refused rather than doubled. No foreign key, like the bans it
+// yasak talebi aç"), and Medaris administration's decision on it (MDRS-194,
+// nizam/45). One request per ban, so asking again is refused rather than
+// doubled. Approving bars the person from all of Medaris: a PLATFORM ban is
+// opened beside the ban the request is about, and `platform_ban_id` names it
+// (the standing one, when the person was barred from the platform already).
+// Refusing leaves the lower ban as it was and keeps a note the requester
+// reads. `status` is text, like `appeals`. No foreign key, like the bans it
 // points at: the request is a record that outlives what it names.
 export const banPermanentRequests = table(
   "ban_permanent_requests",
@@ -117,6 +146,26 @@ export const banPermanentRequests = table(
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    status: text("status").default("PENDING").notNull(),
+    decidedBy: uuid("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    platformBanId: uuid("platform_ban_id"),
   },
-  (t) => [uniqueIndex("ban_permanent_requests_ban_uq").on(t.banId)]
+  (t) => [
+    uniqueIndex("ban_permanent_requests_ban_uq").on(t.banId),
+    index("ban_permanent_requests_status_idx").on(t.status, t.createdAt),
+    check(
+      "ban_permanent_requests_status_known",
+      sql`${t.status} in ('PENDING', 'APPROVED', 'REJECTED')`
+    ),
+    check(
+      "ban_permanent_requests_decision_complete",
+      sql`(${t.status} = 'PENDING') = (${t.decidedAt} is null) and (${t.status} = 'PENDING') = (${t.decidedBy} is null)`
+    ),
+    check(
+      "ban_permanent_requests_note_length",
+      sql`${t.decisionNote} is null or char_length(${t.decisionNote}) <= 1000`
+    ),
+  ]
 );
