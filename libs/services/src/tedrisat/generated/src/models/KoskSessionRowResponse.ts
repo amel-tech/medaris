@@ -74,11 +74,11 @@ export interface KoskSessionRowResponse {
      */
     cancelled: boolean;
     /**
-     * Held in person, by the lesson or its course
+     * Held in person, by the lesson or its course. How a session is attended goes where the meeting link goes (MDRS-283): left out for a caller without `kosk.manage`.
      * @type {boolean}
      * @memberof KoskSessionRowResponse
      */
-    inPerson: boolean;
+    inPerson?: boolean;
 }
 
 /**
@@ -94,7 +94,6 @@ export function instanceOfKoskSessionRowResponse(value: object): value is KoskSe
     if (!('scheduledAt' in value) || value['scheduledAt'] === undefined) return false;
     if (!('durationMinutes' in value) || value['durationMinutes'] === undefined) return false;
     if (!('cancelled' in value) || value['cancelled'] === undefined) return false;
-    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     return true;
 }
 
@@ -117,7 +116,7 @@ export function KoskSessionRowResponseFromJSONTyped(json: any, ignoreDiscriminat
         'scheduledAt': (new Date(json['scheduledAt'])),
         'durationMinutes': json['durationMinutes'],
         'cancelled': json['cancelled'],
-        'inPerson': json['inPerson'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
     };
 }
 

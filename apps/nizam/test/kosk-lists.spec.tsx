@@ -38,6 +38,9 @@ const render = (ui: ReactElement) =>
     </NextIntlClientProvider>
   );
 
+/** Before every session of the fixtures. */
+const NOW = "2026-10-01T09:00:00.000Z";
+
 const session = (
   over: Partial<KoskSessionRowResponse> = {}
 ): KoskSessionRowResponse => ({
@@ -92,6 +95,7 @@ describe("köşk geneli Celseler (MDRS-211)", () => {
         koskId="k1"
         koskName="Nûruosmaniye Köşkü"
         tab="UPCOMING"
+        nowIso={NOW}
         data={sessions([
           session(),
           session({
@@ -140,6 +144,7 @@ describe("köşk geneli Celseler (MDRS-211)", () => {
         koskId="k1"
         koskName="Köşk"
         tab="PAST"
+        nowIso={NOW}
         data={sessions([session()])}
       />
     );
@@ -150,15 +155,48 @@ describe("köşk geneli Celseler (MDRS-211)", () => {
           koskId="k1"
           koskName="Köşk"
           tab="UPCOMING"
+          nowIso={NOW}
           data={sessions([])}
         />
       )
     ).toContain("Yaklaşan celse yok.");
     const failed = render(
-      <KoskSessionsView koskId="k1" koskName="Köşk" tab="PAST" data={null} />
+      <KoskSessionsView
+        koskId="k1"
+        koskName="Köşk"
+        tab="PAST"
+        data={null}
+        nowIso={NOW}
+      />
     );
     expect(failed).toContain("Celseler okunamadı");
     expect(failed).toContain('href="/kosks/k1/celseler?sekme=gecmis"');
+  });
+
+  it("reads a session that has started as under way, and a page past the end as that", () => {
+    const live = render(
+      <KoskSessionsView
+        koskId="k1"
+        koskName="Köşk"
+        tab="UPCOMING"
+        nowIso="2026-10-03T18:20:00.000Z"
+        data={sessions([session()])}
+      />
+    );
+    expect(live).toContain("Şu an canlı");
+    expect(live).not.toContain("Planlandı");
+    const past = render(
+      <KoskSessionsView
+        koskId="k1"
+        koskName="Köşk"
+        tab="UPCOMING"
+        nowIso={NOW}
+        data={sessions([], { total: 45, page: 9 })}
+      />
+    );
+    expect(past).toContain("Bu sayfada satır yok.");
+    expect(past).not.toContain("Yaklaşan celse yok.");
+    expect(past).toContain('href="/kosks/k1/celseler?sayfa=3"');
   });
 
   it("pages through a long tab, keeping the tab", () => {
@@ -167,6 +205,7 @@ describe("köşk geneli Celseler (MDRS-211)", () => {
         koskId="k1"
         koskName="Köşk"
         tab="PAST"
+        nowIso={NOW}
         data={sessions([session()], { total: 45, page: 2, limit: 20 })}
       />
     );
@@ -365,6 +404,9 @@ describe("the rules behind the köşk-wide lists", () => {
     for (const bad of ["0", "-1", "1.5", "abc", undefined, ["2"]]) {
       expect(pageOf(bad)).toBe(1);
     }
+    // a number tedrisat would refuse is not sent
+    expect(pageOf("250000")).toBe(100000);
+    expect(pageOf("99999999999999999999999")).toBe(1);
     expect(searchOf("  bilal  ")).toBe("bilal");
     expect(searchOf("a".repeat(150))).toHaveLength(100);
     expect(searchOf(["a"])).toBe("");
@@ -408,10 +450,16 @@ describe("the rules behind the köşk-wide lists", () => {
   });
 
   it("words a session's state and tones a recording's", () => {
-    expect(sessionState({ cancelled: true }, "UPCOMING")).toBe("cancelled");
-    expect(sessionState({ cancelled: true }, "PAST")).toBe("cancelled");
-    expect(sessionState({ cancelled: false }, "PAST")).toBe("ended");
-    expect(sessionState({ cancelled: false }, "UPCOMING")).toBe("scheduled");
+    const at = new Date("2026-10-03T18:00:00Z");
+    const before = new Date("2026-10-03T17:00:00Z");
+    const during = new Date("2026-10-03T18:20:00Z");
+    const row = (cancelled: boolean) => ({ cancelled, scheduledAt: at });
+    expect(sessionState(row(true), "UPCOMING", before)).toBe("cancelled");
+    expect(sessionState(row(true), "PAST", during)).toBe("cancelled");
+    expect(sessionState(row(false), "PAST", during)).toBe("ended");
+    expect(sessionState(row(false), "UPCOMING", before)).toBe("scheduled");
+    // started and not over yet: it is still among the upcoming ones
+    expect(sessionState(row(false), "UPCOMING", during)).toBe("live");
     expect(recordingVariant("READY")).toBe("success");
     expect(recordingVariant("FAILED")).toBe("error");
     expect(recordingVariant("PROCESSING")).toBe("warning");

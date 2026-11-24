@@ -33,24 +33,27 @@ command that printed it; commands run from the repository root.
 | --- | --- | --- |
 | `GET /kosks/:id/sessions?tab=UPCOMING\|PAST&page&limit` | `listKoskSessions` | `kosk.manage` or `platform.kosk_edit` |
 | `GET /kosks/:id/students?q&page&limit` | `listKoskStudents` | `kosk.manage` |
-| `GET /kosks/:id/recordings?page&limit` | `listKoskRecordings` | `kosk.manage` or `platform.kosk_edit` |
+| `GET /kosks/:id/recordings?page&limit` | `listKoskRecordings` | `kosk.manage` |
 
-- The permissions are the ones `GET /kosks/:id/dashboard` and `/course-roster` carry. Talebeler is
-  `kosk.manage` alone because it hands out names and e-mail addresses: `platform.kosk_edit` covers
-  neither content nor personal data, exactly as the dashboard gives its holder no applicant. The
-  başnazım passes by the bypass.
+- The permissions are the ones `GET /kosks/:id/dashboard` and `/course-roster` carry. Two of the
+  three are `kosk.manage` alone, because `platform.kosk_edit` covers neither personal data nor course
+  content, exactly as the dashboard gives its holder no applicant and no link. Talebeler hands out
+  names and e-mail addresses. Ders kayıtları lists every recording, where a course's own content rule
+  (`visibleRecordings`: visibility, a closed course, a failed upload) would show such a caller only
+  some. The başnazım passes by the bypass.
 - **Celseler**: live sessions of the köşk's published, shown courses. `UPCOMING` is everything not over
   yet (a session with no length is given an hour), soonest first; `PAST` everything over, latest first.
-  A cancelled session stays listed and says so. **No meeting link is sent.**
+  A cancelled session stays listed and says so. **No meeting link is sent**, and how a session is
+  attended (`inPerson`) only to a caller holding `kosk.manage`, as on the dashboard (MDRS-283).
 - **Talebeler**: everyone with an enrolled or completed seat in a shown course of the köşk, one row a
-  person, newest first by first enrollment, each with all of their courses there; `q` matches name or
-  e-mail; `pendingCount` is the number of waiting applications. Every read is written to `audit_log` as
+  person, newest first by first enrollment, each with all of their courses there; `q` matches the
+  account's name or e-mail and the ones the seat was taken with, which is what a course's roster shows; `pendingCount` is the number of waiting applications. Every read is written to `audit_log` as
   a roster read on the köşk (`details.via = "kosk-students"`), before the list is returned.
 - **Ders kayıtları**: the recordings of the köşk's shown courses with course, week, session time,
   source, status and visibility, ordered by course, then the latest week. **No address is sent.**
 - A course in a passive scope is left out of all three for everyone but the köşk's nazımları and
   holders of `platform.inactive_scopes_manage`, as on the dashboard.
-- Page size 20 by default, 50 at most.
+- Page size 20 by default, 50 at most; a page number past 100000 is read as 100000.
 
 ### nizam-web
 
@@ -59,6 +62,7 @@ command that printed it; commands run from the repository root.
 - The tab, the page and the search live in the address (`?sekme=gecmis`, `?sayfa=`, `?ara=`), so the
   server reads exactly the page shown. The tabs and the pager are links and the search is a plain GET
   form: none of it needs the page's script.
+- A session that has started and is not over reads "Şu an canlı" among the upcoming ones.
 - A session leads to its course's own Celseler, a talebe's course to that course's Talebeler, a
   recording's course to its Celseler. Talebeler shows "Onay bekleyen N başvuru var." with the way to
   Başvurular when any wait.
@@ -91,19 +95,30 @@ command that printed it; commands run from the repository root.
 - **Ders kayıtları groups a page, not the list.** With more than 20 recordings, a course or a week can
   continue on the next page.
 
+## Review findings
+
+`/code-review` over `argedikas/mdrs-194-kalici-yasak-kararlari...HEAD` returned nine findings, all
+fixed: Ders kayıtları showed a `platform.kosk_edit` holder recordings the course's content rule hides
+from them (the route is `kosk.manage` alone now); Celseler sent `inPerson` to that holder; two
+Playwright assertions still pinned the menu without the new entries; the talebe search did not match
+the name and address a seat was taken with; a session under way read "Planlandı"; a failed köşk read
+turned a list that was read into "Sayfa bulunamadı"; a huge `?sayfa=` showed the error state; a page
+past the end said the list had nothing at all; the English and Arabic page titles differed from the
+menu's labels. The security pass found no vulnerability and added the cap on the page number.
+
 ## Verified
 
 | What | Command | Result |
 | --- | --- | --- |
-| The three routes | `pnpm --filter ./apps/tedrisat exec vitest run test/e2e/kosk-lists.e2e.spec.ts` | `Tests  13 passed (13)`: the lists, paging, search, no link and no address in the response, the audit row, 200 for the köşk's nazım and the başnazım, 403 for another köşk's nazım, a stranger and a bare Medaris nazımı, 401 without a token, 404 for no such köşk, empty lists for an empty köşk, the passive course left out for a `platform.kosk_edit` holder |
+| The three routes | `pnpm --filter ./apps/tedrisat exec vitest run test/e2e/kosk-lists.e2e.spec.ts` | `Tests  13 passed (13)`: the lists, paging, search (the seat's name too), no link and no address in the response, the audit row, 200 for the köşk's nazım and the başnazım, 403 for another köşk's nazım, a stranger and a bare Medaris nazımı, 401 without a token, 404 for no such köşk, empty lists for an empty köşk, the passive course left out for a `platform.kosk_edit` holder, who gets neither Talebeler nor Ders kayıtları and the sessions without `inPerson` |
 | The route inventory | `test/e2e/authz-route-inventory.e2e.spec.ts` | `Tests  1 passed (1)` with the three routes in the snapshot |
-| The three pages and their rules | `test/kosk-lists.spec.tsx` in the nizam run | part of `Tests  998 passed (998)` |
+| The three pages and their rules | `test/kosk-lists.spec.tsx` in the nizam run | part of `Tests  999 passed (999)` |
 | typecheck | `pnpm nx run-many -t typecheck --skip-nx-cache` | `20 tasks: 20 succeeded` |
 | build | `pnpm nx run-many -t build --skip-nx-cache` | `16 tasks: 16 succeeded` |
 | lint | `pnpm nx run-many -t lint --skip-nx-cache` | `18 tasks: 18 succeeded` |
 | module-boundaries | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | `18 tasks: 18 succeeded` |
 | OpenAPI freshness | `pnpm assert:openapi-fresh` | `263 paths, identical to what the exporter writes today` |
-| tests | `pnpm nx run-many -t test --skip-nx-cache`, read from each `coverage/junit.xml` | nizam `tests="998" failures="0"`, nazar `tests="1896" failures="0"`, tedris `tests="1360" failures="0"`, tedrisat `tests="3946" failures="3"`, keycloak-theme `tests="645" failures="1"` |
+| tests | `pnpm nx run-many -t test --skip-nx-cache`, read from each `coverage/junit.xml` | nizam `tests="999" failures="0"`, nazar `tests="1896" failures="0"`, tedris `tests="1360" failures="0"`, tedrisat `tests="3946" failures="3"`, keycloak-theme `tests="645" failures="1"` |
 
 The four failures are the suites that start a Keycloak container (`keycloak-audience`, `keycloak-smtp`,
 `partner-enrollment-keycloak`, and keycloak-theme's `email.e2e`), refused with `403 HTTPS required` by

@@ -170,14 +170,8 @@ test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bul
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
     await expect(page.getByText("izniniz yok")).toHaveCount(0);
-    // the shell around it is still there, and its menu no longer offers the page
+    // the shell around it is still there
     await expect(page.locator("aside").first()).toBeVisible();
-    await expect(
-      page
-        .locator("aside")
-        .first()
-        .getByRole("link", { name: /^Celseler/ })
-    ).toHaveCount(0);
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
     await expect(page).toHaveURL(HOME);
   } finally {

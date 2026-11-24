@@ -34,12 +34,18 @@ export default async function Page({
     getKoskRecordings(id, pageOf(query.sayfa)),
   ]);
 
-  if (!kosk || data === "not-found") notFound();
+  // The list is what decides: a köşk read that failed leaves only the name
+  // empty, as on Başvurular.
+  if (data === "not-found") notFound();
   if (data === "forbidden") forbidden();
 
   return (
     <div className="mx-auto max-w-[72rem] px-gutter py-8">
-      <KoskRecordingsView koskId={kosk.id} koskName={kosk.name} data={data} />
+      <KoskRecordingsView
+        koskId={kosk?.id ?? id}
+        koskName={kosk?.name ?? ""}
+        data={data}
+      />
     </div>
   );
 }

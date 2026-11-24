@@ -3717,7 +3717,8 @@
       "label": "Sayfalar",
       "range": "{from}–{to} / {total}",
       "prev": "Önceki",
-      "next": "Sonraki"
+      "next": "Sonraki",
+      "pastEnd": "Bu sayfada satır yok. Önceki sayfaya dönün."
     },
     "sessions": {
       "title": "Celseler",
@@ -3745,13 +3746,13 @@
       "state": {
         "cancelled": "İptal edildi",
         "ended": "Sona erdi",
+        "live": "Şu an canlı",
         "scheduled": "Planlandı"
       },
       "inPerson": "Yüz yüze",
       "goToCourse": "{course} dersinin celselerine git"
     },
     "students": {
-      "title": "Talebeler",
       "intro": "{kosk} içindeki derslere kayıtlı ve dersini tamamlamış talebeler; her satır bir kişi. Bir talebeyle ilgili işlem için dersine gidin.",
       "loadFailedTitle": "Talebeler okunamadı",
       "pendingTitle": "Onay bekleyen başvurular",
@@ -3771,10 +3772,10 @@
         "email": "E-posta",
         "courses": "Kayıtlı dersler",
         "since": "İlk kayıt"
-      }
+      },
+      "title": "Talebeler"
     },
     "recordings": {
-      "title": "Ders kayıtları",
       "intro": "{kosk} içindeki celselerin ders kayıtları, derslere ve haftalara göre. Ders kaydı eklemek ya da düzenlemek için dersine gidin.",
       "loadFailedTitle": "Ders kayıtları okunamadı",
       "total": "{count} ders kaydı",
@@ -3803,7 +3804,8 @@
       "visibility": {
         "PUBLIC": "Herkese açık",
         "ENROLLED": "Yalnız kayıtlı talebeler"
-      }
+      },
+      "title": "Ders kayıtları"
     }
   },
   "Dashboard": {

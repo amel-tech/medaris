@@ -99,7 +99,7 @@ GET /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
 GET /kosks/:id/hosting-rights -> kosk.hosting | platform.hosting_grant on byExistingKosk
 GET /kosks/:id/nazims -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/overview -> kosk.manage | platform.kosk_edit on byExistingKosk
-GET /kosks/:id/recordings -> kosk.manage | platform.kosk_edit on byExistingKosk
+GET /kosks/:id/recordings -> kosk.manage on byExistingKosk
 GET /kosks/:id/sessions -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/students -> kosk.manage on byExistingKosk
 GET /kosks/:koskId/bans -> no AuthzGuard

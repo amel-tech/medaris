@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { EnrollmentStatus } from "../../course/domain/enrollment-status.enum";
 import {
   RecordingProvider,
@@ -49,8 +49,11 @@ export class KoskSessionRowResponse {
   @ApiProperty({ description: "The session was called off; it stays listed" })
   cancelled!: boolean;
 
-  @ApiProperty({ description: "Held in person, by the lesson or its course" })
-  inPerson!: boolean;
+  @ApiPropertyOptional({
+    description:
+      "Held in person, by the lesson or its course. How a session is attended goes where the meeting link goes (MDRS-283): left out for a caller without `kosk.manage`.",
+  })
+  inPerson?: boolean;
 }
 
 export class KoskSessionListResponse {

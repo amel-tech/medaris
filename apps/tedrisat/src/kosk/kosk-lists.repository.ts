@@ -157,7 +157,8 @@ export class KoskListsRepository {
              e.created_at at time zone 'UTC' as created_at,
              coalesce(nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), ''),
                       e.student_name) as name,
-             coalesce(u.email, e.student_email) as email
+             coalesce(u.email, e.student_email) as email,
+             e.student_name as seat_name, e.student_email as seat_email
         from enrollments e
         join courses c on c.id = e.course_id
         left join users u on u.id = e.user_id
@@ -168,7 +169,8 @@ export class KoskListsRepository {
   /**
    * The köşk's talebe, a page of them: one row a person, newest first by
    * their first enrollment in the köşk, each with all of their courses there.
-   * `q` picks the talebe by name or e-mail address.
+   * `q` picks the talebe by name or e-mail address: the account's, or the
+   * ones the seat was taken with, which is what a course's roster shows.
    */
   async students(
     koskId: string,
@@ -183,7 +185,8 @@ export class KoskListsRepository {
        group by s.user_id
       ${
         like
-          ? sql`having bool_or(s.name ilike ${like} or s.email ilike ${like})`
+          ? sql`having bool_or(s.name ilike ${like} or s.email ilike ${like}
+                  or s.seat_name ilike ${like} or s.seat_email ilike ${like})`
           : sql``
       }`;
     const [count, people] = await Promise.all([

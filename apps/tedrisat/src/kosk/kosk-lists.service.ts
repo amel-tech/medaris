@@ -48,7 +48,11 @@ const slice = ({ page, limit }: IPaging) => ({
  *   so the köşk is its entity, as for `GET /kosks/:id/enrollments/pending`.
  *
  * The sessions carry no meeting link and the ders kayıtları no address, so
- * neither is a content read: opening one is the course's own page's.
+ * neither is a content read: opening one is the course's own page's. What
+ * else of them is course content is kept to the köşk's own management: how a
+ * session is attended is left out for a `platform.kosk_edit` holder, and the
+ * ders kayıtları, which the course rule would show them only in part, are
+ * `kosk.manage`'s alone.
  */
 @Injectable()
 export class KoskListsService {
@@ -81,11 +85,24 @@ export class KoskListsService {
     tab: KoskSessionTab,
     paging: IPaging
   ): Promise<KoskSessionListResponse> {
-    const filter = await this.filter(koskId, user);
-    const [counts, items] = await Promise.all([
+    const [filter, manages] = await Promise.all([
+      this.filter(koskId, user),
+      this.authz.can(
+        user,
+        { entity: ENTITIES.KOSK, id: koskId },
+        PERMISSIONS.KOSK_MANAGE
+      ),
+    ]);
+    const [counts, rows] = await Promise.all([
       this.repo.sessionCounts(koskId, filter),
       this.repo.sessions(koskId, tab, filter, slice(paging)),
     ]);
+    // How a session is attended is course content, as the meeting link is
+    // (MDRS-283): a `platform.kosk_edit` holder gets the rows without it,
+    // as on the dashboard.
+    const items = manages
+      ? rows
+      : rows.map(({ inPerson: _inPerson, ...row }) => row);
     return {
       items,
       total: tab === "UPCOMING" ? counts.upcoming : counts.past,

@@ -783,7 +783,7 @@
     },
     "/kosks/{id}/sessions": {
       "get": {
-        "description": "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "description": "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
         "operationId": "listKoskSessions",
         "parameters": [
           {
@@ -921,7 +921,7 @@
     },
     "/kosks/{id}/recordings": {
       "get": {
-        "description": "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "description": "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
         "operationId": "listKoskRecordings",
         "parameters": [
           {
@@ -18113,7 +18113,7 @@
           },
           "inPerson": {
             "type": "boolean",
-            "description": "Held in person, by the lesson or its course"
+            "description": "Held in person, by the lesson or its course. How a session is attended goes where the meeting link goes (MDRS-283): left out for a caller without `kosk.manage`."
           }
         },
         "required": [
@@ -18125,8 +18125,7 @@
           "weekNumber",
           "scheduledAt",
           "durationMinutes",
-          "cancelled",
-          "inPerson"
+          "cancelled"
         ]
       },
       "KoskSessionListResponse": {

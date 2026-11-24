@@ -115,7 +115,9 @@ export function KoskRecordingsView({ koskId, koskName, data }: Props) {
         />
       ) : data.items.length === 0 ? (
         <>
-          <EmptyState>{t("recordings.empty")}</EmptyState>
+          <EmptyState>
+            {data.total > 0 ? t("pager.pastEnd") : t("recordings.empty")}
+          </EmptyState>
           <ListPager
             pager={pager}
             total={data.total}

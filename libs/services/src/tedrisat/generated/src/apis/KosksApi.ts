@@ -1698,7 +1698,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk\'s nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
      * Every course\'s ders kayıtları for the köşk (Ders kayıtları)
      */
     async listKoskRecordingsRaw(requestParameters: ListKoskRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskRecordingListResponse>> {
@@ -1741,7 +1741,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk\'s nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
      * Every course\'s ders kayıtları for the köşk (Ders kayıtları)
      */
     async listKoskRecordings(requestParameters: ListKoskRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskRecordingListResponse> {
@@ -1750,7 +1750,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
      * Every course\'s live sessions for the köşk (Celseler)
      */
     async listKoskSessionsRaw(requestParameters: ListKoskSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskSessionListResponse>> {
@@ -1797,7 +1797,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
      * Every course\'s live sessions for the köşk (Celseler)
      */
     async listKoskSessions(requestParameters: ListKoskSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskSessionListResponse> {

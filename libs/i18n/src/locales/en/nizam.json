@@ -3717,7 +3717,8 @@
       "label": "Pages",
       "range": "{from}–{to} of {total}",
       "prev": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "pastEnd": "This page has no rows. Go back to the previous page."
     },
     "sessions": {
       "title": "Sessions",
@@ -3745,13 +3746,13 @@
       "state": {
         "cancelled": "Cancelled",
         "ended": "Ended",
+        "live": "Live now",
         "scheduled": "Scheduled"
       },
       "inPerson": "In person",
       "goToCourse": "Go to the sessions of {course}"
     },
     "students": {
-      "title": "Talebe",
       "intro": "The talebe enrolled in, or who completed, a course in {kosk}; one row a person. To act on a talebe, go to their course.",
       "loadFailedTitle": "The talebe could not be read",
       "pendingTitle": "Applications awaiting approval",
@@ -3771,10 +3772,10 @@
         "email": "E-mail",
         "courses": "Courses",
         "since": "First enrolled"
-      }
+      },
+      "title": "Students"
     },
     "recordings": {
-      "title": "Recordings",
       "intro": "The recordings of the sessions in {kosk}, by course and week. To add or edit a recording, go to its course.",
       "loadFailedTitle": "The recordings could not be read",
       "total": "{count, plural, one {# recording} other {# recordings}}",
@@ -3803,7 +3804,8 @@
       "visibility": {
         "PUBLIC": "Public",
         "ENROLLED": "Enrolled talebe only"
-      }
+      },
+      "title": "Session recordings"
     }
   },
   "Dashboard": {

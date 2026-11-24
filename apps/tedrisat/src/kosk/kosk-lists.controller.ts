@@ -34,9 +34,11 @@ import { KoskListsService } from "./kosk-lists.service";
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 const MAX_SEARCH_LENGTH = 100;
+/** Far past any real list; keeps the offset a number Postgres takes. */
+const MAX_PAGE = 100_000;
 
 const paging = (page: number, limit: number) => ({
-  page: page < 1 ? 1 : page,
+  page: Math.min(Math.max(page, 1), MAX_PAGE),
   limit: Math.min(Math.max(limit, 1), MAX_PAGE_SIZE),
 });
 
@@ -58,7 +60,7 @@ export class KoskListsController {
   @ApiOperation({
     summary: "Every course's live sessions for the köşk (Celseler)",
     description:
-      "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+      "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
     operationId: "listKoskSessions",
   })
   @ApiQuery({ name: "tab", required: false, enum: KOSK_SESSION_TABS })
@@ -122,7 +124,7 @@ export class KoskListsController {
   @ApiOperation({
     summary: "Every course's ders kayıtları for the köşk (Ders kayıtları)",
     description:
-      "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+      "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
     operationId: "listKoskRecordings",
   })
   @ApiQuery({ name: "page", required: false, type: Number })
@@ -131,10 +133,7 @@ export class KoskListsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/recordings")
-  @Authz(
-    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
-    byExistingKosk
-  )
+  @Authz(PERMISSIONS.KOSK_MANAGE, byExistingKosk)
   recordings(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

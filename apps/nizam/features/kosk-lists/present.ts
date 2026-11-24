@@ -25,10 +25,13 @@ const single = (value: Param): string =>
 export const sessionTabOf = (value: Param): SessionTab =>
   single(value) === "gecmis" ? "PAST" : "UPCOMING";
 
-/** `?sayfa=3`; anything that is not a positive whole number is the first page. */
+/** The last page asked of tedrisat; far past any real list. */
+export const PAGE_MAX = 100_000;
+
+/** `?sayfa=3`; anything that is not a positive whole number is the first page, and none is past `PAGE_MAX`. */
 export function pageOf(value: Param): number {
   const n = Number(single(value));
-  return Number.isInteger(n) && n > 0 ? n : 1;
+  return Number.isSafeInteger(n) && n > 0 ? Math.min(n, PAGE_MAX) : 1;
 }
 
 /** `?ara=`: trimmed and cut to what the API reads. */
@@ -103,13 +106,23 @@ export function pagerOf(
 }
 
 /** How a session reads in the Durum column. */
-export type SessionState = "cancelled" | "ended" | "scheduled";
+export type SessionState = "cancelled" | "ended" | "live" | "scheduled";
 
-export const sessionState = (
-  session: Pick<KoskSessionRowResponse, "cancelled">,
-  tab: SessionTab
-): SessionState =>
-  session.cancelled ? "cancelled" : tab === "PAST" ? "ended" : "scheduled";
+/**
+ * A session that has started stays among the upcoming ones until it ends,
+ * and reads as under way there, as on the köşk home and the course's page.
+ */
+export function sessionState(
+  session: Pick<KoskSessionRowResponse, "cancelled" | "scheduledAt">,
+  tab: SessionTab,
+  now: Date
+): SessionState {
+  if (session.cancelled) return "cancelled";
+  if (tab === "PAST") return "ended";
+  return new Date(session.scheduledAt).getTime() <= now.getTime()
+    ? "live"
+    : "scheduled";
+}
 
 export interface RecordingWeek {
   weekNumber: number;

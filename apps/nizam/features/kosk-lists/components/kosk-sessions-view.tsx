@@ -30,11 +30,14 @@ interface Props {
   tab: SessionTab;
   /** null when the read failed */
   data: KoskSessionListResponse | null;
+  /** the server's clock at the read, so the first paint and the hydration agree on what is under way */
+  nowIso: string;
 }
 
 const STATE_VARIANT = {
   cancelled: "error",
   ended: "secondary",
+  live: "live",
   scheduled: "info",
 } as const;
 
@@ -45,7 +48,14 @@ const STATE_VARIANT = {
  * to the course's own Celseler (nizam/56), where a session is planned, moved,
  * cancelled and given its link. The tab and the page are in the address.
  */
-export function KoskSessionsView({ koskId, koskName, tab, data }: Props) {
+export function KoskSessionsView({
+  koskId,
+  koskName,
+  tab,
+  data,
+  nowIso,
+}: Props) {
+  const now = new Date(nowIso);
   const t = useTranslations("nizam.KoskLists");
   const format = useFormatter();
   const locale = useLocale();
@@ -105,7 +115,7 @@ export function KoskSessionsView({ koskId, koskName, tab, data }: Props) {
       header: t("sessions.columns.state"),
       width: "16%",
       render: (s) => {
-        const state = sessionState(s, tab);
+        const state = sessionState(s, tab, now);
         return (
           <span className="flex flex-wrap items-center gap-2">
             <Badge variant={STATE_VARIANT[state]}>
@@ -164,7 +174,9 @@ export function KoskSessionsView({ koskId, koskName, tab, data }: Props) {
             ]}
           />
           {data.items.length === 0 ? (
-            <EmptyState>{t(`sessions.empty.${tab}`)}</EmptyState>
+            <EmptyState>
+              {data.total > 0 ? t("pager.pastEnd") : t(`sessions.empty.${tab}`)}
+            </EmptyState>
           ) : (
             <Table
               caption={t(`sessions.caption.${tab}`, { kosk: koskName })}

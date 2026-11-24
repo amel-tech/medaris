@@ -176,7 +176,11 @@ export function KoskStudentsView({ koskId, koskName, q, data }: Props) {
           </p>
           {data.items.length === 0 ? (
             <EmptyState>
-              {q ? t("students.emptyFiltered") : t("students.empty")}
+              {data.total > 0
+                ? t("pager.pastEnd")
+                : q
+                  ? t("students.emptyFiltered")
+                  : t("students.empty")}
             </EmptyState>
           ) : (
             <Table

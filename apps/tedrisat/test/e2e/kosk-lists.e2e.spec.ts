@@ -349,8 +349,19 @@ describe("The köşk-wide lists (MDRS-211, e2e)", () => {
       expect(text).not.toContain("meetingUrl");
     });
 
-    it("refuses a tab that is none", async () => {
+    it("refuses a tab that is none, and answers a page far past the end with no rows", async () => {
       await list("sessions", NAZIM_ID, "?tab=CANCELLED").expect(400);
+      await list("sessions", NAZIM_ID, "?page=abc").expect(400);
+      for (const page of ["0", "-3", "99999999999999999999999"]) {
+        const res = await list("sessions", NAZIM_ID, `?page=${page}`);
+        expect(res.status, page).toBe(200);
+      }
+      const far = await list(
+        "sessions",
+        NAZIM_ID,
+        "?page=99999999999999999999999"
+      ).expect(200);
+      expect(far.body).toMatchObject({ items: [], total: 5, page: 100000 });
     });
   });
 
@@ -399,6 +410,15 @@ describe("The köşk-wide lists (MDRS-211, e2e)", () => {
       expect(
         byMail.body.items.map((s: { userId: string }) => s.userId)
       ).toEqual([S1]);
+      // by the name the seat was taken with, when the account has another
+      await db()
+        .update(enrollments)
+        .set({ studentName: "Eski Ad" })
+        .where(eq(enrollments.userId, S1));
+      const bySeat = await list("students", NAZIM_ID, "?q=eski ad").expect(200);
+      expect(
+        bySeat.body.items.map((s: { userId: string }) => s.userId)
+      ).toEqual([S1]);
       const paged = await list("students", NAZIM_ID, "?limit=1&page=2").expect(
         200
       );
@@ -436,8 +456,12 @@ describe("The köşk-wide lists (MDRS-211, e2e)", () => {
     it("is not opened by platform.kosk_edit, which opens no personal data", async () => {
       await grantMedaris(PERMISSIONS.PLATFORM_KOSK_EDIT);
       await list("students", MEDARIS_ID).expect(403);
-      await list("sessions", MEDARIS_ID).expect(200);
-      await list("recordings", MEDARIS_ID).expect(200);
+      // nor the ders kayıtları, which a course shows them only in part
+      await list("recordings", MEDARIS_ID).expect(403);
+      // the sessions it opens come without how they are attended (MDRS-283)
+      const { body } = await list("sessions", MEDARIS_ID).expect(200);
+      expect(body.items.length).toBeGreaterThan(0);
+      for (const row of body.items) expect(row).not.toHaveProperty("inPerson");
     });
   });
 
