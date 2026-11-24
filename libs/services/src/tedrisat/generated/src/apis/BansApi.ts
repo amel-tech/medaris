@@ -604,7 +604,8 @@ export type ListAllBansStatusEnum = typeof ListAllBansStatusEnum[keyof typeof Li
 export const ListAllBansScopeEnum = {
     Course: 'COURSE',
     Kosk: 'KOSK',
-    Madrasah: 'MADRASAH'
+    Madrasah: 'MADRASAH',
+    Platform: 'PLATFORM'
 } as const;
 export type ListAllBansScopeEnum = typeof ListAllBansScopeEnum[keyof typeof ListAllBansScopeEnum];
 /**

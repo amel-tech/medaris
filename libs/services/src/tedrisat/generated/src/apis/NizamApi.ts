@@ -40,11 +40,13 @@ import type {
   NizamDashboardResponse,
   PartnerAdminListResponse,
   PartnerAdminResponse,
+  PermanentBanRequestListResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
   PlatformPolicyKey,
   PlatformPolicyListResponse,
   RejectAppealDto,
+  RejectPermanentBanRequestDto,
   RejectReasonDto,
   ScopedPolicyListResponse,
   SetNazimGrantsDto,
@@ -106,6 +108,8 @@ import {
     PartnerAdminListResponseToJSON,
     PartnerAdminResponseFromJSON,
     PartnerAdminResponseToJSON,
+    PermanentBanRequestListResponseFromJSON,
+    PermanentBanRequestListResponseToJSON,
     PermissionCatalogResponseFromJSON,
     PermissionCatalogResponseToJSON,
     PermissionGroupResponseFromJSON,
@@ -116,6 +120,8 @@ import {
     PlatformPolicyListResponseToJSON,
     RejectAppealDtoFromJSON,
     RejectAppealDtoToJSON,
+    RejectPermanentBanRequestDtoFromJSON,
+    RejectPermanentBanRequestDtoToJSON,
     RejectReasonDtoFromJSON,
     RejectReasonDtoToJSON,
     ScopedPolicyListResponseFromJSON,
@@ -151,6 +157,10 @@ export interface ApproveDeckPublishRequestRequest {
 export interface ApproveKoskApplicationRequest {
     id: string;
     approveKoskApplicationDto: ApproveKoskApplicationDto;
+}
+
+export interface ApprovePermanentBanRequestRequest {
+    id: string;
 }
 
 export interface AssignInactiveScopeRequest {
@@ -233,6 +243,10 @@ export interface ListKoskApplicationsRequest {
     status?: ListKoskApplicationsStatusEnum;
 }
 
+export interface ListPermanentBanRequestsRequest {
+    status?: ListPermanentBanRequestsStatusEnum;
+}
+
 export interface ListZerothAnswerCountsRequest {
     from: Date;
     to: Date;
@@ -259,6 +273,11 @@ export interface RejectDeckPublishRequestRequest {
 export interface RejectKoskApplicationRequest {
     id: string;
     rejectReasonDto: RejectReasonDto;
+}
+
+export interface RejectPermanentBanRequestRequest {
+    id: string;
+    rejectPermanentBanRequestDto: RejectPermanentBanRequestDto;
 }
 
 export interface SetMedarisNazimGrantsRequest {
@@ -484,6 +503,49 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async approveKoskApplication(requestParameters: ApproveKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.approveKoskApplicationRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Bars the person from all of Medaris: a PLATFORM ban is opened beside the ban the request is about, and every köşk, medrese and course refuses them from then on. The sign-in account is not closed. A person already barred from the platform keeps that ban. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already, 409 BAN_ALREADY_LIFTED when the ban it is about was lifted meanwhile. Written to the audit log (permanent_ban.approve, and ban.create for the platform ban).
+     * Approve the request (Onayla)
+     */
+    async approvePermanentBanRequestRaw(requestParameters: ApprovePermanentBanRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling approvePermanentBanRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/permanent-ban-requests/{id}/approve`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Bars the person from all of Medaris: a PLATFORM ban is opened beside the ban the request is about, and every köşk, medrese and course refuses them from then on. The sign-in account is not closed. A person already barred from the platform keeps that ban. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already, 409 BAN_ALREADY_LIFTED when the ban it is about was lifted meanwhile. Written to the audit log (permanent_ban.approve, and ban.create for the platform ban).
+     * Approve the request (Onayla)
+     */
+    async approvePermanentBanRequest(requestParameters: ApprovePermanentBanRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.approvePermanentBanRequestRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1454,6 +1516,46 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * Waiting ones oldest first, decided ones newest first, each with the ban it is about, and both counts. For the başnazım and a Medaris nazımı holding `platform.ban_account`.
+     * Permanent ban requests (Karar bekleyen / Karara bağlanan)
+     */
+    async listPermanentBanRequestsRaw(requestParameters: ListPermanentBanRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PermanentBanRequestListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/permanent-ban-requests`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PermanentBanRequestListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Waiting ones oldest first, decided ones newest first, each with the ban it is about, and both counts. For the başnazım and a Medaris nazımı holding `platform.ban_account`.
+     * Permanent ban requests (Karar bekleyen / Karara bağlanan)
+     */
+    async listPermanentBanRequests(requestParameters: ListPermanentBanRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PermanentBanRequestListResponse> {
+        const response = await this.listPermanentBanRequestsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The platform policies and who applies them on their own
      */
     async listPlatformPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
@@ -1798,6 +1900,59 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async rejectKoskApplication(requestParameters: RejectKoskApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.rejectKoskApplicationRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The note is required and is read by whoever asked; the ban the request is about stays as it was. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already. Written to the audit log (permanent_ban.reject).
+     * Refuse the request (Reddet)
+     */
+    async rejectPermanentBanRequestRaw(requestParameters: RejectPermanentBanRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectPermanentBanRequest().'
+            );
+        }
+
+        if (requestParameters['rejectPermanentBanRequestDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectPermanentBanRequestDto',
+                'Required parameter "rejectPermanentBanRequestDto" was null or undefined when calling rejectPermanentBanRequest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/permanent-ban-requests/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectPermanentBanRequestDtoToJSON(requestParameters['rejectPermanentBanRequestDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The note is required and is read by whoever asked; the ban the request is about stays as it was. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already. Written to the audit log (permanent_ban.reject).
+     * Refuse the request (Reddet)
+     */
+    async rejectPermanentBanRequest(requestParameters: RejectPermanentBanRequestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectPermanentBanRequestRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -2192,3 +2347,11 @@ export const ListKoskApplicationsStatusEnum = {
     Decided: 'DECIDED'
 } as const;
 export type ListKoskApplicationsStatusEnum = typeof ListKoskApplicationsStatusEnum[keyof typeof ListKoskApplicationsStatusEnum];
+/**
+ * @export
+ */
+export const ListPermanentBanRequestsStatusEnum = {
+    Pending: 'PENDING',
+    Decided: 'DECIDED'
+} as const;
+export type ListPermanentBanRequestsStatusEnum = typeof ListPermanentBanRequestsStatusEnum[keyof typeof ListPermanentBanRequestsStatusEnum];
