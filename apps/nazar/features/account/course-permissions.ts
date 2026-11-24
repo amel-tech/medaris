@@ -47,6 +47,7 @@ export const PAGE_CODES = {
   recordings: [CODES.recordingManage, CODES.recordingUpload],
   homework: [CODES.submissionRead],
   decks: [CODES.deckManageCourse],
+  sarf: [CODES.courseEdit],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,

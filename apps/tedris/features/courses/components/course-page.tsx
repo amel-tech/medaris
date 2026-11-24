@@ -43,6 +43,7 @@ import { CourseDecksTab } from "./course-decks-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
+import { CourseSarfTab } from "./course-sarf-tab";
 import { FileErrorNotice } from "./file-error-notice";
 import { RecordingsTab } from "./recordings-tab";
 
@@ -175,6 +176,11 @@ export const CoursePage = ({
             ...(decks.length > 0 ? { count: decks.length } : {}),
           },
         ]
+      : []),
+    // The müderris's own material is content: for who holds a seat, while
+    // the course's content is open.
+    ...(seat && !course.contentLocked
+      ? [{ value: "sarf", label: t("tabSarf") }]
       : []),
     ...(asksQuestions
       ? [{ value: "sorularim", label: t("tabMyQuestions") }]
@@ -445,6 +451,11 @@ export const CoursePage = ({
                 ) : (
                   <EmptyState>{t("deckEmpty")}</EmptyState>
                 )}
+              </TabsPanel>
+            ) : null}
+            {seat && !course.contentLocked ? (
+              <TabsPanel value="sarf" className="pbs-4">
+                <CourseSarfTab courseId={course.id} />
               </TabsPanel>
             ) : null}
             {asksQuestions ? (

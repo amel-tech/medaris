@@ -6,6 +6,7 @@ DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
+DELETE /courses/:id/sarf-roots/:rootId -> course.edit on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
 DELETE /flashcard-deck-label/delete/:id -> no AuthzGuard
 DELETE /flashcard-label/delete/:id -> no AuthzGuard
@@ -53,6 +54,7 @@ GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
 GET /courses/:id/resources/:resourceId/file -> course.view_details on byExistingCourse
+GET /courses/:id/sarf-roots -> course.view_details on byExistingCourse
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/:id/submissions -> submission.read on byExistingCourse
 GET /courses/:id/submissions/files/:fileId -> submission.read on byExistingCourse
@@ -257,6 +259,7 @@ PUT /courses/:id -> course.edit on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
 PUT /courses/:id/progress -> course.view_details on course
+PUT /courses/:id/sarf-roots -> course.edit on byExistingCourse
 PUT /courses/:id/submissions/:submissionId/review -> submission.read on byExistingCourse
 PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt

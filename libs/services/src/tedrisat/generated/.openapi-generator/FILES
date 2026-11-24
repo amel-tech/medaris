@@ -85,6 +85,7 @@ src/models/CourseRequestPersonResponse.ts
 src/models/CourseRequestRefResponse.ts
 src/models/CourseRequestResponse.ts
 src/models/CourseResourceFileUploadResponse.ts
+src/models/CourseSarfRootResponse.ts
 src/models/CourseStatsResponse.ts
 src/models/CourseSubmissionResponse.ts
 src/models/CourseSubmissionSessionResponse.ts
@@ -379,6 +380,7 @@ src/models/ReviewRating.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
+src/models/SaveCourseSarfRootDto.ts
 src/models/SaveLessonAssignmentDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/ScheduleSessionResponse.ts

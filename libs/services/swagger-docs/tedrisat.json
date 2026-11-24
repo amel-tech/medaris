@@ -9094,6 +9094,150 @@
         ]
       }
     },
+    "/courses/{id}/sarf-roots": {
+      "get": {
+        "description": "In the order they were added. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "listCourseSarfRoots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseSarfRootResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The roots on a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      },
+      "put": {
+        "description": "Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar's vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveCourseSarfRoot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCourseSarfRootDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSarfRootResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, COURSE_SARF_ROOT_DOUBLED"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Put a root on a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/sarf-roots/{rootId}": {
+      "delete": {
+        "description": "The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "deleteCourseSarfRoot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rootId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_SARF_ROOT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a root off a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/lessons/{id}/notes": {
       "get": {
         "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
@@ -23215,6 +23359,121 @@
         "enum": [
           "KEEP",
           "HIDE"
+        ]
+      },
+      "CourseSarfRootResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kok": {
+            "type": "string",
+            "example": "ن ص ر",
+            "description": "The root, three sâlim Arabic letters with a space between. Sülâsî mücerred sâlim only: a hamza, a weak letter or a doubled root is refused."
+          },
+          "bab": {
+            "type": "string",
+            "enum": [
+              "nasara",
+              "daraba",
+              "fataha",
+              "semia",
+              "hasune",
+              "hasibe"
+            ]
+          },
+          "mastar": {
+            "type": "string",
+            "nullable": true
+          },
+          "masdarVezin": {
+            "type": "string",
+            "enum": [
+              "fal",
+              "feal",
+              "ful",
+              "fil",
+              "fuul",
+              "feale",
+              "fuule",
+              "fiale",
+              "filan"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "kok",
+          "bab",
+          "mastar",
+          "masdarVezin",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SaveCourseSarfRootDto": {
+        "type": "object",
+        "properties": {
+          "kok": {
+            "type": "string",
+            "example": "ن ص ر",
+            "description": "The root, three sâlim Arabic letters with a space between. Sülâsî mücerred sâlim only: a hamza, a weak letter or a doubled root is refused."
+          },
+          "bab": {
+            "type": "string",
+            "enum": [
+              "nasara",
+              "daraba",
+              "fataha",
+              "semia",
+              "hasune",
+              "hasibe"
+            ],
+            "example": "nasara"
+          },
+          "mastar": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "example": "yardım etmek",
+            "description": "The Turkish mastar the meaning templates are built on. Left out or empty, the tables show the Arabic alone."
+          },
+          "masdarVezin": {
+            "type": "string",
+            "enum": [
+              "fal",
+              "feal",
+              "ful",
+              "fil",
+              "fuul",
+              "feale",
+              "fuule",
+              "fiale",
+              "filan"
+            ],
+            "example": "fal",
+            "description": "The vezin of the masdar, which is semâî: the müderris confirms the one the engine offered or picks another."
+          }
+        },
+        "required": [
+          "kok",
+          "bab",
+          "masdarVezin"
         ]
       },
       "LessonNoteResponse": {

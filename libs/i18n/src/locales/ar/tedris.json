@@ -176,7 +176,20 @@
     "resourcesDownload": " (يُنزَّل)",
     "assignmentBadge": "واجب",
     "assignmentPending": "لم يُسلَّم الواجب",
-    "assignmentsPending": "واجبات لم تُسلَّم: {count}"
+    "assignmentsPending": "واجبات لم تُسلَّم: {count}",
+    "tabSarf": "الصرف",
+    "sarfLoading": "جارٍ تحميل جداول الصرف…",
+    "sarfFailed": "تعذّر تحميل جداول الصرف.",
+    "sarfRetry": "أعِد المحاولة",
+    "sarfEmpty": "لم يُضِف المدرّس جذرًا إلى هذا الدرس بعد.",
+    "sarfRoots": "الجذور",
+    "sarfMuhtelife": "الأمثلة المختلفة",
+    "sarfHint": "اختر صيغة ليُفتح تصريفها في الأسفل.",
+    "sarfCekim": "التصريف (الأمثلة المطّردة)",
+    "sarfBina": "البناء",
+    "sarfView": "العرض",
+    "sarfViewTable": "جدول",
+    "sarfViewHand": "مخطّط اليد"
   },
   "DataTable": {
     "noResults": "لا توجد نتائج."

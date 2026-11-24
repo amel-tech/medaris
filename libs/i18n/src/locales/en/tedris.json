@@ -176,7 +176,20 @@
     "resourcesDownload": " (downloads)",
     "assignmentBadge": "Homework",
     "assignmentPending": "Homework not handed in",
-    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}"
+    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}",
+    "tabSarf": "Sarf",
+    "sarfLoading": "Loading the sarf tables…",
+    "sarfFailed": "The sarf tables could not be loaded.",
+    "sarfRetry": "Try again",
+    "sarfEmpty": "The teacher has not added a root to this course yet.",
+    "sarfRoots": "Roots",
+    "sarfMuhtelife": "Emsile-i Muhtelife",
+    "sarfHint": "Pick a form; its conjugation opens below.",
+    "sarfCekim": "Conjugation (Emsile-i Muttaride)",
+    "sarfBina": "Voice",
+    "sarfView": "View",
+    "sarfViewTable": "Table",
+    "sarfViewHand": "Hand diagram"
   },
   "DataTable": {
     "noResults": "No results."

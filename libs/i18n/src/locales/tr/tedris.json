@@ -176,7 +176,20 @@
     "resourcesDownload": " (indirilir)",
     "assignmentBadge": "Ödev",
     "assignmentPending": "Ödev teslim edilmedi",
-    "assignmentsPending": "{count} ödev teslim edilmedi"
+    "assignmentsPending": "{count} ödev teslim edilmedi",
+    "tabSarf": "Sarf",
+    "sarfLoading": "Sarf tabloları yükleniyor…",
+    "sarfFailed": "Sarf tabloları yüklenemedi.",
+    "sarfRetry": "Yeniden dene",
+    "sarfEmpty": "Müderris bu derse henüz kök eklemedi.",
+    "sarfRoots": "Kökler",
+    "sarfMuhtelife": "Emsile-i Muhtelife",
+    "sarfHint": "Bir sîgaya dokunun; çekimi aşağıda açılır.",
+    "sarfCekim": "Çekim (Emsile-i Muttaride)",
+    "sarfBina": "Binâ",
+    "sarfView": "Görünüm",
+    "sarfViewTable": "Tablo",
+    "sarfViewHand": "El şeması"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."

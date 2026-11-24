@@ -24,6 +24,7 @@ import type {
   CourseDetailResponse,
   CourseNazirsResponse,
   CoursePartnerCodesResponse,
+  CourseSarfRootResponse,
   CourseStatsResponse,
   CourseSummaryResponse,
   CreateCourseDeckDto,
@@ -42,6 +43,7 @@ import type {
   RemovedEnrollmentResponse,
   ReplaceCourseDto,
   RosterEnrollmentResponse,
+  SaveCourseSarfRootDto,
   SetEnrollmentStatusDto,
   SetMuderrisDto,
   SetMuderrisUnvanDto,
@@ -69,6 +71,8 @@ import {
     CourseNazirsResponseToJSON,
     CoursePartnerCodesResponseFromJSON,
     CoursePartnerCodesResponseToJSON,
+    CourseSarfRootResponseFromJSON,
+    CourseSarfRootResponseToJSON,
     CourseStatsResponseFromJSON,
     CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
@@ -105,6 +109,8 @@ import {
     ReplaceCourseDtoToJSON,
     RosterEnrollmentResponseFromJSON,
     RosterEnrollmentResponseToJSON,
+    SaveCourseSarfRootDtoFromJSON,
+    SaveCourseSarfRootDtoToJSON,
     SetEnrollmentStatusDtoFromJSON,
     SetEnrollmentStatusDtoToJSON,
     SetMuderrisDtoFromJSON,
@@ -162,6 +168,11 @@ export interface DeleteCourseRequest {
 export interface DeleteCourseDeckRequest {
     id: string;
     deckId: string;
+}
+
+export interface DeleteCourseSarfRootRequest {
+    id: string;
+    rootId: string;
 }
 
 export interface EnrollInCourseRequest {
@@ -226,6 +237,10 @@ export interface LeaveCourseRequest {
     id: string;
 }
 
+export interface ListCourseSarfRootsRequest {
+    id: string;
+}
+
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
@@ -256,6 +271,11 @@ export interface RestoreCourseRequest {
 export interface RevokeCourseNazirRequest {
     id: string;
     postId: string;
+}
+
+export interface SaveCourseSarfRootRequest {
+    id: string;
+    saveCourseSarfRootDto: SaveCourseSarfRootDto;
 }
 
 export interface SetCourseMuderrisRequest {
@@ -767,6 +787,57 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async deleteCourseDeck(requestParameters: DeleteCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteCourseDeckRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Take a root off a course\'s sarf page
+     */
+    async deleteCourseSarfRootRaw(requestParameters: DeleteCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteCourseSarfRoot().'
+            );
+        }
+
+        if (requestParameters['rootId'] == null) {
+            throw new runtime.RequiredError(
+                'rootId',
+                'Required parameter "rootId" was null or undefined when calling deleteCourseSarfRoot().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots/{rootId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"rootId"}}`, encodeURIComponent(String(requestParameters['rootId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Take a root off a course\'s sarf page
+     */
+    async deleteCourseSarfRoot(requestParameters: DeleteCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseSarfRootRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1434,6 +1505,50 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * In the order they were added. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * The roots on a course\'s sarf page
+     */
+    async listCourseSarfRootsRaw(requestParameters: ListCourseSarfRootsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseSarfRootResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseSarfRoots().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseSarfRootResponseFromJSON));
+    }
+
+    /**
+     * In the order they were added. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * The roots on a course\'s sarf page
+     */
+    async listCourseSarfRoots(requestParameters: ListCourseSarfRootsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseSarfRootResponse>> {
+        const response = await this.listCourseSarfRootsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
@@ -1762,6 +1877,60 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async revokeCourseNazir(requestParameters: RevokeCourseNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.revokeCourseNazirRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar\'s vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Put a root on a course\'s sarf page
+     */
+    async saveCourseSarfRootRaw(requestParameters: SaveCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseSarfRootResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveCourseSarfRoot().'
+            );
+        }
+
+        if (requestParameters['saveCourseSarfRootDto'] == null) {
+            throw new runtime.RequiredError(
+                'saveCourseSarfRootDto',
+                'Required parameter "saveCourseSarfRootDto" was null or undefined when calling saveCourseSarfRoot().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveCourseSarfRootDtoToJSON(requestParameters['saveCourseSarfRootDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseSarfRootResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar\'s vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Put a root on a course\'s sarf page
+     */
+    async saveCourseSarfRoot(requestParameters: SaveCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseSarfRootResponse> {
+        const response = await this.saveCourseSarfRootRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
