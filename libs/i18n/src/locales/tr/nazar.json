@@ -1526,7 +1526,9 @@
       }
     },
     "board": "Tahta",
-    "boardLabel": "{title} celsesinin tahtası"
+    "boardLabel": "{title} celsesinin tahtası",
+    "teacherNote": "Ders notu",
+    "teacherNoteLabel": "{title} celsesinin ders notu"
   },
   "SessionPlan": {
     "breadcrumbLabel": "Sayfa yolu",
@@ -2245,5 +2247,23 @@
     "emptyTitle": "Lügat boş",
     "emptyBody": "İlk terimi “Terim ekle” ile yazın.",
     "noneFound": "Aramanıza uyan terim yok."
+  },
+  "TeacherNote": {
+    "title": "Ders notu",
+    "back": "← Celseler",
+    "summary": "Bu celse için yazdığınız not. Talebe, kaydettiğiniz hâlini celse sayfasında okur.",
+    "loadFailedTitle": "Ders notu yüklenemedi",
+    "loadFailed": "Sunucuya ulaşılamadı. Sayfayı yenileyip yeniden deneyin.",
+    "body": "Not",
+    "bodyHelp": "Markdown ile yazılır: başlık için satır başına #, madde için -, kalın için **metin**, alıntı için >.",
+    "count": "{used} / {max} karakter",
+    "preview": "Önizleme",
+    "previewEmpty": "Yazdıkça talebenin göreceği hâli burada belirir.",
+    "save": "Notu kaydet",
+    "saved": "Ders notu kaydedildi",
+    "removed": "Ders notu kaldırıldı",
+    "unsaved": "Kaydedilmemiş değişiklik var",
+    "tooLong": "En çok {max} karakter olabilir.",
+    "failed": "Ders notu kaydedilemedi. Yeniden deneyin."
   }
 }

@@ -29,6 +29,7 @@ import {
   submissionFiles,
   submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
+import { lessonTeacherNotes } from "../database/schema/lesson-teacher-note.schema";
 import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
@@ -111,6 +112,7 @@ export async function purgeCourses(
     await deleteLessonSubmissions(tx, lessonIds, "course.purge");
     await deleteLessonAssignments(tx, lessonIds, "course.purge");
     await deleteLessonBoards(tx, lessonIds, "course.purge");
+    await deleteLessonTeacherNotes(tx, lessonIds);
     counts.lessons = (
       await tx
         .delete(lessons)
@@ -334,4 +336,17 @@ export async function recordDeletion(
     entityId: entry.entityId,
     details: entry.details,
   });
+}
+
+/**
+ * Deletes the notes the müderris wrote for the given lessons, inside the
+ * caller's transaction. Shared by every purge that deletes lessons.
+ */
+export async function deleteLessonTeacherNotes(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[]
+): Promise<void> {
+  await tx
+    .delete(lessonTeacherNotes)
+    .where(inArray(lessonTeacherNotes.lessonId, lessonIds));
 }

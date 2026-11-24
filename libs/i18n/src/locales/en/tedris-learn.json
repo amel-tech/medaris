@@ -232,5 +232,9 @@
     "canvas": "Lesson board",
     "loading": "Loading the board…",
     "imagesFailed": "Some pictures on the board could not be loaded. Refresh the page."
+  },
+  "SessionTeacherNote": {
+    "title": "Lesson note",
+    "hint": "The note the teacher wrote for this session."
   }
 }

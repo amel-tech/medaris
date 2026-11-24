@@ -249,6 +249,7 @@ src/models/LessonResourceFileUploadResponse.ts
 src/models/LessonResourceResponse.ts
 src/models/LessonResponse.ts
 src/models/LessonSubmissionResponse.ts
+src/models/LessonTeacherNoteResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
@@ -386,6 +387,7 @@ src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
 src/models/SaveCourseSarfRootDto.ts
 src/models/SaveLessonAssignmentDto.ts
+src/models/SaveLessonTeacherNoteDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/ScheduleSessionResponse.ts
 src/models/ScopeRefResponse.ts

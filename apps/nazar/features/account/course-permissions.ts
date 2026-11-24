@@ -50,6 +50,7 @@ export const PAGE_CODES = {
   sarf: [CODES.courseEdit],
   glossary: [CODES.courseEdit],
   board: [CODES.sessionManage],
+  teacherNote: [CODES.sessionManage],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,

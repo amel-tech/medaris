@@ -289,6 +289,12 @@ export function SessionsTable({
           >
             {t("Sessions.board")}
           </Link>
+          <Link
+            href={`/ders/${courseId}/celseler/${row.id}/not`}
+            aria-label={t("Sessions.teacherNoteLabel", { title: row.title })}
+          >
+            {t("Sessions.teacherNote")}
+          </Link>
         </span>
       ) : null}
     </span>

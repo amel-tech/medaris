@@ -1526,7 +1526,9 @@
       }
     },
     "board": "Board",
-    "boardLabel": "The board of the session {title}"
+    "boardLabel": "The board of the session {title}",
+    "teacherNote": "Lesson note",
+    "teacherNoteLabel": "The lesson note of the session {title}"
   },
   "SessionPlan": {
     "breadcrumbLabel": "Page path",
@@ -2245,5 +2247,23 @@
     "emptyTitle": "The glossary is empty",
     "emptyBody": "Write the first term with “Add a term”.",
     "noneFound": "No term matches your search."
+  },
+  "TeacherNote": {
+    "title": "Lesson note",
+    "back": "← Sessions",
+    "summary": "The note you write for this session. Students read what you save on the session page.",
+    "loadFailedTitle": "The lesson note could not be loaded",
+    "loadFailed": "The server could not be reached. Refresh the page and try again.",
+    "body": "Note",
+    "bodyHelp": "Written in Markdown: # at the start of a line for a heading, - for a list item, **text** for bold, > for a quote.",
+    "count": "{used} / {max} characters",
+    "preview": "Preview",
+    "previewEmpty": "What students will see appears here as you write.",
+    "save": "Save the note",
+    "saved": "The lesson note was saved",
+    "removed": "The lesson note was removed",
+    "unsaved": "There are unsaved changes",
+    "tooLong": "At most {max} characters.",
+    "failed": "The lesson note could not be saved. Try again."
   }
 }

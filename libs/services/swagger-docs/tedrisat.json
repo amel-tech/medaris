@@ -9678,6 +9678,103 @@
         ]
       }
     },
+    "/lessons/{id}/teacher-note": {
+      "get": {
+        "description": "The note as it was last saved. A session with no note answers with `body: null`, not 404. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonTeacherNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonTeacherNoteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A session's note from its müderris",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "put": {
+        "description": "The text replaces the one before it; there is no history. At most 20000 characters. A body that is null, left out or only whitespace removes the note. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveLessonTeacherNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveLessonTeacherNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonTeacherNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write a session's note",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/lessons/{id}/notes": {
       "get": {
         "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
@@ -24096,6 +24193,44 @@
           "scene",
           "files",
           "updatedAt"
+        ]
+      },
+      "LessonTeacherNoteResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note as Markdown. It is stored as typed; the reader renders it and never trusts it as HTML. Null when the session has no note."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "lessonId",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "SaveLessonTeacherNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 20000,
+            "description": "The note as Markdown. It is stored as typed; the reader renders it and never trusts it as HTML. Null or empty removes the note."
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "LessonNoteResponse": {

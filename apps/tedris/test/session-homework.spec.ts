@@ -36,6 +36,10 @@ vi.mock("~/features/courses/components/lesson-notes", () => ({
     createElement("div", { "data-notes": lessonId }),
 }));
 // The celse's board loads in the browser (a canvas); here only where it is.
+vi.mock("~/features/courses/components/session-teacher-note", () => ({
+  SessionTeacherNote: ({ lessonId }: { lessonId: string }) =>
+    createElement("div", { "data-teacher-note": lessonId }),
+}));
 vi.mock("~/features/courses/components/session-board", () => ({
   SessionBoard: ({ lessonId }: { lessonId: string }) =>
     createElement("div", { "data-board": lessonId }),

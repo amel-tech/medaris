@@ -35,6 +35,7 @@ import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
 import { hasSessionResources, SessionResources } from "./session-resources";
 import { SessionStateBadge } from "./session-state-badge";
+import { SessionTeacherNote } from "./session-teacher-note";
 
 /**
  * The celse detail page (MDRS-158, MDRS-285; layout MDRS-289): a live celse
@@ -156,11 +157,13 @@ export const SessionPage = async ({
       />
     ) : null;
 
-  // What the müderris prepared for the celse (its board): for whoever reads
-  // the celse's content, enrolled or staff, while the celse stands.
+  // What the müderris prepared for the celse (its note, then its board): for
+  // whoever reads the celse's content, enrolled or staff, while the celse
+  // stands.
   const material =
     !session.contentLocked && !cancelled ? (
       <>
+        <SessionTeacherNote lessonId={session.id} />
         <SessionBoard lessonId={session.id} />
         {/* The course's glossary is a tab of the course page; a celse leads there. */}
         <p className="mds-body-sm">

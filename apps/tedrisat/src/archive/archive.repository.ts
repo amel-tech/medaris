@@ -6,6 +6,7 @@ import {
   deleteLessonBoards,
   deleteLessonResources,
   deleteLessonSubmissions,
+  deleteLessonTeacherNotes,
   purgeCourses,
   recordDeletion,
   Tx,
@@ -775,6 +776,7 @@ export class ArchiveRepository {
         await deleteLessonSubmissions(tx, weekLessonIds, "lesson.purge");
         await deleteLessonAssignments(tx, weekLessonIds, "lesson.purge");
         await deleteLessonBoards(tx, weekLessonIds, "lesson.purge");
+        await deleteLessonTeacherNotes(tx, weekLessonIds);
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -805,6 +807,7 @@ export class ArchiveRepository {
         await deleteLessonSubmissions(tx, [id], "lesson.purge");
         await deleteLessonAssignments(tx, [id], "lesson.purge");
         await deleteLessonBoards(tx, [id], "lesson.purge");
+        await deleteLessonTeacherNotes(tx, [id]);
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

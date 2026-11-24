@@ -107,6 +107,7 @@ GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCo
 GET /lessons/:id/submission -> course.view on byLessonCourse
 GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
 GET /lessons/:id/submission/review-files/:fileId -> course.view on byLessonCourse
+GET /lessons/:id/teacher-note -> course.view_details on byLessonCourse
 GET /madrasahs -> madrasah.view on madrasah (public)
 GET /madrasahs/:id -> madrasah.view on byExistingMadrasah (public)
 GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.hide | platform.madrasah_edit | madrasah.settings_edit on byExistingMadrasah
@@ -277,6 +278,7 @@ PUT /lessons/:id/assignment -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
+PUT /lessons/:id/teacher-note -> session.manage on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah

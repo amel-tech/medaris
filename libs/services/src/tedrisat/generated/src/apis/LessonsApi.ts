@@ -28,12 +28,14 @@ import type {
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,
+  LessonTeacherNoteResponse,
   LiveStreamResponse,
   PaginatedCourseQuestionResponse,
   PaginatedLessonQuestionResponse,
   RecordingAvailabilityResponse,
   RecordingResponse,
   RecordingUploadResponse,
+  SaveLessonTeacherNoteDto,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
@@ -74,6 +76,8 @@ import {
     LessonNoteResponseToJSON,
     LessonQuestionResponseFromJSON,
     LessonQuestionResponseToJSON,
+    LessonTeacherNoteResponseFromJSON,
+    LessonTeacherNoteResponseToJSON,
     LiveStreamResponseFromJSON,
     LiveStreamResponseToJSON,
     PaginatedCourseQuestionResponseFromJSON,
@@ -86,6 +90,8 @@ import {
     RecordingResponseToJSON,
     RecordingUploadResponseFromJSON,
     RecordingUploadResponseToJSON,
+    SaveLessonTeacherNoteDtoFromJSON,
+    SaveLessonTeacherNoteDtoToJSON,
     SessionBatchPreviewResponseFromJSON,
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
@@ -181,6 +187,10 @@ export interface GetLessonCalendarRequest {
     locale?: GetLessonCalendarLocaleEnum;
 }
 
+export interface GetLessonTeacherNoteRequest {
+    id: string;
+}
+
 export interface GetSessionRequest {
     courseId: string;
     sessionId: string;
@@ -228,6 +238,11 @@ export interface ResignRecordingUploadRequest {
 export interface SaveLessonBoardRequest {
     id: string;
     file: Blob;
+}
+
+export interface SaveLessonTeacherNoteRequest {
+    id: string;
+    saveLessonTeacherNoteDto: SaveLessonTeacherNoteDto;
 }
 
 export interface SetLessonLiveStreamRequest {
@@ -1024,6 +1039,50 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * The note as it was last saved. A session with no note answers with `body: null`, not 404. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A session\'s note from its müderris
+     */
+    async getLessonTeacherNoteRaw(requestParameters: GetLessonTeacherNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonTeacherNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getLessonTeacherNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/teacher-note`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonTeacherNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The note as it was last saved. A session with no note answers with `body: null`, not 404. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A session\'s note from its müderris
+     */
+    async getLessonTeacherNote(requestParameters: GetLessonTeacherNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonTeacherNoteResponse> {
+        const response = await this.getLessonTeacherNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session\'s own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a recording open to talebe, with a bound its field states (MDRS-285, MDRS-288). The `recording` keeps its link back until its `availableAt` from everyone but the course team (`recording.manage`), and no Bunny link is signed for them (MDRS-288). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
      * One live session: its status, cancellation, neighbours and link
      */
@@ -1538,6 +1597,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async saveLessonBoard(requestParameters: SaveLessonBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonBoardResponse> {
         const response = await this.saveLessonBoardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The text replaces the one before it; there is no history. At most 20000 characters. A body that is null, left out or only whitespace removes the note. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Write a session\'s note
+     */
+    async saveLessonTeacherNoteRaw(requestParameters: SaveLessonTeacherNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonTeacherNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveLessonTeacherNote().'
+            );
+        }
+
+        if (requestParameters['saveLessonTeacherNoteDto'] == null) {
+            throw new runtime.RequiredError(
+                'saveLessonTeacherNoteDto',
+                'Required parameter "saveLessonTeacherNoteDto" was null or undefined when calling saveLessonTeacherNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/teacher-note`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveLessonTeacherNoteDtoToJSON(requestParameters['saveLessonTeacherNoteDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonTeacherNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The text replaces the one before it; there is no history. At most 20000 characters. A body that is null, left out or only whitespace removes the note. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Write a session\'s note
+     */
+    async saveLessonTeacherNote(requestParameters: SaveLessonTeacherNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonTeacherNoteResponse> {
+        const response = await this.saveLessonTeacherNoteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -20,6 +20,7 @@ export * from "./lesson-invitation.schema";
 export * from "./lesson-note.schema";
 export * from "./lesson-question.schema";
 export * from "./lesson-submission.schema";
+export * from "./lesson-teacher-note.schema";
 export * from "./madrasah.schema";
 export * from "./notification.schema";
 export * from "./offsite-course-request.schema";
