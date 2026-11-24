@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.21](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.20...tedrisat-v0.2.21) (2026-11-24)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web, i18n:** MDRS-248 unlisted course via its link ([#401](https://github.com/amel-tech/medaris/issues/401)) ([ed2b70d](https://github.com/amel-tech/medaris/commit/ed2b70d35ef939875c6f0ca5d53d7a5e9565e139))
+* **tedrisat, tedris-web, services, i18n:** MDRS-248 count how far a talebe watched a celse ([#402](https://github.com/amel-tech/medaris/issues/402)) ([ddd75bd](https://github.com/amel-tech/medaris/commit/ddd75bd91713276cdfb470b374825cbc3e1071d0))
+
+
+### Bug Fixes
+
+* **tedrisat, tedris-web, services, i18n:** MDRS-299 home and Programım show an online exam ([#439](https://github.com/amel-tech/medaris/issues/439)) ([63ff453](https://github.com/amel-tech/medaris/commit/63ff453e479a79b1068a45054bdcee0d1f47af39))
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [0.2.20](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.19...tedrisat-v0.2.20) (2026-11-22)
 
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.13](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.12...nizam-web-v0.2.13) (2026-11-24)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web, i18n:** MDRS-248 unlisted course via its link ([#401](https://github.com/amel-tech/medaris/issues/401)) ([ed2b70d](https://github.com/amel-tech/medaris/commit/ed2b70d35ef939875c6f0ca5d53d7a5e9565e139))
+
+
+### Bug Fixes
+
+* **nizam-web, i18n, docs:** late answers and in-flight edits no longer lose data in nizam ([#443](https://github.com/amel-tech/medaris/issues/443)) ([fe5977c](https://github.com/amel-tech/medaris/commit/fe5977c69c74a83f5894637ddf1971c4e75b8e9c))
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [0.2.12](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.11...nizam-web-v0.2.12) (2026-11-22)
 
 

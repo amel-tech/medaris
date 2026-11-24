@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.19](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.18...nazar-web-v0.2.19) (2026-11-24)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web, i18n:** MDRS-248 unlisted course via its link ([#401](https://github.com/amel-tech/medaris/issues/401)) ([ed2b70d](https://github.com/amel-tech/medaris/commit/ed2b70d35ef939875c6f0ca5d53d7a5e9565e139))
+
+
+### Bug Fixes
+
+* **nazar-web, docs:** hold the form while a save is out, so what is sent is what is shown ([#441](https://github.com/amel-tech/medaris/issues/441)) ([2856efa](https://github.com/amel-tech/medaris/commit/2856efa482fd144bb6c9917da51a88b41290cc13))
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [0.2.18](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.17...nazar-web-v0.2.18) (2026-11-22)
 
 
