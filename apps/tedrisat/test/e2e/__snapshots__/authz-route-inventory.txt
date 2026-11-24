@@ -8,6 +8,7 @@ DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
 DELETE /courses/:id/sarf-roots/:rootId -> course.edit on byExistingCourse
 DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
+DELETE /courses/:id/terms/:termId -> course.edit on byExistingCourse
 DELETE /flashcard-deck-label/delete/:id -> no AuthzGuard
 DELETE /flashcard-label/delete/:id -> no AuthzGuard
 DELETE /flashcard/cards/:id -> deck.manage_cards on custom
@@ -59,6 +60,7 @@ GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/:id/submissions -> submission.read on byExistingCourse
 GET /courses/:id/submissions/files/:fileId -> submission.read on byExistingCourse
 GET /courses/:id/submissions/review-files/:fileId -> submission.read on byExistingCourse
+GET /courses/:id/terms -> course.view_details on byExistingCourse
 GET /courses/enrolled -> exempt
 GET /flashcard-deck-label/:id -> no AuthzGuard
 GET /flashcard-deck-label/getStats/:id -> no AuthzGuard
@@ -162,6 +164,7 @@ PATCH /courses/:id -> course.edit on course
 PATCH /courses/:id/decks/:deckId -> deck.manage_course on course
 PATCH /courses/:id/enrollments/:userId -> enrollment.complete on course
 PATCH /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
+PATCH /courses/:id/terms/:termId -> course.edit on byExistingCourse
 PATCH /flashcard/cards/:id -> deck.manage_cards on custom
 PATCH /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PATCH /kosks/:id -> kosk.manage | platform.kosk_edit on byExistingKosk
@@ -199,6 +202,7 @@ POST /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /courses/:id/submissions/:submissionId/review/files -> submission.read on byExistingCourse
+POST /courses/:id/terms -> course.edit on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard
 POST /flashcard-deck-label/labeling -> no AuthzGuard

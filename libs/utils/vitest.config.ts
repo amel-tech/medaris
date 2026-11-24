@@ -22,6 +22,7 @@ export default mergeConfig(
           "src/time-zone.ts",
           "src/end-instant.ts",
           "src/callback-url.ts",
+          "src/term-search.ts",
           "src/youtube-live.js",
           "src/hoca-unvan.js",
         ],

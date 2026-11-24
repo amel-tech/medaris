@@ -247,6 +247,7 @@ describe("the pages behind the menu", () => {
       "kayitlar",
       "deste",
       "sarf",
+      "lugat",
       "yasaklamalar",
       "arsiv",
       "nazirlar",

@@ -189,7 +189,18 @@
     "sarfBina": "Binâ",
     "sarfView": "Görünüm",
     "sarfViewTable": "Tablo",
-    "sarfViewHand": "El şeması"
+    "sarfViewHand": "El şeması",
+    "tabGlossary": "Lügat",
+    "glossaryLoading": "Lügat yükleniyor…",
+    "glossaryFailed": "Lügat yüklenemedi.",
+    "glossaryRetry": "Yeniden dene",
+    "glossaryEmpty": "Müderris bu dersin lügatine henüz terim yazmadı.",
+    "glossarySearch": "Terim ara",
+    "glossaryCount": "{found} / {all} terim",
+    "glossaryNoneFound": "Aramanıza uyan terim yok.",
+    "glossaryLexical": "Lügat manası",
+    "glossaryTechnical": "Istılah manası",
+    "glossaryExample": "Örnek"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
@@ -615,7 +626,8 @@
     "resourcesOwn": "Bu celse",
     "resourcesCourse": "Ders geneli",
     "rowRecording": "Kayıt var",
-    "download": " (indirilir)"
+    "download": " (indirilir)",
+    "glossaryLink": "Dersin lügati"
   },
   "AccountPage": {
     "pageTitle": "Hesap",

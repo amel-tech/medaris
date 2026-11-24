@@ -4,6 +4,7 @@ export * from "./hoca-unvan";
 export * from "./meeting-platform";
 export * from "./privacy-notice";
 export * from "./resource-url";
+export * from "./term-search";
 export * from "./time-zone";
 export * from "./youtube-live";
 

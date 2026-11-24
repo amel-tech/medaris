@@ -13,6 +13,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { courseSarfRoots } from "../database/schema/course-sarf.schema";
+import { courseTerms } from "../database/schema/course-term.schema";
 import {
   lessonAssignmentFiles,
   lessonAssignments,
@@ -127,10 +128,12 @@ export async function purgeCourses(
   // children — `scope_id` points at any kind of scope — so they are named
   // here too (MDRS-134). Not counted: `muderris` below already counts who
   // taught there.
-  // The roots on the course's sarf page hang off the course itself.
+  // The roots on the course's sarf page and its glossary hang off the course
+  // itself.
   await tx
     .delete(courseSarfRoots)
     .where(inArray(courseSarfRoots.courseId, courseIds));
+  await tx.delete(courseTerms).where(inArray(courseTerms.courseId, courseIds));
   await deleteAssignmentsIn(tx, SCOPE_TYPES.COURSE, courseIds);
   counts.muderris = (
     await tx

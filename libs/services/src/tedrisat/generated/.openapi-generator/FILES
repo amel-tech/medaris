@@ -91,12 +91,14 @@ src/models/CourseSubmissionResponse.ts
 src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
+src/models/CourseTermResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDeckDto.ts
 src/models/CreateCourseDto.ts
 src/models/CreateCourseMuderrisDto.ts
 src/models/CreateCourseNazirDto.ts
 src/models/CreateCourseRequestDto.ts
+src/models/CreateCourseTermDto.ts
 src/models/CreateDeckProposalDto.ts
 src/models/CreateFlashcardDeckDto.ts
 src/models/CreateFlashcardDeckLabelDto.ts
@@ -422,6 +424,7 @@ src/models/TeamSettableEnrollmentStatus.ts
 src/models/UpdateCourseDeckDto.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateCourseNazirDto.ts
+src/models/UpdateCourseTermDto.ts
 src/models/UpdateFlashcardDeckDto.ts
 src/models/UpdateFlashcardDto.ts
 src/models/UpdateKoskDto.ts

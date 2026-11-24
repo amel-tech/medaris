@@ -40,6 +40,7 @@ import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
 import { CourseDecksTab } from "./course-decks-tab";
+import { CourseGlossaryTab } from "./course-glossary-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
@@ -180,7 +181,10 @@ export const CoursePage = ({
     // The müderris's own material is content: for who holds a seat, while
     // the course's content is open.
     ...(seat && !course.contentLocked
-      ? [{ value: "sarf", label: t("tabSarf") }]
+      ? [
+          { value: "sarf", label: t("tabSarf") },
+          { value: "lugat", label: t("tabGlossary") },
+        ]
       : []),
     ...(asksQuestions
       ? [{ value: "sorularim", label: t("tabMyQuestions") }]
@@ -456,6 +460,11 @@ export const CoursePage = ({
             {seat && !course.contentLocked ? (
               <TabsPanel value="sarf" className="pbs-4">
                 <CourseSarfTab courseId={course.id} />
+              </TabsPanel>
+            ) : null}
+            {seat && !course.contentLocked ? (
+              <TabsPanel value="lugat" className="pbs-4">
+                <CourseGlossaryTab courseId={course.id} />
               </TabsPanel>
             ) : null}
             {asksQuestions ? (

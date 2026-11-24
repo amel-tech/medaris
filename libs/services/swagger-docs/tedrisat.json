@@ -9238,6 +9238,212 @@
         ]
       }
     },
+    "/courses/{id}/terms": {
+      "get": {
+        "description": "Every term of the course, in the order they were added; the reader sorts and searches. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "listCourseTerms",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseTermResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A course's glossary",
+        "tags": [
+          "courses"
+        ]
+      },
+      "post": {
+        "description": "Only the term itself is required; a text left out or empty is kept as null. Every text is stored as typed and shown as plain text. At most 1000 terms a course (400 COURSE_TERMS_FULL). Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "createCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTermResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, COURSE_TERMS_FULL"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a term to a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/terms/{termId}": {
+      "patch": {
+        "description": "A key left out stays as it is; a text sent as null or empty is cleared. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "updateCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "termId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTermResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_TERM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a term of a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      },
+      "delete": {
+        "description": "The term is removed for good; there is no history. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "deleteCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "termId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_TERM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a term of a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/lessons/{id}/board": {
       "get": {
         "description": "The scene as it was last saved and the images on it. A session with no board answers with `scene: null` and no files, not 404. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
@@ -23709,6 +23915,135 @@
           "bab",
           "masdarVezin"
         ]
+      },
+      "CourseTermResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "term": {
+            "type": "string",
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "description": "An example of the term in use."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "term",
+          "arabic",
+          "lexicalMeaning",
+          "technicalMeaning",
+          "example",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateCourseTermDto": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000,
+            "description": "An example of the term in use."
+          }
+        },
+        "required": [
+          "term"
+        ]
+      },
+      "UpdateCourseTermDto": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000,
+            "description": "An example of the term in use."
+          }
+        }
       },
       "LessonBoardFileResponse": {
         "type": "object",

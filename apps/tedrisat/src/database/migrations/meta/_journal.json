@@ -463,6 +463,13 @@
       "when": 1795495795427,
       "tag": "0070_lesson_boards",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795496406127,
+      "tag": "0071_course_terms",
+      "breakpoints": true
     }
   ]
 }

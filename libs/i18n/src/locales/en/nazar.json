@@ -90,7 +90,8 @@
       "archive": "Archive",
       "nazirs": "Course nazırları",
       "settings": "Course settings",
-      "sarf": "Sarf tables"
+      "sarf": "Sarf tables",
+      "glossary": "Glossary"
     }
   },
   "NoAccess": {
@@ -2207,5 +2208,42 @@
     "sarfKip": "Form",
     "sarfBina": "Voice",
     "sarfAdd": "Add to the board"
+  },
+  "Glossary": {
+    "title": "Glossary",
+    "summary": "The terms of the course: each with its Arabic spelling, its literal meaning, its technical meaning and an example. Students read and search this list in the “Glossary” tab of the course page.",
+    "loadFailedTitle": "The glossary could not be loaded",
+    "loadFailed": "The server could not be reached. Refresh the page and try again.",
+    "search": "Search terms",
+    "count": "{found} of {all} terms",
+    "add": "Add a term",
+    "addTitle": "Add a term",
+    "editTitle": "Edit the term",
+    "term": "Term",
+    "arabic": "Arabic spelling",
+    "lexicalMeaning": "Literal meaning",
+    "lexicalMeaningHelp": "What the word means in the language",
+    "technicalMeaning": "Technical meaning",
+    "technicalMeaningHelp": "What it means as a term of this science",
+    "example": "Example",
+    "required": "This field is required.",
+    "tooLong": "At most {max} characters.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "added": "Term added",
+    "saved": "Term saved",
+    "edit": "Edit",
+    "editLabel": "Edit the term {term}",
+    "remove": "Delete",
+    "removeLabel": "Delete the term {term}",
+    "removeTitle": "Delete the term",
+    "removeConfirm": "“{term}” will be deleted from the glossary. This cannot be undone.",
+    "removeYes": "Delete",
+    "removed": "Term deleted",
+    "full": "A course’s glossary holds at most 1000 terms.",
+    "failed": "That could not be completed. Try again.",
+    "emptyTitle": "The glossary is empty",
+    "emptyBody": "Write the first term with “Add a term”.",
+    "noneFound": "No term matches your search."
   }
 }

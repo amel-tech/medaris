@@ -18,6 +18,7 @@ import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { CourseRequestModule } from "./course-request/course-request.module";
 import { CourseSarfModule } from "./course-sarf/course-sarf.module";
+import { CourseTermModule } from "./course-term/course-term.module";
 import { DatabaseModule } from "./database/database.module";
 import { DeckReviewModule } from "./deck-review/deck-review.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
@@ -68,6 +69,7 @@ import { UserModule } from "./user/user.module";
     HostingModule,
     CourseModule,
     CourseSarfModule,
+    CourseTermModule,
     LessonBoardModule,
     LessonNoteModule,
     LessonQuestionModule,

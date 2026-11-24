@@ -189,7 +189,18 @@
     "sarfBina": "البناء",
     "sarfView": "العرض",
     "sarfViewTable": "جدول",
-    "sarfViewHand": "مخطّط اليد"
+    "sarfViewHand": "مخطّط اليد",
+    "tabGlossary": "المعجم",
+    "glossaryLoading": "جارٍ تحميل المعجم…",
+    "glossaryFailed": "تعذّر تحميل المعجم.",
+    "glossaryRetry": "أعِد المحاولة",
+    "glossaryEmpty": "لم يكتب المدرّس مصطلحًا لهذا الدرس بعد.",
+    "glossarySearch": "ابحث عن مصطلح",
+    "glossaryCount": "{found} من {all} مصطلح",
+    "glossaryNoneFound": "لا مصطلح يطابق بحثك.",
+    "glossaryLexical": "المعنى اللغويّ",
+    "glossaryTechnical": "المعنى الاصطلاحيّ",
+    "glossaryExample": "مثال"
   },
   "DataTable": {
     "noResults": "لا توجد نتائج."
@@ -615,7 +626,8 @@
     "resourcesOwn": "هذه الحلقة",
     "resourcesCourse": "الدرس كله",
     "rowRecording": "يوجد تسجيل",
-    "download": " (يُنزَّل)"
+    "download": " (يُنزَّل)",
+    "glossaryLink": "معجم الدرس"
   },
   "AccountPage": {
     "pageTitle": "الحساب",

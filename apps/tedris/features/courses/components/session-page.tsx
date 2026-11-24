@@ -160,7 +160,18 @@ export const SessionPage = async ({
   // the celse's content, enrolled or staff, while the celse stands.
   const material =
     !session.contentLocked && !cancelled ? (
-      <SessionBoard lessonId={session.id} />
+      <>
+        <SessionBoard lessonId={session.id} />
+        {/* The course's glossary is a tab of the course page; a celse leads there. */}
+        <p className="mds-body-sm">
+          <a
+            className="mds-btn mds-btn--link"
+            href={`/courses/${course.id}?tab=lugat`}
+          >
+            {t("SessionPage.glossaryLink")}
+          </a>
+        </p>
+      </>
     ) : null;
 
   const cancellation: ReactNode = cancelled ? (

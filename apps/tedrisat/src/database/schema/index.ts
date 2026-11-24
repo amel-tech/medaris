@@ -4,6 +4,7 @@ export * from "./calendar-feed.schema";
 export * from "./course.schema";
 export * from "./course-request.schema";
 export * from "./course-sarf.schema";
+export * from "./course-term.schema";
 export * from "./deck-proposal.schema";
 export * from "./flashcard.schema";
 export * from "./flashcard-deck.schema";

@@ -189,7 +189,18 @@
     "sarfBina": "Voice",
     "sarfView": "View",
     "sarfViewTable": "Table",
-    "sarfViewHand": "Hand diagram"
+    "sarfViewHand": "Hand diagram",
+    "tabGlossary": "Glossary",
+    "glossaryLoading": "Loading the glossary…",
+    "glossaryFailed": "The glossary could not be loaded.",
+    "glossaryRetry": "Try again",
+    "glossaryEmpty": "The teacher has not written a term for this course yet.",
+    "glossarySearch": "Search terms",
+    "glossaryCount": "{found} of {all} terms",
+    "glossaryNoneFound": "No term matches your search.",
+    "glossaryLexical": "Literal meaning",
+    "glossaryTechnical": "Technical meaning",
+    "glossaryExample": "Example"
   },
   "DataTable": {
     "noResults": "No results."
@@ -615,7 +626,8 @@
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
     "rowRecording": "Recording available",
-    "download": " (downloads)"
+    "download": " (downloads)",
+    "glossaryLink": "The course’s glossary"
   },
   "AccountPage": {
     "pageTitle": "Account",

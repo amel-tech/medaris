@@ -90,7 +90,8 @@
       "archive": "Arşiv",
       "nazirs": "Ders nazırları",
       "settings": "Ders ayarları",
-      "sarf": "Sarf tablosu"
+      "sarf": "Sarf tablosu",
+      "glossary": "Lügat"
     }
   },
   "NoAccess": {
@@ -2207,5 +2208,42 @@
     "sarfKip": "Sîga",
     "sarfBina": "Binâ",
     "sarfAdd": "Tahtaya ekle"
+  },
+  "Glossary": {
+    "title": "Lügat",
+    "summary": "Dersin terimleri: her terimin Arapça yazılışı, lügat manası, ıstılah manası ve bir örneği. Talebe bu listeyi ders sayfasındaki “Lügat” sekmesinde okur ve arar.",
+    "loadFailedTitle": "Lügat yüklenemedi",
+    "loadFailed": "Sunucuya ulaşılamadı. Sayfayı yenileyip yeniden deneyin.",
+    "search": "Terim ara",
+    "count": "{found} / {all} terim",
+    "add": "Terim ekle",
+    "addTitle": "Terim ekle",
+    "editTitle": "Terimi düzenle",
+    "term": "Terim",
+    "arabic": "Arapça yazılışı",
+    "lexicalMeaning": "Lügat manası",
+    "lexicalMeaningHelp": "Kelimenin sözlükteki anlamı",
+    "technicalMeaning": "Istılah manası",
+    "technicalMeaningHelp": "Bu ilimde terim olarak anlamı",
+    "example": "Örnek",
+    "required": "Bu alan zorunlu.",
+    "tooLong": "En çok {max} karakter olabilir.",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "added": "Terim eklendi",
+    "saved": "Terim kaydedildi",
+    "edit": "Düzenle",
+    "editLabel": "{term} terimini düzenle",
+    "remove": "Sil",
+    "removeLabel": "{term} terimini sil",
+    "removeTitle": "Terimi sil",
+    "removeConfirm": "“{term}” lügatten silinecek. Bu işlem geri alınamaz.",
+    "removeYes": "Sil",
+    "removed": "Terim silindi",
+    "full": "Bir dersin lügatinde en çok 1000 terim olabilir.",
+    "failed": "İşlem tamamlanamadı. Yeniden deneyin.",
+    "emptyTitle": "Lügat boş",
+    "emptyBody": "İlk terimi “Terim ekle” ile yazın.",
+    "noneFound": "Aramanıza uyan terim yok."
   }
 }
