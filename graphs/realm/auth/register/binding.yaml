@@ -84,9 +84,11 @@ scenarios:
     as: pendingEmail
     signIn: false
     open: '{tedris}/auth/signin'
-    # the mailbox of the seeded account is the one cleared; `username` is read only by the effects of a registration (`verificationMailed`,
-    # `emailVerified`), which this scenario never reaches, and the replay wants every placeholder an effect holds to be bound
-    vars: { address: '{secret.E2E_PENDING_EMAIL_EMAIL}', username: '{secret.E2E_PENDING_EMAIL_EMAIL}' }
+    # {address} is the account's own field (local.base.binding.yaml), so the mailbox cleared is the seeded account's; a var of that
+    # name would fill {address} in place of the account's, and the engine refuses one. `username` is read only by the effects of a
+    # registration (`verificationMailed`, `emailVerified`), which this scenario never reaches, and the replay wants every
+    # placeholder an effect holds to be bound
+    vars: { username: '{secret.E2E_PENDING_EMAIL_EMAIL}' }
     setup:
       - run: [node, helpers/rearm.mjs, email, PENDING_EMAIL]
         expect: 'rearm PENDING_EMAIL email:'

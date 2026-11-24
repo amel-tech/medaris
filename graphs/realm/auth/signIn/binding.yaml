@@ -12,6 +12,15 @@ kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml
 flow: realm.auth.signIn
 
+# tedrisWrongPassword's person: the seed talebe's address with a password that is not theirs, so the first press is refused
+# and the second types the real one (`realPassword`). It is an account of its own because a scenario var named `password`
+# would stand for the talebe's own wherever {password} is filled, and the engine refuses such a var.
+accounts:
+  talebeWrongPassword:
+    address: '{secret.E2E_TALEBE_EMAIL}'
+    password: not-the-password-at-all
+    entry: '{tedris}'
+
 # `vars`: appUrl is the app the person signs in to, asked the page the walk opens (callbackUrl), askedEncoded the same as the
 # gate writes it in the address, landedAt where the round trip ends when no page was asked for.
 scenarios:
@@ -23,14 +32,13 @@ scenarios:
     vars: { appUrl: '{tedris}', asked: /my-courses, askedEncoded: '%2Fmy-courses' }
   tedrisWrongPassword: # one wrong password, then the right one (a Keycloak failure count of one: the lock is at ten)
     given: { app: tedris, entry: protectedPage, session: none, credentials: wrong, account: ready }
-    as: talebe
+    as: talebeWrongPassword
     signIn: false
     open: '{tedris}/my-courses'
     vars:
       appUrl: '{tedris}'
       asked: /my-courses
       askedEncoded: '%2Fmy-courses'
-      password: not-the-password-at-all
       realPassword: '{secret.E2E_TALEBE_PASSWORD}'
   tedrisSignInPage: # the sign-in address with no page named: the round trip ends on /, which is /home for a talebe
     given: { app: tedris, entry: signInPage, session: none, credentials: right, account: ready }
