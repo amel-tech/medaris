@@ -286,5 +286,15 @@ export async function createTestApp(options?: {
   app.useGlobalPipes(new MedarisValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
-  return app.init();
+  await app.init();
+  // Listen here, on loopback alone, rather than leave it to supertest. Given a
+  // server that is not listening, supertest binds it to port 0 on the
+  // wildcard address for every request and then calls 127.0.0.1:<port>. Any
+  // other process already listening on 127.0.0.1 at that port (a developer
+  // machine holds dozens: editors, agents, dev servers) is the more specific
+  // listener and takes the request, so a test got a 404 or 403 with no error
+  // code from a stranger, in a different suite on every run (MDRS-194).
+  // Bound to 127.0.0.1, the kernel only hands out a port that is free there.
+  await app.listen(0, "127.0.0.1");
+  return app;
 }
