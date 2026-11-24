@@ -11,11 +11,13 @@
 # twice. Tags begin with xn; none is the start of another.
 #   over      the main story. "Deneme sınavı xnRqOver": applicantC finished with 3 right, applicantE with 1, applicantG never started,
 #             and the team closed it early, so it is over for everyone and nothing is released. The walk releases the results (after
-#             its question), opens a talebe's answers and comes back, and closes a toast.
-#   live      "Deneme sınavı xnRqLive", open: applicantC is still in it, applicantE finished. "Sınavı erken bitir" with its question,
-#             and the 30-second read (REFRESH waits for the page's own read).
-#   soon      "Deneme sınavı xnRqSoon", scheduled two hours ahead: nobody can have started, and the page still says it refreshes
-#             itself and offers the release (EXM-RSLT-1).
+#             its question, which says nothing of ending an exam that is over), opens a talebe's answers and comes back, and closes
+#             a toast.
+#   live      "Deneme sınavı xnRqLive", open: applicantC's exam is still going on, applicantE finished. "Sınavı erken bitir" with
+#             its question, and the 30-second read (REFRESH waits for the page's own read); a release here would end the exam as the
+#             early close does (rule release-ends-the-exam), with a question that says so.
+#   soon      "Deneme sınavı xnRqSoon", scheduled two hours ahead: nobody can have started, the page still says it refreshes itself
+#             (EXM-RSLT-1), and it offers no release: the hint stands in its place until the exam opens.
 #   reader    the seeded ders nazırı (dersNazir), given exam.prepare and nothing else on "Deneme dersi xnRsRead": the results are hers
 #             to read and not to release (the hint stands in place of the button).
 #   shutOut   dersNazir with no code at all on "Deneme dersi xnRsShut": the page refuses her.
@@ -26,7 +28,7 @@
 #   - FAIL.other of refreshing, and the release's and the close's refusals (FAIL.forbidden, FAIL.notOpen): the page offers neither
 #     button to one the API would refuse, and the walk cannot make tedrisat refuse in between. FAIL.other of releasing and closingEarly
 #     are walked by aborting the page's server action in the browser (`fail: abort`): the page puts the view back and the toast says
-#     why ("Bir şeyler ters gitti…", results-view.tsx:146, 169).
+#     why ("Bir şeyler ters gitti…", results-view.tsx:156, 184).
 #   - The switch times of a row (rowSwitchTimes): exams.mjs takes the exam through the API, which records no tab switch.
 # What a walk leaves that its teardown cannot undo: the audit rows of the reads and of the release.
 schema: delurio-graph/0

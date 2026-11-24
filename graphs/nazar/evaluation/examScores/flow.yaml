@@ -11,7 +11,7 @@
 #
 # What it settles that the inventory leaves loose:
 #   - the exam screen stays live after the release: the boxes still take scores, and the API takes them (no check of resultsReleasedAt, exam.repository.ts
-#     :150-251), so a score can be changed after the talebe may read it, silently on both sides (EXAM-2);
+#     :155-256), so a score can be changed after the talebe may read it, silently on both sides (EXAM-2);
 #   - the page's own words still speak of recited homework only: the subtitle, the table's caption, the way back "Bütün ödevler" and the empty page that
 #     tells the hoca to pick "Ezber" in Müfredat, never to plan an exam (EXAM-1);
 #   - "Excel indir" is drawn here and what it does is nazar.files.download's: every press is a 400 INVALID_PATH, the page loads again and says nothing
@@ -163,7 +163,7 @@ failures:
   releasing:
     from: releaseExamResults
     signedOut: [HTTP_401]
-    refused: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, AUTHZ_FORBIDDEN]
+    refused: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, AUTHZ_FORBIDDEN, EXAM_NOT_OPEN]
 
 # The story the page tells first, as e2e exam#2 tells it: the hoca opens the exam, types 120 (refused: nothing saved), types 85 for one talebe, marks the
 # other "Girmedi", goes back to the table and opens the exam again, and releases the results.
@@ -322,7 +322,9 @@ states:
       ENROLLED seat holder except the caller (EXAM_RESULTS_RELEASED; a COMPLETED talebe reads the grades and is not told: EXAM-4); a second call changes nothing and
       tells nobody, and still answers the first time. The page then draws the toast "Sonuçlar talebelere açıldı." and the badge "Sonuçlar açık" in the button's
       place, and the talebe's Notlarım (tedris.course.grades, started here) shows the score. The call has no try/catch around it: if it never reaches Next, the
-      button stays busy (F-D1-20, from the code).
+      button stays busy (F-D1-20, from the code). An online exam's column (MDRS-299) is released by the same call, which since 24 Nov 2026
+      first ends the exam for everyone, as "Sınavı erken bitir" does, and is refused before the exam opens (EXAM_NOT_OPEN), here with the
+      same toast as any refusal; this page asks nothing before either (rule release-ends-the-exam of nazar.exams.results).
     invoke: { action: releaseExamResults }
     on:
       DONE: { target: scoring, effect: [resultsOpened], starts: { flow: tedris.course.grades, given: { released: "true" } }, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:168, say: "a toast says the results are open, the badge takes the button's place, and the talebe's Notlarım now holds the scores" }

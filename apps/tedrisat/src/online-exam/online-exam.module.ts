@@ -7,14 +7,12 @@ import { ExamAttemptController } from "./exam-attempt.controller";
 import { ExamAttemptRepository } from "./exam-attempt.repository";
 import { ExamAttemptService } from "./exam-attempt.service";
 import { ExamResultsController } from "./exam-results.controller";
-import { ExamResultsRepository } from "./exam-results.repository";
-import { ExamResultsService } from "./exam-results.service";
 import { MyExamsController } from "./my-exams.controller";
 import { MyExamsRepository } from "./my-exams.repository";
 import { MyExamsService } from "./my-exams.service";
 import { OnlineExamController } from "./online-exam.controller";
-import { OnlineExamRepository } from "./online-exam.repository";
 import { OnlineExamService } from "./online-exam.service";
+import { OnlineExamResultsModule } from "./online-exam-results.module";
 import { ZerothAnswersController } from "./zeroth-answers.controller";
 import { ZerothAnswersRepository } from "./zeroth-answers.repository";
 import { ZerothAnswersService } from "./zeroth-answers.service";
@@ -34,6 +32,8 @@ import { ZerothQuestionService } from "./zeroth-question.service";
     CourseModule,
     DatabaseModule,
     PlatformAccessModule,
+    // The results, the early close and the repositories they read.
+    OnlineExamResultsModule,
   ],
   controllers: [
     OnlineExamController,
@@ -45,13 +45,10 @@ import { ZerothQuestionService } from "./zeroth-question.service";
   ],
   providers: [
     OnlineExamService,
-    OnlineExamRepository,
     ZerothQuestionService,
     ZerothQuestionRepository,
     ExamAttemptService,
     ExamAttemptRepository,
-    ExamResultsService,
-    ExamResultsRepository,
     MyExamsService,
     MyExamsRepository,
     ZerothAnswersService,

@@ -37,7 +37,7 @@ needs:
       - node: problemOver
       - node: problemInvalid
       - node: scoreBox
-      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/tedrisat/src/exam/exam.controller.ts:77
       - source: apps/nazar/features/evaluation/evaluation.ts:190
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
@@ -56,7 +56,7 @@ needs:
       - node: scoreBox
       - node: count
       - node: resultCell
-      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/tedrisat/src/exam/exam.controller.ts:77
       - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:694
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
@@ -88,7 +88,7 @@ needs:
       - node: absentChip
       - node: resultCell
       - node: count
-      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/tedrisat/src/exam/exam.controller.ts:77
       - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:754
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: >-
@@ -125,8 +125,8 @@ needs:
     evidence:
       - state: scoring
       - state: savingScore
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
-      - source: apps/tedrisat/src/exam/exam.repository.ts:386
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
+      - source: apps/tedrisat/src/exam/exam.repository.ts:402
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
@@ -144,7 +144,7 @@ needs:
       - node: releaseButton
       - node: releasedBadge
       - node: toastReleased
-      - source: apps/tedrisat/src/exam/exam.controller.ts:97
+      - source: apps/tedrisat/src/exam/exam.controller.ts:101
       - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:161
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
@@ -156,7 +156,7 @@ needs:
       another's and not a closed one.
     evidence:
       - state: releasing
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
       - source: apps/tedris/features/courses/components/exam-grades.tsx:96
     note: >-
       unwalked: e2e exam#2 a7 reads it at the API (released true, score 85); tedris.course.grades draws the page, started from
@@ -168,8 +168,8 @@ needs:
       second release changes nothing and tells nobody.
     evidence:
       - state: releasing
-      - source: apps/tedrisat/src/exam/exam.controller.ts:97
-      - source: apps/tedrisat/src/exam/exam.repository.ts:297
+      - source: apps/tedrisat/src/exam/exam.controller.ts:101
+      - source: apps/tedrisat/src/exam/exam.repository.ts:312
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: exams.e2e.spec.ts exams.e2e.spec.ts:430 (tells the talebe once, and a second release changes nothing)
 
@@ -180,7 +180,7 @@ needs:
     evidence:
       - state: forbidden
       - node: forbiddenAlert
-      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/tedrisat/src/exam/exam.controller.ts:77
       - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:33
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
       - test: apps/nazar/e2e/evaluation.e2e.ts

@@ -1,5 +1,5 @@
 import { Toast as BaseToast } from "@base-ui/react/toast";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useDismissStaleToasts } from "../hooks/use-dismiss-stale-toasts";
 
 export type ToastTone = "success" | "info" | "warning" | "error";
@@ -39,32 +39,32 @@ export function toastTiming(
 /**
  * `notify` and `dismiss` for the app's one `Toaster`. A toast confirms what this
  * user just did; page state is an `Alert` and a validation error belongs on its
- * `Field`.
+ * `Field`. Both keep their identity across renders, so an effect may depend on
+ * them: Base UI's manager object is new whenever a toast changes, but its `add`
+ * and `close` are its store's own, made once per provider (EXM-TAKE-15).
  */
 export function useToaster() {
-  const manager = BaseToast.useToastManager<ToastData>();
-  return {
-    notify({
-      id,
-      tone = "success",
-      title,
-      description,
-      action,
-    }: NotifyOptions): string {
-      return manager.add({
-        id,
-        type: tone,
-        title,
-        description,
-        ...toastTiming(tone, Boolean(action)),
-        actionProps: action
-          ? { children: action.label, onClick: action.onClick }
-          : undefined,
-        data: action ? { actionLabel: action.label } : undefined,
-      });
-    },
-    dismiss: (id?: string) => manager.close(id),
-  };
+  const { add, close } = BaseToast.useToastManager<ToastData>();
+  return useMemo(
+    () => ({
+      notify(options: NotifyOptions): string {
+        const { id, tone = "success", title, description, action } = options;
+        return add({
+          id,
+          type: tone,
+          title,
+          description,
+          ...toastTiming(tone, Boolean(action)),
+          actionProps: action
+            ? { children: action.label, onClick: action.onClick }
+            : undefined,
+          data: action ? { actionLabel: action.label } : undefined,
+        });
+      },
+      dismiss: (id?: string) => close(id),
+    }),
+    [add, close]
+  );
 }
 
 function ToastList() {

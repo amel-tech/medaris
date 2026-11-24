@@ -2,6 +2,7 @@ import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
+import { ExamFormat } from "../../src/course/domain/exam";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
@@ -425,6 +426,26 @@ describe("exams (e2e)", () => {
         exams: [],
         memorizations: [],
       });
+    });
+
+    it("releases a written or oral exam whatever its time, and ends no online exam (MDRS-299)", async () => {
+      // Its celse still to come: only an online exam waits until it opens.
+      await db()
+        .update(lessons)
+        .set({ scheduledAt: new Date(Date.now() + 24 * HOUR) })
+        .where(eq(lessons.id, examId));
+      await db()
+        .update(lessonExams)
+        .set({ format: ExamFormat.ORAL })
+        .where(eq(lessonExams.lessonId, examId));
+      const opened = await release(CAST.MUDERRIS).expect(200);
+      expect(opened.body.resultsReleasedAt).toEqual(expect.any(String));
+      expect(
+        await db()
+          .select()
+          .from(auditLog)
+          .where(eq(auditLog.action, "online_exam.close"))
+      ).toHaveLength(0);
     });
 
     it("tells the talebe once, and a second release changes nothing", async () => {

@@ -12,6 +12,10 @@
 #     (the read asks exam.prepare); the release stays with releaseExamResults (session.manage, mayRelease).
 #   - 22 Nov: "sınav sonuçlarında talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım": a talebe's name opens
 #     their answers, question by question (talebeDetail).
+#   - 24 Nov, after a hoca's talebe saw no answers once the results were out (one attempt left open kept the exam open for good):
+#     "Önerini uygula, 'N talebenin sınavı devam ediyor' yazsın, sınavda kalmak başka anlamlara da geliyor malum". The proposal:
+#     releasing the results ends the exam for everyone as "Sınavı erken bitir" does, and waits until it has opened; the words say
+#     whose exam goes on, never "talebe sınavda" ("sınavda kalmak" is failing it).
 #
 # Choices made in the code that are not his: the release asks once; the page reads again every 30 seconds while the exam has not closed
 # for everyone; "Sınavı erken bitir" is on this page and asks exam.prepare; closing and releasing show at once and are put back with a
@@ -31,8 +35,9 @@ summary: >-
   the average of each topic; then each question with its points, the share of talebe who got all of them, how many left it blank
   and how often each option was chosen; then how the zeroth question was answered. While the exam has not closed for everyone the
   page reads again every 30 seconds, and "Sınavı erken bitir" ends it once it has opened. A talebe who started opens their own page,
-  question by question. "Sonuçları talebelere aç" releases the scores after one question, after which the talebe read their own
-  screen (tedris.exams.result).
+  question by question. Once the exam has opened, "Sonuçları talebelere aç" releases the scores after one question and ends the
+  exam for everyone as the early close does, so the talebe read their own screen with their answers and the correct ones at once
+  (tedris.exams.result).
 scope:
   shows: the team's results page of one exam and a talebe's answers page under it in nazar-web
   world: open
@@ -91,11 +96,12 @@ context:
       yes: the person may release the results (session.manage on the course, as releaseExamResults asks)
       no: the person prepares the course's exams (exam.prepare) but may not release their results
   toast:
-    values: [none, released, refused, failed, closed, closeNotOpen, closeRefused, closeFailed]
+    values: [none, released, releaseNotOpen, refused, failed, closed, closeNotOpen, closeRefused, closeFailed]
     initial: none
     say:
       none: no toast
       released: the toast says the results were released
+      releaseNotOpen: the release was refused, the exam not having opened by tedrisat's clock
       refused: the release was refused
       failed: the release could not be done
       closed: the toast says the exam was closed early
@@ -105,16 +111,21 @@ context:
 guards:
   stillOpen: "exam == 'open'"
   notReleased: "results == 'closed'"
-  releasable: "results == 'closed' and mayRelease == 'yes'"
+  # the read says the exam has opened: it has closed for everyone, or it may be closed early (hasOpened, results-view.tsx:74)
+  opened: "exam == 'closed' or mayClose == 'yes'"
+  releasable: "results == 'closed' and mayRelease == 'yes' and opened"
   closable: "mayClose == 'yes' and exam == 'open'"
 effects:
   clearToast: { set: { toast: none } }
   onAnswers: { set: { page: answers, toast: none } }
   onResults: { set: { page: results } }
-  releasedNow: { set: { results: opened, toast: none } }
+  # the release shows the results released and the exam over for everyone at once, as the early close does (closedNow)
+  releasedNow: { set: { results: opened, exam: closed, mayClose: no, toast: none } }
   toastReleased: { set: { toast: released } }
-  releaseRefusedBack: { set: { results: closed, toast: refused } }
-  releaseFailedBack: { set: { results: closed, toast: failed } }
+  # a refused release puts the page back as it was read: the exam open or closed as it stood
+  releaseNotOpenBack: { set: { results: closed, toast: releaseNotOpen }, havoc: [exam, mayClose] }
+  releaseRefusedBack: { set: { results: closed, toast: refused }, havoc: [exam, mayClose] }
+  releaseFailedBack: { set: { results: closed, toast: failed }, havoc: [exam, mayClose] }
   attemptsMove: { havoc: [attempts, scored, exam, mayClose, results] }
   closedNow: { set: { exam: closed, mayClose: no, toast: none } }
   toastClosed: { set: { toast: closed } }
@@ -135,6 +146,7 @@ failures:
     gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND]
   releasing:
     from: releaseExamResults
+    notOpen: [EXAM_NOT_OPEN]
     forbidden: [AUTHZ_FORBIDDEN]
     other: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, network, timeout, 5xx]
   closingEarly:
@@ -179,7 +191,7 @@ states:
     leavesPage: true
   overview:
     title: The exam's results
-    source: apps/nazar/features/online-exams/components/results-view.tsx:283
+    source: apps/nazar/features/online-exams/components/results-view.tsx:298
     description: >-
       One page under the h1 "<title>: sonuçlar": the window (Açılış, En geç başlama); "Sınav sürüyor; bu sayfa kendiliğinden
       yenilenir." until the exam has closed for everyone, then "Sınav herkes için bitti."; the counts in one sentence, or "Henüz hiçbir
@@ -189,10 +201,11 @@ states:
       "Konular" (each topic's average and question count), "Sorular" (each question's points, the share who got all of them, how many
       left it blank, and each option with how often it was chosen and "Doğru cevap" on the correct ones), and "Sıfırıncı soru" with how
       many chose each option. A talebe who started (in progress or finished) is a link to their answers. The tables do not sort.
+      "Sonuçları talebelere aç" waits until the exam has opened: before, the hint stands in its place.
     by: human
     goal: true
     on:
-      OPEN_TALEBE: { target: readingAnswers, effect: [onAnswers], say: "they open the name of a talebe who started", source: "apps/nazar/features/online-exams/components/results-view.tsx:203" }
+      OPEN_TALEBE: { target: readingAnswers, effect: [onAnswers], say: "they open the name of a talebe who started", source: "apps/nazar/features/online-exams/components/results-view.tsx:218" }
       RELEASE: { guard: releasable, target: confirmRelease, effect: [clearToast], say: "they press Sonuçları talebelere aç" }
       CLOSE_EARLY: { guard: closable, target: closeAsk, effect: [clearToast], say: "they press Sınavı erken bitir" }
       REFRESH: { guard: stillOpen, target: refreshing, say: "30 seconds pass while the exam has not closed for everyone" }
@@ -200,7 +213,7 @@ states:
       NAVIGATE: left
   refreshing:
     title: Read the results again
-    source: apps/nazar/features/online-exams/components/results-view.tsx:109
+    source: apps/nazar/features/online-exams/components/results-view.tsx:119
     description: >-
       The server action readExamResults calls getOnlineExamResults again, every 30 seconds while the read says the exam has not closed
       for everyone, and not while a close or a release is on its way. An answer replaces what the page shows, the focus and the scroll
@@ -235,30 +248,35 @@ states:
       NAVIGATE: left
   confirmRelease:
     title: Sonuçlar talebelere açılsın mı?
-    source: apps/nazar/features/online-exams/components/results-view.tsx:475
+    source: apps/nazar/features/online-exams/components/results-view.tsx:490
     description: >-
-      One question before the release: every talebe will read their score and their standing in the topics and is told, and their
-      questions, answers and the correct ones once the exam has closed for everyone; it cannot be undone. While talebe are still in the
-      exam it also says how many.
+      One question before the release. While the exam has not closed for everyone it says first that releasing ends it for everyone
+      and that no one can start it any more; while talebe are taking it, how many ("{inProgress} talebenin sınavı devam ediyor") and
+      that their exams end with the answers saved so far. Then: every talebe will read their score, their standing in the topics and
+      their answers with the correct ones, and is told; it cannot be undone.
     by: human
     on:
       CONFIRM: { target: releasing, effect: [releasedNow], say: "they press Sonuçları aç: the page shows them released at once" }
       CANCEL: { target: overview, say: "they press Vazgeç" }
   releasing:
     title: Release the results
-    source: apps/nazar/features/online-exams/components/results-view.tsx:159
+    source: apps/nazar/features/online-exams/components/results-view.tsx:172
     description: >-
-      The page shows the results released at once and calls Değerlendirme's action releaseExamResults, POST
-      /lessons/{id}/exam-results/release, with the exam celse: the first call sets resultsReleasedAt and tells the course's enrolled
-      talebe; a repeat changes nothing. A refusal or a failure puts the page back as it was, with a toast.
+      The page shows the results released at once, and an exam still open over for everyone (no one in it, those who were finished
+      by the team, those who never started missed), and calls Değerlendirme's action releaseExamResults, POST
+      /lessons/{id}/exam-results/release, with the exam celse. In one transaction the first call ends an exam that has not closed for
+      everyone as closeOnlineExamEarly does (each attempt in progress ends with its saved answers and is scored, the exam is closed
+      early at the release's time), sets resultsReleasedAt and tells the course's enrolled talebe; a repeat changes nothing. An answer
+      is followed by a new read, which brings the scores; a refusal or a failure puts the page back as it was, with a toast.
     invoke: { action: releaseExamResults }
     on:
-      DONE: { target: released, effect: [toastReleased], say: "the results are released" }
+      DONE: { target: released, effect: [toastReleased], say: "the results are released and the exam is over for everyone: the scores are read" }
+      FAIL.notOpen: { target: overview, effect: [releaseNotOpenBack], say: "it had not opened yet by tedrisat's clock: the page is put back" }
       FAIL.forbidden: { target: overview, effect: [releaseRefusedBack], say: "the release is refused: the page is put back" }
       FAIL.other: { target: overview, effect: [releaseFailedBack], say: "the release could not be done: the page is put back" }
   released:
     title: The results are released
-    source: apps/nazar/features/online-exams/components/results-view.tsx:167
+    source: apps/nazar/features/online-exams/components/results-view.tsx:180
     description: >-
       The toast "Sonuçlar talebelere açıldı." (Değerlendirme's words), and in the place of the button the badge that says since
       when; the page does not say by whom.
@@ -266,7 +284,7 @@ states:
       - { target: overview, say: "the overview says the results are released" }
   closeAsk:
     title: Sınavı erken bitir
-    source: apps/nazar/features/online-exams/components/results-view.tsx:463
+    source: apps/nazar/features/online-exams/components/results-view.tsx:478
     description: >-
       An alert dialog says how many talebe are in the exam now, that their attempts end with the answers saved so far and that no one
       can start it after, and that it cannot be undone.
@@ -276,7 +294,7 @@ states:
       CANCEL: { target: overview, say: "they press Vazgeç" }
   closingEarly:
     title: Close it early
-    source: apps/nazar/features/online-exams/components/results-view.tsx:134
+    source: apps/nazar/features/online-exams/components/results-view.tsx:144
     description: >-
       The page shows the exam closed at once (no one in it, those who were finished by the team, those who never started missed) and
       calls closeOnlineExamEarly, POST /online-exams/{examId}/close: every attempt in progress ends with its saved answers and is

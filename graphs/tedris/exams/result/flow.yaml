@@ -5,7 +5,8 @@
 #
 # The owner's words this flow carries: "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler"; "her soru için hangi
 # konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (21 Nov); the score
-# once the team releases the results ("evet", 21 Nov); the answers once the exam has closed for everyone ("evet", 21 Nov); the
+# once the team releases the results ("evet", 21 Nov); the answers once the exam has closed for everyone ("evet", 21 Nov), which the
+# release of the results brings about since 24 Nov ("Önerini uygula": releasing ends the exam for everyone); the
 # standing as a percentage ("Yalnız yüzde", 21 Nov). The rank (22 Nov): "talebe sınav sonucunu gördüğünde 'sınava şu kadar kişi girdi,
 # senin puanın şu, bu kadar kişiden şu sıradasınız' diye görülsün. aynı şekilde konu başına da bu sıralama olsun. eşit puan alanlar
 # 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün".
@@ -24,7 +25,8 @@ summary: >-
   and "Sonuç henüz açıklanmadı". After, on the same page, it shows the score out of 100, how many answers were right, wrong and left
   blank, the talebe's place among those who took it, the standing in each of the exam's topics (the percentage of the points its
   questions carry that were got, with the counts and the place, the weakest topic first) and in each topic across the course's
-  released exams. Once the exam has closed for everyone, the talebe also reads their own answers beside the correct ones.
+  released exams. Once the exam has closed for everyone, which the release does, the talebe also reads their own answers beside the
+  correct ones.
 scope:
   shows: the talebe's screen of one past exam in tedris-web
   world: open
@@ -52,7 +54,7 @@ context:
     values: [no, yes]
     initial: any
     say:
-      no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress)
+      no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress); with the results released, only an exam released before the release ended it (24 Nov 2026)
       yes: the exam has closed for everyone
   topics:
     values: [none, some]

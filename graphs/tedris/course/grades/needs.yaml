@@ -12,7 +12,7 @@ needs:
     need: A talebe reads, in the course, the score of an exam out of its maximum once the course team has released the results.
     evidence:
       - state: gradesShown
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
       - source: apps/tedris/features/courses/components/exam-grades.tsx:96
       - test: apps/tedris/e2e/exam.e2e.ts
         name: "Notlarım shows a released score and keeps a closed one hidden"
@@ -25,8 +25,8 @@ needs:
       no score, whatever the team has entered.
     evidence:
       - state: gradesShown
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
-      - source: apps/tedrisat/src/exam/exam.repository.ts:392
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
+      - source: apps/tedrisat/src/exam/exam.repository.ts:408
       - test: apps/tedris/e2e/exam.e2e.ts
         name: "Notlarım shows a released score and keeps a closed one hidden"
       - scenario: seated
@@ -40,7 +40,7 @@ needs:
       one.
     evidence:
       - state: gradesShown
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
       - source: apps/tedris/features/courses/components/exam-grades.tsx:116
       - scenario: seated
     note: "seated: Tam and Bekliyor; nothing draws Eksik or Vermedi"
@@ -89,7 +89,7 @@ needs:
     need: A talebe reads only their own grades, never another talebe's, and the content a passive scope shuts stays shut.
     evidence:
       - state: reading
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: |-
       Also drawn as the assertion tab-needs-the-read.
@@ -100,8 +100,8 @@ needs:
     need: A talebe of a passive scope is not shown grades the scope's content rule shuts from them.
     evidence:
       - state: noGradesTab
-      - source: apps/tedrisat/src/exam/exam.controller.ts:117
-      - source: apps/tedrisat/src/exam/exam.service.ts:89
+      - source: apps/tedrisat/src/exam/exam.controller.ts:121
+      - source: apps/tedrisat/src/exam/exam.service.ts:101
     note: |-
       Also drawn as the assertion no-tab-after-a-refused-read.
       walked: nothing by the replay yet. binding.refused.yaml is written for `--to noGradesTab` and was not run; a browser read by

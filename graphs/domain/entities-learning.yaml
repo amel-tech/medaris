@@ -180,8 +180,8 @@ entities:
       updatedAt: { type: string, format: date-time }
     lifecycle:
       - "none -> planned: the row is created with the session save (course.repository.ts:1889); planning with a pattern of more than one session is 400 EXAM_ONE_SESSION"
-      - "planned -> reminded: the reminder poll claims an exam that starts within 24 hours, is neither cancelled nor hidden and has no remindedAt, and tells the enrolled talebe once (exam.repository.ts:466-535)"
-      - "planned | reminded -> released: the course team releases the results (audit exam.release); once only, a second call changes nothing and tells nobody (exam.repository.ts:305)"
+      - "planned -> reminded: the reminder poll claims an exam that starts within 24 hours, is neither cancelled nor hidden and has no remindedAt, and tells the enrolled talebe once (exam.repository.ts:482-551)"
+      - "planned | reminded -> released: the course team releases the results (audit exam.release); once only, a second call changes nothing and tells nobody (exam.repository.ts:321)"
 
   ExamResult: # one talebe's result in an exam: a score from 0 to maxScore, or Girmedi. NO ROW means not entered yet
     source: apps/tedrisat/src/database/schema/lesson-exam.schema.ts:68
@@ -197,6 +197,6 @@ entities:
       updatedAt: { type: string, format: date-time }
     # A unique index on (examId, userId). Check exam_results_score_check: (absent and score is null) or (not absent and score is not null and score >= 0).
     lifecycle:
-      - "none -> entered: a holder of session.manage saves a result on a live exam session for a seated talebe (exam.repository.ts:220, an upsert, audit exam_result.save); there is no time window, so a result can be entered before the exam and before the release"
+      - "none -> entered: a holder of session.manage saves a result on a live exam session for a seated talebe (exam.repository.ts:225, an upsert, audit exam_result.save); there is no time window, so a result can be entered before the exam and before the release"
       - "entered -> entered: saving again replaces it; an unchanged save writes nothing; concurrent first saves take turns"
       - "entered -> readable: the talebe reads their own score or Girmedi only after LessonExam.resultsReleasedAt; the course team always reads them all"

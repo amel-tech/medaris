@@ -36,11 +36,31 @@ import {
   TalebeAttemptNotFoundError,
 } from "./errors/exam-results.errors";
 import { OnlineExamNotFoundError } from "./errors/online-exam.errors";
-import { ExamResultsRepository } from "./exam-results.repository";
+import type { IAttempt, Tx } from "./exam-attempt.repository";
+import {
+  ExamResultsRepository,
+  type IResultsExam,
+} from "./exam-results.repository";
 import {
   type IDraftQuestion,
   OnlineExamRepository,
 } from "./online-exam.repository";
+
+/**
+ * What "Sonuçları talebelere aç" runs for an online exam inside its own
+ * transaction, at the release's time (`closingForRelease`).
+ */
+export type ReleaseClose = (
+  tx: Tx,
+  write: { actorId: string; at: Date }
+) => Promise<void>;
+
+/** An exam held for an end: its row read again under the lock, and its attempts in progress, held. */
+interface IHeldExam {
+  exam: IResultsExam;
+  inProgress: IAttempt[];
+  latest: Date;
+}
 
 /** The draft's questions as the scoring and the tallies read them. */
 const resultQuestionsOf = (
@@ -65,7 +85,8 @@ const resultQuestionsOf = (
  *
  * An attempt's clock runs only while its page is connected (the owner,
  * 21 Nov 2026), so an attempt whose page went away stays in progress: the
- * early close is what ends it, with the answers saved so far.
+ * early close, or the release of the results, is what ends it, with the
+ * answers saved so far.
  */
 @Injectable()
 export class ExamResultsService {
@@ -368,55 +389,131 @@ export class ExamResultsService {
     user: AuthenticatedUser,
     now: Date = new Date()
   ): Promise<OnlineExamClosedResponse> {
-    const found = await this.repo.findExam(examId);
-    if (!found) throw new OnlineExamNotFoundError(examId);
-    // A published exam's questions no longer change (EXAM_LOCKED).
-    const questions = resultQuestionsOf(
-      (await this.exams.findDraft(found.courseId, examId))?.questions ?? []
-    );
+    const questions = await this.questionsToScore(examId);
     return this.repo.transaction(async (tx) => {
-      await this.repo.holdExam(tx, examId);
-      const exam = await this.repo.findExam(examId, tx);
-      if (!exam) throw new OnlineExamNotFoundError(examId);
-      const inProgress = await this.repo.holdInProgress(tx, examId);
-      const latest = latestStartOf(exam.startsAt, exam.latestStartAt);
+      const held = await this.hold(tx, examId);
       if (
         !mayCloseEarly(
           now,
-          exam.startsAt,
-          latest,
-          exam.closedEarlyAt,
-          inProgress.length
+          held.exam.startsAt,
+          held.latest,
+          held.exam.closedEarlyAt,
+          held.inProgress.length
         )
       ) {
         throw new ExamNotOpenError(examId);
       }
-      for (const attempt of inProgress) {
-        const answers = await this.repo.answersOf(tx, attempt.id);
-        const score = scoreHundredths(
-          questions,
-          new Map(answers.map((a) => [a.questionId, a.optionIds]))
-        );
-        await this.repo.finishAttempt(tx, attempt.id, {
-          finishedAt: now,
-          finishedBy: FinishedBy.CLOSED_EARLY,
-          scoreHundredths: score,
-        });
-        await this.repo.writeExamResult(tx, {
-          examId,
-          userId: attempt.userId,
-          scoreHundredths: score,
-          gradedBy: user.sub,
-        });
-      }
-      await this.repo.markClosed(tx, {
-        examId,
-        courseId: exam.courseId,
+      const finished = await this.endForEveryone(tx, held, questions, {
         actorId: user.sub,
         at: now,
-        finished: inProgress.length,
       });
-      return { examId, closedEarlyAt: now, finished: inProgress.length };
+      return { examId, closedEarlyAt: now, finished };
     });
+  }
+
+  /**
+   * The online exam's part of "Sonuçları talebelere aç" (MDRS-299; the
+   * owner, 24 Nov 2026, "Önerini uygula"): releasing an online exam's results
+   * ends it for everyone, as "Sınavı erken bitir" does, so each talebe reads
+   * their answers with the correct ones as soon as the results are out.
+   *
+   * Null when the celse has no published online exam: a written or oral
+   * exam is released as it always was. Otherwise the step the release runs
+   * in its own transaction, before it opens the results, at the release's
+   * time: refused before the exam opens (EXAM_NOT_OPEN), which would close
+   * it before anyone took it; nothing when it has closed for everyone
+   * already (closed early, or past its latest start with no one in it), so
+   * its `closedEarlyAt` stays as it was; else every attempt in progress ends
+   * with its saved answers and the exam is closed early.
+   */
+  async closingForRelease(lessonId: string): Promise<ReleaseClose | null> {
+    const examId = await this.repo.examIdOfLesson(lessonId);
+    if (!examId) return null;
+    const questions = await this.questionsToScore(examId);
+    return async (tx, write) => {
+      const held = await this.hold(tx, examId);
+      if (write.at.getTime() < held.exam.startsAt.getTime()) {
+        throw new ExamNotOpenError(examId);
+      }
+      if (
+        closedForEveryone(
+          write.at,
+          held.latest,
+          held.exam.closedEarlyAt,
+          held.inProgress.length
+        )
+      ) {
+        return;
+      }
+      await this.endForEveryone(tx, held, questions, {
+        ...write,
+        via: "exam.release",
+      });
+    };
+  }
+
+  /** A published exam's questions as the scoring reads them; they no longer change (EXAM_LOCKED). */
+  private async questionsToScore(examId: string): Promise<ResultQuestion[]> {
+    const found = await this.repo.findExam(examId);
+    if (!found) throw new OnlineExamNotFoundError(examId);
+    return resultQuestionsOf(
+      (await this.exams.findDraft(found.courseId, examId))?.questions ?? []
+    );
+  }
+
+  /** The exam's row held for an end, read again under it, with its attempts in progress held too. */
+  private async hold(tx: Tx, examId: string): Promise<IHeldExam> {
+    await this.repo.holdExam(tx, examId);
+    const exam = await this.repo.findExam(examId, tx);
+    if (!exam) throw new OnlineExamNotFoundError(examId);
+    const inProgress = await this.repo.holdInProgress(tx, examId);
+    return {
+      exam,
+      inProgress,
+      latest: latestStartOf(exam.startsAt, exam.latestStartAt),
+    };
+  }
+
+  /**
+   * Ends the held exam for everyone, in the caller's transaction: every
+   * attempt in progress ends at `at` with the answers saved so far
+   * (CLOSED_EARLY), is scored and written where Değerlendirme reads it, and
+   * the exam is closed early at `at`, so no one starts it any more. Returns
+   * how many attempts it ended.
+   */
+  private async endForEveryone(
+    tx: Tx,
+    held: IHeldExam,
+    questions: ResultQuestion[],
+    write: { actorId: string; at: Date; via?: "exam.release" }
+  ): Promise<number> {
+    const { exam, inProgress } = held;
+    for (const attempt of inProgress) {
+      const answers = await this.repo.answersOf(tx, attempt.id);
+      const score = scoreHundredths(
+        questions,
+        new Map(answers.map((a) => [a.questionId, a.optionIds]))
+      );
+      await this.repo.finishAttempt(tx, attempt.id, {
+        finishedAt: write.at,
+        finishedBy: FinishedBy.CLOSED_EARLY,
+        scoreHundredths: score,
+      });
+      await this.repo.writeExamResult(tx, {
+        examId: exam.examId,
+        userId: attempt.userId,
+        scoreHundredths: score,
+        gradedBy: write.actorId,
+      });
+    }
+    await this.repo.markClosed(tx, {
+      examId: exam.examId,
+      courseId: exam.courseId,
+      actorId: write.actorId,
+      at: write.at,
+      finished: inProgress.length,
+      via: write.via,
+    });
+    return inProgress.length;
   }
 }

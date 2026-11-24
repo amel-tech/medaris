@@ -31,6 +31,11 @@ import { ExamTalebeNotFoundError } from "./errors/exam-talebe-not-found.error";
 /** Who sits an exam, as who may hand homework in: ENROLLED or COMPLETED. */
 const SEATED = [EnrollmentStatus.ENROLLED, EnrollmentStatus.COMPLETED];
 
+/** The release's transaction, as `within` is handed it. */
+export type Tx = Parameters<
+  Parameters<DatabaseService["db"]["transaction"]>[0]
+>[0];
+
 /** An exam celse of a course, as a column of "Değerlendirme". */
 export interface IExamColumn {
   examId: string;
@@ -261,17 +266,23 @@ export class ExamRepository {
   /**
    * "Sonuçları talebelere aç": opens the exam's results to its talebe, once.
    * `newly` is false when they were open already, and then nothing is
-   * written. `exam.release` in `audit_log`.
+   * written. `exam.release` in `audit_log`. `within` runs in the same
+   * transaction before the results open, at the release's time: an online
+   * exam's end for everyone (MDRS-299); what it throws undoes the release.
    */
   async release(
     lessonId: string,
     write: { courseId: string; actorId: string },
-    now: Date = new Date()
+    options: {
+      now?: Date;
+      within?: (tx: Tx, at: Date) => Promise<void>;
+    } = {}
   ): Promise<{
     resultsReleasedAt: Date;
     scheduledAt: Date | null;
     newly: boolean;
   }> {
+    const now = options.now ?? new Date();
     return this.db.transaction(async (tx) => {
       const [exam] = await tx
         .select({
@@ -290,7 +301,11 @@ export class ExamRepository {
             isNull(courseWeeks.archivedAt)
           )
         )
-        .for("update", { of: lessonExams });
+        // NO KEY UPDATE, not UPDATE: an online exam's attempts that finish
+        // meanwhile write their result, whose key share on this row an
+        // UPDATE lock would hold up while `within` waits for those attempts.
+        // Two releases, and a release and a result's save, still take turns.
+        .for("no key update", { of: lessonExams });
       if (!exam || exam.courseId !== write.courseId) {
         throw new ExamNotFoundError(lessonId);
       }
@@ -301,6 +316,7 @@ export class ExamRepository {
           newly: false,
         };
       }
+      await options.within?.(tx, now);
       await tx
         .update(lessonExams)
         .set({ resultsReleasedAt: now, updatedAt: now })

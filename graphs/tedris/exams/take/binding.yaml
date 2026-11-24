@@ -20,16 +20,17 @@
 #                  bring the skipped one back
 #   notExam        no exam: the course's own LIVE celse, whose briefing answers 404: "Böyle bir sınav yok"
 #   readFailed     published now, and tedrisat's per-person budget for the briefing spent (helpers/throttle.mjs): 429, "Sınav okunamadı"
-# FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE were bound on 24 Nov by moving the server's clock with SQL (used_seconds) and by a
-# resume through the API with another holder id, then waiting for the page's next clock call. They never came: the page's 10-second
-# clock call never runs (rule EXM-TAKE-15, an app defect), so they are not bound, and the replay lists them as not reached.
+# Events no node sends are made on the server: the clock's last five minutes and its end by setting the attempt's used seconds with
+# SQL (helpers/sql.mjs: no route changes the clock) and waiting for the page's next clock call, at most ten seconds away; another
+# tab taking the attempt by resuming it through the API with another holder id, which the page's next clock call is refused for.
+# The walk of 24 Nov found that the page's 10-second clock call never ran (rule EXM-TAKE-15), so these three were taken out; the
+# fix of EXM-TAKE-15 on this branch brings the call back, and with it these events, bound as they were before. Checked with
+# `--check` only, not walked again.
 # The teardowns run exams.mjs remove before course.mjs remove (the order exams.mjs asks for) and give the budget back.
 #
 # Not reachable on the stack, and why:
 #   - mode: multiple (check boxes): helpers/exams.mjs makes SINGLE questions only.
 #   - version: stale ("Medaris güncellendi", RELOAD): it needs a new deploy of tedris-web while the page is open.
-#   - FIVE_MINUTES_LEFT, TIME_UP, MOVED_ELSEWHERE (and timeUp, elsewhere, OPEN_HERE): above, rule EXM-TAKE-15. A one-minute exam
-#     would reach the countdown's own end, but no walk can be timed to stop in `question` before it.
 #   - length: two (an exam of two questions): every scenario's exam has five.
 #   - CONNECTION_LOST and RECONNECTED: no action of a walk takes the browser off line or back. The FAIL.offline of the zeroth
 #     answer, the save and the finish is made by aborting the step's call (states.*.fail), and the start's FAIL.other likewise; the
@@ -225,6 +226,22 @@ events:
   # the person goes to another page of tedris: Keşfet, from the address bar
   NAVIGATE: [{ goto: '{tedris}/discover' }]
   RELOAD: [{ reload: true }]
+  # five minutes left: the attempt's clock is set to 4:50 before its end (20 minutes), and the page's next clock call (every 10 s)
+  # brings the count down
+  FIVE_MINUTES_LEFT:
+    - run: [node, helpers/sql.mjs, "update exam_attempts set used_seconds = 910 where exam_id = '{take.exam}' and finished_at is null"]
+      expect: '"rows":1'
+    - waitText: Son 5 dakika
+  # the time is up: the attempt's clock is set to its end, and the page's next clock call ends it as TIME
+  TIME_UP:
+    - run: [node, helpers/sql.mjs, "update exam_attempts set used_seconds = 1200 where exam_id = '{take.exam}' and finished_at is null"]
+      expect: '"rows":1'
+    - waitText: Sınav bitti
+  # another tab takes the attempt: a resume through the API with a holder id of its own; the page's next clock call is refused
+  MOVED_ELSEWHERE:
+    - run: [node, helpers/api.mjs, applicantB, POST, '/lessons/{take.lesson}/online-exam/attempt/resume', '{"holderId":"walk-elsewhere-xt"}']
+      expect: '"status":"IN_PROGRESS"'
+    - waitText: Sınav başka bir yerde açık
 
 states:
   # Keşfet from the address bar, or the celse's page by "Celseye dön"
