@@ -188,6 +188,8 @@ async function take(tag, who, o) {
   const made = read(tag);
   if (!made.lesson)
     throw new Fail(`${tag} is not published: make it with --publish`);
+  // checked before any call, so a bad --right leaves no attempt running
+  const wanted = o.right === undefined ? undefined : whole(o.right, "right");
   const base = `/lessons/${made.lesson}/online-exam`;
   const briefing = (await must(who, "GET", base)).body;
   const z = o.zeroth === undefined ? 1 : whole(o.zeroth, "zeroth", 1);
@@ -198,8 +200,7 @@ async function take(tag, who, o) {
   const attempt = (await must(who, "POST", `${base}/attempt`, { holderId }))
     .body;
   const total = attempt.questions.length;
-  const right =
-    o.right === undefined ? total : Math.min(whole(o.right, "right"), total);
+  const right = wanted === undefined ? total : Math.min(wanted, total);
   const byId = new Map(made.questions.map((q) => [q.id, q]));
   let seq = 0;
   // in the talebe's own order: the first `right` of them are answered right

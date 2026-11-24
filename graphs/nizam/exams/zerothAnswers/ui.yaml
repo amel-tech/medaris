@@ -52,7 +52,7 @@ nodes:
   applyFilters: { type: action, component: Button, role: button, intent: confirm, text: { key: ZerothAnswersPage.applyFilters }, in: [listed, empty], emits: FILTER, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:207 } # submits the form: the filters go into the address
 
   # --- the questions -----------------------------------------------------------------------------------------------------------------
-  questionGone: { type: status, component: Status, role: status, text: { key: ZerothAnswersPage.questionGone }, in: [listed], when: "notice == 'gone'", source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:251 } # an <output> above the list
+  questionGone: { type: status, component: Status, role: status, text: { key: ZerothAnswersPage.questionGone }, in: [listed, empty], when: "notice == 'gone'", source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:251 } # an <output> above the list, or above the empty note when the list read beside it counts nothing
   questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:256 }
   questionsTitle: { type: text, component: Heading, role: heading, text: { key: ZerothAnswersPage.questionsTitle, params: { count: count } }, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:260 } # h2, "Sorular (3)"
   questionsList: { type: list, component: List, role: list, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:263 } # the same words with the same options of several exams are one item

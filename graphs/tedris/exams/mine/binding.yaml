@@ -16,7 +16,7 @@
 #
 # Not reachable on the stack, and why:
 #   - READ_GRADES and the written or oral rows (gradesLink, comingPlace, pastPlace): course.mjs makes LIVE celses only, and no
-#     helper makes a written or oral exam celse, so every scenario has writtenOrOral: none.
+#     helper makes a written or oral exam celse, so every scenario has writtenOrOral: none and pastWrittenOrOral: none.
 # Seen on the stack and kept as the code draws it: the empty page fails React's hydration (rule EXM-MINE-2), so `empty`'s walk
 # reports a page error.
 #   - read failed with the network down (the read is the server's, not the browser's): only the 429 is made.
@@ -27,7 +27,7 @@ flow: tedris.exams.mine
 
 scenarios:
   listed:
-    given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none }
+    given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none, pastWrittenOrOral: none }
     as: applicantD
     open: '{tedris}/my-exams'
     setup:
@@ -65,12 +65,12 @@ scenarios:
       course: Deneme dersi xtMineC
 
   empty:
-    given: { read: ok, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none }
+    given: { read: ok, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none, pastWrittenOrOral: none }
     as: applicantF
     open: '{tedris}/my-exams'
 
   failed:
-    given: { read: failed, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none }
+    given: { read: failed, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none, pastWrittenOrOral: none }
     as: applicantF
     open: '{tedris}/my-exams'
     setup:
