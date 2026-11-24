@@ -11,9 +11,10 @@ Every number below sits next to the command that printed it; commands run from t
 
 ### tedrisat
 
-- `ban_scope` gains `PLATFORM`. Every check that reads bans (`ban.repository.ts`,
-  `database/enrolled-courses.ts`) refuses a person with an open platform ban in every köşk, medrese and
-  course.
+- `ban_scope` gains `PLATFORM`. The checks that read bans (`ban.repository.ts`,
+  `database/enrolled-courses.ts`, and the session invitations' `SEAT_OPEN` in
+  `lesson-invitation/lesson-invitation.repository.ts`) refuse a person with an open platform ban in every
+  köşk, medrese and course. The invitation predicate has no test of its own for the platform scope.
 - `ban_permanent_requests` gains `status` (`PENDING`, `APPROVED`, `REJECTED`), `decided_by`,
   `decided_at`, `decision_note` and `platform_ban_id`. A request that existed before reads as `PENDING`.
 - Migration `0081_permanent_ban_decisions` and its rollback
@@ -31,7 +32,12 @@ Every number below sits next to the command that printed it; commands run from t
   service (`BanAuthority`), which is why the route inventory lists them as `no AuthzGuard`.
 - Refusals: `PERMANENT_BAN_REQUEST_NOT_FOUND` (404), `PERMANENT_BAN_REQUEST_NOT_PENDING` (409),
   `BAN_ALREADY_LIFTED` (409: a request whose lower ban was lifted can only be refused),
-  `BAN_TARGET_INVALID` (400: a Medaris nazımı, or the decider themself).
+  `BAN_TARGET_INVALID` (400: the decider themself, or anyone who holds an assigned role in any scope: a
+  nazım, a başmüderris, a nazır, a müderris. The lower bans refuse whoever runs the scope they cover;
+  a platform ban covers every scope. The roles are taken back first. The başnazım is a realm role and
+  cannot be told from `role_assignments`).
+- An approval reads the lower ban again under a row lock inside its transaction, so a ban lifted in the
+  moment between the check and the decision is still a `BAN_ALREADY_LIFTED`.
 - Audit rows: `permanent_ban.approve` and `permanent_ban.reject`, plus `ban.create` for the platform ban.
 - `MadrasahBanResponse` gains `permanentRequestStatus`, `permanentDecidedAt` and
   `permanentDecisionNote`; the Nizam dashboard's `pendingTotals.permanentBanRequests` is the real number
@@ -86,6 +92,28 @@ onaylandı" or "Kalıcı yasak talebi reddedildi", the latter with the note of t
 - **nizam/49 ("Platformdan yasakla") is not built.** A platform ban is opened only by approving a
   request.
 
+## Review findings
+
+`/code-review` over `origin/main...HEAD` returned ten findings; `/security-review` returned none.
+
+Fixed: session invitations still went to a platform-barred talebe; the home page's newest-bans card
+read a platform ban as "Köşk yasağı:" with no name (and `DashboardBanResponse.scope` still declared two
+scopes); a course roster badged a platform ban "Yasaklı · Bu ders" and offered a lift the course team
+cannot perform; the "Karara bağlanan" tab could go blank after a decision returned on it; an approval
+could land on someone who runs a scope; an approval could race a lift; two API descriptions still said
+that platform bans do not exist.
+
+Left as they are, on purpose:
+
+- **A tab lists at most 100 requests** (`LIST_LIMIT`), with the full counts on the tabs. No paging was
+  built: the waiting list is worked off, and a hundred decided requests is far off.
+- **"Yasaklamalar'da gör" searches by the e-mail or name the card shows.** `GET /bans?q=` matches the
+  `users` table only, so a person who has a seat but never signed in is not found by it.
+- **A Medaris nazımı holding only `platform.ban_scoped`** sees "Bu yasağı yalnız Medaris yönetimi
+  kaldırabilir." on a platform ban, although the missing piece is `platform.ban_account`.
+- **The Dersler table's banned count** (`kosk-admin.repository.ts`) counts course and köşk bans, not a
+  platform ban.
+
 ## Known gap, not part of this work
 
 The başnazım's menu holds "YouTube bağlantısı" (`/ayarlar/youtube`), which has no page. The new check in
@@ -106,8 +134,8 @@ without taking it off the list.
 | build | `pnpm nx run-many -t build --skip-nx-cache` | `16 tasks: 16 succeeded` |
 | lint | `pnpm nx run-many -t lint --skip-nx-cache` | `18 tasks: 18 succeeded` |
 | module-boundaries | `pnpm nx run-many -t module-boundaries --skip-nx-cache` | `18 tasks: 18 succeeded` |
-| nizam-web, nazar-web, tedris-web tests | `pnpm nx run-many -t test --skip-nx-cache`, read from each `coverage/junit.xml` | nizam `tests="982" failures="0"`, nazar `tests="1896" failures="0"`, tedris `tests="1360" failures="0"` |
-| tedrisat tests | `pnpm nx run tedrisat:test --skip-nx-cache` | `tests="3934" failures="4"`: the four are the Keycloak container suites, see below |
+| nizam-web, nazar-web, tedris-web tests | `pnpm nx run-many -t test --skip-nx-cache`, read from each `coverage/junit.xml` | nizam `tests="984" failures="0"`, nazar `tests="1896" failures="0"`, tedris `tests="1360" failures="0"` |
+| tedrisat tests | `pnpm nx run tedrisat:test --skip-nx-cache` | `tests="3934" failures="5"` in the last full run: the four Keycloak container suites, see below, and one ordering assertion in `permission-admin.e2e.spec.ts` that passed when the file was run alone (`Tests  25 passed (25)`) |
 
 Two tests of the backend commit's own making were red and are fixed here: the route inventory snapshot
 (`test/e2e/__snapshots__/authz-route-inventory.txt`) did not hold the three routes, and
@@ -134,7 +162,7 @@ machine's and not the change's. Both were measured.
   `127.0.0.1` itself. The next run had none of them: `tests="3934" failures="4"`.
 - **The suites that start a Keycloak container** (`keycloak-audience`, `keycloak-provision`,
   `keycloak-smtp`, `partner-enrollment-keycloak` in tedrisat, `email.e2e` in keycloak-theme) were green
-  in the first full run of the day and red in the later ones: the admin token request is answered
+  in the first full run of the day and red in the later ones (`email.e2e` was green again in the last): the admin token request is answered
   `403 {"error_description":"HTTPS required"}`. Reproduced by hand with the same image
   (`quay.io/keycloak/keycloak:26.3.2 start-dev`): published with `-P` (all interfaces, as Testcontainers
   does) the request from the host is refused, published with `-p 127.0.0.1::8080` it is answered 200. The

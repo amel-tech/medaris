@@ -1,6 +1,5 @@
 import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
 import { BanRepository } from "./ban.repository";
 import { BanService } from "./ban.service";
 import {
@@ -148,14 +147,13 @@ export class PermanentBanService {
     if (ban.userId === user.sub) {
       throw new BanTargetInvalidError("You cannot bar yourself");
     }
-    const platformRoles = await this.banRepo.rolesHeld(ban.userId, {
-      koskId: null,
-      courseId: null,
-      madrasahId: null,
-    });
-    if (platformRoles.includes(ASSIGNED_ROLES.MEDARIS_NAZIM)) {
+    // The lower bans refuse whoever runs the scope they cover. A platform
+    // ban covers every scope, so it refuses whoever runs any: the roles are
+    // taken back first, by whoever gave them. The başnazım is a realm role
+    // and is not in the table; nothing here can tell.
+    if (await this.banRepo.holdsAnyRole(ban.userId)) {
       throw new BanTargetInvalidError(
-        "A Medaris nazımı cannot be barred from the platform"
+        "A person who holds a role cannot be barred from the platform"
       );
     }
     const approved = await this.repo.approve({

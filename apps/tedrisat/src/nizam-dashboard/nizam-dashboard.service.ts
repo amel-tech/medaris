@@ -130,6 +130,7 @@ export class NizamDashboardService {
         scope: b.scope,
         courseTitle: b.courseTitle,
         koskName: b.koskName,
+        madrasahName: b.madrasahName,
         bannedByName: b.bannerPerson.name ?? b.bannerPerson.email,
         reason: b.reason,
         createdAt: b.createdAt,

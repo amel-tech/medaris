@@ -2016,6 +2016,7 @@
     "banned": "Barred",
     "bannedCourse": "Barred · This course",
     "bannedKosk": "Barred · Köşk",
+    "bannedPlatform": "Barred · Platform",
     "showing": "Showing {shown} of {total} students",
     "more": "Show more",
     "emptySearch": "No student matches the search",
@@ -3801,6 +3802,8 @@
       "empty": "No open ban.",
       "courseBan": "Course ban: {name}",
       "koskBan": "Köşk ban: {name}",
+      "madrasahBan": "Medrese ban: {name}",
+      "platformBan": "Platform ban: all of Medaris",
       "placedBy": "placed by {name}",
       "reason": "Reason: {reason}",
       "goTo": "Go to Bans"

@@ -161,7 +161,13 @@ export function RosterTable({
             <bdi className="font-semibold">{nameOf(e)}</bdi>
             {e.ban ? (
               <Badge variant="error">
-                {t(e.ban.scope === "KOSK" ? "bannedKosk" : "bannedCourse")}
+                {t(
+                  e.ban.scope === "PLATFORM"
+                    ? "bannedPlatform"
+                    : e.ban.scope === "KOSK"
+                      ? "bannedKosk"
+                      : "bannedCourse"
+                )}
               </Badge>
             ) : null}
           </span>
@@ -220,19 +226,27 @@ export function RosterTable({
         const busy = busyId === e.userId;
         return (
           <span className="flex flex-nowrap items-center justify-end gap-2 whitespace-nowrap">
-            {studentActions(e.status, e.ban !== null).map((action, index) => (
-              <Button
-                key={action}
-                variant={index === 0 ? "outline" : "ghost"}
-                size="small"
-                loading={busy && (action === "complete" || action === "reopen")}
-                disabled={busy}
-                aria-label={t(`${action}Label`, { name })}
-                onClick={() => act(e, action)}
-              >
-                {t(action)}
-              </Button>
-            ))}
+            {studentActions(e.status, e.ban !== null)
+              // A platform ban is Medaris administration's (MDRS-194): the
+              // course team cannot lift it, so the row does not offer to.
+              .filter(
+                (action) => action !== "lift" || e.ban?.scope !== "PLATFORM"
+              )
+              .map((action, index) => (
+                <Button
+                  key={action}
+                  variant={index === 0 ? "outline" : "ghost"}
+                  size="small"
+                  loading={
+                    busy && (action === "complete" || action === "reopen")
+                  }
+                  disabled={busy}
+                  aria-label={t(`${action}Label`, { name })}
+                  onClick={() => act(e, action)}
+                >
+                  {t(action)}
+                </Button>
+              ))}
           </span>
         );
       },

@@ -226,7 +226,11 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
     [
       b.scope === "COURSE"
         ? t("bans.courseBan", { name: b.courseTitle ?? "" })
-        : t("bans.koskBan", { name: b.koskName ?? "" }),
+        : b.scope === "PLATFORM"
+          ? t("bans.platformBan")
+          : b.scope === "MADRASAH"
+            ? t("bans.madrasahBan", { name: b.madrasahName ?? "" })
+            : t("bans.koskBan", { name: b.koskName ?? "" }),
       t("bans.placedBy", { name: b.bannedByName ?? t("unknownPerson") }),
       when(b.createdAt),
     ].join(" · ");

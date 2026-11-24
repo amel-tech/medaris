@@ -6,6 +6,7 @@ import { auditLog } from "../database/schema/audit.schema";
 import {
   BAN_SCOPES,
   banPermanentRequests,
+  bans,
   type PermanentBanRequestStatus,
 } from "../database/schema/ban.schema";
 import { users } from "../database/schema/user.schema";
@@ -17,6 +18,7 @@ import {
 } from "./ban.repository";
 import { BAN_TIERS, type BanRole } from "./ban-tier";
 import type { PermanentBanTab } from "./dto/permanent-ban.dto";
+import { BanAlreadyLiftedError } from "./errors/ban-errors";
 
 /** A request for a permanent ban, with the names its row stands for. */
 export interface IPermanentBanRequest {
@@ -183,6 +185,15 @@ export class PermanentBanRepository {
         )
         .returning({ id: banPermanentRequests.id });
       if (!claimed) return null;
+      // The service read the lower ban before this transaction. Read it
+      // again under a lock: a ban lifted in between is no ground for a
+      // wider one, and the claim above is rolled back with the refusal.
+      const [lower] = await tx
+        .select({ liftedAt: bans.liftedAt })
+        .from(bans)
+        .where(eq(bans.id, ban.id))
+        .for("update");
+      if (!lower || lower.liftedAt) throw new BanAlreadyLiftedError(ban.id);
       const { ban: platformBan, created } = await this.bans.createWithin(tx, {
         userId: ban.userId,
         koskId: null,

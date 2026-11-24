@@ -2016,6 +2016,7 @@
     "banned": "محظور",
     "bannedCourse": "محظور · هذا الدرس",
     "bannedKosk": "محظور · الكشك",
+    "bannedPlatform": "محظور · المنصة",
     "showing": "عرض {shown} من {total} طالبًا",
     "more": "عرض المزيد",
     "emptySearch": "لا طالب يطابق البحث",
@@ -3801,6 +3802,8 @@
       "empty": "لا يوجد حظر مفتوح.",
       "courseBan": "حظر من الدرس: {name}",
       "koskBan": "حظر من الكشك: {name}",
+      "madrasahBan": "حظر مدرسة: {name}",
+      "platformBan": "حظر المنصة: مداريس كلها",
       "placedBy": "أصدره {name}",
       "reason": "السبب: {reason}",
       "goTo": "الذهاب إلى حالات الحظر"

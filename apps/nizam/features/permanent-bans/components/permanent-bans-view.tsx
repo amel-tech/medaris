@@ -70,6 +70,8 @@ export function PermanentBansView({ initial }: Props) {
   // A read answers for the tab it was asked for: a late answer must not fill
   // the tab on the screen with the other one's requests.
   const ticket = useRef(0);
+  // The tab on the screen, for a decision that returns after the tab changed.
+  const shown = useRef<RequestTab>("PENDING");
 
   const load = useCallback(
     async (next: RequestTab) => {
@@ -103,6 +105,7 @@ export function PermanentBansView({ initial }: Props) {
   );
 
   const changeTab = (next: RequestTab) => {
+    shown.current = next;
     ticket.current++;
     setLoading(false);
     setTab(next);
@@ -114,6 +117,10 @@ export function PermanentBansView({ initial }: Props) {
     setLists((current) => ({
       PENDING: (current.PENDING ?? []).filter((r) => r.id !== id),
     }));
+    // The decided list is stale now. Left on the screen it would be wiped
+    // with nothing to read it again, so it is read again here; on the other
+    // tab it is simply dropped and read when the tab is opened.
+    if (shown.current === "DECIDED") void load("DECIDED");
     setCounts((c) => ({
       pending: Math.max(0, c.pending - 1),
       decided: c.decided + 1,

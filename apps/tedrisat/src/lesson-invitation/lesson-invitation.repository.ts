@@ -136,7 +136,8 @@ const SEAT_OPEN = sql`(
   and e.status = ${EnrollmentStatus.ENROLLED}
   and not exists (select 1 from bans b
              where b.user_id = e.user_id and b.lifted_at is null
-               and ((b.scope = 'COURSE' and b.course_id = c.id)
+               and (b.scope = 'PLATFORM'
+                 or (b.scope = 'COURSE' and b.course_id = c.id)
                  or (b.scope = 'KOSK' and b.kosk_id = c.kosk_id)
                  or (c.madrasah_id is not null and b.madrasah_id = c.madrasah_id))))`;
 

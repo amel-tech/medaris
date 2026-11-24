@@ -482,6 +482,11 @@ describe("Permanent ban requests (e2e)", () => {
       );
       expect(protectedOne.body.code).toBe("BAN_TARGET_INVALID");
 
+      // whoever runs any scope: a platform ban would take that scope too
+      const staff = await seedRequest(KOSK_NAZIM_ID);
+      const runsOne = await approve(ADMIN_ID, staff.request.id).expect(400);
+      expect(runsOne.body.code).toBe("BAN_TARGET_INVALID");
+
       const self = await seedRequest(NAZIM_ID);
       await approve(NAZIM_ID, self.request.id).expect(400);
 

@@ -189,6 +189,34 @@ describe("the başnazım's home page (nizam 01)", () => {
     expect(empty).toContain("Bekleyen deste yayın isteği yok.");
     expect(empty).toContain("Açık yasak yok.");
   });
+
+  it("words a platform ban and a medrese ban as what they are (MDRS-194)", () => {
+    const [first] = chief.latestBans ?? [];
+    if (!first) throw new Error("the fixture has a ban");
+    const wide = render(
+      <MedarisHome
+        data={{
+          ...chief,
+          latestBans: [
+            { ...first, scope: "PLATFORM", courseTitle: null, koskName: null },
+            {
+              ...first,
+              id: "b2",
+              scope: "MADRASAH",
+              courseTitle: null,
+              koskName: null,
+              madrasahName: "Süleymaniye Medresesi",
+            },
+          ],
+        }}
+        grants={null}
+        nowIso={NOW}
+      />
+    );
+    expect(wide).toContain("Platform yasağı: bütün Medaris");
+    expect(wide).toContain("Medrese yasağı: Süleymaniye Medresesi");
+    expect(wide).not.toContain("Köşk yasağı");
+  });
 });
 
 const grants: GrantResponse[] = [

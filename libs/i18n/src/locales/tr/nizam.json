@@ -2016,6 +2016,7 @@
     "banned": "Yasaklı",
     "bannedCourse": "Yasaklı · Bu ders",
     "bannedKosk": "Yasaklı · Köşk",
+    "bannedPlatform": "Yasaklı · Platform",
     "showing": "{total} talebeden {shown} tanesi gösteriliyor",
     "more": "Daha fazla göster",
     "emptySearch": "Aramaya uyan talebe yok",
@@ -3801,6 +3802,8 @@
       "empty": "Açık yasak yok.",
       "courseBan": "Ders yasağı: {name}",
       "koskBan": "Köşk yasağı: {name}",
+      "madrasahBan": "Medrese yasağı: {name}",
+      "platformBan": "Platform yasağı: bütün Medaris",
       "placedBy": "koyan {name}",
       "reason": "Gerekçe: {reason}",
       "goTo": "Yasaklamalar’a git"

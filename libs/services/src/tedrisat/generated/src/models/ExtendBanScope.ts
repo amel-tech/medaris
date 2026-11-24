@@ -14,7 +14,7 @@
 
 
 /**
- * The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.
+ * The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request.
  * @export
  */
 export const ExtendBanScope = {

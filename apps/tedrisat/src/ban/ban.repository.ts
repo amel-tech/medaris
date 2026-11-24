@@ -290,6 +290,20 @@ export class BanRepository {
     return byUser;
   }
 
+  /**
+   * Whether the person holds any assigned role anywhere: a nazım, a
+   * başmüderris, a nazır or a müderris of some scope. A platform ban covers
+   * every scope, so it is asked of all of them (MDRS-194).
+   */
+  async holdsAnyRole(userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ role: roleAssignments.role })
+      .from(roleAssignments)
+      .where(and(eq(roleAssignments.userId, userId), isHeld()))
+      .limit(1);
+    return row !== undefined;
+  }
+
   /** The roles the person holds that bear on the scopes, one entry per role held. */
   async rolesHeld(userId: string, scopes: IBanScopes): Promise<BanRole[]> {
     const at = (type: string, id: string | null): SQL | undefined =>

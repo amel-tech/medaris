@@ -182,6 +182,13 @@ describe("RosterTable (nizam 58)", () => {
     expect(html).not.toContain("Dersten çıkar: ");
   });
 
+  it("marks a platform ban as the platform's and offers no lift for it (MDRS-194)", () => {
+    const html = table([enrolled({ ban: { id: "b9", scope: "PLATFORM" } })]);
+    expect(html).toContain("Yasaklı · Platform");
+    expect(html).not.toContain("Yasaklı · Bu ders");
+    expect(html).not.toContain("Yasağı kaldır: ");
+  });
+
   it("offers the reopening on the completed tab, with no help sentence", () => {
     const html = table(
       [enrolled({ status: "COMPLETED", progress: 100 })],

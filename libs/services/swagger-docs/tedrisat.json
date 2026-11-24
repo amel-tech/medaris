@@ -5908,7 +5908,7 @@
     },
     "/bans/{banId}/lift": {
       "post": {
-        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
+        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban, `platform.ban_account` for a platform ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
         "operationId": "liftBan",
         "parameters": [
           {
@@ -23660,13 +23660,13 @@
         "enum": [
           "KOSK"
         ],
-        "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet."
+        "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request."
       },
       "ExtendBanDto": {
         "type": "object",
         "properties": {
           "scope": {
-            "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+            "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ExtendBanScope"
@@ -30528,6 +30528,11 @@
           "koskName": {
             "type": "string",
             "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese of a medrese ban, or of a course ban in a medrese course"
           },
           "bannedByName": {
             "type": "string",

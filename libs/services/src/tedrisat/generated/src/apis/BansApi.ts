@@ -321,7 +321,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
+     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban, `platform.ban_account` for a platform ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBanRaw(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BanResponse>> {
@@ -366,7 +366,7 @@ export class BansApi extends runtime.BaseAPI {
     }
 
     /**
-     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
+     * The permission to ban at a ban\'s level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese\'s course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban, `platform.ban_account` for a platform ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı\'s ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter\'s name are kept with the ban.
      * Lift a ban with a reason (Yasağı kaldır)
      */
     async liftBan(requestParameters: LiftBanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BanResponse> {
