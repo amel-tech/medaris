@@ -286,5 +286,21 @@ export async function createTestApp(options?: {
   app.useGlobalPipes(new MedarisValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
 
-  return app.init();
+  await app.init();
+
+  // Listen on IPv4 loopback here rather than leave it to supertest. Handed a
+  // server that is not listening, supertest calls `listen(0)` for each
+  // request, which binds the wildcard address, and then dials
+  // `127.0.0.1:<port>`. macOS hands a wildcard bind a port number another
+  // process already holds on 127.0.0.1 alone, and the more specific socket
+  // takes the connection: the request is answered by that process, not by
+  // this app. Measured on a0248bb4 with a response header naming the worker:
+  // every stray answer was a bodiless 404 without the header, on a port a
+  // local tool was listening on. It read as "the row just inserted is not
+  // found", in two to seven unrelated tests a run. A socket bound to
+  // 127.0.0.1 is the most specific one there is for the address supertest
+  // dials, so nothing else can answer for it. `app.close()` closes it.
+  await app.listen(0, "127.0.0.1");
+
+  return app;
 }

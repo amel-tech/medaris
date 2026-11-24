@@ -354,6 +354,8 @@ describe("AuthGuard with the real verifier", () => {
     }).compile();
 
     app = await moduleRef.createNestApplication().init();
+    // On IPv4 loopback, for the reason given in test-app.helper.ts.
+    await app.listen(0, "127.0.0.1");
   });
 
   afterAll(async () => {
