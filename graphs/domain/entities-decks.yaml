@@ -1,0 +1,168 @@
+# F. Decks, flashcards, labels, proposals: 11 tables (inventory/domain.md section 7, F).
+# Fields are the Drizzle properties of apps/tedrisat/src/database/schema (camelCase of the column; where the two
+# differ the column is named in a note). A user column holds a Keycloak sub and is no foreign key (a users row is written
+# lazily on the person's first call, user.schema.ts:11). createdAt and updatedAt of Deck, DeckUser, Flashcard and the four
+# label tables, and lastUsedAt of the two label-stats tables, are timestamps WITHOUT time zone (older tables); every other
+# timestamp here is with time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  Deck: # a flashcard deck: a talebe's own, a course deck (ders destesi), a köşk deck (köşk destesi) or a medrese deck
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:21
+    required: [id, authorId, title, isPublic, cardType, publishStatus, tags, courseDraft, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      authorId: { type: string, format: uuid, note: "Keycloak sub" }
+      title: { type: string }
+      description: { type: [string, "null"], sensitivity: personal, note: "the author's own text; a private deck is readable only by its author (plus the başnazım's audited read, deck.admin_read)" }
+      isPublic: { type: boolean, default: false, note: "the one column every read rule is written against; true exactly when publishStatus is PUBLISHED" }
+      cardType: { enum: [VOCABULARY, HADEETH], default: VOCABULARY, note: "one kind per deck (MDRS-164); the cards keep their own type and nothing compares the two (finding no-card-type-match)" }
+      publishStatus: { enum: [PRIVATE, PENDING, PUBLISHED, REJECTED], default: PRIVATE, note: "a text column, not a database enum; the app enum DeckPublishStatus (flashcard/domain/deck-publish-status.enum.ts)" }
+      publishRequestedAt: { type: [string, "null"], format: date-time, note: "set while PENDING only" }
+      publishDecidedAt: { type: [string, "null"], format: date-time, note: "cleared when the author asks again" }
+      publishDecidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      publishRejectReason: { type: [string, "null"] }
+      tags: { type: array, items: { type: string }, default: [], sensitivity: personal, note: "free labels typed on the create form; only the author reads them back; not the deck_label tables" }
+      courseId: { type: [string, "null"], format: uuid, references: Course, note: "on delete set null; the course of a course deck. At most one of courseId, madrasahId and koskId is set, by convention and not by a constraint (flashcard-deck.schema.ts:52)" }
+      madrasahId: { type: [string, "null"], format: uuid, references: Madrasah, note: "on delete set null; read by the sharing rule, but no endpoint sets it today, so a medrese deck cannot be created through the API (finding medrese-deck-unwritable)" }
+      weekId: { type: [string, "null"], format: uuid, references: CourseWeek, note: "on delete set null; the week a course deck is studied in; a week that goes leaves its decks unplaced" }
+      courseDraft: { type: boolean, default: false, note: "a course deck still being written: the talebe do not see it; always false for the other kinds" }
+      koskId: { type: [string, "null"], format: uuid, references: Kosk, note: "on delete set null; the köşk of a köşk deck, open to the talebe of that köşk's courses" }
+      archivedAt: { type: [string, "null"], format: date-time, note: "hidden (MDRS-173); null while shown" }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null], note: "the level the hider acted at; null on rows hidden before it was recorded; restoring needs the same level or above" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PRIVATE: every deck is created private with isPublic false (flashcard/flashcard-deck.repository.ts:169); a course deck by flashcard/course-deck.repository.ts:97, a köşk deck from an accepted proposal by deck-review/deck-review.repository.ts:385"
+      - "PRIVATE | REJECTED -> PENDING: the author asks to publish (requestPublish, flashcard/flashcard-deck.service.ts:265), guarded in the same statement (flashcard/flashcard-deck.repository.ts:236); publishRequestedAt is set and the decision columns are cleared; any other status answers 409 DECK_PUBLISH_STATE_CONFLICT"
+      - "PENDING -> PUBLISHED: the Medaris başnazım or a holder of platform.deck_publish approves; isPublic becomes true and publishDecidedAt and publishDecidedBy are set (deck-review/deck-review.repository.ts:243)"
+      - "PENDING -> REJECTED: the same reviewers refuse with a reason; the deck stays private and may ask again"
+      - "PENDING -> PRIVATE: the author withdraws the request"
+      - "PUBLISHED -> PRIVATE: the author withdraws (withdrawPublish, flashcard/flashcard-deck.service.ts:291) or the başnazım unpublishes with a reason (deck-review/deck-review.repository.ts:290, audit deck.unpublish)"
+      - "shown -> hidden: archivedAt, archivedBy and archivedLevel are set (deck-review/deck-review.repository.ts:427); a restore in archive clears them; hiding never deletes, and only SYSTEM_ADMIN's purge removes the row"
+
+  DeckUser: # a person's collection of decks
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:96
+    key: [userId, deckId]
+    required: [userId, deckId, createdAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      deckId: { type: string, format: uuid, references: Deck, note: "on delete cascade" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> collected: the person adds a deck to their collection, once (flashcard/flashcard-deck.repository.ts:191, onConflictDoNothing); kosk/kosk.repository.ts writes this table too"
+      - "collected -> none: the person removes it (flashcard/flashcard-deck.repository.ts:273), or the deck is deleted and the row cascades"
+
+  Flashcard: # one card of a deck
+    source: apps/tedrisat/src/database/schema/flashcard.schema.ts:20
+    required: [id, deckId, authorId, type, contentFront, contentBack, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      deckId: { type: string, format: uuid, references: Deck, note: "on delete cascade" }
+      authorId: { type: string, format: uuid, note: "Keycloak sub" }
+      type: { enum: [VOCABULARY, HADEETH], note: "a card has its own type; no check compares it with the deck's cardType, so a HADEETH card can be written into a VOCABULARY deck (finding no-card-type-match)" }
+      contentFront: { type: string }
+      contentBack: { type: string }
+      contentMeta: { type: [object, "null"], note: "free JSON; the API takes any object (IsObject, flashcard/dto/create-flashcard.dto.ts:31)" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+
+  FlashcardProgress: # a person's study state of one card (review schedule, MDRS-165)
+    source: apps/tedrisat/src/database/schema/flashcard.schema.ts:34
+    key: [userId, flashcardId]
+    required: [userId, flashcardId, status, intervalDays]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      flashcardId: { type: string, format: uuid, references: Flashcard, note: "no foreign key: deleting a card or a deck leaves its progress rows behind, invisible to the stats but never cleaned (finding progress-orphans); the archive purge deletes them (archive/archive.repository.ts:838)" }
+      status: { enum: [NEW, LEARNING, MASTERED], default: NEW }
+      dueAt: { type: [string, "null"], format: date-time, note: "null for a row written without a rating: LEARNING then means due now, MASTERED never due. The ratings HARD, MEDIUM and EASY are not stored; they set dueAt and intervalDays (flashcard/domain/review-schedule.ts)" }
+      reviewedAt: { type: [string, "null"], format: date-time }
+      intervalDays: { type: integer, default: 0, note: "the last gap in days" }
+    lifecycle:
+      - "none -> NEW | LEARNING | MASTERED: a rating, or the older memorised toggle, writes the row (upsert, flashcard/flashcard.repository.ts:149)"
+      - "any -> any: a later rating upserts the same row; the archive purge deletes it (archive/archive.repository.ts:838)"
+
+  DeckLabel: # a label in the vocabulary of deck labels (SQL table deck_label)
+    source: apps/tedrisat/src/database/schema/flashcard-deck-label.schema.ts:14
+    required: [id, title, scope, createdAt, createdBy]
+    fields:
+      id: { type: string, format: uuid }
+      title: { type: string }
+      scope: { enum: [PUBLIC, PERSONAL], note: "a text column, not a database enum; the app enum Scope (flashcard/domain/flashcard-label.enum.ts)" }
+      createdAt: { type: string, format: date-time }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+
+  DeckLabeling: # one label put on one deck; privateToUserId makes the labeling visible to that person only
+    source: apps/tedrisat/src/database/schema/flashcard-deck-label.schema.ts:22
+    required: [id, labelId, deckId, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      labelId: { type: string, format: uuid, references: DeckLabel, note: "on delete cascade" }
+      privateToUserId: { type: [string, "null"], format: uuid, note: "Keycloak sub; null is a public labeling" }
+      deckId: { type: string, format: uuid, references: Deck, note: "on delete cascade" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time, note: "the SQL column is spelled create_at, not created_at (flashcard-deck-label.schema.ts:34)" }
+
+  DeckLabelStats: # how often a deck label is used; one row per label
+    source: apps/tedrisat/src/database/schema/flashcard-deck-label.schema.ts:37
+    required: [id, labelId, usageCount, lastUsedAt]
+    fields:
+      id: { type: string, format: uuid }
+      labelId: { type: string, format: uuid, unique: true, references: DeckLabel, note: "on delete cascade; unique index deck_label_stats_label_id_idx" }
+      usageCount: { type: integer, default: 0 }
+      lastUsedAt: { type: string, format: date-time, note: "no default, the writer gives it" }
+
+  FlashcardLabel: # a label in the vocabulary of card labels
+    source: apps/tedrisat/src/database/schema/flashcard-label.schema.ts:12
+    required: [id, title, scope, userId, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      title: { type: string, note: "the SQL column is name" }
+      scope: { enum: [PUBLIC, PERSONAL], note: "a text column, not a database enum" }
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+
+  FlashcardLabeling: # one label put on one card
+    source: apps/tedrisat/src/database/schema/flashcard-label.schema.ts:50
+    required: [id, labelId, flashcardId, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      labelId: { type: string, format: uuid, references: FlashcardLabel, note: "on delete cascade" }
+      privateToUserId: { type: [string, "null"], format: uuid, note: "Keycloak sub; null is a public labeling" }
+      flashcardId: { type: string, format: uuid, references: Flashcard, note: "on delete cascade" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+
+  FlashcardLabelStats: # how often a card label is used; one row per label
+    source: apps/tedrisat/src/database/schema/flashcard-label.schema.ts:21
+    required: [id, labelId, usageCount, lastUsedAt]
+    fields:
+      id: { type: string, format: uuid }
+      labelId: { type: string, format: uuid, unique: true, references: FlashcardLabel, note: "on delete cascade; unique index flashcard_label_stats_label_id_idx" }
+      usageCount: { type: integer, default: 0 }
+      lastUsedAt: { type: string, format: date-time }
+
+  DeckProposal: # a müderris's suggestion for a köşk deck, answered by the köşk's nazım (nizam screens 30 and 35)
+    source: apps/tedrisat/src/database/schema/deck-proposal.schema.ts:21
+    required: [id, koskId, proposedBy, title, cardType, status, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      courseId: { type: [string, "null"], format: uuid, references: Course, note: "on delete set null; the course the deck is for; null when it left" }
+      proposedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      title: { type: string }
+      description: { type: [string, "null"] }
+      cardType: { enum: [VOCABULARY, HADEETH], default: VOCABULARY }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "a text column with no database check; the values are the app's" }
+      rejectReason: { type: [string, "null"], note: "kept for the proposer to read in their notifications" }
+      decidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      decidedAt: { type: [string, "null"], format: date-time }
+      deckId: { type: [string, "null"], format: uuid, references: Deck, note: "on delete set null; set when accepted: the deck opened from the proposal" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PENDING: a müderris proposes a deck for a köşk (deck-review/deck-review.repository.ts:540)"
+      - "PENDING -> ACCEPTED: the köşk's nazım opens the deck from the proposal; deckId then points at it (deck-review/deck-review.repository.ts:380); conditional on the proposal still being PENDING"
+      - "PENDING -> REJECTED: the nazım refuses with a reason (deck-review/deck-review.repository.ts:515); conditional on PENDING"

@@ -1,0 +1,42 @@
+# nizam.grants.appoint, the nazım's own row: the başnazım seats the nazım as ders nazırı of the walk's course (`up --own`, the one post, two permissions, no end), and the nazım opens İzinler. The row is
+# his own, so it has no "İzinleri düzenle" (the API would refuse it, SELF_GRANT_REFUSED: grants-view.tsx:181, self-grant.e2e.spec.ts:613; the replay's --absent checks that the button is not there) and
+# has "Görevden al", which the nazım may press for himself (no self-grant check on DELETE). One file: it adds no transition to binding.yaml's walks, only the absence of a button. Walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/grants/appoint --bind graphs/nizam/grants/appoint/binding.own.yaml --cover transitions --absent --out <dir>
+# NOT RUN: loads (`--emit-spec`), nothing walked. The walk types an address no account has, so that nobody is appointed in this start; the row is the nazım's, the giver the başnazım's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.grants.appoint
+
+scenarios:
+  own:
+    given: { start: own, person: nobody, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up, --own]
+        expect: 'nzgrants up own'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '{grants.nazim.name}'
+      foundEmail: '{grants.nazim.email}'
+      rowName: '{grants.nazim.name}'
+      rowEmail: '{grants.nazim.email}'
+      rowSub: '{grants.nazim.sub}'
+      giverName: '{grants.chief.name}'
+      giverText: '{grants.chief.name}'
+      endMs: 'none'

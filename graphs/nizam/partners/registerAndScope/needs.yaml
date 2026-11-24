@@ -1,0 +1,183 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.partners.registerAndScope
+status: proposed
+summary: >-
+  What must exist for the başnazım in nizam.partners.registerAndScope: the flow's product list, written from the flow's story and
+  the open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code): a-refusal-is-announced (none: F-W3-13, F-UI-W3-1), a-switch-keeps-the-focus (none: F-W3-6),
+# removing-a-kosk-asks-first (none: D2, F-W3-15), a-dialog-starts-in-its-field (none: F-W3-partners-1, -2),
+# a-wrong-partner-can-be-removed (none: D1), a-medaris-nazim-with-the-permission-finds-the-page (none: F-X-12)
+# Unwalked (code, no e2e and no replay that has passed): register-a-partner-by-client-id, a-client-id-is-registered-once,
+# the-form-says-what-is-wrong, switch-a-partner-on-and-off, choose-the-kosks-a-partner-works-with, taking-a-kosk-away-deletes-the-codes,
+# rename-a-partner, the-list-could-not-be-read. The unit test apps/nizam/test/partners.spec.tsx pins the page's rules with the three
+# actions stubbed, and apps/tedrisat/test/e2e/partner-enrollment.e2e.spec.ts pins the API (the registry's routes, the unbinding that
+# deletes the codes); there is no web e2e (no e2e file of nizam names a partner) and no replay has been run yet (the owner's word:
+# replays happen once, at the end). The scenarios written for them, bound and not run: registers, badShape, noName, stranger (binding.yaml);
+# scoped, frontEnd, gone (refusals.binding.yaml). `the-list-could-not-be-read` has no scenario for its failing read (the stack cannot make
+# tedrisat fail it).
+
+needs:
+  - id: register-a-partner-by-client-id
+    need: >-
+      The başnazım registers a partner application by the Keycloak client id of the application and a name. It is registered open
+      and works with no köşk until köşks are chosen; everything it does is written to the audit log.
+    evidence:
+      - state: listed
+      - state: adding
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:81
+      - source: apps/nizam/features/partners/components/partners-view.tsx:258
+      - test: apps/nizam/test/partners.spec.tsx
+    note: Also drawn as the assertion a-new-partner-is-open-and-has-no-kosk.
+
+  - id: a-client-id-is-registered-once
+    need: >-
+      A client id that is registered already, open or not, is refused and the person is told so under the client id, with what
+      they typed kept. A client id that is one of Medaris's own front-ends is refused too, since its people's tokens would be
+      refused everywhere but the partner routes.
+    evidence:
+      - state: addProblem
+      - state: adding
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:81
+      - source: apps/nizam/features/partners/components/partners-view.tsx:277
+      - test: apps/nizam/test/partners.spec.tsx
+
+  - id: the-form-says-what-is-wrong
+    need: >-
+      An empty client id, a client id with a character the realm does not allow and a blank name are said in words under their
+      fields before anything is sent, and a typed text is never silently cut.
+    evidence:
+      - state: addProblem
+      - source: apps/nizam/features/partners/present.ts:14
+      - source: apps/nizam/features/partners/components/partners-view.tsx:264
+      - test: apps/nizam/test/partners.spec.tsx
+    note: |-
+      Also drawn as the assertion only-a-form-the-page-accepts-is-sent.
+      the cut of a pasted text is F-W3-partners-4 and is part of this need's drawing; it is not a missing need of its own
+
+  - id: a-refusal-is-announced
+    need: >-
+      A sentence that says what is wrong, under a field or in a dialog, is announced to a screen reader and the focus goes to what
+      the person must correct.
+    missing: "no Linear issue; F-W3-13, F-UI-W3-1, F-X-2: the error is no live region and the focus stays on the button"
+    note: >-
+      Drawn on the states addProblem, renameForm and kosksForm, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: switch-a-partner-on-and-off
+    need: >-
+      The başnazım closes a partner application and opens it again: a closed partner registers nobody, its codes are shown in no
+      course and what it registered stays; opening it brings it back for the köşks it works with. The switch moves at once and
+      goes back, with a sentence, if the server refuses.
+    evidence:
+      - state: listed
+      - state: turningOff
+      - state: turningOn
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:98
+      - source: apps/nizam/features/partners/components/partners-view.tsx:82
+      - test: apps/nizam/test/partners.spec.tsx
+
+  - id: a-switch-keeps-the-focus
+    need: >-
+      The switch that is pressed keeps the keyboard focus while its save runs, and the person is told in the page, not in a toast
+      alone, that it was saved.
+    missing: "no Linear issue; F-W3-6, F-X-8: the switch is disabled while it saves and the focus falls"
+    note: >-
+      Drawn on the states turningOff and turningOn, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: choose-the-kosks-a-partner-works-with
+    need: >-
+      The başnazım chooses the köşks a partner application works with: it is shown in the course settings of those köşks only and
+      registers people there only. The choice is the whole set, a köşk can be added and taken away, and a choice that changes
+      nothing closes the dialog without a call.
+    evidence:
+      - state: kosksForm
+      - state: savingKosks
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:117
+      - source: apps/nizam/features/partners/components/partners-view.tsx:443
+      - test: apps/nizam/test/partners.spec.tsx
+    note: Also drawn as the assertion an-unchanged-selection-is-not-sent.
+
+  - id: taking-a-kosk-away-deletes-the-codes
+    need: >-
+      Taking a köşk away from a partner application deletes the partner's codes in that köşk's courses, each written to the audit
+      log; choosing the köşk again brings none back, and what the partner already registered stays.
+    evidence:
+      - state: kosksForm
+      - state: savingKosks
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:117
+      - test: apps/tedrisat/test/e2e/partner-enrollment.e2e.spec.ts
+
+  - id: removing-a-kosk-asks-first
+    need: >-
+      DECISION OPEN (D2): taking a köşk away, which deletes codes for good, asks first and says how many codes in how many courses
+      go. Today the intro paragraph is the only warning.
+    evidence:
+      - source: apps/nizam/features/partners/components/partners-view.tsx:512
+    missing: no Linear issue; F-W3-15; code exists in part
+    note: >-
+      Drawn on the state kosksForm, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: rename-a-partner
+    need: >-
+      The başnazım renames a partner application: the new name is what the course settings and the audit log show from then on,
+      and the old name is kept in the audit row. A blank name is refused in words.
+    evidence:
+      - state: renameForm
+      - state: renaming
+      - state: renamed
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:98
+      - source: apps/nizam/features/partners/components/partners-view.tsx:364
+      - test: apps/nizam/test/partners.spec.tsx
+    note: Also drawn as the assertion no-partner-is-renamed-to-nothing.
+
+  - id: a-dialog-starts-in-its-field
+    need: >-
+      A dialog that holds a form puts the focus in its first field (or on the first thing to choose) when it opens, and does not
+      offer "Vazgeç", the close icon or Escape while it is saving without saying so.
+    missing: no Linear issue; F-W3-partners-1, F-W3-partners-2
+    note: >-
+      Drawn on the states renameForm, kosksForm, renaming and savingKosks, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-list-could-not-be-read
+    need: >-
+      When the registry cannot be read the person is told so in the page and can ask again; when they may not read it they meet
+      the shell's refusal.
+    evidence:
+      - state: reading
+      - state: loadFailed
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:59
+      - source: apps/nizam/features/partners/reads.ts:12
+      - test: apps/nizam/test/partners.spec.tsx
+    note: Also drawn as the assertion a-failed-read-draws-no-table.
+
+  - id: a-wrong-partner-can-be-removed
+    need: >-
+      DECISION OPEN (D1): a partner application that has registered nobody, holds no code and works with no köşk can be removed,
+      with a confirmation, so that a client id typed wrongly does not stay in the list for good. Today a partner is never deleted,
+      only closed.
+    evidence:
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:98
+    missing: no Linear issue; D1; code exists in part
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-medaris-nazim-with-the-permission-finds-the-page
+    need: >-
+      A Medaris nazımı who holds platform.partner_manage has "Ortak uygulamalar" in their menu, as the başnazım has. Today the API
+      admits them and the page is the same, but the menu has no entry for them (F-X-12) and they reach it by the address.
+    evidence:
+      - source: apps/tedrisat/src/integration/partner-admin.controller.ts:59
+    missing: no Linear issue; F-X-12; code exists in part
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

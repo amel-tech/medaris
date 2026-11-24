@@ -1,0 +1,74 @@
+# What every walk of tedris.learn.notes shares (graphs/README.md, "The stack and the bindings"): the throwaway course's ids as data,
+# the events a person types or reloads with, the places the walk finds nodes by, and the checks of what a step writes. The scenarios
+# are in binding.yaml (the main story and a refusal), binding.live.yaml and binding.typed.yaml: one file for each surface, so that a
+# `--to` run is bound to one of them (a scenario that adds no transition of its own is walked only from a file of its own).
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make learnnotes ...), as the one `--talebe` account takes a seat in
+# it, and removes it (course.mjs remove learnnotes: the course, its celses, the notes under them, the seat's mail and notifications).
+# The notes are written as `applicantF` on that course's celse, so the seed's own note (TALEBE's, on the next celse of "Bina ve İzhar
+# Şerhi") is never read, changed or deleted, and no seeded course is touched. course.mjs writes graphs/.local/made/learnnotes.json,
+# read here as {made.course} and {made.lessons.N}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.notes
+
+data:
+  made: { json: ../.local/made/learnnotes.json }
+
+events:
+  # the first note: a text and a time, in the form above the list
+  TYPE:
+    - fill: { role: textbox, name: Not, within: { css: form, within: { role: region, name: Notlarım } }, value: '{body1}' }
+    - fill: { role: textbox, name: '{timeField}', within: { css: form, within: { role: region, name: Notlarım } }, value: '{time1}' }
+  # the second note: a text, and its time left empty
+  TYPE_MORE:
+    - fill: { role: textbox, name: Not, within: { css: form, within: { role: region, name: Notlarım } }, value: '{body2}' }
+    - fill: { role: textbox, name: '{timeField}', within: { css: form, within: { role: region, name: Notlarım } }, value: '' }
+  # the row being changed: its own text area and time field (the ones inside a list item)
+  CHANGE:
+    - fill: { role: textbox, name: Not, within: { role: listitem, within: { role: region, name: Notlarım } }, value: '{body3}' }
+    - fill: { role: textbox, name: '{timeField}', within: { role: listitem, within: { role: region, name: Notlarım } }, value: '{time3}' }
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+states:
+  # the server actions are POSTs to the page's own address, held while the busy button is checked
+  adding: { call: '{tedris}/courses/{course}/lessons/**' }
+  saving: { call: '{tedris}/courses/{course}/lessons/**' }
+  deleting: { call: '{tedris}/courses/{course}/lessons/**' }
+  left: { url: '{tedris}/home' }
+
+nodes:
+  # the page's one <main>; "Notlarım" is what tells it from the page a walk leaves for
+  celsePage: { css: main, hasText: Notlarım }
+  notesList: { role: list, within: { role: region, name: Notlarım } }
+  # the form's two fields and the row's two fields share names: the form is the one <form> of the panel, the row is a list item
+  noteBody: { role: textbox, name: Not, within: { css: form, within: { role: region, name: Notlarım } } }
+  timeFieldCelse: { role: textbox, name: Celsedeki an, within: { css: form, within: { role: region, name: Notlarım } } }
+  timeFieldVideo: { role: textbox, name: Videodaki an, within: { css: form, within: { role: region, name: Notlarım } } }
+  editBody: { role: textbox, name: Not, within: { role: listitem, within: { role: region, name: Notlarım } } }
+  editTimeCelse: { role: textbox, name: Celsedeki an, within: { role: listitem, within: { role: region, name: Notlarım } } }
+  editTimeVideo: { role: textbox, name: Videodaki an, within: { role: listitem, within: { role: region, name: Notlarım } } }
+  # the edit row holds a visually hidden copy of the line under the time field: the visible one is the first
+  hintSession: { text: 'İsteğe bağlı: celsenin başından beri geçen süreyi yaz.', nth: 0 }
+  hintManual: { text: 'İsteğe bağlı: oynatıcıdaki süreyi yaz.', nth: 0 }
+  # the buttons of a row are named by the note's time, which the walk does not know: any note's
+  editButton: { role: button, name: '/^Notu düzenle, /' }
+  deleteButton: { role: button, name: '/^Notu sil, /' }
+  otherEdit: { role: button, name: '/^Notu düzenle, /' }
+  otherDelete: { role: button, name: '/^Notu sil, /' }
+  seekButton: { role: button, name: '/^Videoyu .+ anına götür$/' }
+
+# What a step leaves outside the screen: the note rows of the walk's own account on the walk's own celse (e2e lesson-notes#1: its
+# fixture.notesOf reads, which a graph asserts as what the person sees after a reload and as these rows).
+effects:
+  createLessonNote:
+    - run: [node, helpers/sql.mjs, "select offset_seconds from lesson_notes where lesson_id = '{lesson}' and author_id = '{secret.E2E_APPLICANT_F_SUB}' order by offset_seconds nulls last"]
+      expect: '"offset_seconds":{offset1}'
+  updateLessonNote:
+    - run: [node, helpers/sql.mjs, "select offset_seconds from lesson_notes where lesson_id = '{lesson}' and author_id = '{secret.E2E_APPLICANT_F_SUB}' and body = '{body3}'"]
+      expect: '"offset_seconds":{offset3}'
+  deleteLessonNote:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_notes where lesson_id = '{lesson}' and author_id = '{secret.E2E_APPLICANT_F_SUB}'"]
+      expect: '"n":1'

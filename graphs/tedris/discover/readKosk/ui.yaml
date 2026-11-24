@@ -1,0 +1,116 @@
+# The screens of tedris.discover.readKosk: tedris-web's köşk page (/kosks/<id>, features/courses/components/kosk-page.tsx) for a visitor, a
+# stranger, an applicant and a member; the not-found page it can become (app/not-found.tsx) and the failed-read box (KoskLoadError).
+# Only this address's nodes are drawn; the bar and the footer belong to tedris.shell.frame.
+#
+# Words: every `KoskPage.*`, `AnonymousInvite.*` and `SystemPages.*` key is copied by script from libs/i18n/src/locales/tr/tedris.json (the
+# app reads it as `tedris.KoskPage` and so on), the key being the path inside that file. `AnonymousInvite.apply` keeps its two tags
+# (<signIn>, <register>): the app turns them into the two links, and the binding finds the sentence by a pattern. The `composed.*` keys
+# are NOT in any i18n file: they are the texts the app builds in code from messages and data, written with their placeholders so a
+# replay can match them (a placeholder with no sample in the binding matches any text):
+#   composed.KoskPage.breadcrumbLabel     "Sayfa yolu": the kit's default label (libs/ui/src/mds/breadcrumb.tsx:19); the page passes none
+#   composed.KoskPage.koskName            the köşk's name, as the API gives it (kosk-page.tsx:157,166)
+#   composed.KoskPage.description         its description, as given (kosk-page.tsx:199)
+#   composed.KoskPage.followLabel         "<KoskPage.follow>: <köşk>", the button's aria-label (follow-button.tsx:61)
+#   composed.KoskPage.followingLabel      "<KoskPage.following>: <köşk>", the same once it is followed
+#   composed.KoskPage.courseTitle         a course's title (kosk-page.tsx:76)
+#   composed.KoskPage.madrasahName        the medrese's name in the link (kosk-page.tsx:116-118)
+#   composed.KoskPage.madrasahLine        "<medrese> <KoskPage.madrasahCourse>": the link and the word after it, one line (kosk-page.tsx:112-121)
+#   composed.KoskPage.hocaLine            the hocas' names with their unvan, joined (muderrisLine, kosk-page.tsx:38-53; formatHocaName of @medaris/utils)
+#   composed.KoskPage.nextSessionLine     "<KoskPage.nextSession> <weekday and clock>" (kosk-page.tsx:95-99; formatNextSession, next-session.ts:7-21)
+#   composed.KoskPage.deckTitle           a deck's title (kosk-page.tsx:263)
+#   composed.KoskPage.deckMetaLine        "<KoskPage.deckMeta>·<KoskPage.cardsCount>": two messages and a hidden separator (kosk-page.tsx:272-278)
+#   composed.AnonymousInvite.applySignIn / applyRegister   the two chunks of AnonymousInvite.apply between its tags
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.readKosk
+flow: tedris.discover.readKosk
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Örnek Köşk
+  description: Örnek bir köşkün kısa tanıtımı.
+  name: Örnek Kişi
+  count: '3'
+  course: Örnek Ders
+  madrasah: Örnek Medrese
+  hocas: Örnek Hoca
+  when: Pzt 20:30
+  deck: Örnek Deste
+
+nodes:
+  # ---- the page and the way back ----
+  koskPage: { type: page, component: Page, role: main, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:152 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  breadcrumb: { type: page, component: Page, role: navigation, name: { key: composed.KoskPage.breadcrumbLabel }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:154 }
+  breadcrumbDiscover: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskPage.discover }, in: [koskShown], emits: OPEN_DISCOVER, source: apps/tedris/features/courses/components/kosk-page.tsx:156 } # a plain <a>: a full page load
+  breadcrumbHere: { type: text, component: Text, text: { key: composed.KoskPage.koskName, params: { kosk: kosk.name } }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:157 } # the last item, aria-current=page, never a link
+
+  # ---- who the köşk is ----
+  eyebrow: { type: text, component: Text, text: { key: KoskPage.eyebrow }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:164 }
+  title: { type: text, component: Heading, role: heading, text: { key: composed.KoskPage.koskName, params: { kosk: kosk.name } }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:165 } # h1
+  courseCount: { type: text, component: Text, text: { key: KoskPage.coursesCount, params: { count: kosk.courseCount } }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:170 } # the published, shown courses (getKosk's courseCount), not the cards on the shelf
+  privateBadge: { type: text, component: Text, text: { key: KoskPage.private }, in: [koskShown], when: isUnlisted, source: apps/tedris/features/courses/components/kosk-page.tsx:173 } # "Liste dışı", in the line of the count
+  managerLine: { type: text, component: Text, text: { key: KoskPage.manager, params: { name: kosk.managerName } }, in: [koskShown], when: hasManager, source: apps/tedris/features/courses/components/kosk-page.tsx:178 } # the nazım's NAME only; the ids are never drawn (F-4)
+  followButton: { type: action, component: Button, role: button, intent: secondary, name: { oneOf: [composed.KoskPage.followLabel, composed.KoskPage.followingLabel] }, text: { oneOf: [KoskPage.follow, KoskPage.following] }, in: [koskShown], when: signedIn, emits: FOLLOW, source: apps/tedris/features/courses/components/kosk-page.tsx:184 } # aria-pressed flips with the name (DSC-02); disabled while the request is out (DSC-01); both are tedris.discover.followKosk's
+  about: { type: text, component: Text, text: { key: composed.KoskPage.description, params: { description: kosk.description } }, in: [koskShown], when: hasAbout, source: apps/tedris/features/courses/components/kosk-page.tsx:199 }
+
+  # ---- Dersler ----
+  coursesSection: { type: page, component: Page, role: region, name: { labelledBy: coursesTitle }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:204 }
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: KoskPage.coursesTitle }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:209 } # h2
+  coursesHint: { type: text, component: Text, text: { key: KoskPage.coursesHint }, in: [koskShown], source: apps/tedris/features/courses/components/kosk-page.tsx:212 }
+  noCourses: { type: text, component: Text, text: { key: KoskPage.noCoursesYet }, in: [koskShown], when: noCourses, source: apps/tedris/features/courses/components/kosk-page.tsx:215 }
+  courseHeading: { type: text, component: Heading, role: heading, text: { key: composed.KoskPage.courseTitle, params: { course: course.title } }, in: [koskShown], when: hasCourses, repeat: courses, source: apps/tedris/features/courses/components/kosk-page.tsx:76 } # h3 of a card; the cover beside it is not hidden and prints a course's Arabic label before the title when it has one (DSC-12)
+  courseLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.KoskPage.courseTitle, params: { course: course.title } }, in: [koskShown], when: hasCourses, repeat: courses, emits: OPEN_COURSE, source: apps/tedris/features/courses/components/kosk-page.tsx:75 } # the title; the whole card is its target
+  enrollmentBadge: { type: text, component: Text, text: { oneOf: [KoskPage.statusEnrolled, KoskPage.statusPending, KoskPage.statusCompleted] }, in: [koskShown], when: "hasCourses and seated", repeat: courses.seated, source: apps/tedris/features/courses/components/kosk-page.tsx:78 } # the caller's own seat; a visitor, a stranger, and a REVOKED seat wear none
+  inPersonBadge: { type: text, component: Text, text: { key: KoskPage.inPerson }, in: [koskShown], when: hasCourses, repeat: courses.inPerson, source: apps/tedris/features/courses/components/kosk-page.tsx:107 } # only a course that is in person
+  madrasahLine: { type: text, component: Text, text: { key: composed.KoskPage.madrasahLine, params: { madrasah: madrasah.name } }, in: [koskShown], when: hasCourses, repeat: courses.madrasah, source: apps/tedris/features/courses/components/kosk-page.tsx:112 } # only a course a medrese opened
+  madrasahLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.KoskPage.madrasahName, params: { madrasah: madrasah.name } }, in: [koskShown], when: hasCourses, repeat: courses.madrasah, emits: OPEN_MADRASAH, source: apps/tedris/features/courses/components/kosk-page.tsx:116 }
+  hocaLine: { type: text, component: Text, text: { key: composed.KoskPage.hocaLine, params: { hocas: course.hocas } }, in: [koskShown], when: hasCourses, repeat: courses, source: apps/tedris/features/courses/components/kosk-page.tsx:123 } # the unvan of this course before each name; the imam's star only among more than one hoca (out of view)
+  nextSession: { type: text, component: Text, text: { key: composed.KoskPage.nextSessionLine, params: { when: course.nextSession } }, in: [koskShown], when: hasCourses, repeat: courses.next, source: apps/tedris/features/courses/components/kosk-page.tsx:95 } # a <time>: weekday and clock in the viewer's zone
+  noNextSession: { type: text, component: Text, text: { key: KoskPage.noNextSession }, in: [koskShown], when: hasCourses, repeat: courses.noNext, source: apps/tedris/features/courses/components/kosk-page.tsx:101 }
+
+  # the visitor's invitation, under the cards: a sentence with two links in it
+  invite: { type: text, component: Text, text: { key: AnonymousInvite.apply }, in: [koskShown], when: isVisitor, source: apps/tedris/components/anonymous-invite.tsx:55 }
+  inviteSignIn: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.AnonymousInvite.applySignIn }, in: [koskShown], when: isVisitor, emits: SIGN_IN, source: apps/tedris/components/anonymous-invite.tsx:41 } # /auth/signin?callbackUrl=%2Fkosks%2F<id>
+  inviteRegister: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.AnonymousInvite.applyRegister }, in: [koskShown], when: isVisitor, emits: REGISTER, source: apps/tedris/components/anonymous-invite.tsx:46 } # /auth/register
+
+  # ---- Köşk desteleri: only for a person the köşk knows ----
+  decksSection: { type: page, component: Page, role: region, name: { labelledBy: decksTitle }, in: [koskShown], when: deckBlock, source: apps/tedris/features/courses/components/kosk-page.tsx:241 }
+  decksTitle: { type: text, component: Heading, role: heading, text: { key: KoskPage.decksTitle }, in: [koskShown], when: deckBlock, source: apps/tedris/features/courses/components/kosk-page.tsx:246 } # h2
+  decksHint: { type: text, component: Text, text: { key: KoskPage.decksHint }, in: [koskShown], when: deckBlock, source: apps/tedris/features/courses/components/kosk-page.tsx:249 }
+  decksEmpty: { type: text, component: Text, text: { key: KoskPage.decksEmpty }, in: [koskShown], when: deckNone, source: apps/tedris/features/courses/components/kosk-page.tsx:252 }
+  deckHeading: { type: text, component: Heading, role: heading, text: { key: composed.KoskPage.deckTitle, params: { deck: deck.title } }, in: [koskShown], when: deckCards, repeat: decks, source: apps/tedris/features/courses/components/kosk-page.tsx:260 } # h3
+  deckLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.KoskPage.deckTitle, params: { deck: deck.title } }, in: [koskShown], when: deckCards, repeat: decks, emits: OPEN_DECK, source: apps/tedris/features/courses/components/kosk-page.tsx:259 }
+  deckMeta: { type: text, component: Text, text: { key: composed.KoskPage.deckMetaLine, params: { count: deck.cardCount } }, in: [koskShown], when: deckCards, repeat: decks, source: apps/tedris/features/courses/components/kosk-page.tsx:272 }
+  deckInCollection: { type: text, component: Text, text: { key: KoskPage.inCollection }, in: [koskShown], when: deckCards, repeat: decks.collected, source: apps/tedris/features/courses/components/kosk-page.tsx:268 }
+
+  # ---- the page that takes its place when there is no such köşk ----
+  notFoundSection: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:49 } # a <section>: no <main> around it on this address (READKOSK-1)
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+  notFoundHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SystemPages.notFoundAction }, in: [notFound], emits: GO_HOME, source: apps/tedris/features/errors/system-page.tsx:54 } # "/home" signed in, "/" for a visitor
+
+  # ---- the box that takes the page's place when a read failed ----
+  loadFailedPage: { type: page, component: Page, role: main, in: [loadFailed], source: apps/tedris/features/courses/components/kosk-page.tsx:296 } # a <main> with an alert in it and nothing else: no heading, no breadcrumb (DSC-09 a)
+  loadFailedAlert: { type: alert, component: Alert, role: alert, in: [loadFailed], source: apps/tedris/features/courses/components/kosk-page.tsx:300 } # role=alert: announced as it appears
+  loadFailedTitle: { type: text, component: Text, text: { key: KoskPage.loadErrorTitle }, in: [loadFailed], source: apps/tedris/features/courses/components/kosk-page.tsx:300 } # a <p>, not a heading
+  loadFailedText: { type: text, component: Text, text: { key: KoskPage.loadError }, in: [loadFailed], source: apps/tedris/features/courses/components/kosk-page.tsx:301 }
+  retry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskPage.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/courses/components/kosk-page.tsx:303 } # a link to the page's own address
+
+edges:
+  - { labelledBy: [coursesSection, coursesTitle] }
+  - { labelledBy: [decksSection, decksTitle] }
+  - { labelledBy: [notFoundSection, notFoundTitle] }
+
+rules:
+  - { id: F-4, rule: "tedrisat answers a signed-in caller on GET /kosks/{id} with the creator's id (ownerId) and every nazım's id (managerIds) (kosk.controller.ts:261; anonymous-mask.ts:13 masks them only for a caller with no token): the domain's invariant kosk-person-ids-stay-off-public-reads holds: false. This page does not show or ship them: it renders managerName only, and the served HTML (document and RSC payload) for a visitor, a stranger and a member contains neither the creator's nor the nazım's id (looked for by value, 15 Nov 2026), because KoskPage runs on the server and FollowButton, the only client component, is handed the id, the name and the flag. The leak is the API's; the fix is there: mask ownerId and managerIds for every caller of the public reads. The binding's effect getKosk reads the same answer the page read." }
+  - { id: DSC-09, rule: "The failed-read box has no heading (its title is a <p> inside the Alert) and its breadcrumb is given one item, which Breadcrumb draws as nothing (libs/ui/src/mds/breadcrumb.tsx:22), so the page is an alert, a link and no way back but the bar (kosk-page.tsx:293-310). Fix: draw an h1 and a two-item breadcrumb." }
+  - { id: DSC-12, rule: "A course card's cover is not hidden and prints the course's Arabic label as a <p> before the card's title when the course has a coverLabel (cover-pattern.tsx:76-84, kosk-page.tsx:77); a screen reader reads an unexplained Arabic word before the course. The seeded courses have no label, so the replay does not meet it. Fix: pass aria-hidden to the media cover." }
+  - { id: DSC-19, rule: "app/kosks/[koskId]/loading.tsx is a <main aria-busy> of aria-hidden skeletons with no text, so nothing says the page is loading; aria-busy is not announced. Not drawn: the reads are too quick for a replay to stop on it. Fix: add a visually hidden \"Yükleniyor\" status." }
+  - { id: READKOSK-1, rule: "The not-found state of this address has no <main> landmark: /kosks is in tab-view's ownsItsMain list (components/tab-view/index.tsx:12-22), so the shell leaves its <main> off, and NotFoundState draws a <section> (SystemState shell, system-page.tsx:49). Served page of /kosks/<unknown>: no <main> at all (the same for /madrasahs/<unknown>); an unknown top-level address is wrapped in the legacy <main>. Proposed id; not in the inventory. Fix: give NotFoundState a <main> when it is not inside one, or leave the wrapper on for the not-found boundary." }
+  - { id: focus-not-set, rule: "The köşk page sets no initial focus (no autoFocus and no focus() in kosk-page.tsx), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: label-in-name, rule: "the follow button's visible text (\"Takip et\" or \"Takip ediliyor\") is contained in its accessible name (\"Takip et: <köşk>\"), as WCAG 2.5.3 asks" }
+  - { id: badge-with-text, rule: "a seat's badge says it in words (\"Devam ediyor\", \"Onay bekliyor\", \"Tamamlandı\"); the colour and the clock icon of the waiting one are not the only sign" }
+  - { id: unlisted-by-link, rule: "an unlisted köşk opens by its link for a signed-in person and is marked \"Liste dışı\"; for a visitor the same link is the not-found page, and the browser tab's title is \"Tedris\" for everyone, because the metadata is read with no token (public-reads.ts:58, intro-metadata.ts:26)" }

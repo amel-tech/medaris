@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Filters } from "~/features/courses/courses";
 import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
@@ -22,6 +22,8 @@ type Answer<T> =
 const state = {
   courses: { status: "failed" } as Answer<unknown[]>,
   hosting: { status: "failed" } as Answer<unknown[]>,
+  /** The exam summary (MDRS-248); failed leaves its card out. */
+  exams: { status: "failed" } as Answer<unknown[]>,
   asked: [] as unknown[],
   /** Whether `GET /me` calls the viewer the başnazım. */
   systemAdmin: false,
@@ -51,8 +53,13 @@ vi.mock("~/lib/tedrisat-read", () => ({
         },
         getMadrasahHostingKosks: async () => {},
       },
+      exams: { getMadrasahExamSummary: async () => {} },
     });
-    return what.includes("hosting") ? state.hosting : state.courses;
+    return what.includes("hosting")
+      ? state.hosting
+      : what.includes("exam")
+        ? state.exams
+        : state.courses;
   },
 }));
 vi.mock("~/features/account/reads", () => ({
@@ -204,6 +211,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-02T12:00:00+03:00"));
   state.courses = { status: "ok", data: courses };
   state.hosting = { status: "ok", data: kosks };
+  state.exams = { status: "failed" };
   state.asked = [];
   state.systemAdmin = false;
   for (const fn of [
@@ -222,6 +230,30 @@ afterEach(async () => {
 });
 
 describe("Dersler", () => {
+  it("sums up its courses' exams for the nazır beside the table (MDRS-248)", async () => {
+    state.exams = {
+      status: "ok",
+      data: [
+        {
+          courseId: "c-1",
+          courseTitle: "Bina ve İzhar Şerhi",
+          examCount: 2,
+          takenCount: 17,
+          absentCount: 3,
+          averagePercent: 72.5,
+        },
+      ],
+    };
+    const text = textOf(await markup());
+    expect(text).toContain("Sınav özeti");
+    expect(text).toContain("2 sınav · 17 giren · 3 girmeyen");
+    expect(text).toContain("Ortalama %72,5");
+  });
+
+  it("leaves the exam summary out when it cannot be read", async () => {
+    expect(textOf(await markup())).not.toContain("Sınav özeti");
+  });
+
   it("is headed with the medrese's own possessive and has the two buttons of the canvas", async () => {
     const out = await markup();
     expect(out).toMatch(/<h1[^>]*>Dersler<\/h1>/);
@@ -524,6 +556,88 @@ describe("'Hocaları değiştir' (nazir 17)", () => {
       muderrisUserIds: ["u-1", "u-2", "u-9"],
       imamUserId: "u-1",
     });
+  });
+
+  it("will not save while a hoca is being looked up, and sends them once they are listed", async () => {
+    let answer: (value: unknown) => void = () => {};
+    lookupPerson.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    replaceMuderris.mockResolvedValue({ success: true, data: null });
+    await open();
+    // the list already differs, so Kaydet would be on
+    await click(byLabel("Çıkar: Abdülhamit Karaosmanoğlu"));
+    expect(save().disabled).toBe(false);
+    await search("a.kilicarslan@example.com");
+    expect(emailField().disabled).toBe(true);
+    expect(save().disabled).toBe(true);
+    // Enter in a field sends the form without the button: it is refused as well
+    const form = (dialog().closest("form") ??
+      dialog().querySelector("form")) as HTMLFormElement;
+    await act(async () => {
+      form.requestSubmit();
+    });
+    await settle(20);
+    expect(replaceMuderris).not.toHaveBeenCalled();
+
+    await act(async () => {
+      answer(found);
+    });
+    await settle(40);
+    expect(save().disabled).toBe(false);
+    await click(save());
+    await settle(60);
+    expect(replaceMuderris).toHaveBeenCalledExactlyOnceWith("m-1", "c-1", {
+      muderrisUserIds: ["u-1", "u-9"],
+      imamUserId: "u-1",
+    });
+  });
+
+  it("holds the list while it is saved, so what is saved is what is shown", async () => {
+    lookupPerson.mockResolvedValue(found);
+    let answer: (value: unknown) => void = () => {};
+    replaceMuderris.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await search("a.kilicarslan@example.com");
+    expect(dialog().textContent).toContain("3 hoca");
+    await click(save());
+    await settle(20);
+
+    expect(replaceMuderris).toHaveBeenCalledExactlyOnceWith("m-1", "c-1", {
+      muderrisUserIds: ["u-1", "u-2", "u-9"],
+      imamUserId: "u-1",
+    });
+    expect(emailField().disabled).toBe(true);
+    const other = byLabel(
+      "Çıkar: Abdülhamit Karaosmanoğlu"
+    ) as HTMLButtonElement;
+    expect(other.disabled).toBe(true);
+    expect(
+      (byLabel("Çıkar: Mehmet Emin Işıkoğlu") as HTMLButtonElement).disabled
+    ).toBe(true);
+    const radio = dialog().querySelector(
+      '[role=radio][aria-label="Dersin imamı: Abdülhamit Karaosmanoğlu"]'
+    );
+    expect(radio?.hasAttribute("data-disabled")).toBe(true);
+    await click(other);
+    await click(radio as Element);
+    expect(dialog().textContent).toContain("3 hoca");
+    expect(radio?.getAttribute("aria-checked")).toBe("false");
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(20);
+    expect(other.disabled).toBe(false);
+    expect(emailField().disabled).toBe(false);
+    expect(radio?.hasAttribute("data-disabled")).toBe(false);
   });
 
   it("says so when the person is already listed, when no account has the address and when the directory is down", async () => {

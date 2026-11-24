@@ -1,0 +1,53 @@
+# nazar.roster.complete, FAIL.gone: the talebe's seat is taken out of the course after the page showed it, so "Tamamladı say" is answered
+# with 409 ENROLLMENT_STATE_CONFLICT (a REVOKED seat is completed through nothing), the info toast "Bu talebenin kaydı artık böyle değil;
+# liste yenilendi." and the list read again without that row; the search box still holds the name, so it now finds nobody
+# (the `searched` branch of FAIL.gone, effect goneSearched).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/roster/complete \
+#     --bind graphs/nazar/roster/complete/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. READ ONLY THE WALK THAT TAKES `FAIL.gone` WITH A SEARCH (the one whose path types the name before
+# "Tamamladı say"): `before` on the button removes Esma Başvuran's seat on every press, so the walks of this file that press the first row
+# (the plain branch of FAIL.gone, and DONE) fail there by design; binding.yaml walks DONE, and the plain branch is not walked.
+#
+# How the answer is made. The event FAIL.gone is no node's, and an event the binding gives runs after the call has been made, so it cannot
+# cause the refusal. What causes it is `before` on the node the walk presses: just before the click, the müderris (the API, as her)
+# removes the seat of the talebe the search found, Esma Başvuran (applicantC), so the click finds a REVOKED seat. The event itself only
+# waits for what the app says. The page was read before, so it still draws the row. The walk's course and its twelve talebe are
+# binding.yaml's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.complete
+
+scenarios:
+  goneMeanwhile:
+    given: { reader: team }
+    as: muderris
+    open: '{nazar}/ders/{rc.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosCom, --weeks, '1', --lessons, '1', --talebe, 'applicantA,applicantB,applicantC,applicantD,applicantE,applicantF,applicantG,applicantH,talebe,talebeMale,other,medarisNazim']
+        expect: '"APPLICANT_H":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosCom]
+        expect: 'course remove rosCom'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi rosCom%'"]
+        expect: '"n":0'
+
+events:
+  FAIL.gone:
+    - waitText: Bu talebenin kaydı artık böyle değil; liste yenilendi.
+
+nodes:
+  complete:
+    role: button
+    name: '/^Tamamladı say: /'
+    before:
+      - run: [node, helpers/api.mjs, muderris, POST, '/courses/{rc.course}/enrollments/{secret.E2E_APPLICANT_C_SUB}/remove', '{"reason":"Deneme"}']
+        expect: 'true'
+
+effects:
+  goneSearched:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'REVOKED'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'COMPLETED'"]
+      expect: '"n":0'

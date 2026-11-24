@@ -1,0 +1,182 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.access.medreseNazirRefused
+status: proposed
+summary: >-
+  What must exist for a medrese nazırı whom the başmüderris gave nothing (or one permission) to open the pages of the medrese and
+  be told, on each, what they may do: the flow's product list. Each need is what the product must do, from the flow's story and
+  the open bugs (planned.md C: MDRS-223), not from what the pages do today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the unit tests named under `walked` are the only runs):
+# missing:  menu-draws-what-opens (MDRS-223), lands-on-a-page-that-opens (none), refusal-says-how-to-ask (none),
+# awaiting-notice-speaks-to-the-giver (none), partial-courses-grants-say-why (none)
+# unwalked: appeals-refusal-is-walked (a unit test, no e2e and no replay), nazir-appoint-sees-own-rows (a unit test, no e2e: the replay
+# scenario `appointer` is written and not run), head-contrast-is-walked (the replay scenario `head` is written and not run)
+# The course menu's twin of menu-draws-what-opens (F-D2c-2: Yasaklamalar, Ders nazırları and Ders ayarları drawn to a ders nazırı with no
+# grant) is a need of nazar.access.dersNazirPages, not of this flow.
+
+needs:
+  - id: refusal-keeps-the-page
+    need: >-
+      A person who holds none of the codes a page of the medrese asks for is told so on that page, under the page's own title, in
+      one wording for all ten pages, and is given none of the page's body, list, form or buttons; the başmüderris, who holds every
+      medrese code, is never refused.
+    evidence:
+      - state: shown
+      - node: forbiddenAlert
+      - node: forbiddenText
+      - node: panoTitle
+      - node: coursesTitle
+      - node: courseNewTitle
+      - node: offsiteTitle
+      - node: archiveTitle
+      - node: studentsTitle
+      - node: nazirsTitle
+      - node: bansTitle
+      - node: appealsTitle
+      - node: settingsTitle
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:117
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:664
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:82
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:239
+      - source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:74
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:73
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:64
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+      - source: apps/nazar/features/shell/components/page-problem.tsx:23
+      - source: apps/nazar/lib/tedrisat-read.ts:45
+      - test: apps/nazar/e2e/pano.e2e.ts
+        name: "nazir/01 — a medrese nazır is refused the dashboard: the cards stay, a notice stands under them, and there is no 'Medrese dersi aç'"
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/07, 08 — a medrese nazır is refused: a notice, no list and no way to open a course"
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — a medrese nazır is refused: a notice and no form"
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — a medrese nazır is refused: a notice, no list and no way to hide the medrese"
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — a medrese nazır is refused: a notice and no list"
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — a medrese nazır is refused: a notice, no table and no way to appoint (criterion 5)"
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — a medrese nazır is refused: a notice, no list and no 'Yasakla'"
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — a medrese nazır is refused: a notice, no form (criterion 4)"
+      - test: apps/nazar/test/pano.spec.tsx
+      - test: apps/nazar/test/courses-page.spec.tsx
+      - test: apps/nazar/test/open-course.spec.tsx
+      - test: apps/nazar/test/offsite.spec.tsx
+      - test: apps/nazar/test/archive-page.spec.tsx
+      - test: apps/nazar/test/students.spec.tsx
+      - test: apps/nazar/test/nazirs-page.spec.tsx
+      - test: apps/nazar/test/bans.spec.tsx
+      - test: apps/nazar/test/settings-page.spec.tsx
+    note: Also drawn as the assertion a-nazir-with-no-grant-meets-no-body, the assertion the-head-is-never-refused.
+
+  - id: appeals-refusal-is-walked
+    need: >-
+      Every page of the medrese that can refuse is walked as a person with no grant, İtirazlar included, so that a page added to
+      the menu cannot refuse without anything noticing.
+    evidence:
+      - node: appealsTitle
+      - node: appealsLine
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:64
+      - source: apps/nazar/features/appeals/components/appeals-page.tsx:30
+      - test: apps/nazar/test/appeals.spec.tsx
+
+  - id: menu-draws-what-opens
+    need: >-
+      The medrese menu draws, for each person, the entries whose page opens for the codes they hold in the medrese, or marks the
+      others, so that a nazır with no grant is not offered eight pages that all say no (MDRS-223; the course menu already does it
+      for Ödevler, Değerlendirme and Ders destesi, MDRS-290).
+    missing: MDRS-223; findings MDRS-223
+    note: >-
+      Drawn on the nodes mainMenu, menuPano, menuCourses, menuStudents, menuNazirs, menuBans, menuAppeals, menuArchive and
+      menuSettings, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only
+      missing needs name).
+
+  - id: lands-on-a-page-that-opens
+    need: >-
+      A nazır with no grant who signs in, or opens "/", lands on a page that opens for them (Bildirimler at the least) or on a
+      Pano that says what they may do, not on the first page that refuses them (REFUSED-1).
+    missing: no Linear issue; findings REFUSED-1
+    note: >-
+      Drawn on the state opened and on the nodes panoTitle, greeting, scopeCard and forbiddenAlert, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: refusal-says-how-to-ask
+    need: >-
+      The refusal is announced to a person who cannot see it (a heading or an alert), names whom to ask and gives a way to do it,
+      and leads to the first page the person may open; the page's tab title says it too (F-A-16, F-B-13).
+    missing: no Linear issue; findings F-A-16, F-B-13
+    note: >-
+      Drawn on the nodes forbiddenAlert, forbiddenText and crumbCourses, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: nazir-appoint-sees-own-rows
+    need: >-
+      A nazır the başmüderris allowed to appoint (madrasah.nazir_appoint) reads the roster and the permission groups, appoints,
+      and dismisses only the people they seated; they give no permission and define no group, and every other page of the medrese
+      still refuses them (MDRS-108).
+    evidence:
+      - node: nazirsTable
+      - node: appointNazir
+      - node: dismissRow
+      - node: groupsTitle
+      - node: awaitingAlert
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:73
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+      - source: apps/nazar/features/nazirs/components/nazirs-table.tsx:44
+      - test: apps/nazar/test/nazirs-page.spec.tsx
+    note: >-
+      Also drawn as the assertion madrasah-nazir-appoint-opens-the-roster, the assertion
+      madrasah-nazir-appoint-opens-the-roster-only.
+
+  - id: awaiting-notice-speaks-to-the-giver
+    need: >-
+      The warning that a nazır "henüz izin almadı" is shown to the person who can give permission, and worded for a nazır who
+      cannot (REFUSED-2).
+    missing: no Linear issue; findings REFUSED-2
+    note: >-
+      Drawn on the nodes awaitingAlert and awaitingText, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: partial-courses-grants-say-why
+    need: >-
+      A nazır holding some of the courses family of codes (madrasah.course_hide or madrasah.muderris_manage without
+      madrasah.course_open; no madrasah.settings_edit) is told on the controls they cannot use that it is a refusal, not that the
+      köşks or policies "could not be read", and is not offered a button that leads to a refusal (F-A-8).
+    missing: no Linear issue; findings F-A-8
+    note: >-
+      Drawn on the nodes coursesTitle and forbiddenAlert, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: head-contrast-is-walked
+    need: >-
+      The same walk as the başmüderris shows, on each of the ten pages, the control that the nazır with no grant is not given, so
+      that a refusal that leaves a button behind (REFUSED-3) is caught by the walk and not only by the nazır's own.
+    evidence:
+      - node: openCourseLink
+      - node: applicationsTitle
+      - node: offsiteLink
+      - node: coursesTable
+      - node: courseNewSubmit
+      - node: offsiteSubmit
+      - node: hideMedrese
+      - node: archiveTable
+      - node: studentsTable
+      - node: appointNazir
+      - node: givePermission
+      - node: defineGroup
+      - node: banButton
+      - node: appealsEmpty
+      - node: saveSettings
+      - node: settingsGeneral
+      - source: apps/nazar/features/pano/components/pano-page.tsx:108
+      - source: apps/nazar/features/settings/components/settings-form.tsx:228

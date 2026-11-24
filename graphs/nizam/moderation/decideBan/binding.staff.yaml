@@ -1,0 +1,46 @@
+# nizam.moderation.decideBan at the köşk's list, the one-click widening over a person who runs THIS course: BAN_TARGET_INVALID (widening
+# FAIL.invalid). Part of the finding ban-staff-check-gaps, the half the code gets right: createBan reads the person's roles at the ban's own
+# course, köşk and medrese (ban.service.ts:155-163) and refuses a hoca of it with 400, "Köşk yasağı konamadı: Bu kişi yasaklanamaz." The row is
+# still drawn with the widening (the list does not know the person was named after the ban), and the same ban widened from the Medaris list is
+# accepted (binding.all.yaml, `chiefStaff`).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.staff.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# How the world is made: the ban first, while the person is a talebe (a ban on a hoca is refused when it is placed), then the post
+# (helpers/seat-hoca.mjs, as the başnazım). applicantD is not enrolled in the course, so that being named hoca of it is not also being its
+# talebe. This is what the code does today: what it records is the check that holds, and the fix is for the other route. `call` is left off:
+# a refusal of a server action answers 200 on the page's own address.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+states:
+  listed: { url: '{nizam}/kosks/*/yasaklamalar' }
+  empty: { url: '{nizam}/kosks/*/yasaklamalar' }
+
+scenarios:
+  staffKosk:
+    given: { viewer: kosk, read: ok, row: staff, answer: invalid, after: more }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, APPLICANT_D]
+        expect: 'ready: 1 open'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'seat-hoca APPLICANT_D'
+    teardown:
+      - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'unseat-hoca APPLICANT_D'
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_D]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_D
+      liftHas: 'COURSE lifted'
+      widenHas: KOSK open

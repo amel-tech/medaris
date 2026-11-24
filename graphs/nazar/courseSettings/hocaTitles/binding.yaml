@@ -1,0 +1,92 @@
+# nazar.courseSettings.hocaTitles on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the
+# course's hoca signed in through Keycloak's real form, on Ders ayarları of the walk's own course, by the sidebar's "Ders ayarları".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courseSettings/hocaTitles \
+#     --bind graphs/nazar/courseSettings/hocaTitles/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>        (every transition the three scenarios below can drive; also binding.forbidden.yaml and binding.gone.yaml)
+# Not --absent: the toast of the step before may still be on screen (the 6 seconds of a success, the whole walk of an error), and the pressed
+# button's output keeps "Kaydediliyor…" until the page is read again.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so nothing below has been walked. What the walk needs, what it makes and
+# what it leaves are in binding.common.yaml.
+#
+#   titles    (the main story) a course with two hocas, MUDERRIS and applicantH. The hoca opens the first select, chooses "Doç. Dr.", opens the
+#             second, chooses "Doç. Dr.", presses Kaydet: two PUTs, the toast "Unvanlar kaydedildi", both rows hold DOC_DR. `--cover transitions`
+#             also walks from this start the lists' Esc and "Hoca (unvansız)", Vazgeç, the reload that reads the card again, and leaving.
+#   guest     a hoca with an account and a hoca with no account: setup writes the second row with SQL (no route can make a hoca with no account,
+#             the API refuses such a list; changeHocas does the same). Its select is shut and its line says why; the first select works and a
+#             save writes one title. The one use of SQL for data in this folder.
+#   viewer    a ders nazırı who holds session.manage alone opens the page (it is one of its codes) and meets the card with the selects shut and
+#             "Unvanları değiştirme izniniz yok; yalnız görebilirsiniz." (helpers/course-nazir-grants.mjs appoints her in the walk's course).
+#
+# Not bound, and why (each is an `unreached` line of the cover, or a given no file takes):
+#   - `answer: invalid` (VALIDATION_ERROR: the options cannot produce a body the API refuses) and `answer: failed` (a missing course, a
+#     malformed id, a call that fails outright): no condition of the local stack makes the API refuse a valid PUT on request.
+#   - FAIL.missing of the page's own read (`not_found`): the course is the walk's own.
+#   - the session ending between the page and Kaydet (the page then sends the person to sign in): realm.auth.sessionEnded's.
+#   - a hoca with no account in a walk that saves with `answer: notHoca` or `forbidden`: the two refusals are walked on a pair (below).
+# The refusals of a write that the stack can make on request are walked in their own files: binding.forbidden.yaml (course.settings taken away
+# before Kaydet) and binding.gone.yaml (the second hoca taken off the course before Kaydet).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.courseSettings.hocaTitles
+
+scenarios:
+  titles:
+    given: { reader: editor, team: pair, answer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hocaTitles, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hocaTitles"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantH]
+        expect: seat-hoca
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hocaTitles]
+        expect: removed
+    vars:
+      title: Doç. Dr.
+
+  guest:
+    given: { reader: editor, team: guest, answer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hocaTitles, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hocaTitles"'
+      # no route makes a hoca with no account; this is the one use of SQL here (tedrisat's database, through helpers/sql.mjs). The name is
+      # one that does not end in "Hoca", since the course writes "{name} Hoca" for a hoca with no title
+      - run: [node, helpers/sql.mjs, "insert into course_muderris(course_id, user_id, name, order_index) values ('{made.course}', null, 'Ahmed Hilmi', 5)"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hocaTitles]
+        expect: removed
+    vars:
+      title: Doç. Dr.
+
+  viewer:
+    given: { reader: viewer, team: pair, answer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hocaTitles, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hocaTitles"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantH]
+        expect: seat-hoca
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hocaTitles]
+        expect: removed
+    vars:
+      title: Doç. Dr.
+
+states:
+  # Kaydet is a Next server action: a POST to the page's own address, held while the busy state is checked. The action answers 200 on that
+  # address whatever the API said, so a FAIL class cannot be compared with its status here: binding.forbidden.yaml and binding.gone.yaml
+  # leave `call` off. The page's own reads are GETs, so this matches only the POST. Two PUTs make two POSTs; the first is held.
+  saving: { call: '{nazar}/ders/{made.course}/ayarlar' }
+  left: { url: '{nazar}/hesap' }

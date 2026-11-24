@@ -1,0 +1,44 @@
+# tedris.learn.homeworkMemorize on the local stack (graphs/bindings/local.tedris.binding.yaml): tedris-web on :4000, the spare talebe
+# `applicantD` signed in through Keycloak's real form, on the celse page of a celse whose homework is recited. The main story:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkMemorize \
+#     --bind graphs/tedris/learn/homeworkMemorize/binding.yaml --out <dir>
+# The other cases are a file each (binding.marked.yaml, .incomplete, .absent, .note, .reviewed), all extending walk.common.binding.yaml,
+# where what a walk makes and removes is told. NOT RUN in the writing phase: nothing below has been replayed.
+#
+# Scenario `waits`. `setup` makes a published course of its own (course.mjs make memorize: one week of two celses, the first tomorrow at 21:00
+# Istanbul, in the second köşk, the müderris as hoca) with applicantD holding a seat, has the müderris set the first celse's homework as
+# "Ezber" with a description, and reads the talebe's own mark by the API: null, "Bekliyor" (evaluation#3's waiting read). The walk comes
+# in by the course page and "Devam et", reads "Bekliyor", has the müderris save "Tam" with a note (HOCA_MARKS, through tedrisat; the step
+# checks the API gives it to the talebe, evaluation#1's last step), sees that the card has not changed (MEMO-1), reloads, and reads "Tam" and
+# the note. `teardown` removes the course and leaves applicantD with no seat, no mail and no notification.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+scenarios:
+  waits:
+    given: { mark: none, verdict: full, note: written, earlier: none }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      markStatus: FULL
+      markBody: '{"status":"FULL","note":"Üçüncü satırı bir daha oku."}'
+    samples:
+      description: İlk fasıl ezberden okunacak.
+      note: Üçüncü satırı bir daha oku.
+    setup:
+      - run: [node, helpers/course.mjs, make, memorize, --weeks, '1', --lessons, '2', --talebe, applicantD]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"İlk fasıl ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+      - run: [node, helpers/api.mjs, applicantD, GET, '/lessons/{made.lessons.0}/evaluation']
+        expect: '"status":null'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, memorize]
+        expect: course remove memorize
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

@@ -1,0 +1,110 @@
+# The screens of nazar.nazirs.appoint: "Medrese nazırları" (/medrese/<id>/nazirlar) with its band and table, and the "Medrese nazırı
+# ata" dialog over it. Read from apps/nazar/features/nazirs/components/{nazirs-page,nazirs-table,appoint-nazir}.tsx and nazirs.ts on 15 Nov
+# 2026; the words are copied from libs/i18n/src/locales/tr/nazar.json, key for key. Nothing was walked in a browser (from the code); the
+# unit tests named in needs.yaml exercise the same components.
+#
+# The page behind the dialog is drawn only where the dialog is closed (the dialog is modal, so the page is inert while it is open).
+# The roster's rows are data: the nodes marked `repeat` stand for one item per nazır who holds nothing (or per nazır), and the replay
+# finds them through the binding. The refusal of the page (403) and the other rows of the table are other flows' (flow.yaml, outOfView).
+#
+# Samples: `name` is the one sample for every kind of {name} here: the person who is found and appointed (the toast, "Seçimi kaldır:
+# name", "İzin ver: name", "Görevden al: name", the band) and, in "Atayan: {name} · {date}" and the table's caption, the appointer
+# and the medrese. The page tool therefore draws those with the appointee's name; the replay reads the binding's samples, which are
+# none, so it matches any text there.
+schema: delurio-graph/0
+kind: ui
+id: nazar.nazirs.appoint
+flow: nazar.nazirs.appoint
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Appoint.appointedBody } # the app's own sentence says what the appointment does: "{name} atandı; siz izin verene kadar hiçbir işlem yapamaz."
+samples:
+  name: Betül Başvuran
+  appointer: Nuri Başmüderris
+  dateLocative: 15 Kasım’da
+  date: 15 Kasım 2026
+  count: "2"
+  names: Seher Medrese Nazırı ve Betül Başvuran
+
+# The page sets no focus of its own on load (nothing in features/nazirs does), so there is no `initialFocus` on the page. The dialog
+# gives it to the e-mail field (`initialFocus={emailRef}`, appoint-nazir.tsx:146).
+nodes:
+  # ---- the page, the dialog closed ----------------------------------------------------------------------------------------------
+  nazirsPage: { type: page, component: Page, role: main, in: [listed], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:53 } # the shell's one <main id="main">; it has no name
+  nazirsTitle: { type: text, component: Heading, role: heading, text: { key: Nazirs.title }, in: [listed], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:57 } # h1
+  nazirsIntro: { type: text, component: Text, text: { key: Nazirs.intro }, in: [listed], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:58 }
+  appointButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazirs.appoint }, in: [listed], emits: OPEN_APPOINT, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:128 } # primary, with a plus icon; drawn only when the roster was read; it stays after an appointment, so the focus has somewhere to return
+
+  # the band that names who holds nothing yet: one person by name, several by count (an Alert is a status unless it is an error)
+  bandOne: { type: alert, component: Alert, role: status, text: { key: Nazirs.awaitingTitle, params: { name: nazir.name } }, in: [listed], when: "band == 'one'", source: apps/nazar/features/nazirs/components/nazirs-page.tsx:79 } # warning tone; the title names the nazır who holds nothing
+  bandOneText: { type: text, component: Text, text: { key: Nazirs.awaiting, params: { appointer: appointer.name, dateLocative: appointment.day } }, in: [listed], when: "band == 'one'", source: apps/nazar/features/nazirs/nazirs.ts:213 } # "Siz izin verene kadar hiçbir işlem yapamaz": spoken to the giver
+  bandMany: { type: alert, component: Alert, role: status, text: { key: Nazirs.awaitingManyTitle, params: { count: roster.waiting } }, in: [listed], when: "band == 'many'", source: apps/nazar/features/nazirs/components/nazirs-page.tsx:79 }
+  bandManyText: { type: text, component: Text, text: { key: Nazirs.awaitingMany, params: { names: roster.names } }, in: [listed], when: "band == 'many'", source: apps/nazar/features/nazirs/nazirs.ts:231 }
+
+  # the roster: a table named by its caption; a row of data is a repeat node
+  rosterTable: { type: list, component: List, role: table, name: { key: Nazirs.caption, params: { name: madrasah.name } }, in: [listed], source: apps/nazar/features/nazirs/components/nazirs-table.tsx:183 } # the caption is visually hidden; {name} is the medrese
+  awaitingBadge: { type: text, component: Text, text: { key: Nazirs.noGrants }, in: [listed], when: "band != 'none'", repeat: roster.waiting, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:76 } # "İzin yok", one per nazır who holds nothing
+  appointedLine: { type: text, component: Text, text: { key: Nazirs.appointedBy, params: { name: appointer.name, date: appointment.date } }, in: [listed], when: "band != 'none'", repeat: roster.waiting, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:77 }
+  giveButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazirs.givePermissionLabel, params: { name: nazir.name } }, text: { key: Nazirs.givePermission }, in: [listed], when: "band != 'none'", repeat: roster.waiting, emits: GIVE_PERMISSIONS, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:147 } # on every row of the başmüderris's page; a nazır who holds something has "İzinleri düzenle" instead (nazar.nazirs.permissions)
+  dismissButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: Nazirs.dismissLabel, params: { name: nazir.name } }, text: { key: Nazirs.dismiss }, in: [listed], repeat: roster.nazirs, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:166 } # on every row for the başmüderris (nazar.nazirs.dismiss)
+
+  # the toast of an appointment: a dialog in the "Bildirimler" live region that closes by itself after 6 seconds
+  toastAppointed: { type: status, component: Status, role: dialog, name: { key: Appoint.appointed }, text: { key: Appoint.appointedBody, params: { name: person.name } }, in: [listed], when: "toast == 'appointed'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:101 }
+
+  # ---- the dialog "Medrese nazırı ata" ---------------------------------------------------------------------------------------------
+  appointDialog: { type: page, component: Page, role: dialog, name: { labelledBy: appointTitle }, in: [asking, searching, picked, pickedMember, appointing], initialFocus: emailField, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:134 }
+  appointEyebrow: { type: text, component: Text, text: { literal: "Hadis ve Siyer Medresesi" }, in: [asking, searching, picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:143 } # the medrese's name above the title (data, not a message); the seed's medrese
+  appointTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.title }, in: [asking, searching, picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:144 } # h2
+  appointClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [asking, searching, picked, pickedMember, appointing], emits: CANCEL, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:145 } # an icon button named by aria-label; closing is ignored while the appointment is on its way (APPOINT-1)
+  appointIntro: { type: text, component: Text, text: { key: Appoint.intro }, in: [asking, searching, picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:160 }
+
+  # the e-mail field, drawn until a person is chosen
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Appoint.label }, value: { literal: "" }, in: [asking, searching], disabledIn: [searching], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:205 } # type=email; the "*" is aria-hidden and the input has no `required` (F-B-7); disabled and aria-busy while it searches, so it loses the focus (F-B-8, APPOINT-5)
+  emailHelp: { type: text, component: Text, text: { key: Appoint.help }, in: [asking, searching], when: "note == 'none'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:202 } # the error replaces the help line
+  emailNobody: { type: text, component: Text, text: { key: Appoint.notFound }, in: [asking], when: "note == 'nobody'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:121 } # Field.Error: no role and no live region (APPOINT-5)
+  emailDown: { type: text, component: Text, text: { key: Appoint.failed }, in: [asking], when: "note == 'down'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:123 }
+  searchingStatus: { type: status, component: Status, role: status, text: { key: Appoint.searching }, in: [searching], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:228 } # the hidden <output>; it is empty when nothing is searched
+
+  # the person chosen
+  chosenRegion: { type: page, component: Page, role: region, name: { labelledBy: chosenTitle }, in: [picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:162 } # <section aria-labelledby="chosen-nazir" data-testid="chosen-nazir">
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.chosenTitle }, in: [picked, pickedMember, appointing], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:167 } # h3
+  removePerson: { type: action, component: Button, role: button, intent: secondary, name: { key: Appoint.remove, params: { name: person.name } }, in: [picked, pickedMember, appointing], disabledIn: [appointing], emits: REMOVE, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:182 } # an icon button named by aria-label; it removes itself and the focus is not moved (F-B-8). Natively disabled while the appointment is on its way (`disabled={pending}`, :186), so the person shown is the one the appointment is for
+  alreadyAlert: { type: alert, component: Alert, role: status, text: { key: Appoint.already }, in: [pickedMember], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:193 } # warning tone
+
+  # the footer
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Appoint.cancel }, in: [asking, searching, picked, pickedMember, appointing], emits: CANCEL, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:149 } # on while the appointment is on its way, and does nothing then (APPOINT-1)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Appoint.submit }, in: [asking, searching, picked, pickedMember, appointing], disabledIn: [asking, searching, pickedMember, appointing], emits: APPOINT, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:150 } # natively disabled until a person is chosen and is not a nazır, nothing says why (APPOINT-2); busy (aria-disabled, aria-busy) in `appointing`
+
+  # a refusal: an error toast over the dialog, which stays open with the person chosen; it stays until it is closed
+  toastBarred: { type: alert, component: Alert, role: alertdialog, name: { key: Appoint.failedTitle }, text: { key: Problems.barredFromMadrasah }, in: [picked], when: "toast == 'barred'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:110 }
+  toastSelf: { type: alert, component: Alert, role: alertdialog, name: { key: Appoint.failedTitle }, text: { key: Problems.selfGrant }, in: [picked], when: "toast == 'self'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:110 }
+  toastUnknown: { type: alert, component: Alert, role: alertdialog, name: { key: Appoint.failedTitle }, text: { key: Problems.unknownAccount }, in: [picked], when: "toast == 'unknownAccount'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:110 }
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: Appoint.failedTitle }, text: { key: Problems.actionForbidden }, in: [picked], when: "toast == 'forbidden'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:110 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Appoint.failedTitle }, text: { key: Problems.actionGeneric }, in: [picked], when: "toast == 'failed'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:110 }
+
+edges:
+  - { labelledBy: [appointDialog, appointTitle] }
+  - { labelledBy: [chosenRegion, chosenTitle] }
+  - { triggers: [appointButton, asking] }
+  - { triggers: [submit, appointing] }
+  - { returnsFocus: [appointDialog, appointButton] } # Base UI returns the focus to the element that opened the dialog, the header button, which outlives the refresh; not verified in a browser
+
+rules:
+  - { id: F-B-2, rule: "'Ata' passes no loadingLabel (appoint-nazir.tsx:150-155), so its hidden status says 'Yükleniyor' from the button's hard-coded default (libs/ui/src/mds/button.tsx:62), outside the catalog: a reader of the screen hears the same word for ten different writes, and it breaks the day a second locale is switched on. Not drawn as a node: the word is in no catalog. Fix: pass loadingLabel per action." }
+  - { id: F-B-7, rule: "The visible '*' of 'Nazırın e-posta adresi' is aria-hidden and the input carries no `required` (appoint-nazir.tsx:199-225; the Base UI Form is noValidate), so a reader of the screen is never told the field is required. Fix: required and aria-required on the input." }
+  - { id: F-B-8, rule: "The e-mail input is `disabled` while it searches (appoint-nazir.tsx:215), so the focus it had drops to the page, and when a person is found it is unmounted (:161-197) and nothing moves the focus to 'Ata' or to the heading 'Seçilen kişi'; 'Seçimi kaldır' likewise removes itself and gives the focus to nothing. Fix: keep the input enabled (readOnly), focus the chosen-person heading after a pick and the e-mail field after a removal." }
+  - { id: F-B-9, rule: "Does not apply to this flow: F-B-9 is a row action whose own button leaves after the write (dismiss, lift, group delete). The opener of this dialog is the header button 'Medrese nazırı ata', which the page keeps (nazirs-page.tsx:60-66) after router.refresh(), so Base UI has a target to return the focus to. Not verified in a browser. The dismiss case is nazar.nazirs.dismiss's." }
+  - { id: F-B-12, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so a reader of the screen may read the intro, the field and its help as the description of the dialog when it opens. Not verified how NVDA and VoiceOver treat it." }
+  - { id: F-B-16, rule: "The sentence 'Appoint.chosen' = '{name} seçildi' is in the catalog and nothing renders it: the found person simply replaces the field (appoint-nazir.tsx:161-197) and the hidden <output> says only 'Aranıyor' while searching, so a reader of the screen is told nothing when the search succeeds. Not drawn as a node (it is never in the page). Fix: render it in the <output> when `picked` is set." }
+  - { id: APPOINT-1, rule: "New. While the appointment is on its way 'Vazgeç', the close icon and Esc do nothing (`if (pending) return`, appoint-nazir.tsx:137) and are neither disabled nor marked, so a control that looks live does not answer. Fix: disable them with aria-disabled while it is pending, or let the person close the dialog and tell them the outcome in the toast." }
+  - { id: APPOINT-2, rule: "New. 'Ata' is natively disabled (`disabled={!picked || already}`, appoint-nazir.tsx:153) until a person is found, and nothing says why: no line names the step ('Önce bir kişi bulun'), a keyboard user's Tab skips it, and the form cannot be sent by Enter. The same family as nizam's F-X-3. Fix: keep it enabled and say what is missing, or tie the reason to it with aria-describedby." }
+  - { id: APPOINT-3, rule: "New. The address is searched when the field is left (`onBlur={() => void find()}`, appoint-nazir.tsx:224) as well as on Enter, and tedrisat writes every search, found or not, to the audit log (the help line says so). Tabbing through the field, or pressing 'Vazgeç' with an address typed in it (the blur comes before the click), makes an audited search nobody asked for; the person who closes the dialog is not told. The code's own doc says 'on Enter ... never per key'. Fix: search on Enter or an explicit 'Ara' button only (decision D1)." }
+  - { id: APPOINT-4, rule: "New. Text that cannot be an address (no '@', or no dot and two letters after it) is never searched (isEmailLike, nazirs.ts:245; `find`, appoint-nazir.tsx:66) and nothing is said: Enter does nothing and the field shows no error. A person who types the name of the one they mean gets silence. Fix: say 'Tam e-posta adresini yazın.' under the field." }
+  - { id: APPOINT-5, rule: "New. The answers of the search are a Field error ('Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.', 'Arama şu an yapılamıyor…') that has no role and no live region (libs/ui/src/mds/field.tsx), and the field that held the focus was disabled during the search, so a reader of the screen is told neither that the search ran nor how it ended unless they go back to the field; the e2e only reads the text. Fix: announce the answer with role=status and give the focus back to the field (F-B-8)." }
+  - { id: APPOINT-6, rule: "New. The başmüderris can find and choose herself, and 'Ata' is on: the server refuses a self-appointment always (SELF_GRANT_REFUSED, madrasah-nazir.controller.ts:117) and the page has the viewer's id (nazirs-page.tsx:35) but gives it to the table only (:89), not to the dialog, so the refusal comes only after the click, in a toast. The same holds for a person barred from the medrese: the dialog learns it only from the refusal (MADRASAH_NAZIR_BARRED). Fix: say it at the search ('Kendinizi nazır atayamazsınız.')." }
+  - { id: MDRS-233, rule: "The close button of every toast, the one of 'Nazır atandı' and of the refusals, is named 'Kapat' by a literal in libs/ui/src/mds/toast.tsx:97 (`aria-label=\"Kapat\"`), outside the catalog; it is the same in every language. Register: F-L-6, DCK-23, ACC-23." }
+  - { id: focus-not-set, rule: "No code of features/nazirs sets the focus when the page opens or when the toast shows; the dialog's `initialFocus={emailRef}` and Base UI's return of the focus are the only focus moves. Not verified in a browser." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'İzin ver' in 'İzin ver: {name}' and 'Görevden al' in 'Görevden al: {name}' (WCAG 2.5.3). The two icon buttons of the dialog, 'Kapat' and 'Seçimi kaldır: {name}', have no visible text. Holds." }
+  - { id: no-default-accept, rule: "The dialog's initial focus is the e-mail field, not 'Ata': a keyboard user cannot appoint by pressing Enter on arrival. Holds." }

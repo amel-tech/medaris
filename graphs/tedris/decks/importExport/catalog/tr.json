@@ -1,0 +1,23 @@
+{
+  "Decks.cancel": "Vazgeç",
+  "Decks.emptyCards": "Bu destede henüz kart yok.",
+  "Decks.export": "Dışa aktar",
+  "Decks.import": "İçe aktar",
+  "Decks.importFailedTitle": "Dosya içe aktarılamadı",
+  "Decks.importFile": "Dosya",
+  "Decks.importHelp": "CSV ya da Excel (.xlsx) dosyası seç; en çok 5 MB. İlk satır başlık olmalı.",
+  "Decks.importNoFile": "Bir dosya seç.",
+  "Decks.importRowErrors": "{count} satırda sorun var; hiçbir kart eklenmedi.",
+  "Decks.importSample": "Örnek şablonu indir",
+  "Decks.importTitle": "Kartları içe aktar",
+  "Decks.importedText": "{count} kart eklendi.",
+  "Decks.importedTitle": "Kartlar içe aktarıldı",
+  "Decks.tableCaption": "{title} destesinin kartları",
+  "Decks.tryAgain": "Bir sorun oluştu. Yeniden dene.",
+  "composed.Button.loading": "Yükleniyor",
+  "composed.Decks.importRowLine": "Satır {row}: {problems}",
+  "composed.Decks.sampleCsv": "CSV (.csv)",
+  "composed.Decks.sampleXlsx": "Excel (.xlsx)",
+  "composed.Dialog.close": "Kapat",
+  "composed.Toast.close": "Kapat"
+}

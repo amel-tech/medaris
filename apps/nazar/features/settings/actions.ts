@@ -7,6 +7,7 @@ import {
   outcomeOf,
 } from "~/lib/authenticated-action";
 import { type SettingsSnapshot, snapshotOf } from "./settings";
+import { type ZerothSaved, zerothOf } from "./zeroth-question";
 
 /**
  * "Kaydet" of nazir 04 (`PATCH /madrasahs/:id/settings`): only the fields in
@@ -27,5 +28,27 @@ export async function saveSettings(
   );
   if (!result.success)
     console.error("Error saving the settings:", result.error);
+  return outcomeOf(result);
+}
+
+/**
+ * Kaydet of "Sınavların sıfırıncı sorusu" (`PUT /madrasahs/:id/exam-zeroth-
+ * question`, MDRS-299): the whole question replaces the one before; the
+ * answer is what the API now holds. The exams already published keep theirs.
+ */
+export async function saveZerothQuestion(
+  madrasahId: string,
+  body: { text: string; options: string[] }
+): Promise<ActionOutcome<ZerothSaved>> {
+  const result = await authenticatedAction(async (api) =>
+    zerothOf(
+      await api.onlineExams.saveMadrasahZerothQuestion({
+        id: madrasahId,
+        saveZerothQuestionDto: body,
+      })
+    )
+  );
+  if (!result.success)
+    console.error("Error saving the zeroth question:", result.error);
   return outcomeOf(result);
 }

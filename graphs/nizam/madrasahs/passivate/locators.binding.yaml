@@ -1,0 +1,120 @@
+# What the walks of nizam.madrasahs.passivate share: the data they read, the events nobody presses a node for, the checks of what a
+# passivation leaves behind, the addresses of the states, and where the page's nodes are found where role and name cannot find them.
+# Nothing here changes data except what an `events` entry does on purpose (it is another person's step, see below); each scenario
+# (binding.yaml, binding.noCourses.yaml, binding.mayNot.yaml) makes its own medrese in `setup` and removes it in `teardown`.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every address and every account fact below is from
+# the code and unverified until the walk phase. The bindings load (`replay <dir> --bind <file> --emit-spec`, read-only: it writes a
+# spec and walks nothing).
+#
+# The data of a walk. The başnazım passivates the walk's own medrese "Deneme medresesi pasife" (tag `pasife`, short name deneme-pasife),
+# never the seeded one: passivate-data.mjs (this folder) makes it through tedrisat's HTTP API with the spare talebe account APPLICANT_C as
+# its başmüderris and a hosting right in the seed's second köşk (Kubbealtı Köşkü, which no seeded flow reads), and helpers/course.mjs opens
+# two courses of it there (`pasife-ders`, published, with APPLICANT_D, F and H enrolled and one live celse tomorrow; `pasife-taslak`, a
+# draft), so that the dialog has something to list: "2 ders kapanır (1 yayında, 1 taslak)" and "3 kayıtlı talebe içeriğe erişemez", the
+# numbers of madrasahs.e2e.ts#4. The seeded müderris is the hoca of both. APPLICANT_G is the talebe who applies behind the page's back
+# (SOMEONE_CHANGES_IT).
+#
+# Events with no node. SOMEONE_PASSIVATES, SOMEONE_DELETES and SOMEONE_CHANGES_IT are another person's steps in a race: the page, or the
+# dialog, was read before, and the server moves on. They are events of the flow (the page is stale before the person presses), driven
+# through the HTTP API, so they do not depend on whether the replay runs actions before it releases the held call. PERMISSION_WITHDRAWN
+# (a Medaris nazımı loses platform.madrasah_edit while the dialog is open) and API_FAILS (tedrisat stops answering) are NOT bound: no seeded
+# account is a Medaris nazımı with platform.madrasah_edit, and the stack cannot be made to fail on request. OPEN_INACTIVE presses the
+# menu's "Pasif kapsamlar".
+#
+# A Next server action answers 200 on the page's own address, whatever the API said, so a walk through FAIL.<class> of `loading` or
+# `deactivating` reports "HTTP 200" for the status it compares: an engine limit, not the app. `call` is there to hold the busy state. Its
+# glob is the page's own address with no query: the page's reads (the refresh after a success) are GETs with a query, so the glob, which is
+# anchored, matches only the POST.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.madrasahs.passivate
+
+# a wide window, so that the sidebar (the menu the walk enters by, and the one OPEN_INACTIVE takes) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+data:
+  pas: { json: ../.local/made/pasife.json }
+  pasDers: { json: ../.local/made/pasife-ders.json }
+  pasTaslak: { json: ../.local/made/pasife-taslak.json }
+
+# the walk's own medrese and the seed's second köşk, Kubbealtı Köşkü, where its courses are opened (a literal: a placeholder written
+# inside a regular expression is not filled in); the other placeholders ({count}, {published}, {days}...) are left out, so a number
+# matches whatever the page says (the numbers change when SOMEONE_CHANGES_IT adds a talebe)
+samples:
+  name: Deneme medresesi pasife
+  kosk: Kubbealtı Köşkü
+  days: '7'
+
+events:
+  NAVIGATE:
+    - goto: '{nizam}/'
+  SOMEONE_PASSIVATES:
+    - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, passivate, pasife]
+      expect: 'passivate-data passivate pasife'
+  SOMEONE_DELETES:
+    - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, delete, pasife]
+      expect: 'passivate-data delete pasife'
+  # a talebe applies to the published course: its enrolled count goes up, so the confirmation of the numbers the dialog shows no longer fits
+  SOMEONE_CHANGES_IT:
+    - run: [node, helpers/apply.mjs, applicantG, '{pasDers.course}']
+      expect: 'apply APPLICANT_G'
+  # the sidebar's entry; its name may carry a count of passive scopes, so it is found by its beginning
+  OPEN_INACTIVE:
+    - click: { role: link, name: '/^Pasif kapsamlar/', within: { css: aside } }
+
+# What a passivation leaves behind, read straight from the database after the transition that ended DONE: the medrese is passive, with the
+# reason DEACTIVATED_BY_ADMIN; the başmüderris's post is revoked; one audit row says so. (No route reads passive_reason: the app never does.)
+effects:
+  deactivateMadrasah:
+    - run: [node, helpers/sql.mjs, "select passive_reason, passive_since is not null as passive from madrasahs where id = '{pas.madrasah}'"]
+      expect: '"passive_reason":"DEACTIVATED_BY_ADMIN"'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as held from role_assignments where scope_id = '{pas.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null"]
+      expect: '"held":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as audits from audit_log where action = 'madrasah.deactivate' and entity_id = '{pas.madrasah}'"]
+      expect: '"audits":1'
+
+states:
+  listed: { url: '{nizam}/medreseler**' }
+  passivated: { url: '{nizam}/medreseler**' }
+  # the two server actions are POSTs to the page's own address, held while the busy state is checked
+  loading: { call: '{nizam}/medreseler' }
+  deactivating: { call: '{nizam}/medreseler' }
+  handed_over.inactive_reassign: { url: '{nizam}/pasif-kapsamlar**' }
+  # NAVIGATE goes to the home page; an exit with no screen of its own is checked by its address
+  left: { url: '{nizam}/' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by a sentence of
+# its own. The dialog's own buttons are found inside it, because a toast has a close button of the same name ("Kapat"). The Alert's
+# data-testid is the page's own hook.
+nodes:
+  madrasahsPage: { role: main, hasText: Başmüderris medresesini Nazar uygulamasından yönetir }
+  listRegion: { css: 'section[aria-labelledby=madrasahs-heading]' }
+  passiveWarning: { testId: passive-warning }
+  passiveWarningBody: { css: '[data-testid=passive-warning] p:not(.mds-alert__title)' }
+  # the row of the walk's own medrese, in the Durum, Başmüderris and İşlemler columns
+  rowBadge: { text: '/^Pasif$/', within: { role: row, hasText: Deneme medresesi pasife } }
+  rowSince: { text: '/ beri$/', within: { role: row, hasText: Deneme medresesi pasife } }
+  rowHead: { text: Atanmamış, within: { role: row, hasText: Deneme medresesi pasife } }
+  rowTermEnded: { text: '/^Görev süresi .+ doldu$/', within: { role: row, hasText: Deneme medresesi pasife } }
+  # the sonner toasts: a list item of the Toaster, its title and its description
+  toastDone: { css: '[data-sonner-toast]', hasText: Medrese pasife alındı }
+  toastDoneBody: { css: '[data-sonner-toast] [data-description]', hasText: '/artık pasif\.$/' }
+  failedTitle: { css: '[data-sonner-toast]', hasText: Pasife alınamadı }
+  failedAlreadyPassive: { css: '[data-sonner-toast] [data-description]', hasText: Bu kapsam zaten pasif. }
+  failedGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu kapsam artık yok. }
+  failedForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bunu yapma izniniz yok. }
+  failedGeneric: { css: '[data-sonner-toast] [data-description]', hasText: Bir şeyler ters gitti. }
+  # the lines of the dialog that the page draws once per item: the walk's two courses and its one live celse (course.mjs titles a celse
+  # "Celse n" and a course "Deneme dersi <tag>")
+  courseItem: { text: '/^Deneme dersi pasife-(ders|taslak) \(Kubbealtı Köşkü\): \d+ talebe$/' }
+  sessionItem: { text: '/^Celse \d+ \(Deneme dersi pasife-ders\), /' }
+  # the dialog
+  eyebrow: { css: .mds-eyebrow, within: { css: .mds-dialog } }
+  closeIcon: { role: button, name: Kapat, within: { css: .mds-dialog } }
+  cancel: { role: button, name: Vazgeç, within: { css: .mds-dialog } }
+  confirm: { role: button, name: Yine de pasife al, within: { css: .mds-dialog } }
+  retry: { role: button, name: Yeniden dene, within: { css: .mds-dialog } }
+  # the hidden <output> beside the busy button; the other buttons' are empty
+  busy: { css: output, hasText: Yükleniyor, within: { css: .mds-dialog } }

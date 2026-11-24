@@ -1,0 +1,12 @@
+{
+  "Changes.note": "Bir deste sayfasını açmak hiçbir şeyi değiştirmez; yalnız Medaris başnazımı başkasının özel destesini okursa bu denetim kaydına yazılır.",
+  "DeckUnavailable.backToDecks": "Destelere dön",
+  "DeckUnavailable.description": "Deste silinmiş olabilir ya da sahibi onu yalnızca kendine açık tutuyor.",
+  "DeckUnavailable.title": "Bu desteye ulaşılamıyor",
+  "SystemPages.forbiddenDeckAction": "Desteye dön",
+  "SystemPages.forbiddenDeckText": "{deck} herkese açık bir deste; kartlarını yalnız sahibi düzenler. Desteyi çalışabilirsin; istediğin kartı kendi destene kopyalayabilirsin.",
+  "SystemPages.forbiddenTitle": "Bu sayfayı göremezsin",
+  "SystemPages.notFoundAction": "Ana sayfaya dön",
+  "SystemPages.notFoundText": "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et.",
+  "SystemPages.notFoundTitle": "Sayfa bulunamadı"
+}

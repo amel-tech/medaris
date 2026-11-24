@@ -1,0 +1,269 @@
+# Opening a köşk: the başnazım's "Köşk aç" form on the Köşkler page (/kosks), read from the code of PR #394's branch on
+# 15 Nov 2026 (apps/nizam/features/kosks/components/open-kosk-dialog.tsx, nazim-picker.tsx, kosks-directory.tsx). Three
+# ways in lead to the same dialog: the button on /kosks, the address /kosks?ac=1 (the home page's "Köşk aç" link), and
+# "Köşkü aç" on a köşk application (nizam.applications.decide starts this flow with fromApplication: true; the form then
+# opens with the application's name and description and the applicant already chosen as nazım).
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Köşk aç" is natively disabled until the name, the short name, the tags and a nazım are right, and says nothing of
+#     what is missing: the messages written for a submit try never show (F-W3-1, F-X-3). A tags problem is never said.
+#   - the nazım's address is looked up when the field is left, not only on Enter, and tedrisat audits every lookup
+#     (F-W3-14, F-X-14); the field is disabled while it searches, so it loses the focus (F-W2-3).
+#   - the field errors are not live regions, and after a refused submit the focus stays where it was (F-UI-W3-1, F-W3-13).
+#   - the API lets a Medaris nazımı holding platform.kosk_create open a köşk, the page offers the button to the başnazım
+#     alone (F-W3-open-1).
+#   - opened by /kosks?ac=1 there is no opener, so closing the form (or making the köşk) leaves the focus on nothing
+#     (F-W3-open-4, found by the replay); and the picker's hidden output keeps saying "X seçildi" after X is removed
+#     (F-W3-open-3, found by the replay).
+schema: delurio-graph/0
+kind: flow
+id: nizam.kosks.open
+status: captured
+domain: medaris.api
+ui: nizam.kosks.open
+title: Open a köşk
+summary: >-
+  The başnazım opens a köşk. The form asks for a name, and optionally a short name, tags, a description, a cover colour and
+  "Listelerde gösterme"; each köşk nazımı is found by their exact e-mail address in the realm's directory, and at least one
+  is needed. The köşk is made together with its nazımları in one call. A short name another köşk uses is refused under its
+  own field; an account that is not in Medaris, or a call that is not allowed, is refused in a toast and the form stays open.
+
+scope:
+  shows: the Köşk aç form, the lookup of each nazım by e-mail address, and the answer of the server
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Köşkler list's own filters, tabs and 'Geri al': nizam.kosks.browse"
+    - "the köşk applications page that starts this form, and the approval it makes after the köşk is made (nizam.applications.decide); the page behind the form is not drawn for that start"
+    - "an ended session: both server calls send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a Medaris nazımı holding platform.kosk_create: the API admits them, the page gives them no button (F-W3-open-1)"
+    - "adding a nazım to a köşk that exists: nizam.kosks.nazims"
+
+context:
+  fromApplication:
+    values: [true, false]
+    initial: any
+    say: { "true": "the form is opened from a köşk application, with its name, description and applicant", "false": "the form is opened from the Köşkler page" }
+  quick:
+    values: [true, false]
+    initial: any
+    say: { "true": "they arrive on /kosks?ac=1 and the form is open at once", "false": "they arrive on /kosks and press 'Köşk aç'" }
+  fields:
+    values: [valid, noName, shortName, badHandle, manyTags]
+    initial: any
+    say:
+      valid: "the name, the short name and the tags are right"
+      noName: "the name is left empty"
+      shortName: "the name has one character"
+      badHandle: "the short name has capitals, spaces or a hyphen at its ends"
+      manyTags: "more than 10 tags, or one of over 40 characters"
+  lookup:
+    values: [found, notFound, down]
+    initial: any
+    say: { found: "the realm has an account with that e-mail address", notFound: "the realm has none", down: "the directory does not answer" }
+  answer:
+    values: [created, handleTaken, unknownAccount, forbidden, failed]
+    initial: any
+    say:
+      created: "the server makes the köşk and its nazımları"
+      handleTaken: "another köşk has that short name"
+      unknownAccount: "a chosen account is not in Medaris"
+      forbidden: "the caller may not open a köşk"
+      failed: "anything else: the directory is down, the body is refused, the server does not answer"
+  typed: { values: [true, false], initial: false }
+  chosen: { values: [none, some], initial: none }
+  note: { values: [none, notFound, down, already], initial: none }
+  said: { values: [none, noName, shortName, badHandle], initial: none }
+  taken: { values: [true, false], initial: false }
+  toast: { values: [none, unknownAccount, forbidden, failed], initial: none }
+  heard: { values: [true, false], initial: false } # the picker's hidden <output> has said "X seçildi": it keeps saying it after X is removed
+
+guards:
+  # canOpen(form) of admin-present.ts:272 and `disabled={!canOpen(current) || taken}` of open-kosk-dialog.tsx:140
+  ready: "typed and fields == 'valid' and chosen == 'some' and not taken"
+  pickerError: "chosen == 'none' and note != 'none'"
+  # the form was opened by the address /kosks?ac=1: nothing was pressed to open it, so there is no opener to give the focus back to
+  fromLink: "quick and not fromApplication"
+
+effects:
+  prefilled: { set: { typed: true, chosen: some } }
+  typedValid: { set: { typed: true, said: none, taken: false } }
+  typedNoName: { set: { typed: true, said: noName, taken: false } }
+  typedShortName: { set: { typed: true, said: shortName, taken: false } }
+  typedBadHandle: { set: { typed: true, said: badHandle, taken: false } }
+  typedManyTags: { set: { typed: true, said: none, taken: false } }
+  leftNameEmpty: { set: { said: noName } }
+  chose: { set: { chosen: some, note: none, heard: true } }
+  foundAgain: { set: { note: already } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedNazim: { set: { chosen: none, note: none } }
+  clearToast: { set: { toast: none } }
+  handleRefused: { set: { taken: true, toast: none } }
+  unknownAccountToast: { set: { toast: unknownAccount } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  opening:
+    from: createKosk
+    taken: [KOSK_HANDLE_TAKEN]
+    unknownAccount: [KOSK_NAZIM_UNKNOWN_ACCOUNT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, KEYCLOAK_ADMIN_UNAVAILABLE, SELF_GRANT_REFUSED]
+
+# The main story: the başnazım presses "Köşk aç" on /kosks, fills the form, finds a nazım by e-mail address and opens the köşk.
+main:
+  given: { fromApplication: false, quick: false, fields: valid, lookup: found, answer: created }
+  events: [OPEN_FORM, FILL_IN, SEARCH, DONE, SUBMIT, DONE]
+
+initial: start
+states:
+  start:
+    title: Where the form opens
+    description: >-
+      Three ways in. From a köşk application the form opens at once with the application's name and description and the
+      applicant chosen as the nazım (so the button is already on). On /kosks?ac=1 the page opens with the form open
+      (`?ac=1` of app/kosks/page.tsx:68; the address keeps `?ac=1` afterwards, so a reload opens the form again: not
+      verified). Otherwise the person sees the list and presses "Köşk aç".
+    source: apps/nizam/app/kosks/page.tsx:68
+    always:
+      - { guard: fromApplication, target: settle, effect: [prefilled], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:429", say: "the application's name and description fill the form and its applicant is the nazım" }
+      - { guard: quick, target: form, source: apps/nizam/features/kosks/components/kosks-directory.tsx:84, say: "the address asked for the form: it is open on arrival" }
+      - { target: kosksPage, say: "the Köşkler page, form closed" }
+
+  kosksPage:
+    title: Köşkler, the form closed
+    by: human
+    description: >-
+      The directory of every köşk. "Köşk aç" is drawn to the başnazım alone: a Medaris nazımı who holds
+      platform.kosk_create, whom the API admits, gets no button (F-W3-open-1).
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:293
+    on:
+      OPEN_FORM: { target: form, say: "they press 'Köşk aç'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the form the button is on or off. "Köşk aç" is natively disabled
+      (`disabled={!canOpen(current) || taken}`) until the name has two characters, the short name (when given) is 2 to 60
+      small letters, digits and hyphens, the tags are at most 10 of at most 40 characters, a nazım is chosen, and the
+      server has not just refused the short name.
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:140
+    always:
+      - { guard: ready, target: formReady, say: "everything is right and a nazım is chosen: the button is on" }
+      - { target: form, say: "something is missing or wrong: the button is off, and nothing says which (F-W3-1)" }
+
+  form:
+    title: The Köşk aç form, the button off
+    by: human
+    description: >-
+      A dialog over the page; the scrim does not close it, so what was typed is not lost to a stray click. The focus starts
+      in "Ad". "Köşk aç" is natively disabled and nothing says what is missing (F-W3-1): the "En az bir köşk nazımı seçin."
+      and the tags messages are written for a submit try that a disabled button cannot make. A name or short name that is
+      wrong is said under its field once the field was left. The nazım's address is searched on Enter and also when the
+      field is left (F-W3-14). Opened from a köşk application, "Ad" and "Açıklama" start with the application's values.
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:123
+    on:
+      FILL_IN:
+        - { guard: "fields == 'valid'", target: settle, effect: [typedValid], say: "they fill in the name, short name, tags and description (the cover and 'Listelerde gösterme' stay as they are here)" }
+        - { guard: "fields == 'noName'", target: settle, effect: [typedNoName], source: "apps/nizam/features/kosks/admin-present.ts:245", say: "they leave the name empty and move on: 'Bir ad yazın.' appears under it" }
+        - { guard: "fields == 'shortName'", target: settle, effect: [typedShortName], source: "apps/nizam/features/kosks/admin-present.ts:246", say: "the name is one character and they move on: 'Ad en az 2 karakter olmalı.'" }
+        - { guard: "fields == 'badHandle'", target: settle, effect: [typedBadHandle], source: "apps/nizam/features/kosks/admin-present.ts:251", say: "the short name is not allowed and they move on: it says so under the field" }
+        - { guard: "fields == 'manyTags'", target: settle, effect: [typedManyTags], source: "apps/nizam/features/kosks/admin-present.ts:205", say: "too many tags: nothing is said, the button simply stays off (F-W3-1)" }
+      SEARCH:
+        - { guard: "not typed", target: looking, effect: [leftNameEmpty], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:86, say: "they go to the nazım's address before the name: 'Ad' had the focus and is now left empty, so 'Bir ad yazın.' appears at once; then they type the address and press Enter, or leave the field" }
+        - { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they type a nazım's e-mail address and press Enter, or leave the field" }
+      REMOVE_NAZIM: { guard: "chosen == 'some'", target: settle, effect: [removedNazim], source: apps/nizam/features/kosks/components/nazim-picker.tsx:180, say: "they remove the chosen nazım: nothing asks first and the focus is not moved" }
+      CANCEL:
+        - { guard: fromLink, target: closedFromLink, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "Vazgeç, the close icon or Escape: the form closes and nothing is made; there is no opener, so the focus is on nothing (F-W3-open-4)" }
+        - { target: closed, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "Vazgeç, the close icon or Escape: the form closes and nothing is made; the focus goes back to 'Köşk aç'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  formReady:
+    title: The Köşk aç form, the button on
+    by: human
+    description: The same form with "Köşk aç" on; pressing it sends the köşk.
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:137
+    on:
+      FILL_IN: { guard: "fields == 'valid'", target: settle, effect: [typedValid], say: "they change what they typed and it is still right (a change that makes it wrong is taken from `form`: `fields` is the one case a walk takes)" }
+      SEARCH: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they look up another nazım" }
+      REMOVE_NAZIM: { guard: "chosen == 'some'", target: settle, effect: [removedNazim], source: apps/nizam/features/kosks/components/nazim-picker.tsx:180, say: "they remove the chosen nazım: the button goes off" }
+      SUBMIT: { target: opening, effect: [clearToast], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:93, say: "they press 'Köşk aç'" }
+      CANCEL:
+        - { guard: fromLink, target: closedFromLink, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "Vazgeç, the close icon or Escape: the form closes and nothing is made; there is no opener, so the focus is on nothing (F-W3-open-4)" }
+        - { target: closed, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "Vazgeç, the close icon or Escape: the form closes and nothing is made; the focus goes back to 'Köşk aç'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  looking:
+    title: Look the nazım up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup: the realm's directory is searched for the exact address
+      (0 or 1 account) and tedrisat writes the search to the audit log, found or not. The e-mail field is disabled while it
+      runs, so it loses the focus (F-W2-3). The rest of the form stays live: Vazgeç still closes it, and "Köşk aç" keeps
+      the state it had (not drawn here).
+    source: apps/nizam/features/madrasahs/actions.ts:123
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found' and chosen == 'none'", target: settle, effect: [chose], say: "the person is added to the chosen list and the field is cleared" }
+        - { guard: "lookup == 'found' and chosen == 'some'", target: settle, effect: [foundAgain], source: apps/nizam/features/kosks/components/nazim-picker.tsx:74, say: "the same person again: 'Bu kişi zaten seçildi.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/kosks/components/nazim-picker.tsx:89, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/kosks/components/nazim-picker.tsx:91, say: "the directory is not reachable: 'Arama şu an yapılamıyor.'" }
+      CANCEL:
+        - { guard: fromLink, target: closedFromLink, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "they close the form while the search runs; its answer is dropped; no opener, the focus is on nothing (F-W3-open-4)" }
+        - { target: closed, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:125, say: "they close the form while the search runs; its answer is dropped" }
+
+  opening:
+    title: Make the köşk
+    description: >-
+      The server action openKosk, POST /kosks: the köşk and one KOSK_NAZIM role assignment for each chosen person, in one
+      transaction, with an audit row. The başnazım becomes the owner and is not made a nazım. The fields are disabled while
+      it runs and "Köşk aç" is busy; Vazgeç and the close icon stay on and do nothing (F-W3-open-2).
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:100
+    invoke: { action: createKosk }
+    on:
+      DONE:
+        - { guard: "answer == 'created' and fromLink", target: openedFromLink, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:115, say: "the köşk exists: a toast says so, the form closes and the list is read again; there was no opener, so the focus is on nothing (F-W3-open-4)" }
+        - { guard: "answer == 'created'", target: opened, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:115, say: "the köşk exists: a toast says so, the form closes, the list is read again and the focus goes back to 'Köşk aç'" }
+      FAIL.taken: { guard: "answer == 'handleTaken'", target: settle, effect: [handleRefused], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:105, say: "'@{short name} kısa adını başka bir köşk kullanıyor.' under the field, and the button stays off until the field is edited" }
+      FAIL.unknownAccount: { guard: "answer == 'unknownAccount'", target: settle, effect: [unknownAccountToast], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109, say: "a toast 'Köşk açılamadı' says a chosen account is not in Medaris; the form stays open" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109, say: "a toast says they may not do this; the form stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109, say: "a toast says something went wrong, try again; the form stays open" }
+
+  opened:
+    type: final
+    title: The köşk is open
+    description: >-
+      The toast "Köşk açıldı" names it and the list shows it ("Listelenmeyen" if it was left off the lists). From a köşk
+      application, the page then approves the application with the new köşk's id (nizam.applications.decide); if that
+      second call fails the köşk exists and the page does not say so (F-W3-8).
+
+  openedFromLink:
+    type: final
+    title: The köşk is open, the form was opened by the address
+    description: >-
+      As `opened`. The form was opened by /kosks?ac=1 and no button was pressed, so when it closes Base UI has no element
+      to give the focus back to and it is on nothing (the page itself): F-W3-open-4.
+
+  closed:
+    type: final
+    title: The form is closed and nothing was made
+
+  closedFromLink:
+    type: final
+    title: The form is closed, it was opened by the address
+    description: As `closed`; the focus is on nothing, since no button opened the form (F-W3-open-4).
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: a-form-that-is-on-is-the-one-sent, never: "state == 'opening' and not ready", say: "Only a form the button allowed is sent: a name, a short name and tags that are right, and a nazım", source: apps/nizam/features/kosks/admin-present.ts:272 }
+  - { id: never-without-a-nazim, never: "state == 'opening' and chosen == 'none'", say: "A köşk is never opened without a köşk nazımı", source: apps/nizam/features/kosks/admin-present.ts:272 }
+  - { id: a-refused-short-name-is-not-sent-again, never: "state == 'opening' and taken", say: "A short name the server has refused is not sent again before it is edited", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:140 }

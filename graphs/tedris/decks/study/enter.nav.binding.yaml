@@ -1,0 +1,10 @@
+# The way into tedris.decks.study: the deck's own page and its "Çalış" button (tedris.nav entry deck->deckStudy). The nav binding gives no locator for the
+# entry, and the deck page has other links with "Çalış" in their names on other pages ("Çalış: {title}" on Desteler and on Ana sayfa), so this file names the one
+# on the deck page by its whole name.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'deck->deckStudy': { role: link, name: '/^Çalış$/' }

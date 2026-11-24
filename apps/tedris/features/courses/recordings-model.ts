@@ -21,7 +21,7 @@ const ID = /^[\w-]{6,32}$/;
 const YOUTUBE_EMBED = "https://www.youtube.com/embed/";
 
 /** Bunny's player, the only host a Bunny recording is framed from (MDRS-114). */
-const BUNNY_PLAYER_ORIGIN = "https://player.mediadelivery.net";
+export const BUNNY_PLAYER_ORIGIN = "https://player.mediadelivery.net";
 
 /** `/embed/<library id>/<video id>`: a numeric library, the GUID Bunny gave the video. */
 const BUNNY_EMBED_PATH =

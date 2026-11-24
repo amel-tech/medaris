@@ -1,0 +1,108 @@
+# nizam.moderation.reviewBans on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on http://localhost:4001, Yasaklamalar read by the başnazım
+# (SYSTEM_ADMIN, who signs in through Keycloak's real form and reaches the page by the menu entry "Yasaklamalar") and, in one scenario, refused to the köşk nazımı.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.yaml --cover transitions --out <dir>
+# The other files of this flow, each with a scenario of its own that adds no transition here and so would not be walked inside this file:
+#   binding.paged.yaml    a list of more than a page ("Daha fazla göster", e2e bans-medaris#4)
+#   binding.scoped.yaml   a Medaris nazımı holding platform.ban_scoped (applicantG): lifts köşk bans only, widens course bans, is told the rest is not hers
+#   binding.reader.yaml   a Medaris nazımı holding platform.ban_account alone (applicantG): reads, is drawn no button
+#   binding.noCode.yaml   the seeded Medaris nazımı, who holds neither code: the section refusal (TRIAGE-2 read from this page)
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). The file loads (`replay <dir> --bind <file> --emit-spec --out <dir>` wrote a
+# spec and walked nothing). Every locator, account fact and expectation here is from the code and unverified; the walk will correct them.
+#
+# The data. The stack seeds no ban, so `setup` makes its own (and `teardown` removes it), through tedrisat's API and the shared helpers:
+#   - helpers/course.mjs makes "Deneme dersi reviewbans", a published course of the seed's first köşk ("Süleymaniye Köşkü") taught by the müderris, with the spare
+#     talebe applicantC ("Esma Başvuran") and applicantD ("Salih Başvuran") enrolled. Nothing of the seeded courses is touched.
+#   - ./bans-data.mjs up places the bans, as the people who would: Esma, a course ban by the müderris ("Hoca"), lifted by the köşk nazımı, a köşk ban by the köşk
+#     nazımı, lifted, then both again and left standing; Salih, a course ban by the başnazım ("Medaris yönetimi"). So the Etkin tab holds three of this walk's rows
+#     (Ders by Hoca, Köşk by Köşk nazımı, Ders by Medaris yönetimi) and the Kaldırılan tab two (Ders and Köşk, both Esma's), both kinds in both tabs; and "Esma"
+#     is on both tabs, "Salih" on the Etkin tab only. `--no-kosk` leaves out the two köşk bans. The walk asserts these rows by their names ("Başvuran") and never counts
+#     the list: the platform's totals are the stack's, not the walk's. The tab numbers are checked against the API instead (see locators.binding.yaml).
+#   - `teardown`, in this order: bans-data.mjs down (the bans and the köşk's and Medaris nazımları's notices of them, by SQL: no route deletes a ban or a notice, a
+#     ban has no foreign key to the course, and a barred talebe cannot leave a course), then helpers/course.mjs remove (the course and the talebe's seat and notices).
+#     `setup` runs the same `down` first, so a walk that died leaves nothing behind. What it cannot undo: the audit rows of every ban and lift, which no route removes.
+#   Every run of a helper by hand takes the replay lock (CONVENTIONS, round R2). Nobody of the seed is barred, so no other walk meets a ban.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   reads        (the main story) the başnazım opens Yasaklamalar from the menu, reads the Etkin tab, goes to Kaldırılan and back, presses Köşk (rows stay) and Tümü,
+#                types "Başvuran". Carries e2e bans-medaris#1 (the row's columns, found by search), #2 (the tab's count against the API), #3 (the chips); the row's
+#                buttons are drawn, not pressed (#5, #6 and #7 are nizam.moderation.decideBan's)
+#   searchEmpty  the same data and a name nobody has: "Bu süzgece uyan yasak yok"
+#   scopeEmpty   only Ders bans exist (`--no-kosk`): the Köşk chip finds nothing, in either tab (e2e bans-medaris#3 a2, the other way round: there Köşk kept none of the
+#                course bans)
+#   nothing      no ban at all: "Etkin yasak yok" and "Kaldırılan yasak yok". Its premise is read in `setup`: the stack holds no ban, which fails the walk loudly if another
+#                walk left one
+#   refused      the seeded köşk nazımı opens the address: 403 BAN_FORBIDDEN, and the shell says "Bu bölüm için izniniz yok" (e2e bans-medaris#8, carried by
+#                nizam.shell.noAccessAndNotFound as well)
+# The search types "Başvuran" (the family name of the stack's spare talebe) in `reads` and `scopeEmpty`, which matches Esma and Salih in the Etkin tab and Esma in the Kaldırılan tab; a first name alone would leave out the row that offers the widening, and a repeat node needs one. In `searchEmpty` the typed name is nobody's.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.moderation.reviewBans
+
+scenarios:
+  reads:
+    given: { viewer: chief, read: ok, refetch: ok, courseBans: some, koskBans: some, match: some, pages: one }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans]
+        expect: 'ready: 3 open, 2 lifted'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]
+  searchEmpty:
+    given: { viewer: chief, read: ok, refetch: ok, courseBans: some, koskBans: some, match: none, pages: one }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    vars: { typed: kimsenin-adi-bu-degil, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans]
+        expect: 'ready: 3 open, 2 lifted'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]
+  scopeEmpty:
+    given: { viewer: chief, read: ok, refetch: ok, courseBans: some, koskBans: none, match: some, pages: one }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans, --no-kosk]
+        expect: 'ready: 2 open, 1 lifted'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]
+  nothing:
+    given: { viewer: chief, read: ok, refetch: ok, courseBans: none, koskBans: none, match: none, pages: one }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, helpers/api.mjs, systemAdmin, GET, '/bans?status=ACTIVE&limit=1']
+        expect: '"activeCount":0,"liftedCount":0'
+  refused:
+    given: { viewer: stranger, read: ok, refetch: ok, courseBans: none, koskBans: none, match: none, pages: one }
+    as: koskNazim
+    open: '{nizam}/yasaklamalar'
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }

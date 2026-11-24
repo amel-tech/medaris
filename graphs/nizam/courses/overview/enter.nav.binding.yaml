@@ -1,0 +1,12 @@
+# The way into nizam.courses.overview from the köşk's course list: the nav graph's entry `koskCourses->courseOverview`, the link on a course's title in
+# the Dersler table. The entry is `data: true` (one link for each course of the köşk) and nizam.nav's own binding names the seeded course "Nahiv
+# Metinleri", which sits in the seed's first köşk; the walks of this flow make a course of their own in the second köşk (helpers/course.mjs, `make`),
+# so this file extends it and finds the link by its address: the title is a plain <a href="/kosks/<kosk>/courses/<course>"> (kosk-course-table.tsx:122-126),
+# and {course} is the scenario's own `vars`.
+schema: delurio-graph/0
+kind: binding
+nav: nizam.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'koskCourses->courseOverview': { css: 'a[href$="/courses/{course}"]' }

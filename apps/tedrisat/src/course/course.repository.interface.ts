@@ -2,10 +2,11 @@ import type { ScopeRef } from "@medaris/common";
 import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { HideLevel } from "../archive/hide-level";
 import type { CourseRestoreOutcome } from "../archive/restore-course";
-import type { IPurgeCounts } from "./course-purge";
+import type { IPurgeCounts, Tx } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import type { ExamFormat, ILessonExam } from "./domain/exam";
 import type { ILessonAssignment } from "./domain/lesson-assignment";
 import { LessonType } from "./domain/lesson-type.enum";
 
@@ -94,6 +95,11 @@ export interface ILesson {
    * detail only; a session write's answer leaves it out.
    */
   assignment?: ILessonAssignment | null;
+  /**
+   * What makes the session an exam (MDRS-248), or null when it is not one.
+   * Course content, like its homework. Read with the course detail only.
+   */
+  exam?: ILessonExam | null;
 }
 
 export interface IWeek {
@@ -150,6 +156,8 @@ export interface ICourse {
   requiresApproval: boolean;
   /** Content and recordings never public (MDRS-176). */
   isClosed: boolean;
+  /** "Listelenmeyen ders" (MDRS-248): in no list, opened by its link only. */
+  isUnlisted: boolean;
   /** The word printed on the cover; null when none (MDRS-176). */
   coverLabel: string | null;
   /** "Celseler yüz yüze yapılır" (MDRS-283): a label, public like the title. */
@@ -192,7 +200,8 @@ export type LessonContentField =
   | "inPersonOverride"
   | "hasLiveStream"
   | "recordingAvailableAt"
-  | "assignment";
+  | "assignment"
+  | "exam";
 
 /** A session's resource as a response carries it: `url` and `file` are content (MDRS-286, MDRS-287). */
 export type ILessonResourceView = Omit<ILessonResource, "url" | "file"> &
@@ -400,6 +409,7 @@ export interface ICreateCourse {
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
   isClosed?: boolean;
+  isUnlisted?: boolean;
   coverLabel?: string | null;
   inPerson?: boolean;
   timeZone?: string;
@@ -423,6 +433,7 @@ export interface IUpdateCourse {
   grantsCertificate?: boolean;
   requiresApproval?: boolean;
   isClosed?: boolean;
+  isUnlisted?: boolean;
   coverLabel?: string | null;
   inPerson?: boolean;
   timeZone?: string;
@@ -484,17 +495,35 @@ export interface IBatchSession {
   weekNumber: number;
 }
 
+/** "Sınav" on "Celse planla" (MDRS-248); every field has a default. */
+export interface IExamPlan {
+  format?: ExamFormat;
+  maxScore?: number;
+  topics?: string | null;
+  /** In person there; null or absent is online. */
+  location?: string | null;
+  isRetake?: boolean;
+}
+
 export interface ICreateSessionBatch {
   title: string;
   durationMinutes: number;
   /** Set on the first session only. */
   meetingUrl?: string;
+  /** The one session planned is an exam (MDRS-248). */
+  exam?: IExamPlan;
   /**
    * Expands the pattern against the course's zone. Called inside the write
    * transaction, after the course row is locked, so a concurrent change of
    * the zone cannot slip between the expansion and the insert.
    */
   plan: (courseTimeZone: string) => IBatchSession[];
+  /**
+   * Runs in the same transaction once the sessions are in, after the course
+   * row is locked: publishing an online exam (MDRS-299) links its exam to the
+   * celse here, so a refusal there plans nothing.
+   */
+  within?: (tx: Tx, lessonIds: string[]) => Promise<void>;
 }
 
 export interface ISessionBatchWeek {
@@ -546,10 +575,11 @@ export interface ICourseRepository {
   forcesApproval(id: string): Promise<boolean>;
   /** The user holding the course's imam grant, or null (MDRS-133). */
   findImamUserId(courseId: string): Promise<string | null>;
-  /** Status, hidden, and the köşk's `is_private`; null for no course (MDRS-122). */
+  /** Status, hidden, its own `is_unlisted` (MDRS-248) and the köşk's `is_private`; null for no course (MDRS-122). */
   findPublicVisibility(id: string): Promise<{
     status: CourseStatus;
     archived: boolean;
+    unlisted: boolean;
     koskIsPrivate: boolean;
     koskHidden: boolean;
   } | null>;
@@ -645,6 +675,14 @@ export interface ICourseRepository {
     courseId: string,
     batch: ICreateSessionBatch
   ): Promise<ISessionBatchResult>;
+  /** Deletes an online exam's celse, `within` first, in one transaction (MDRS-299). */
+  deleteExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<{ courseVersion: number }>;
+  /** The online exam a celse was planned for; null for any other (MDRS-299). */
+  findOnlineExamOfLesson(lessonId: string): Promise<string | null>;
   enroll(
     userId: string,
     courseId: string,

@@ -1,0 +1,118 @@
+# What the walks of nizam.courses.decideApplications share: the data they read, where the pages' nodes are found where role and name
+# cannot find them, the events no node sends, the page the person leaves for, and the checks of what a decision leaves behind. Nothing
+# here changes data; each scenario (binding.yaml, binding.overview.yaml, binding.students.yaml, binding.noteOpen.yaml, binding.gone.yaml,
+# binding.barred.yaml, binding.noAccess.yaml) makes its own course and removes it. The addresses of the states (`states`) are in the
+# files of the three places, because the list, the overview and the Talebeler page have three addresses and a binding has one `states`.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and the
+# catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.decideApplications
+
+# a wide window, so that the sidebar (where the badge is) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The courses of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes. A tag is not the start
+# of another, so removing one never clears another's mails.
+data:
+  cdaMain: { json: ../.local/made/cdaMain.json }
+  cdaOther: { json: ../.local/made/cdaOther.json }
+  cdaOv: { json: ../.local/made/cdaOv.json }
+  cdaEmptyOv: { json: ../.local/made/cdaEmptyOv.json }
+  cdaSt: { json: ../.local/made/cdaSt.json }
+  cdaEmptySt: { json: ../.local/made/cdaEmptySt.json }
+  cdaNote: { json: ../.local/made/cdaNote.json }
+  cdaGone: { json: ../.local/made/cdaGone.json }
+  cdaBarred: { json: ../.local/made/cdaBarred.json }
+
+events:
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+
+states:
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so each is found by a word of
+# its own (Playwright's `hasText` is not case sensitive for a plain string, so a regular expression is used where two pages share a
+# word). The names of a row end with the walk's course ("Deneme dersi cdaMain"): every spare account has the surname Başvuran, and a row
+# of another walk (a course whose tag is not cda...) is never pressed. The pages list newest first and a repeated node is pressed on its
+# first item, so a walk decides the application that was made last; the busy row is that first item (`nth: 0`).
+nodes:
+  # Two pages share a word or a shape (the empty line, the day, the two buttons of a row), and a locator that finds a node of one page must not
+  # also find the other page's node when the replay checks (with --absent) that the node is not there. So each is scoped to its page's own
+  # region or tab panel, and the names are anchored.
+  # --- the köşk's list --------------------------------------------------------------------------------------------------------
+  listPage: { role: main, hasText: '/Onay bekleyen başvurular/' }
+  listTitle: { role: heading, name: '/^Başvurular$/' }
+  listRegion: { role: region, name: '/^Onay bekleyen başvurular$/' }
+  listHeading: { role: heading, name: '/^Onay bekleyen başvurular$/' }
+  courseFilter: { role: combobox, name: Ders süzgeci }
+  searchField: { role: searchbox, name: Başvurularda ara }
+  countLine: { testId: applications-count, hasText: '/^\d+ başvuru bekliyor$/' }
+  listTable: { role: table, name: '/derslerine onay bekleyen başvurular$/' }
+  listWhen: { css: 'tbody time', hasText: '/^(Bugün|Dün) \d\d:\d\d$/', within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  listEmptyLine: { css: td.mds-table__empty, hasText: '/^Bekleyen başvuru yok$/', within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  listNoMatchLine: { css: td.mds-table__empty, hasText: '/^Bu süzgece uyan başvuru yok$/' }
+  listApprove: { role: button, name: '/^Onayla: .+, Deneme dersi cda\w+$/', within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  listReject: { role: button, name: '/^Reddet: .+, Deneme dersi cda\w+$/', within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  listRowApprove: { role: button, name: '/^Onayla: .+, Deneme dersi cda\w+$/', nth: 0, within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  listRowReject: { role: button, name: '/^Reddet: .+, Deneme dersi cda\w+$/', nth: 0, within: { role: region, name: '/^Onay bekleyen başvurular$/' } }
+  # --- the course's Genel bakış -----------------------------------------------------------------------------------------------
+  ovPage: { role: main, hasText: Sıradaki celseler }
+  ovTitle: { role: heading, name: '/^Genel bakış/' }
+  ovStatsRegion: { role: region, name: Dersin sayıları }
+  # the Stat is a caption and a value in two spans of one card: the value is found inside the card that holds the caption
+  ovEnrolledLabel: { css: '.mds-stat > .mds-caption', hasText: Kayıtlı talebe }
+  ovEnrolledValue: { css: .mds-stat__value, hasText: '/^\d+$/', within: { css: .mds-stat, hasText: Kayıtlı talebe } }
+  ovPendingLabel: { css: '.mds-stat > .mds-caption', hasText: Bekleyen başvuru }
+  ovPendingValue: { css: .mds-stat__value, hasText: '/^\d+$/', within: { css: .mds-stat, hasText: Bekleyen başvuru } }
+  ovRegion: { role: region, name: '/^Bekleyen başvurular$/' }
+  ovHeading: { role: heading, name: '/^Bekleyen başvurular$/' }
+  ovStudentsLink: { role: link, name: '/^Talebeler$/', within: { role: main } }
+  ovTable: { role: table, name: '/^Bekleyen başvurular$/' }
+  ovEmptyLine: { css: td.mds-table__empty, hasText: '/^Bekleyen başvuru yok$/', within: { role: region, name: '/^Bekleyen başvurular$/' } }
+  ovApprove: { role: button, name: '/^Onayla: [^,]+$/' }
+  ovReject: { role: button, name: '/^Reddet: [^,]+$/' }
+  ovRowApprove: { role: button, name: '/^Onayla: [^,]+$/', nth: 0 }
+  ovRowReject: { role: button, name: '/^Reddet: [^,]+$/', nth: 0 }
+  # the hidden <output> beside a busy Onayla; the other rows' are empty
+  ovRowBusy: { css: output, hasText: Yükleniyor }
+  # --- the course's Talebeler -------------------------------------------------------------------------------------------------
+  stuPage: { role: main, hasText: Derse dön }
+  stuBack: { role: link, name: '/^Derse dön/' }
+  stuTitle: { role: heading, name: '/^Talebeler$/' }
+  stuSubtitle: { css: 'main header p', hasText: '/dersinin başvurularını karara bağlayın/' }
+  stuTabs: { role: tablist, name: Talebe durumu }
+  # a tab's name ends with its count
+  stuTabApplications: { role: tab, name: '/^Başvurular/' }
+  stuTabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  stuTabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  stuTabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+  stuTable: { role: table, name: '/dersine onay bekleyen başvurular$/', within: { role: tabpanel } }
+  stuEmptyLine: { css: td.mds-table__empty, hasText: '/^Onay bekleyen başvuru yok$/' }
+  stuWhen: { css: 'tbody time', hasText: '/^(Bugün|Dün) \d\d:\d\d$/', within: { role: tabpanel } }
+  stuApprove: { role: button, name: '/^Onayla: .+, Deneme dersi cda\w+$/', within: { role: tabpanel } }
+  stuReject: { role: button, name: '/^Reddet: .+, Deneme dersi cda\w+$/', within: { role: tabpanel } }
+  stuRowApprove: { role: button, name: '/^Onayla: .+, Deneme dersi cda\w+$/', nth: 0, within: { role: tabpanel } }
+  stuRowReject: { role: button, name: '/^Reddet: .+, Deneme dersi cda\w+$/', nth: 0, within: { role: tabpanel } }
+  # --- the köşk menu ----------------------------------------------------------------------------------------------------------
+  # the link's name carries the number and its hidden word, so it is found by its beginning; the badge is the number's own span
+  sidebarApplications: { role: link, name: '/^Başvurular/', within: { role: navigation, name: Ana menü } }
+  sidebarBadge: { css: .mds-nav-item__count, hasText: bekleyen, within: { role: navigation, name: Ana menü } }
+  # --- the toasts: found by their own classes, not by role, because whether the toast viewport is reachable by role is not known (not verified)
+  toastApproved: { css: .mds-toast--success, hasText: Başvuru onaylandı }
+  toastRejected: { css: .mds-toast--success, hasText: Başvuru reddedildi }
+  toastGone: { css: .mds-toast--error, hasText: artık bekleyenler arasında değil }
+  toastRefused: { css: .mds-toast--error, hasText: karar verme yetkiniz yok }
+  toastFailed: { css: .mds-toast--error, hasText: Başvuru işlenemedi }
+
+# What a decision leaves outside the screen, read through the database (the course is the scenario's own). Each holds whichever of the
+# decisions came first, so a walk that takes the two in another order passes too (shell#5 pinned one seat and one deleted row).
+effects:
+  approved:
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as seated from enrollments where course_id = '{course}' and status = 'ENROLLED'"]
+      expect: '"seated":true'
+  rejected:
+    # the page gives no reason, so the audit row has none (F-W4-7)
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as bare from audit_log where action = 'enrollment.reject' and entity_id = '{course}' and details->>'reason' is null"]
+      expect: '"bare":true'

@@ -1,0 +1,224 @@
+# A talebe reads a homework that is recited, not handed in: the card "Ödev" of the celse page (/courses/<c>/lessons/<l>) when the
+# müderris set the homework as "Ezber" (kind MEMORIZE, apps/tedris/features/courses/components/session-homework.tsx:123-133). The card says
+# what to recite and that nothing is uploaded ("Ezberini hocana dinlet"), and carries the hoca's mark of the recital: "Bekliyor" until the
+# hoca has marked it, then "Tam", "Eksik" or "Vermedi", with the hoca's note when there is one. The talebe writes nothing here; the mark is
+# the hoca's, saved in nazar (nazar.evaluation.markRecited, which starts this flow with `mark: given`). Read from the code of PR #394's
+# branch on 15 Nov 2026 (captured; nothing here is a plan, nothing is approved).
+#
+# What the card does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   WRT-06   a mark that cannot be read says "Ezber durumun şu an okunamadı." and offers no way to try again (the other panels have one)
+#   WRT-08   (the other half of this story) a hand-in page left open while the hoca switches the homework to "Ezber" answers an upload
+#            with the wrong sentence ("En çok 10 dosya ..."); it is the file card's, tedris.learn.homeworkHandIn draws it
+#   MEMO-1   (new, provisional id) the mark is read once, when the card appears, and nothing tells the talebe it has been given: no
+#            notification type exists for it and the page never reads again, so "Bekliyor" stays until the person reloads
+#   MEMO-2   (new, provisional id) the mark is a bare word ("Tam") beside the heading "Ödev"; nothing names it as the hoca's mark
+#   MEMO-3   (new, provisional id) a talebe who handed only a note in before the switch sees it under the heading "Teslim ettiğin dosyalar"
+#   evaluation-probe-leaks-homework-kind   (domain, MEMORIZATION_NOT_FOUND) the read answers any signed-in caller of an open course, so
+#            whether a celse carries a recited homework is not kept from a stranger; the page only calls it for a seat holder
+# A case variable says what the world holds when the card reads: `mark` (nothing marked yet, a mark given, or a read that fails),
+# `verdict` and `note` (which mark and whether the hoca wrote a note), `earlier` (what the talebe handed in before the homework was
+# switched to recited). `later` is the one thing that moves while the flow runs: the hoca saves a mark in nazar while the card is open.
+# E2E carried: none from the talebe's app (it has no e2e of this card). From nazar's evaluation.e2e.ts: #1's last step (the talebe reads
+# their own mark by the API; `marked` here is the same read through the screen) as the effect of HOCA_MARKS, and #3's two talebe checks
+# (a waiting mark reads null, in the binding's `setup`; a talebe cannot save a mark, 403, as the effect of the read). Not carried: #3's upload (409 SUBMISSION_FILES_NOT_TAKEN), which needs a multipart
+# POST that helpers/api.mjs cannot send, and #3's 403 on the board, which is nazar.evaluation's. The unit spec
+# apps/tedris/test/homework-card.spec.ts:804-908 pins the card's five cases (the card with its block and no upload :813, the earlier files
+# :825, the earlier review :856, the three marks with a note :891, the failed read :902); the graph draws each of them.
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.homeworkMemorize
+status: captured
+domain: medaris.api
+ui: tedris.learn.homeworkMemorize
+title: Recite a homework to the hoca and read the mark
+summary: >-
+  An enrolled talebe opens a celse whose homework the müderris set as "Ezber". The card "Ödev" shows what the hoca wrote, then the block
+  "Ezberini hocana dinlet" ("Bu ödev dosyayla teslim edilmez; hocan dinleyip işaretler."): there is no file field and no note form, only the
+  hoca's mark, which the card reads for the caller alone. Until the hoca has marked the recital a badge beside the heading says "Bekliyor";
+  after it the badge says "Tam", "Eksik" or "Vermedi", and the hoca's note, if there is one, is read under the block ("Hocanın notu: ...").
+  The mark is read once when the card appears: a talebe who waits learns of a mark by reloading the page, which nothing tells them to do.
+  If the read fails the card says so and offers nothing to try again. A talebe who handed work in before the hoca switched the homework to
+  "Ezber" still sees what they handed in (a note, files) and the hoca's review of it, to read; they add nothing new.
+
+scope:
+  shows: 'the card "Ödev" of a recited homework: what the hoca set, the block that says to recite it, the mark and its note, a failed read, and what was handed in before the switch'
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the celse page (header, join card, Notlarım, agenda, resources): tedris.celse.attend; and the page of a celse that is cancelled, locked or not found (the card is drawn for no one there): tedris.celse.cancelled, tedris.celse.locked"
+    - "the file homework, with its list of files, picker, note form and \"Teslim edildi\" badge, and the files and the remove question of the list handed in before the switch (the same row, the same trash and \"Vazgeç\"): tedris.learn.homeworkHandIn"
+    - "the review block in full (its files, the notice that the homework changed after the review, the download of a corrected file): tedris.learn.homeworkReview; here only its heading, badge, by-line and note are drawn, for a talebe who was reviewed before the switch"
+    - "the hoca's own files under the description (\"Ödevin dosyaları\", a download each): tedris.files.download; a file cannot be stored on the local stack (503), so no walk makes one"
+    - "who gets no card (a pending, removed or barred seat, a passive scope) and the refused calls of others: tedris.learn.writingGating"
+    - "setting the homework as \"Ezber\", and marking the recital, in nazar: nazar.curriculum.sessionHomework and nazar.evaluation.markRecited (which starts this flow)"
+    - "a recited homework with no description: the card then draws no paragraph under the heading, and nothing else changes"
+    - "the layout below 768 px and the loading skeleton of the page"
+    - "an ended session, which sends the person to sign in and back to this very address (realm.auth.signIn) instead of drawing an error"
+
+decisions:
+  D1:
+    question: >-
+      Should the talebe be told when the hoca has marked the recital, and should an open card see it?
+    recommend: >-
+      Yes. A homework review and a released exam both notify the talebe (SUBMISSION_REVIEWED, EXAM_RESULTS_RELEASED:
+      notification-types.ts:13-31); a mark has no type and no notification, and the card reads the mark once (MEMO-1). Add a
+      notification of the mark that leads to the celse, and read the mark again when the tab is shown again, so that "Bekliyor" does not
+      outlive the hoca's answer on a page left open.
+    affects: [waiting]
+  D2:
+    question: >-
+      Should a mark that cannot be read have the "Yeniden dene" the notes, questions and Ödevim panels have?
+    recommend: >-
+      Yes (WRT-06): the card draws the alert and then nothing, so the only way back is to reload the whole page. A button that reads the
+      mark again, named "Yeniden dene", beside the alert.
+    affects: [loadFailed]
+
+context:
+  mark:
+    values: [none, given, unreadable]
+    initial: any
+    say:
+      none: "the hoca has not marked the recital yet: the read answers 200 with a status of null"
+      given: "the hoca has saved a mark (Tam, Eksik or Vermedi) before the card reads"
+      unreadable: "the read does not answer the mark: 404 (the homework was switched back to a file homework, or taken off, after the page was drawn), 403 (the scope turned passive after the page was drawn: a passive scope locks the page itself), or a server that does not answer"
+  verdict:
+    values: [full, incomplete, absent]
+    initial: any
+    say:
+      full: "the mark is Tam (FULL)"
+      incomplete: "the mark is Eksik (INCOMPLETE)"
+      absent: "the mark is Vermedi (ABSENT)"
+  note:
+    values: [none, written]
+    initial: any
+    say:
+      none: "the hoca wrote no note with the mark"
+      written: "the hoca wrote a note of at most 280 characters with the mark"
+  earlier:
+    values: [none, note, reviewed]
+    initial: any
+    say:
+      none: "the talebe handed nothing in before the homework became recited"
+      note: "the talebe saved a note on this celse before the switch (their hand-in stays theirs to read)"
+      reviewed: "the talebe saved a note before the switch and the course team sent its review of it"
+  later:
+    values: [none, given]
+    initial: none
+    say:
+      none: "the hoca has not saved a mark since the card was read"
+      given: "the hoca saved a mark in nazar after the card was read: the card does not change until it reads again"
+
+guards:
+  readable: "mark != 'unreadable'"
+  unreadable: "mark == 'unreadable'"
+  hocaHasMarked: "mark == 'given' or later == 'given'"
+  isFull: "verdict == 'full'"
+  isIncomplete: "verdict == 'incomplete'"
+  isAbsent: "verdict == 'absent'"
+  noted: "note == 'written'"
+  hasEarlier: "earlier != 'none'"
+  wasReviewed: "earlier == 'reviewed'"
+
+effects:
+  hocaMarked: { set: { later: given } }
+
+failures:
+  reading:
+    from: getMyEvaluation
+    signedOut: [HTTP_401]
+    failed: [MEMORIZATION_NOT_FOUND, EVALUATION_FORBIDDEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+
+# The main story: the talebe opens the card and reads "Bekliyor"; the hoca marks the recital in nazar and the card does not change; the
+# talebe reloads and reads "Tam" and the hoca's note.
+main:
+  given: { mark: none, verdict: full, note: written, earlier: none }
+  events: [DONE, HOCA_MARKS, RELOAD, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: The card reads the talebe's own mark
+    source: apps/tedris/features/courses/components/session-homework.tsx:189
+    description: >-
+      The card mounts for a celse whose homework the page found to be recited (`session.assignment.kind === "MEMORIZE"`,
+      session-homework.tsx:128), and reads the caller's own mark with the server action getMyEvaluation, GET /lessons/:id/evaluation, no
+      cache. The API answers a caller only about themselves: `status` null is "Bekliyor", else FULL, INCOMPLETE or ABSENT with the hoca's
+      note; it is 404 MEMORIZATION_NOT_FOUND when the homework is not recited, and 403 EVALUATION_FORBIDDEN when the course's scope is
+      passive. It answers any signed-in caller of a visible, open course, a stranger included (the domain's finding
+      evaluation-probe-leaks-homework-kind; the page calls it only for a seat holder). While it runs the card is drawn without the badge. A
+      session that is over sends the person to sign in and back to this address; the card draws no error.
+    includes: ["the card's second read, GET /lessons/:id/submission (getMySubmission), made by a second effect at the same time: what the talebe handed in before the switch; it fills the list of earlier work, and a read that fails leaves it out without a word (session-homework.tsx:215-230)"]
+    invoke: { action: getMyEvaluation }
+    on:
+      DONE:
+        - { guard: "readable and hocaHasMarked", target: marked, source: "apps/tedris/features/courses/components/session-homework.tsx:196", say: "the read answers a mark: the badge says it" }
+        - { guard: readable, target: waiting, source: "apps/tedris/features/courses/components/session-homework.tsx:197", say: "the read answers no mark yet (status null): \"Bekliyor\"" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: unreadable, target: loadFailed, say: "any other answer, or a call that throws: the mark is not read", source: "apps/tedris/features/courses/components/session-homework.tsx:202" }
+
+  waiting:
+    title: The card says "Bekliyor"
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-homework.tsx:253
+    description: >-
+      The section "Ödev" (a region named by its h2). Beside the heading a secondary badge, "Bekliyor". Under it the hoca's description as they
+      wrote it (not drawn when there is none), then the block with the h3 "Ezberini hocana dinlet" and the caption "Bu ödev dosyayla teslim
+      edilmez; hocan dinleyip işaretler." There is no file field, no note form, no button: the card only waits for the hoca. Where the
+      talebe handed work in before the switch the card goes on with what they handed in (see `earlier` in ui.yaml). The mark is read once;
+      when the hoca saves it the card stays as it is until the person reloads the page (MEMO-1, decision D1), and nothing outside the
+      page tells them (no notification type exists for a mark). The badge is a bare word, nothing names it as the hoca's mark (MEMO-2). The
+      page sets no initial focus (`focus-not-set`).
+    on:
+      HOCA_MARKS: { target: waiting, effect: [hocaMarked], source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115, say: "the hoca saves the mark in nazar (nazar.evaluation.markRecited): nothing on this card changes, and nothing tells the talebe" }
+      RELOAD: { target: reading, say: "the page is read anew, the only way to see a mark given since" }
+      NAVIGATE: left
+
+  marked:
+    title: The card says the hoca's mark
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-homework.tsx:253
+    description: >-
+      The same card, its badge now the hoca's mark: "Tam" (success), "Eksik" (warning) or "Vermedi" (error), the word alone in the badge, no
+      icon. When the hoca wrote a note it is read in the block, under the caption: "Hocanın notu:" and the note as written, line breaks kept,
+      its direction taken from its own text. Nothing else changes: still no field and no button. A mark the hoca changes later is not seen
+      until a reload either (MEMO-1). The badge is a bare word (MEMO-2). The page sets no initial focus (`focus-not-set`).
+    on:
+      RELOAD: { target: reading, say: "the page is read anew; the mark read is the hoca's latest" }
+      NAVIGATE: left
+
+  loadFailed:
+    title: The mark could not be read
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:270
+    description: >-
+      Under the caption a paragraph with role alert, "Ezber durumun şu an okunamadı.", and no badge in the heading's row. The card keeps its
+      description and the block, and what was handed in before the switch (that read is a second one). There is no "Yeniden dene": the only
+      way to read again is to reload the page (WRT-06, decision D2). Nothing on the local stack makes the read fail, so no walk reaches it.
+    on:
+      RELOAD: { target: reading, say: "the page is read anew" }
+      NAVIGATE: left
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to this address, and
+      the card draws no error (session-homework.tsx:194). realm.auth.signIn takes over.
+
+assertions:
+  - id: a-mark-is-the-hocas
+    never: "state == 'marked' and not hocaHasMarked"
+    say: "The card draws a mark only when the hoca has saved one: a talebe is never shown a mark they were not given"
+    source: apps/tedris/features/courses/components/session-homework.tsx:196
+  - id: a-failed-read-draws-no-mark
+    never: "state == 'loadFailed' and mark != 'unreadable'"
+    say: "The card says it could not read the mark only for a read that did not answer"
+    source: apps/tedris/features/courses/components/session-homework.tsx:202

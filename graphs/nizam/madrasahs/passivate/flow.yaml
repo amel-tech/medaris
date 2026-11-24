@@ -1,0 +1,296 @@
+# Making a medrese passive: the "Pasife al" button on a row of Medreseler (/medreseler) in nizam-web, the dialog "Medreseyi pasife al" that
+# reads what passivating takes along, and "Yine de pasife al". Read from the code of PR #394's branch on 15 Nov 2026
+# (apps/nizam/features/madrasahs/components/madrasahs-view.tsx, features/passivation/components/passivate-scope-dialog.tsx and present.ts,
+# features/madrasahs/actions.ts; tedrisat's madrasah.controller.ts:527-566, madrasah.repository.ts:711-770, passivation/*). Nothing was run.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - The dialog is a plain Dialog (role dialog), not the kit's AlertDialog (F-W2-6). The inventory also says a click on the scrim closes it;
+#     the code passes `dismissible={false}`, so it does not (passivate-scope-dialog.tsx:193). Esc, "Vazgeç" and the close icon close it.
+#   - Every refusal of the preview, a 403 or a 404 as much as a dropped network, is drawn as "Etki hesaplanamadı. Biraz sonra yeniden
+#     deneyin." with a retry that cannot help (F-W2-passivate-1).
+#   - While the call runs, "Vazgeç", Esc and the close icon do nothing and say nothing (F-W2-passivate-2); the numbers load and change in a
+#     plain paragraph and a status Alert that nothing announces (F-W2-passivate-3, not verified with a reader).
+#   - The warning on the list and the row say "Başmüderrisin görev süresi {tarih}’da doldu" / "Görev süresi ... doldu" for a medrese the
+#     başnazım passivated: the directory never returns `passiveReason`, so the page cannot read it (F-W2-passivate-4).
+#   - /medreseler's Etkin/Pasif is `passive_since`, which only "Pasife al" writes; the engine's own passive test is role-based
+#     (F-W2-passivate-5, from the code only).
+#   - The confirm button is natively disabled and busy at once while the call runs (F-W2-passivate-6, not verified in a browser).
+#   - After the dialog closes the row is replaced and the focus falls to the page (F-W2-10).
+#   - "inactive-scope-accepts-new-scope" (the security ledger) is about the route this flow hands over to, not this dialog; it is drawn in
+#     ui.yaml `rules` where the dialog's own "never had a manager" sentence meets it.
+schema: delurio-graph/0
+kind: flow
+id: nizam.madrasahs.passivate
+status: captured
+domain: medaris.api
+ui: nizam.madrasahs.passivate
+title: Make a medrese passive
+summary: >-
+  The başnazım (or a Medaris nazımı who holds platform.madrasah_edit) presses "Pasife al" on the row of an active medrese. A dialog first
+  asks tedrisat what passivating takes along and shows it as a warning: the başmüderris who leaves the post, the courses that close
+  (published and draft), how many have a hoca in the post, the talebe who can no longer read the content, the live celses of the next
+  seven days that drop out of the calendars, and the way back (a new başmüderris opens it again; nothing is deleted). The person reads it
+  and presses "Yine de pasife al"; the medrese is passive, a toast says so, and the row and the warning on the list follow. The
+  confirmation posted is a token that tedrisat bound to exactly the numbers shown: when something changed meanwhile (a talebe applied, a
+  course was published) the server writes nothing, answers with the fresh numbers, and the dialog shows them under "Etki siz bakarken
+  değişti" and asks again. The medrese then waits in Pasif kapsamlar for a new başmüderris (nizam.inactive.reassign).
+
+scope:
+  shows: >-
+    the Medreseler row of an active medrese, the "Pasife al" dialog (reading, the warning, the stale notice, the refusals) and the result
+    on the list (the toast, the row, the passive warning)
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the list's own tabs, search, counts, 'Geri al' and the hidden rows: nizam.madrasahs.browse, nizam.madrasahs.restore"
+    - "'Başmüderris ata' and 'Başmüderrisi değiştir' on the row: nizam.madrasahs.headMuderris; the page where a new head is given to a scope with no manager: nizam.inactive.reassign"
+    - "the same dialog on a köşk (kind KOSK, 'Köşkü pasife al'): the köşk pages of nizam.kosks.*"
+    - "a medrese that never had a başmüderris (the sentence 'Bu kapsamın hiç yöneticisi olmadı; pasife almak içeriği kapatmaz.'): a medrese is opened with a head, so the row of one is not drawn here; the köşk can meet it"
+    - "'{count} talebe dersi bitirmiş', 've {count} ders daha' (more than 50 courses) and a course with no live celse in the week: the dialog draws them when the numbers say so; the local stack makes none of them"
+    - "a 409 PASSIVATION_IMPACT_CHANGED that carries no fresh numbers (the API always carries them, apps/tedrisat/src/passivation/errors.ts:11-19; the dialog would then toast 'Etki değişti; sayıları yeniden okuyun.', errors.changed)"
+    - "an ended session: both server calls send the person to sign in (redirectIfUnauthenticated) and draw nothing"
+    - "the 403 of the whole page ('Bu bölüm için izniniz yok') and 'Medreseler yüklenemedi': nizam.shell.noAccessAndNotFound, nizam.madrasahs.browse"
+    - "what the talebe and the hocas of the closed courses see in tedris and nazar: nizam.inactive.* and the tedris course flows (MDRS-265 for a dead button)"
+
+decisions:
+  D1:
+    question: >-
+      Should the dialog be the kit's AlertDialog (role alertdialog, the scrim never closes it)? The inventory (F-W2-6) says so, and the kit's own
+      comment says a confirmation that waits for an answer is one. The dialog's own comment says it is a Dialog on purpose (canvas rule 11: a
+      decision with consequences to read first), and it already closes on nothing but Vazgeç, the icon and Esc.
+    recommend: >-
+      Keep what it does and decide the role: alertdialog says to a reader that an answer is waited for, which is the point of this window.
+    affects: [ready]
+  D2:
+    question: >-
+      What should the list say about a medrese the başnazım passivated? Today it says the başmüderris's term ended, which is not what happened.
+    recommend: >-
+      Return passiveReason in the directory item (tedrisat already writes DEACTIVATED_BY_ADMIN, madrasah.repository.ts:747, and does not return it) and say "Medaris yönetimi pasife aldı".
+    affects: [passivated]
+
+context:
+  may:
+    values: [chief, medaris, mayNot]
+    initial: any
+    say:
+      chief: "the person is the Medaris başnazım: every button of the page is drawn"
+      medaris: "the person is a Medaris nazımı who holds platform.madrasah_edit: 'Pasife al' is drawn, and 'Başmüderris ata' only with platform.head_muderris_manage"
+      mayNot: "the person is a Medaris nazımı who holds another medrese code (platform.madrasah_create, say) and not platform.madrasah_edit: the list is read and the row has no 'Pasife al'"
+  courses:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the medrese has courses below it: a published one with talebe and a live celse this week, and a draft"
+      none: "the medrese has no course, no talebe and no celse"
+  meanwhile:
+    values: [nothing, changed, passive, gone, withdrawn, broken]
+    initial: nothing
+    say:
+      nothing: "the server holds what the person last read, and answers yes to what they press"
+      changed: "someone applied, or a course was published: what passivating takes along is no longer what the dialog shows"
+      passive: "another başnazım passivated the medrese first"
+      gone: "the medrese was deleted"
+      withdrawn: "a Medaris nazımı's platform.madrasah_edit was taken away; the başnazım cannot lose it"
+      broken: "tedrisat does not answer, or fails"
+  said:
+    values: [none, changed]
+    initial: none
+    say:
+      none: "the dialog shows the numbers it read first"
+      changed: "the dialog shows fresh numbers after 409 PASSIVATION_IMPACT_CHANGED, with the notice that they changed"
+  toast:
+    values: [none, alreadyPassive, gone, forbidden, failed]
+    initial: none
+    say:
+      none: "no error toast is over the dialog"
+      alreadyPassive: "'Pasife alınamadı: Bu kapsam zaten pasif.'"
+      gone: "'Pasife alınamadı: Bu kapsam artık yok.'"
+      forbidden: "'Pasife alınamadı: Bunu yapma izniniz yok.'"
+      failed: "'Pasife alınamadı: Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'"
+
+guards:
+  # `can.passivate` of madrasahAbilities (present.ts:99-111): the başnazım, or a Medaris nazımı with platform.madrasah_edit
+  offered: "may != 'mayNot'"
+  # the server still holds what the dialog shows, or only what the next read will show
+  readable: "meanwhile == 'nothing' or meanwhile == 'changed'"
+  # the preview or the confirmation is refused or does not arrive
+  refused: "meanwhile == 'gone' or meanwhile == 'withdrawn' or meanwhile == 'broken'"
+
+effects:
+  readFresh: { set: { said: none, toast: none, meanwhile: nothing } }
+  passivatedElsewhere: { set: { meanwhile: passive } }
+  deletedElsewhere: { set: { meanwhile: gone } }
+  changedElsewhere: { set: { meanwhile: changed } }
+  withdrawnElsewhere: { set: { meanwhile: withdrawn } }
+  broke: { set: { meanwhile: broken } }
+  freshNumbers: { set: { said: changed, meanwhile: nothing, toast: none } }
+  alreadyToast: { set: { toast: alreadyPassive } }
+  goneToast: { set: { toast: gone } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  loading:
+    from: getMadrasahDeactivationPreview
+    unreadable: [MADRASAH_NOT_FOUND, AUTHZ_FORBIDDEN]
+  deactivating:
+    from: deactivateMadrasah
+    changed: [PASSIVATION_IMPACT_CHANGED]
+    alreadyPassive: [MADRASAH_ALREADY_PASSIVE]
+    gone: [MADRASAH_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+
+# The story the page tells first: the başnazım presses "Pasife al" on an active medrese that has a published course with talebe and a
+# draft, reads what it takes along, and confirms.
+main:
+  given: { may: chief, courses: some }
+  events: [PASSIVATE, DONE, CONFIRM, DONE]
+
+initial: listed
+
+states:
+  listed:
+    title: The row of an active medrese is read
+    description: >-
+      Medreseler (/medreseler), read by the başnazım or a Medaris nazımı with one of platform.madrasah_create, madrasah_edit or
+      head_muderris_manage. An active medrese's row has "Pasife al: {name}" where `may` is not mayNot (`can.passivate` is the başnazım, or
+      platform.madrasah_edit; when the roles or the permission codes could not be read every button is drawn, F-W2-2: the preview then
+      meets a 403, F-W2-passivate-1). Pressing it opens the dialog over the page. The page was read when it opened, so a medrese that
+      another başnazım passivated or deleted since is still drawn here as Etkin (the stale-page branches: the preview says it is passive, or
+      cannot be measured). Findings read here: F-W2-passivate-5 (a medrese whose head's term lapsed is closed by the engine and listed in
+      Pasif kapsamlar but is Etkin here: the page's status is `passive_since`, which only this dialog writes; from the code, not run).
+    by: human
+    on:
+      PASSIVATE: { guard: offered, target: loading, say: "they press 'Pasife al' on the row", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:304 }
+      SOMEONE_PASSIVATES: { guard: "offered and meanwhile == 'nothing'", target: listed, effect: [passivatedElsewhere], say: "another başnazım makes the medrese passive while this page stays open; the row here is not drawn again", source: apps/tedrisat/src/madrasah/madrasah.repository.ts:711 }
+      SOMEONE_DELETES: { guard: "offered and meanwhile == 'nothing'", target: listed, effect: [deletedElsewhere], say: "the medrese is deleted while this page stays open", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:691 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:299
+
+  loading:
+    title: The dialog reads what passivating takes along
+    description: >-
+      The dialog opens at once (focus on "Vazgeç") with "Pasife almanın neleri götüreceği hesaplanıyor…" in a plain paragraph inside an
+      `aria-busy` div, which nothing announces (F-W2-passivate-3). The server action previewMadrasahDeactivation calls GET
+      /madrasahs/:id/deactivation-preview (platform.madrasah_edit): it measures, writes nothing, and answers 200 also for a medrese that is
+      passive already (`alreadyPassive`). "Yine de pasife al" is natively disabled. Any failure of the call, a 404 of a vanished medrese as
+      much as a 403 or a dropped network, is the same `failed` state (F-W2-passivate-1). "Vazgeç" works here; the answer then lands in a
+      dialog nobody sees, and the dialog reads the preview again when it reopens.
+    invoke: { action: getMadrasahDeactivationPreview }
+    on:
+      DONE:
+        - { guard: "meanwhile == 'passive'", target: alreadyPassive, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:123, say: "the preview says it is passive already" }
+        - { guard: readable, target: ready, effect: [readFresh], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:130, say: "the numbers are on the screen, with the token that goes with them" }
+      FAIL.unreadable: { guard: refused, target: loadFailed, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:211, say: "the call is refused or does not answer: 'Etki hesaplanamadı.'" }
+      CANCEL: { target: listed, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:186, say: "Vazgeç, the close icon or Esc: the dialog closes and nothing is written; the focus goes back to the row's 'Pasife al'" }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:65
+
+  loadFailed:
+    title: The dialog could not measure
+    description: >-
+      An error Alert (role alert) "Etki hesaplanamadı. Biraz sonra yeniden deneyin." with "Yeniden dene", which reads the preview again. The
+      text blames the moment for a refusal too (F-W2-passivate-1), so a Medaris nazımı whose permission was taken away, or for whom the page
+      drew the buttons because their codes could not be read (F-W2-2), is told to wait. "Yine de pasife al" stays off.
+    by: human
+    on:
+      RETRY: { target: loading, say: "they press 'Yeniden dene'" }
+      CANCEL: { target: listed, say: "Vazgeç, the close icon or Esc" }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:211
+
+  alreadyPassive:
+    title: The preview says it is passive already
+    description: >-
+      Another başnazım was first: the page still drew the row as Etkin, the preview answers `alreadyPassive`, and the dialog draws only an
+      info Alert "Bu kapsam zaten pasif." in place of the warning. "Yine de pasife al" is natively disabled. The list behind is not read
+      again, so the row stays Etkin until the person reloads or something refreshes the page.
+    by: human
+    on:
+      CANCEL: { target: listed, say: "Vazgeç, the close icon or Esc" }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:123
+
+  ready:
+    title: What passivating takes along is read
+    description: >-
+      The warning "Pasife almak yanında şunları götürür" lists, from the numbers the server measured: "Başmüderris görevden alınır" (or
+      "Görevde başmüderris yok" when the head's post had already lapsed), "{count} ders kapanır ({published} yayında, {draft} taslak)" and
+      "{count} dersin görevde hocası var" (or "Altında kapanacak ders yok"), "{count} kayıtlı talebe içeriğe erişemez", and "Önümüzdeki {days}
+      günde {count} canlı celse takvimlerden düşer" (or "... canlı celse yok"). Under it: a note that courses with no hoca are closed
+      already, the first courses ("{title} ({köşk}): {n} talebe", the most enrolled first), the first five celses, and the way back,
+      "Medreseye yeniden başmüderris atanınca medrese yeniden açılır. Hiçbir şey silinmez." The focus is on "Vazgeç" and "Yine de pasife al" is
+      on. After a 409 with fresh numbers (`said == 'changed'`) the same screen shows them under the info Alert "Etki siz bakarken değişti;
+      sayılar yenilendi. Yeni sayıları okuyup yeniden onaylayın." and nothing retries by itself. After a refusal a sticky error toast
+      "Pasife alınamadı" with the reason is over the dialog, which stays open with the numbers it had. The dialog's role is dialog, not
+      alertdialog (F-W2-6, decision D1); the whole body is its description (F-W2-13).
+    by: human
+    on:
+      CONFIRM: { target: deactivating, say: "they press 'Yine de pasife al'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:198 }
+      CANCEL: { target: listed, say: "Vazgeç, the close icon or Esc: nothing is written; the focus goes back to the row's 'Pasife al'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:186 }
+      SOMEONE_CHANGES_IT: { guard: "meanwhile == 'nothing'", target: ready, effect: [changedElsewhere], say: "a talebe applies, or a course is published, while the dialog is open: the numbers on the screen are no longer the server's", source: apps/tedrisat/src/passivation/passivation-impact.repository.ts:181 }
+      SOMEONE_PASSIVATES: { guard: "meanwhile == 'nothing'", target: ready, effect: [passivatedElsewhere], say: "another başnazım passivates the medrese while the dialog is open", source: apps/tedrisat/src/madrasah/madrasah.repository.ts:711 }
+      SOMEONE_DELETES: { guard: "meanwhile == 'nothing'", target: ready, effect: [deletedElsewhere], say: "the medrese is deleted while the dialog is open", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:691 }
+      PERMISSION_WITHDRAWN: { guard: "may == 'medaris' and meanwhile == 'nothing'", target: ready, effect: [withdrawnElsewhere], say: "the başnazım takes platform.madrasah_edit away from this Medaris nazımı while the dialog is open", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549 }
+      API_FAILS: { guard: "meanwhile == 'nothing'", target: ready, effect: [broke], say: "tedrisat stops answering while the dialog is open", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105 }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:130
+
+  deactivating:
+    title: The medrese is made passive
+    description: >-
+      The server action deactivateMadrasah calls POST /madrasahs/:id/deactivate with `{confirmation}` (platform.madrasah_edit). In one
+      transaction, with the medrese row locked, tedrisat measures the impact again and compares it with the token (for these numbers and this
+      caller): if it differs it writes nothing and answers 409 PASSIVATION_IMPACT_CHANGED with the fresh preview in `context.impact`.
+      Otherwise every held başmüderris row is revoked, `passive_since` is set with `passive_reason` DEACTIVATED_BY_ADMIN, and an audit row
+      `madrasah.deactivate` keeps the heads removed and the impact confirmed. The nazırs and every grant stay; nothing is hidden or deleted. On
+      the screen "Yine de pasife al" is busy (aria-busy, a hidden output says "Yükleniyor") and natively disabled too (F-W2-passivate-6) and "Vazgeç", the close icon and Esc do
+      nothing while it runs, and say nothing (F-W2-passivate-2). What enrols between the second measurement and the commit is not caught
+      (passivation-impact.repository.ts:166-170).
+    invoke: { action: deactivateMadrasah }
+    on:
+      DONE: { guard: "meanwhile == 'nothing'", target: passivated, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:90, say: "the token was for these numbers: the medrese is passive" }
+      FAIL.changed: { guard: "meanwhile == 'changed'", target: ready, effect: [freshNumbers], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:100, say: "409 PASSIVATION_IMPACT_CHANGED: no toast; the fresh numbers replace the old ones and the info Alert says so; the person confirms again" }
+      FAIL.alreadyPassive: { guard: "meanwhile == 'passive'", target: ready, effect: [alreadyToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "409 MADRASAH_ALREADY_PASSIVE: a sticky toast 'Pasife alınamadı: Bu kapsam zaten pasif.'; the dialog stays open with the numbers it had and the button on again" }
+      FAIL.gone: { guard: "meanwhile == 'gone'", target: ready, effect: [goneToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "404 MADRASAH_NOT_FOUND: a sticky toast 'Bu kapsam artık yok.'" }
+      FAIL.forbidden: { guard: "meanwhile == 'withdrawn'", target: ready, effect: [forbiddenToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "403 AUTHZ_FORBIDDEN: a sticky toast 'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "meanwhile == 'broken'", target: ready, effect: [failedToast], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:105, say: "any other refusal: a sticky toast 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: deactivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press Vazgeç, the close icon or Esc while the call runs: nothing happens and nothing says so, the medrese is still made passive (onOpenChange is ignored while saving, F-W2-passivate-2)" }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:82
+
+  passivated:
+    title: The medrese is passive
+    description: >-
+      The dialog closes (`onOpenChange(false)`), a toast "Medrese pasife alındı" / "{name} artık pasif." stands for 6 seconds, and the
+      action's `revalidatePath("/", "layout")` and `router.refresh()` read the list again: the row is "Pasif" with "{tarih}’dan beri", the
+      head column says "Atanmamış" and "Görev süresi {tarih}’da doldu", the passive warning "{name} pasif" (or "{n} medrese pasif") is over the
+      table, the tab counts moved, and the row's button is now "Başmüderris ata: {name}" (with platform.head_muderris_manage). The two
+      sentences about the head's term are wrong for this medrese: the başnazım took the head off the post (F-W2-passivate-4, decision D2).
+      Base UI hands the focus back to the row's "Pasife al", which the refresh then replaces, so the focus falls to the page (F-W2-10; not
+      verified in a browser). The medrese is now one of the scopes of Pasif kapsamlar: the başnazım's menu has the entry (a Medaris nazımı's
+      has none, F-W2-1), and its "Başmüderris ata" there is nizam.inactive.reassign.
+    by: human
+    goal: true
+    on:
+      OPEN_INACTIVE: { target: handed_over.inactive_reassign, starts: { flow: nizam.inactive.reassign }, say: "they open 'Pasif kapsamlar' from the menu to give the medrese a head again; the medrese is on that list", source: apps/nizam/lib/shell-nav.ts:94 }
+      NAVIGATE: { target: left, say: "they follow another link or the menu" }
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:90
+
+  handed_over.inactive_reassign:
+    type: final
+    title: They go on to Pasif kapsamlar
+    description: >-
+      nizam.inactive.reassign draws /pasif-kapsamlar, where the passivated medrese is a row with its last head, why and since when, and
+      "Başmüderris ata". The başnazım opens the page from the menu; a Medaris nazımı holding platform.inactive_scopes_manage has no menu entry
+      for it and reaches it by address (F-W2-1).
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - id: only-those-offered-open-the-dialog
+    never: "(state == 'loading' or state == 'ready' or state == 'deactivating') and may == 'mayNot'"
+    say: The dialog is opened only by a person whose permissions the page gave the button to (MDRS-108); a Medaris nazımı without platform.madrasah_edit never reads the preview.
+    source: apps/nizam/features/madrasahs/present.ts:105
+  - id: only-the-numbers-that-were-read-passivate
+    never: "state == 'passivated' and meanwhile != 'nothing'"
+    say: A medrese becomes passive only when the confirmation is the one tedrisat gives for the numbers as they are, never for numbers that changed or for a medrese that was passive or gone already.
+    source: apps/tedrisat/src/passivation/passivation-impact.repository.ts:181

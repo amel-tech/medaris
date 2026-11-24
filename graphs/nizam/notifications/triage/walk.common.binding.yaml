@@ -1,0 +1,136 @@
+# What every walk of nizam.notifications.triage shares (graphs/README.md, "The stack and the bindings"): the events a person types or
+# navigates with, the addresses the states are checked at, the places nodes are found by where role and name cannot find them, and the
+# checks of what the API holds after a mark. The scenarios are in binding.yaml (the main story and three more), platform.binding.yaml (the
+# Medaris nazımı and the başnazım) and refused.binding.yaml (a mark that is refused), because a scenario that adds no transition to the
+# ones before it is walked only from a file of its own (`--cover` takes the shortest way from the first scenario that reaches a state).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/notifications/triage \
+#     --bind graphs/nizam/notifications/triage/<file>.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase: the owner moved every replay to the end. What follows is from the code (apps/nizam/features/notifications);
+# every file loads (`--emit-spec`), nothing has been walked, and every locator is unverified until a walk.
+#
+# What the stack gives, and what a walk writes. The seeded nizam accounts hold no ban notice: read with a select on 15 Nov 2026 (koskNazim
+# holds four ENROLLMENT_APPROVED and medarisNazim four ENROLLMENT_REJECTED, kinds the page never asks for, draws, counts or marks;
+# systemAdmin holds none). No route writes a notification, so each scenario's `setup` makes the person's rows with ./triage.mjs (SQL on
+# tedrisat's database through the shared helpers' db.mjs and lib.mjs) in the shape tedrisat's ban producer writes them, and its `teardown`
+# removes them. The helper marks every row it writes (`params.walk`) and deletes by that mark only, so a notification the walk did not make
+# is never deleted; `up` stops, naming the account, if the account holds a ban notice that is not the walk's, because "Tümünü okundu say"
+# would mark it. Every walk runs under the replay lock, `up` removes the walk's earlier rows before it inserts, and `down` is the same
+# removal, so a crashed walk leaves only rows the next `up` or `down` removes.
+#
+#   scenario    file              given (scope, holds, pages)   account       rows (see triage.mjs)                    walks
+#   triage      binding           kosk, several, several        koskNazim     3 unread, 3 read, 20 older read: 26      the main story: Okunmamış, the chip, one mark, Tümü, more, mark all
+#   lastUnread  binding           kosk, one, one                koskNazim     1 unread, 2 read: 3                      the last mark: nothing unread left
+#   allRead     binding           kosk, allRead, one            koskNazim     3 read                                   the disabled button; a read title leaves at once
+#   empty       binding           kosk, nothing, one            koskNazim     none                                     "Bildirim yok", no button
+#   platform    platform.binding  platform, several, one        medarisNazim  2 unread, 2 read: 4                      the Medaris nazımı's page; a title's link leaves (TRIAGE-2)
+#   chief       platform.binding  platform, nothing, one        systemAdmin   none                                     the başnazım's page: empty for good (TRIAGE-1)
+#   refuses     refused.binding   kosk, several, several (failed)  koskNazim  as triage                                a refused mark: the toast, the list put back
+#   lastRefuses refused.binding   kosk, one, one (failed)       koskNazim     as lastUnread                            the same for the one unread notice
+#
+# Not walkable here, and why:
+#   - the failed first read (readFailed, retrying), a failed tab or chip read (listFailed) and a failed "Daha fazla göster" (moreFailed):
+#     the page sends only valid requests and tedrisat answers every read, so only a dead API makes them fail; the first read is made on the
+#     server before any step of a walk;
+#   - a failed "Tümünü okundu say" (the toast allFailed): the call carries valid types, so the API has nothing to refuse;
+#   - the refused mark of a title link (markingLink, FAIL.refused): the page is gone before anything can be looked at, and the toast goes
+#     with it (F-W1-17);
+#   - the session that is over after the first read (sent_to_sign_in): the token does not expire during a walk;
+#   - the phone's bell (bell, bellUnread): the walk's window is 1280 px wide and the app bar is drawn below 768 px.
+# Time. The rows are placed in Istanbul's today, yesterday and earlier (the base binding's zone, and the account's default), so the day
+# groups are the same whatever the hour; a walk begun in the first minutes after midnight has its "today" rows clamped to the day's start.
+# The title link of a row leads to /kosks/{seed.kosk}/yasaklamalar; for the Medaris nazımı that address answers "Bu bölüm için izniniz yok"
+# (TRIAGE-2), and the exit is bound to the address, not to what the page says.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.notifications.triage
+
+events:
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+  # RETRY, OPEN_ALL, OPEN_UNREAD, CHOOSE_BANS, CHOOSE_EVERY_TYPE, READ_ROW, READ_ALL, OPEN_LINK, OPEN_READ_LINK, LOAD_MORE and CLOSE_TOAST are sent by the nodes below
+
+states:
+  emptyAll: { url: '{nizam}/bildirimler' }
+  listed: { url: '{nizam}/bildirimler' }
+  allRead: { url: '{nizam}/bildirimler' }
+  readFailed: { url: '{nizam}/bildirimler' }
+  retrying: { url: '{nizam}/bildirimler' }
+  listFailed: { url: '{nizam}/bildirimler' }
+  moreFailed: { url: '{nizam}/bildirimler' }
+  # the marks and the reads are Next server actions: a POST to the page's own address, held while the busy state is checked. A server
+  # action answers 200 whatever it did, so a FAIL status cannot be compared there; the page's own reads after a mark are GETs.
+  loadingList: { call: '{nizam}/bildirimler' }
+  markingOne: { call: '{nizam}/bildirimler' }
+  markingLast: { call: '{nizam}/bildirimler' }
+  markingAll: { call: '{nizam}/bildirimler' }
+  loadingMore: { call: '{nizam}/bildirimler' }
+  # a title's link: the browser is already on its way to the köşk's Yasaklamalar while the POST is sent, so no `call` is held here (the
+  # page that would show a busy state is gone) and the state is the address
+  markingLink: { url: '{nizam}/kosks/{seed.kosk}/yasaklamalar' }
+  kosk_bans_opened: { url: '{nizam}/kosks/{seed.kosk}/yasaklamalar' }
+  left: { url: '{nizam}/hesap' }
+  sent_to_sign_in: { url: '{keycloak}/realms/medaris/**' }
+
+# Where role and name cannot find a node. The rows are data (a title, a sentence, a time), so a node is found by the row's own hooks
+# (data-testid="notification-row" on the <li>, data-unread while unread, the elements a row holds) and, for a sentence or a title, by the
+# words of NotificationsPage.types.*: the engine finds a `oneOf` node by its first word only, so the alternatives are spelled here.
+nodes:
+  # the shell's <main>; the page a title leaves for has a <main> of its own, so the subtitle (one of two) names this one
+  page: { role: main, hasText: '/Köşk(ünüzde|lerde) konan yasaklar\./' }
+  # the h1; the app bar of the phone and the first-read box carry the same word, so they are told apart by their place
+  pageTitle: { role: heading, name: '/^Bildirimler$/', within: { role: main } }
+  failedTitle: { role: heading, name: '/^Bildirimler yüklenemedi$/', within: { role: main } }
+  # the menu entry's name carries its number and its hidden word ("Bildirimler 3 okunmamış"), so it is found by its beginning, in the sidebar
+  menuLink: { role: link, name: '/^Bildirimler/', within: { css: aside } }
+  menuCount: { text: okunmamış, within: { role: link, name: '/^Bildirimler/', within: { css: aside } } }
+  # the bell is in the phone's app bar, below 768 px
+  bell: { skip: 'drawn on the phone bar below 768 px; the walk window is 1280 px wide' }
+  bellUnread: { skip: 'drawn on the phone bar below 768 px; the walk window is 1280 px wide' }
+  # the tabs' names end with their count (a span with no space); the chips are buttons whose names are exactly their words, and "Tümünü
+  # okundu say" also contains "Tümü"
+  tabAll: { role: tab, name: '/^Tümü/' }
+  tabUnread: { role: tab, name: '/^Okunmamış/' }
+  chipAll: { role: button, name: '/^Tümü$/' }
+  chipBans: { role: button, name: '/^Yasaklar$/' }
+  # the day groups: a section named by its h2, with a list named "Bildirim listesi" in each (TRIAGE-6)
+  dayGroup: { css: 'section[aria-labelledby^=notification-group-]' }
+  dayHeading: { css: 'section[aria-labelledby^=notification-group-] > h2' }
+  rowList: { css: 'ul[aria-label="Bildirim listesi"]' }
+  rowItem: { testId: notification-row }
+  # a row: a title that is a link (unread or read), the badge, the sentence, the köşk's name and the clock, and "Okundu say" on an unread row
+  rowLinkUnread: { css: '[data-testid=notification-row][data-unread] a' }
+  rowLinkRead: { css: '[data-testid=notification-row]:not([data-unread]) a' }
+  rowBadge: { css: '[data-testid=notification-row][data-unread] .mds-badge', hasText: Yeni }
+  rowBody:
+    css: '[data-testid=notification-row] p.mds-body-sm:not(:has(strong))'
+    hasText: '/^.+, .+ adlı talebeyi (.+ dersinden|.+''nün derslerinden|köşkün tüm derslerinden) yasakladı\.( Gerekçe: .+)?$/'
+  rowSource: { css: '[data-testid=notification-row] p.mds-caption bdi' }
+  rowTime: { css: '[data-testid=notification-row] time' }
+  rowMarkRead: { role: button, name: '/^Okundu say: /' }
+  # the busy parts: a block of skeletons with aria-busy and no word (F-W1-8), and the hidden status of the busy buttons
+  listBusy: { css: '[role=tabpanel] [aria-busy=true]' }
+  loadMoreBusy: { role: status, hasText: Yükleniyor }
+  retryBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+  emptyText: { css: '.mds-empty', hasText: '/^Bildirim yok$/' }
+  emptyUnreadText: { css: '.mds-empty', hasText: '/^Okunmamış bildirim yok$/' }
+  moreAlert: { role: alert, hasText: 'Bir sorun oluştu.' }
+  # the toasts of a refused mark: a dialog in the kit's region "Bildirimler", an alertdialog for an error, with a title and a text of its own
+  rowFailedToast: { css: '[role=alertdialog]', hasText: 'Okundu olarak işaretlenemedi.' }
+  rowFailedTitle: { css: '[role=alertdialog] p', hasText: 'Okundu olarak işaretlenemedi.' }
+  rowFailedText: { css: '[role=alertdialog] p', hasText: 'Bildirim okunmamış kaldı.' }
+  rowFailedClose: { role: button, name: Kapat, within: { css: '[role=alertdialog]', hasText: 'Okundu olarak işaretlenemedi.' } }
+  allFailedToast: { css: '[role=alertdialog]', hasText: 'Bildirimler okundu yapılamadı.' }
+  allFailedTitle: { css: '[role=alertdialog] p', hasText: 'Bildirimler okundu yapılamadı.' }
+  allFailedText: { css: '[role=alertdialog] p', hasText: 'Hiçbiri değişmedi.' }
+  allFailedClose: { role: button, name: Kapat, within: { css: '[role=alertdialog]', hasText: 'Bildirimler okundu yapılamadı.' } }
+
+# What a mark leaves outside the screen, read as the account itself (the page is optimistic, so the screen alone cannot say that the API took
+# the mark): fewer of the walk's rows unread than the set made unread, and none after "Tümünü okundu say". A title that is opened marks as
+# the browser leaves, so the check waits a few seconds for it (--wait).
+effects:
+  markNotificationRead:
+    - run: [node, ../nizam/notifications/triage/triage.mjs, unread, '{person}', below, --wait, '6']
+      expect: 'unread fell'
+  markAllNotificationsRead:
+    - run: [node, ../nizam/notifications/triage/triage.mjs, unread, '{person}', zero, --wait, '6']
+      expect: 'unread zero'

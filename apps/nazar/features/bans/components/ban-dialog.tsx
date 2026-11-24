@@ -241,6 +241,7 @@ export function BanDialog({
               type="button"
               className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost"
               aria-label={t("Appoint.remove", { name: picked.name })}
+              disabled={pending}
               onClick={() => setPicked(null)}
             >
               <Icon name="close" size="sm" />

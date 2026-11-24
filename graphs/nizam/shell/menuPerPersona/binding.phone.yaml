@@ -1,0 +1,44 @@
+# nizam.shell.menuPerPersona on the local stack, in a phone's window: nizam-web on http://localhost:4001, 390 x 844 (the size the e2e uses
+# for shell#8 to #10). The wide window is binding.yaml; both extend locators.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.phone.yaml \
+#     --cover transitions --absent --out <dir>
+# The flow's main story starts wide, so it is not bound here: use `--cover transitions`, or `--to` with each of `bar`, `sheet`,
+# `sheetPicking`, `page_opened`, `home_opened`, `notifications_opened`, `account_opened`, `courses_opened` and `kosk_home_opened`.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Scenario `koskManyPhone`: the same köşk nazımı as binding.yaml, with the same course of the walk's own (see there for what it holds and
+# what `teardown` undoes), on a phone. He meets the bar with "Menü" and the bell, opens the sheet (the focus on the brand link of the head:
+# MENU-6; the picker, the menu with its numbers and the person's row, no "Çıkış yap": shell#8), opens the picker inside it, closes the
+# popup with Esc (the sheet stays), and leaves by an entry, by Ana sayfa, by Bildirimler, by the person's row or by a row of the picker.
+# A followed link or a chosen row loads a page, so those steps end at an exit and the next page's frame is a start of its own. The bell
+# of the bar goes to Bildirimler and stays in `bar`: the sheet opened after it names the newest köşk (MENU-2).
+# Not walked: `WIDEN` (shell#8 a10-a12: no action resizes the window; the replay has none).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  koskManyPhone:
+    given: { opensAt: phone, who: koskMany, unread: none, waiting: some }
+    as: koskNazim
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/course.mjs, make, menuA, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, menuA]
+        expect: 'course remove menuA'
+
+effects:
+  getMyAssignments:
+    - run: [node, helpers/sql.mjs, "select id from kosks where id in ('{seed.kosk}', '{seed.kosk2}') order by featured desc, created_at desc limit 1"]
+      expect: '"id":"{seed.kosk2}"'
+    - run: [node, helpers/sql.mjs, "select scope_id from role_assignments where user_id = '{secret.E2E_KOSK_NAZIM_SUB}' and role = 'KOSK_NAZIM' and revoked_at is null order by created_at, id limit 1"]
+      expect: '"scope_id":"{seed.kosk}"'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments e join courses c on c.id = e.course_id where c.kosk_id = '{seed.kosk}' and c.archived_at is null and e.status = 'PENDING'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments e join courses c on c.id = e.course_id where c.kosk_id = '{seed.kosk2}' and c.archived_at is null and e.status = 'PENDING'"]
+      expect: '"n":2'

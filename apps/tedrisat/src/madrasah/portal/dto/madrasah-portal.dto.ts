@@ -124,9 +124,24 @@ export class DashboardSessionResponse {
     type: Boolean,
     nullable: true,
     description:
-      "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way",
+      "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way. False for a cancelled celse, which nobody attends (MDRS-248)",
   })
   withoutAccess!: boolean | null;
+
+  @ApiProperty({
+    description:
+      "The celse was cancelled (MDRS-248). It stays in the list so the Pano can show it with its badge and note; it is not counted as an upcoming celse",
+  })
+  cancelled!: boolean;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: "Bu hafta ders yapılmayacak.",
+    description:
+      "The müderris's note to the talebe on a cancelled celse (MDRS-248). Null when the celse is not cancelled, has no note, or the course is in a passive scope",
+  })
+  cancelReason!: string | null;
 }
 
 export class DashboardApplicationResponse {

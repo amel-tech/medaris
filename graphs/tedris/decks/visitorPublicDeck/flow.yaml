@@ -1,0 +1,440 @@
+# What a person with no account meets on a deck's two public addresses in tedris-web, /decks/<id> and /decks/study/<id>, and on the pages
+# of Desteler that stay behind the sign-in. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026; nothing here is approved.
+#   - What it draws: a public deck as a visitor reads it (the header, a note that says nothing is saved, the cards six at a time), the
+#     round a visitor may study from it (the deck's first ten cards, a card turned and rated, no request that writes), the way out to
+#     sign in, and the three ways a visitor is sent to sign in instead: a deck the API does not give them (it says nothing of whether the
+#     deck exists), and the member pages /decks, /decks/create, /decks/explore, /decks/<id>/cards and /decks/<id>/edit.
+#   - Owned elsewhere: the round of a signed-in talebe, its write and its error toast (tedris.decks.study), the reader's page of the same
+#     deck (tedris.decks.readAndCopy), the refusals a signed-in person meets (tedris.decks.accessRefusals), the sign-in itself
+#     (realm.auth.signIn, started from every exit that leaves for Keycloak).
+#   - Findings it carries (the inventory's ids): DCK-10, DCK-25, DCK-26, DCK-27, DCK-31, and DCK-01, DCK-03, DCK-04, DCK-05, which belong
+#     to the study screen a visitor shares with a talebe. One is this flow's own, proposed as VPD-1 (ui.yaml `rules`).
+#   - Nothing was replayed in this phase: the binding is written and loads, and the walk is a later phase. What was looked at in a
+#     browser's place is read-only: the address of the page and its HTML through curl on 15 Nov 2026 (state `gate`, state `readingDeck`).
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.visitorPublicDeck
+status: captured
+domain: medaris.api
+ui: tedris.decks.visitorPublicDeck
+title: Open a public deck without signing in
+summary: >-
+  A person with no session opens the address of a public deck, from a link someone sent them: no page of the app a visitor can open
+  leads to a deck. The page shows the deck as the reader sees it, without what is a member's: the name, "Herkese açık", how many cards
+  and of which kind, a note that says nothing is saved without signing in with the link "Kaydetmek için giriş yap", the cards six at a
+  time with "Daha fazla göster", and "Çalış". "Çalış" opens a round of the deck's first ten cards, each turned with "Arka yüzü göster"
+  and passed with "Zor", "Orta" or "Kolay": the card just moves on, and nothing leaves the browser. A deck the API does not give an
+  anonymous caller (private, a course's, a köşk's, a medrese's, hidden, or no deck at all) sends the visitor to the sign-in page and back,
+  with the same silence for every one of them. The member pages are never shown: the proxy sends the visitor to sign in before they run.
+  Every way out that leaves for Keycloak starts realm.auth.signIn.
+
+scope:
+  shows: a public deck's page and study page for a person with no session, the sign-in note on both, and the ways a visitor is sent to sign in from a deck address or a member address
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the bar around the page (Keşfet, the theme switch, \"Giriş yap\", \"Kayıt ol\"), the phone's sheet and the toast host: tedris.shell.frame"
+    - "the sign-in itself, after the browser leaves for Keycloak, and the page it comes back to: realm.auth.signIn; a person who signs in from the note comes back to the deck's address and is a talebe there, which is tedris.decks.readAndCopy's page, or the study screen of tedris.decks.study"
+    - "the same two addresses for a signed-in person: the owner's page, the reader's page and the study round of a talebe, which are written to the person's own progress (tedris.decks.editOrDelete, tedris.decks.readAndCopy, tedris.decks.study); and the refusals a signed-in person meets (tedris.decks.accessRefusals)"
+    - "the deck's description, a paragraph the header draws only when the deck has one, and a card's source line under its back, drawn only when the card has one; the walk's deck has neither"
+    - "a deck of more than twelve cards, whose \"Daha fazla göster\" is pressed again for each further six: the graph draws the first press and the last page"
+    - "the end of a round of more than one card: the last rating shows \"Tur bitti\" exactly as for a one-card round, and the graph draws it only for the one-card deck, since it does not count cards (the cap of ten shows in the round's own count, \"Kart 1 / 10\")"
+    - "turning a card by clicking its face: a div with no role and no tab stop, which the graph cannot name (DCK-05); the Space key does the same and is drawn as FLIP"
+    - "a failed read of the deck (a 5xx or a network failure), which throws and shows the root's error page: tedris.shell.systemPages"
+    - "the session store being down, which the auth step reports on its own: realm.auth.signInFailures"
+    - "a visitor with a session cookie whose token tedrisat refuses (401): the page counts them as signed in and reads without `reauthIfRefused` (DCK-26), so they get the error page and not this flow's redirect"
+    - "the loading states: both pages stream behind a `loading.tsx` of skeleton bars in a <main aria-busy=\"true\"> that has no words (DCK-25)"
+
+decisions:
+  D1:
+    question: >-
+      Should a visitor be able to find a public deck from inside the app, not only from a link someone sent?
+    recommend: >-
+      Yes: list the public decks for a visitor on Keşfet, or give the breadcrumb's "Keşfet" a reason to be the root. Today the public view's
+      breadcrumb starts at Keşfet, which lists köşks and medreses and no deck; no page a visitor can open links to a deck (the navigation
+      graph says so); and the API already answers `GET /flashcard/decks?isPublic=true` for a caller with no token, which no page of tedris-web
+      calls. The page is only reachable by an address that was handed to the visitor.
+    affects: [deckPage]
+  D2:
+    question: >-
+      Should a deck the API does not give a visitor be a real redirect, as the member addresses are?
+    recommend: >-
+      Yes (VPD-1): read the deck before the segment's `loading.tsx` streams its skeleton, as the celse layout means to, so the answer is a
+      307 with no body. Today /decks/<id> and /decks/study/<id> answer HTTP 200 with the skeleton and carry the redirect in the stream (a
+      meta refresh after one second and the framework's NEXT_REDIRECT marker), for a private deck and an id nobody has alike. The
+      proxy's own redirect, for /decks, /decks/create and the rest, is a plain 307.
+    affects: [readingDeck, readingStudy, gate]
+
+context:
+  address:
+    values: [deck, study, memberOnly]
+    initial: any
+    say:
+      deck: "they opened /decks/<id>, the deck's page"
+      study: "they opened /decks/study/<id>, the deck's study page"
+      memberOnly: "they opened a page of Desteler that is a member's: /decks, /decks/create, /decks/explore, /decks/<id>/cards or /decks/<id>/edit"
+  deck:
+    values: [closed, refused, empty, one, few, many]
+    initial: any
+    say:
+      closed: "the API does not give the deck to a caller with no token: a private deck, a course's, köşk's or medrese's, a hidden shared deck, an id nobody has"
+      refused: "the API answers 403 for the deck (it turned private between the guard's read and the handler's: a race)"
+      empty: "a public deck with no card"
+      one: "a public deck with one card"
+      few: "a public deck with two to six cards: every row shows at once"
+      many: "a public deck with seven or more cards: six rows show first"
+  listing:
+    values: [first, all]
+    initial: first
+    say:
+      first: "the table shows the first six cards"
+      all: "the table shows every card it can (the rows grow by six at a press; the graph draws the last press)"
+  face:
+    values: [front, back]
+    initial: front
+    say:
+      front: "the card shows its front"
+      back: "the card shows its back and the three ratings"
+  left:
+    values: [more, last]
+    initial: more
+    say:
+      more: "the card in front of the visitor is not the round's last"
+      last: "the card in front of the visitor is the round's last (a round of two or more cards: the app does not tell us when, so the graph leaves it to chance)"
+
+guards:
+  public: "deck in ['empty', 'one', 'few', 'many']"
+  closed: "deck == 'closed'"
+  refused: "deck == 'refused'"
+  emptyDeck: "deck == 'empty'"
+  hasCards: "deck in ['one', 'few', 'many']"
+  moreRows: "deck == 'many' and listing == 'first'"
+  faceFront: "face == 'front'"
+  faceBack: "face == 'back'"
+  lastCard: "deck == 'one' or left == 'last'"
+  signedIn: "false" # the visitor's session: none. The nodes a signed-in person has and a visitor does not carry `when: signedIn`
+
+effects:
+  opensDeckPage: { set: { listing: first } }
+  showsAllRows: { set: { listing: all } }
+  startsRound: { set: { face: front, left: more } }
+  turnsCard: { set: { face: back } }
+  turnsBack: { set: { face: front } }
+  nextCard: { set: { face: front }, havoc: [left] } # the next card may be the round's last
+  endsRound: { set: { face: front } }
+  sentAway: { set: {} } # no change of what the screen remembers: the visitor leaves; the binding checks what the redirect's page holds
+
+failures:
+  readingDeck:
+    from: getDeck
+    notFound: [DECK_NOT_FOUND, HTTP_400]
+    forbidden: [DECK_FORBIDDEN]
+  readingStudy:
+    from: getDeck
+    notFound: [DECK_NOT_FOUND, HTTP_400]
+    forbidden: [DECK_FORBIDDEN]
+
+# The story the page tells first: a public deck of twelve cards, six of them shown, then all; "Çalış" and one card turned and passed;
+# "Çalışmayı bitir" back to the deck; and the note's link, which leaves for the sign-in.
+main:
+  given: { address: deck, deck: many }
+  events: [DONE, MORE_ROWS, STUDY, DONE, REVEAL, RATE, FINISH, DONE, SIGN_IN]
+
+initial: opening
+states:
+  opening:
+    title: The visitor opens an address
+    description: >-
+      Classification only. A member address (/decks, /decks/create, /decks/explore, /decks/<id>/cards, /decks/<id>/edit) is stopped by the
+      proxy before any page runs; the two deck addresses (/decks/<uuid>, /decks/study/<uuid>) are public paths and their pages run.
+    source: apps/tedris/proxy.ts:28
+    always:
+      - guard: "address == 'memberOnly'"
+        target: gate
+        say: "a member address: the proxy answers before the page"
+        source: apps/tedris/lib/public-paths.ts:40
+      - guard: "address == 'study'"
+        target: readingStudy
+        say: "the study page of a deck: it reads the deck itself"
+        source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:38"
+      - target: readingDeck
+        say: "the deck's page: it reads the deck itself"
+        source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:39"
+
+  gate:
+    title: The proxy sends the visitor to sign in
+    description: >-
+      The auth step of proxy.ts hands lib/public-paths.ts the path. Only the pages of the list, and a deck or study address with a uuid
+      (`/decks/<uuid>`, `/decks/study/<uuid>`, case-insensitive; Next takes a trailing slash off with a 308 first), are public; /decks, /decks/create,
+      /decks/explore, /decks/<uuid>/cards and /decks/<uuid>/edit are not, and neither is a deck address whose id is no uuid. For those the
+      proxy answers 307 to /auth/signin?callbackUrl=<the path asked for, with its query>, whatever the visitor typed after it, so the
+      page never runs and nothing is read (seen with curl as a visitor on the stack: 307 for /decks, /decks/create, /decks/explore,
+      /decks/<id>/cards, /decks/<id>/edit and /decks/not-a-uuid). The app's sign-in page then starts the round trip: realm.auth.signIn.
+    source: libs/auth/src/server/proxy.ts:203
+    always:
+      - target: handed_over.redirected
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'" } }
+        say: "the gate's 307 to the sign-in page, with the address asked for as the page to come back to"
+        source: libs/auth/src/server/proxy.ts:209
+
+  readingDeck:
+    title: The deck's page reads the deck
+    description: >-
+      /decks/<uuid> is a public path, so the page runs. `isSignedIn()` is false (no usable token), so it calls readDeck(id) with no
+      token: GET /flashcard/decks/{id} and GET /flashcard/cards?deckId=…&include=progress at once, drawn here as one step on getDeck.
+      The API gives an anonymous caller a deck only when it is public; for every other deck it answers 404 (a private deck, a course's, a
+      köşk's or a medrese's, a hidden shared one, an id nobody has: the same answer, DECK_NOT_FOUND), and the page maps 404 and 400 to
+      "missing" and 403 to "forbidden". Anything that is not "ok" is `redirectToSignIn({ callbackUrl: "/decks/<id>" })`, which is a 307 to
+      the app's sign-in page and says nothing of whether the deck exists. The two words the person could use to tell them apart, the
+      deck's name and its cards, are not in the answer: the redirect's body is the segment's skeleton (curl as a visitor on the stack:
+      the seeded private deck "Kelime Defterim" does not appear in the page, and the title is "Desteler | Tedris"). The document is
+      HTTP 200, not 307, for a uuid that is a deck's or not (VPD-1): [id]/loading.tsx has streamed its skeleton before the read answers.
+      A token that tedrisat refuses is not this branch: the person is "signed in" to the page and meets DCK-26. While the read runs the
+      skeleton is a <main aria-busy="true"> of grey bars with no words (DCK-25).
+    source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:39"
+    invoke: { action: getDeck }
+    on:
+      DONE:
+        guard: public
+        target: deckPage
+        effect: [opensDeckPage]
+        say: "the API gives the public deck and its cards"
+        source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:44"
+      FAIL.notFound:
+        guard: closed
+        target: handed_over.redirected
+        effect: [sentAway]
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'" } }
+        say: "404 or 400: the page sends the visitor to sign in and back to this deck, whichever of the five reasons it has"
+        source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:42"
+      FAIL.forbidden:
+        guard: refused
+        target: handed_over.redirected
+        effect: [sentAway]
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'" } }
+        say: "403: the same redirect, since the page asks only whether the read was ok"
+        source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:41"
+
+  deckPage:
+    title: A public deck
+    by: human
+    goal: true
+    description: >-
+      DeckPublicView: one <main>, with no name and no initial focus (rule focus-not-set). A header: the breadcrumb "Sayfa yolu" (the kit's
+      own name, CRS-12) of "Keşfet" as a link to /discover and the deck's name as the current page; the h1, the deck's name (dir=auto); the
+      badge "Herkese açık"; the caption "{n} ezber kartı · Kelime" (or "Hadis"); and the large link "Çalış" to /decks/study/<id>. There is
+      no collection button, no copy button and no progress: those are a member's (the reader's page, tedris.decks.readAndCopy).
+      Under it a neutral Alert, role=status, "Giriş yapmadan çalışırsan ilerlemen kaydedilmez." with the link "Kaydetmek için giriş yap"
+      to /auth/signin?callbackUrl=%2Fdecks%2F<id> (a next/link with prefetch off). Then the section "Kartlar" (labelled by its h2) with the
+      caption "{n} kart": with no card, the EmptyState "Bu destede henüz kart yok."; else a table named "{deck} destesinin kartları"
+      with the columns "Ön yüz" and "Arka yüz" (the front cell is a plain cell here, not a row header as in the reader's table: DCK-31),
+      the first six rows, an Arabic face set right to left in its own run, and under it "{n} karttan {6’sı} gösteriliyor" and, only
+      while some cards are hidden, "Daha fazla göster", which shows six more. After the last press the button is removed from the
+      page, so a keyboard user's focus falls to the document, and neither the new rows nor the caption are announced (DCK-10). The
+      aside "Deste hakkında" says "Bu deste herkese açık: Medaris yönetimi inceleyip yayımladı. Kartlarını yalnız deste sahibi
+      değiştirir." The tab title is "{deck} | Desteler". A hidden deck that is still public is still given here (ACCREF-1 of
+      tedris.decks.accessRefusals).
+    source: apps/tedris/features/flashcards/components/deck-public-view.tsx:31
+    on:
+      MORE_ROWS:
+        guard: moreRows
+        target: deckPage
+        effect: [showsAllRows]
+        say: "\"Daha fazla göster\" shows six more rows; the graph draws the press that shows them all"
+        source: apps/tedris/features/flashcards/components/deck-public-view.tsx:137
+      STUDY:
+        target: readingStudy
+        effect: [startsRound]
+        say: "\"Çalış\" opens /decks/study/<id>, a page of its own that reads the deck again"
+        source: apps/tedris/features/flashcards/components/deck-public-view.tsx:59
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"Kaydetmek için giriş yap\": /auth/signin?callbackUrl=%2Fdecks%2F<id>, which the app's page hands to Keycloak"
+        source: apps/tedris/features/flashcards/components/deck-public-view.tsx:73
+      OPEN_DISCOVER:
+        target: discover_opened
+        say: "the breadcrumb's \"Keşfet\" goes to /discover (a full page load: the kit's breadcrumb draws a plain anchor)"
+        source: apps/tedris/features/flashcards/components/deck-header.tsx:48
+      NAVIGATE: left
+
+  readingStudy:
+    title: The study page reads the deck
+    description: >-
+      /decks/study/<uuid> is a public path too. A visitor's branch calls readDeck(id) again (the same two reads as the deck's page: the
+      study page keeps its own copy of the read, there is no shared cache across pages) and, when the deck is given, takes the first ten
+      cards of it in the order the API gave them (`anonymousRound`, ANONYMOUS_ROUND = 10) as the round; it does not call the API's
+      study round (GET /flashcard/decks/{id}/due answers 401 to a caller with no token), so there is no due count and no new count. A
+      deck that is not given is the same redirect as on the deck's page, with /decks/study/<id> as the page to come back to. The
+      skeleton while it reads is [id]/loading.tsx of the study segment (DCK-25).
+    source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:38"
+    invoke: { action: getDeck }
+    on:
+      DONE:
+        - guard: "public and emptyDeck"
+          target: studyOver
+          effect: [startsRound]
+          say: "a public deck with no card gives a round of none"
+          source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:43"
+        - guard: public
+          target: studying
+          effect: [startsRound]
+          say: "the deck's first ten cards are the round"
+          source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:43"
+      FAIL.notFound:
+        guard: closed
+        target: handed_over.redirected
+        effect: [sentAway]
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'" } }
+        say: "404 or 400: sent to sign in and back to the study page, with nothing said of the deck"
+        source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:41"
+      FAIL.forbidden:
+        guard: refused
+        target: handed_over.redirected
+        effect: [sentAway]
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'" } }
+        say: "403: the same redirect"
+        source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:40"
+
+  studying:
+    title: A card of the round, front or back
+    by: human
+    description: >-
+      StudySession with signedIn false: one <main> with no name and no initial focus; a header (the breadcrumb of "Keşfet", the deck's
+      name as a link to /decks/<id> and "Çalışma" as the current page; the h1 "Çalışma"; the caption "{deck} · {n} kart", n being the
+      round's length, at most ten; the ghost link "Çalışmayı bitir" to the deck's page); the same sign-in note with the link "Kaydetmek
+      için giriş yap" (to /auth/signin?callbackUrl=%2Fdecks%2Fstudy%2F<id>); the bar "Bu tur: {done} / {n} kart" (a progressbar named by
+      that text); and the card, a region named "Kart {k} / {n}", which has its own caption of the same words and no status badge (that
+      is a member's). The front is a div that turns the card when clicked, with no role and no tab stop (DCK-05), and the back has an
+      eyebrow "Arka yüz" and a paragraph. With the front shown the footer holds one button, "Arka yüzü göster", or the Space key
+      (a window listener, ignored when focus is on a button, link or field; it turns the card back as well); with the back shown it
+      holds "Ne kadar zordu?" and "Zor", "Orta", "Kolay". Pressing the button removes it and focus falls to the document; the back
+      and the next card appear with no announcement (DCK-01, DCK-03). Rating does one thing for a visitor: the card is turned
+      back and the next one shown. The code reads `if (!signedIn)` before it calls the Server Action, so no request is made, the
+      rating is not even kept (all three buttons are the same), and `flashcard_progress` stays empty (e2e learn#14). The sign-in note
+      is the visitor's only way to keep what they did.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:44
+    on:
+      REVEAL:
+        guard: faceFront
+        target: studying
+        effect: [turnsCard]
+        say: "\"Arka yüzü göster\" turns the card; the button is replaced by the ratings"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:238
+      FLIP:
+        - guard: faceFront
+          target: studying
+          effect: [turnsCard]
+          say: "the Space key turns the card to its back"
+          source: apps/tedris/features/flashcards/components/study-session.tsx:74
+        - guard: faceBack
+          target: studying
+          effect: [turnsBack]
+          say: "the Space key turns it back to its front"
+          source: apps/tedris/features/flashcards/components/study-session.tsx:74
+      RATE:
+        - guard: "faceBack and lastCard"
+          target: studyOver
+          effect: [endsRound]
+          say: "a rating of the round's last card: no write, the round is over"
+          source: apps/tedris/features/flashcards/components/study-session.tsx:88
+        - guard: faceBack
+          target: studying
+          effect: [nextCard]
+          say: "a rating of any other card: no write, the next card's front"
+          source: apps/tedris/features/flashcards/components/study-session.tsx:88
+      FINISH:
+        target: readingDeck
+        say: "\"Çalışmayı bitir\" goes to /decks/<id>, the deck's public page; what is left of the round is left as it is"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:135
+      OPEN_DECK:
+        target: readingDeck
+        say: "the breadcrumb's deck name goes to /decks/<id>"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:124
+      OPEN_DISCOVER:
+        target: discover_opened
+        say: "the breadcrumb's \"Keşfet\" goes to /discover"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:123
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"Kaydetmek için giriş yap\": /auth/signin?callbackUrl=%2Fdecks%2Fstudy%2F<id>"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:147
+      NAVIGATE: left
+
+  studyOver:
+    title: The round is over, or there was none
+    by: human
+    description: >-
+      The same header and note as a card, and in the card's place an EmptyState with one link. A round that has been rated to its last
+      card says "Tur bitti" and "{n} kartı çalıştın." (the number the round began with), and "Desteye dön" (outline) goes to /decks/<id>;
+      the card, the bar and the ratings are gone, nothing moves the focus and nothing announces the change (DCK-04). A deck with no card
+      gives a round of none: "Bugün için bitti" and "Bugün tekrar bekleyen kartın yok. Yarın yeniden bak.", which is the member's
+      sentence about due cards and is wrong for a deck that has no cards at all (DCK-27). The sign-in note stays above it.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:155
+    on:
+      BACK_TO_DECK:
+        target: readingDeck
+        say: "\"Desteye dön\" goes to /decks/<id>"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:169
+      FINISH:
+        target: readingDeck
+        say: "\"Çalışmayı bitir\" is still in the header"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:135
+      OPEN_DECK:
+        target: readingDeck
+        say: "the breadcrumb's deck name goes to /decks/<id>"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:124
+      OPEN_DISCOVER:
+        target: discover_opened
+        say: "the breadcrumb's \"Keşfet\" goes to /discover"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:123
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"Kaydetmek için giriş yap\": the note is drawn here too"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:147
+      NAVIGATE: left
+
+  handed_over.sign_in:
+    title: Signing in, from the note, on the page they left
+    type: final
+    leavesPage: true
+    description: >-
+      The link is /auth/signin?callbackUrl=<the deck's page or its study page>, tedris's own page, which starts the Keycloak round trip.
+      realm.auth.signIn takes over (given: tedris, entered by a link that carries the page). Keycloak sends the person back to the
+      address named, where they are a talebe: the deck's page is tedris.decks.readAndCopy's (the owner's, if it is theirs) and the study
+      page is tedris.decks.study's, with the round their own progress makes.
+
+  handed_over.redirected:
+    title: Sent to sign in, on the page they asked for
+    type: final
+    leavesPage: true
+    description: >-
+      The page (a deck the API will not give, with the deck's or the study address as the page to come back to) or the proxy (a member
+      address, with that address) sent the visitor to /auth/signin?callbackUrl=…, which starts the Keycloak round trip. realm.auth.signIn
+      takes over (given: tedris, entered by a page that needs a session). After the sign-in the address is opened again by a signed-in
+      person, who may find the deck is not theirs to read: tedris.decks.accessRefusals.
+
+  discover_opened:
+    title: Keşfet opens
+    type: final
+    description: tedris.discover.browse draws /discover, which lists köşks and medreses and no deck (decision D1).
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: closed-deck-draws-nothing
+    never: "state in ['deckPage', 'studying', 'studyOver'] and not public"
+    say: "A deck the API does not give an anonymous caller is never drawn: no page, no card and no study round of it reaches a visitor"
+    source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:41"
+  - id: member-address-never-reads-a-deck
+    never: "address == 'memberOnly' and state in ['readingDeck', 'readingStudy', 'deckPage', 'studying', 'studyOver']"
+    say: "A member address never reaches a deck page: the proxy sends the visitor to sign in before it runs"
+    source: apps/tedris/lib/public-paths.ts:40
+  - id: empty-deck-has-no-card-to-turn
+    never: "deck == 'empty' and state == 'studying'"
+    say: "A public deck with no card never shows a card to turn: its round is the empty round"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:155

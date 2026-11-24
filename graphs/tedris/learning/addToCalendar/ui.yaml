@@ -1,0 +1,91 @@
+# The screens of tedris.learning.addToCalendar: the calendar button where an upcoming celse is drawn (a row of Programım, the action
+# card of the celse's page, the enrolled card of the course page), the kit's menu with three rows and a note, the course card's own
+# menu with two links, the error toast of a failed download, and the heading of the subscription page the third row leads to. What
+# Programım draws around its rows is tedris.learning.schedule's, the rest of the celse page is tedris.celse.attend's and the learn
+# flows', the rest of the course page is tedris.course.readProgramme's, and the subscription page is tedris.account.calendarFeed's
+# (flow.yaml scope.outOfView).
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (keys kept, root removed) by <scratchpad>/addcal-probe/catalog.mjs.
+# One text is built in code and is in no i18n file, so it is `composed.*`:
+#   composed.Toast.close   "Kapat"   the toast's close button, hard-coded in libs/ui/src/mds/toast.tsx:97 (ADDCAL-2)
+# The flow invokes two reads (the .ics of one celse and the feed), so no `changes` message is asked for.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learning.addToCalendar
+flow: tedris.learning.addToCalendar
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Örnek Celse
+focus:
+  row: rowTrigger # Esc, a saved file and a failed download all leave the focus on the button again (measured)
+  celseCard: celseTrigger
+  courseCard: courseTrigger
+  rowFailed: rowTrigger
+  celseFailed: celseTrigger
+
+nodes:
+  # ---- Programım: the page around a row, and the row's button ----
+  scheduleMain: { type: page, component: Page, role: main, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:227, script: actions } # no name, no initial focus: the page sets none (focus-not-set)
+  scheduleTitle: { type: text, component: Heading, role: heading, text: { key: SchedulePage.title }, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:230 } # h1
+  rowTrigger: { type: action, component: Button, role: button, intent: secondary, name: { key: AddToCalendar.rowLabel, params: { title: title } }, in: [row, rowFailed, menu, downloading], when: onSchedule, emits: OPEN_MENU, duringStep: true, source: apps/tedris/features/courses/components/calendar-menu.tsx:93 } # an icon only; aria-haspopup=menu, aria-expanded. Drawn only on a row whose state is upcoming (schedule-page.tsx:173); nothing disables it while the file is fetched, so the menu opens again at once and stays open when the fetch ends
+
+  # ---- the celse page: the page around the action card, and the card's button ----
+  celseMain: { type: page, component: Page, role: main, in: [celseCard, celseFailed, menu, downloading], when: onCelse, source: apps/tedris/features/courses/components/session-page.tsx:337, script: actions } # no name, no initial focus
+  celseTrigger: { type: action, component: Button, role: button, intent: secondary, text: { key: AddToCalendar.button }, in: [celseCard, celseFailed, menu, downloading], when: onCelse, emits: OPEN_MENU, duringStep: true, source: apps/tedris/features/courses/components/session-page.tsx:249 } # the same kit menu as Programım's, as a text button (text, size large, outlined): its name is its visible text; live while the file is fetched, as on Programım
+
+  # ---- the course page: the page around the enrolled card, and the card's own button ----
+  courseMain: { type: page, component: Page, role: main, in: [courseCard, courseMenu, linking], source: apps/tedris/features/courses/components/course-page.tsx:237, script: actions } # no name, no initial focus
+  courseTrigger: { type: action, component: Button, role: button, intent: secondary, text: { key: AddToCalendar.button }, in: [courseCard, courseMenu, linking], emits: OPEN_MENU, duringStep: true, source: apps/tedris/features/courses/components/add-to-calendar.tsx:44 } # another component than the kit's menu (ADDCAL-1): Radix, outlined and full width, with an icon before its text; live while the browser follows the file link: a saved file leaves the menu open, a refusal replaces the page
+
+  # ---- a celse page where no button is drawn ----
+  closedMain: { type: page, component: Page, role: main, in: [not_offered], source: apps/tedris/features/courses/components/session-page.tsx:337, script: actions } # the page of a celse that was held: no "Takvime ekle" anywhere on it
+
+  # ---- the kit's menu (libs/ui/src/mds/menu.tsx): Programım's and the celse page's ----
+  rowMenu: { type: list, component: List, role: menu, name: { labelledBy: rowTrigger }, in: [menu], when: onSchedule, source: libs/ui/src/mds/menu.tsx:64 } # a Base UI popup named by its button; it takes the focus itself, not its first row (menu-focus-on-popup)
+  celseMenu: { type: list, component: List, role: menu, name: { labelledBy: celseTrigger }, in: [menu], when: onCelse, source: libs/ui/src/mds/menu.tsx:64 }
+  googleItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: AddToCalendar.google }, in: [menu], emits: CHOOSE_GOOGLE, source: apps/tedris/features/courses/components/calendar-menu.tsx:101 } # an icon (aria-hidden) before the words
+  icsItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: AddToCalendar.apple }, in: [menu], emits: CHOOSE_ICS, source: apps/tedris/features/courses/components/calendar-menu.tsx:120 }
+  subscribeItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: AddToCalendar.subscribe }, in: [menu], emits: CHOOSE_SUBSCRIBE, source: apps/tedris/features/courses/components/calendar-menu.tsx:128 } # after a rule
+  menuNote: { type: text, component: Text, text: { key: AddToCalendar.note }, in: [menu], source: libs/ui/src/mds/menu.tsx:80 } # a <p class="mds-popup__note"> inside the role=menu popup (DSC-18)
+
+  # ---- the course card's own menu (add-to-calendar.tsx): two links and nothing else ----
+  courseMenuList: { type: list, component: List, role: menu, name: { labelledBy: courseTrigger }, in: [courseMenu], source: apps/tedris/features/courses/components/add-to-calendar.tsx:54 } # a Radix popup named by its button; it takes the focus itself
+  courseGoogle: { type: action, component: LinkButton, role: menuitem, intent: secondary, text: { key: AddToCalendar.google }, in: [courseMenu], emits: CHOOSE_GOOGLE, source: apps/tedris/features/courses/components/add-to-calendar.tsx:82 } # <a target=_blank rel="noopener noreferrer"> with role menuitem
+  courseIcs: { type: action, component: LinkButton, role: menuitem, intent: secondary, text: { key: AddToCalendar.apple }, in: [courseMenu], emits: CHOOSE_ICS, source: apps/tedris/features/courses/components/add-to-calendar.tsx:96 } # <a href="/api/lessons/<id>/calendar?locale=tr">, no download attribute (CRS-09)
+
+  # ---- the error toast of a failed download (the unified kit's Toaster, Base UI): on Programım and on the celse page, never on the course page ----
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: failedTitle }, in: [row, celseCard, rowFailed, celseFailed, menu, downloading], when: toasted, source: libs/ui/src/mds/toast.tsx:77 } # an error toast stays until it is closed; Base UI gives a high-priority toast the role alertdialog and aria-hidden until it is focused, and announces it through the viewport's own role=alert (not verified with a screen reader); its region is "Bildirimler"
+  failedTitle: { type: text, component: Text, text: { key: AddToCalendar.downloadFailed }, in: [row, celseCard, rowFailed, celseFailed, menu, downloading], when: toasted, source: apps/tedris/features/courses/components/calendar-menu.tsx:88 } # a <p>; the toast has a title and no description
+  failedClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [row, celseCard, rowFailed, celseFailed, menu, downloading], when: toasted, emits: CLOSE_TOAST, duringStep: true, source: libs/ui/src/mds/toast.tsx:97 } # an icon only, aria-hidden with the toast until it is focused; the label is a constant of the kit (ADDCAL-2). Live while a new fetch runs; when that fetch fails too, the app closes the old toast at once and shows a new one, while the graph, which holds one toast, draws the press as closing the toast the failure leaves
+
+  # ---- the subscription page the third row leads to: only its heading, as proof that the page has changed ----
+  subscriptionTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.title }, in: [subscribed], source: apps/tedris/app/account/calendar/page.tsx:31 } # h1; the rest of the page is tedris.account.calendarFeed's
+
+edges:
+  - { labelledBy: [rowMenu, rowTrigger] }
+  - { labelledBy: [celseMenu, celseTrigger] }
+  - { labelledBy: [courseMenuList, courseTrigger] }
+  - { labelledBy: [failedToast, failedTitle] }
+  - { triggers: [rowTrigger, menu] }
+  - { triggers: [celseTrigger, menu] }
+  - { triggers: [courseTrigger, courseMenu] }
+  - { triggers: [googleItem, google_opened] }
+  - { triggers: [icsItem, downloading] }
+  - { triggers: [subscribeItem, subscribed] }
+  - { triggers: [courseGoogle, google_opened] }
+  - { triggers: [courseIcs, linking] }
+
+rules:
+  - { id: CRS-09, rule: "The course card's \"Apple Takvim (.ics)\" is a plain link (add-to-calendar.tsx:96-100, <a href=\"/api/lessons/<id>/calendar?locale=tr\"> with no download attribute). While the route answers a file the browser saves it and the page stays; when tedrisat answers 400, 403, 404, 409, 503 (or the route 500, route.ts:70-87) the browser leaves the course page for the JSON body, such as {\"error\":\"LESSON_NOT_FOUND\"} (measured with the route answering 404). The other menu fetches the file and toasts instead (calendar-menu.tsx:68-89), and its comment names this exact problem. Fix: use CalendarMenu on the course card too, or fetch the file as it does." }
+  - { id: DSC-18, rule: "The kit puts a <p class=\"mds-popup__note\"> inside the role=menu popup, next to the menuitems (libs/ui/src/mds/menu.tsx:80; measured: the popup's children are three menuitems, a separator and the paragraph). A paragraph is not a permitted child of a menu, so some screen readers may skip or misread it (not verified). Fix: render the note outside the menu element or point to it with aria-describedby." }
+  - { id: DSC-21, rule: "The line put into the Google event, \"Toplantı bağlantısı oturum sayfasındadır:\" (AddToCalendar.linkIsOnPage, used at calendar-menu.tsx:115), says \"oturum\" where the app says \"celse\" everywhere else; the .ics tedrisat builds says \"Toplantı bağlantısı celse sayfasındadır:\" (measured in both). Fix: change the catalog word to \"celse sayfasındadır\". The line is in the event, not on a screen, so the graph draws no node for it." }
+  - { id: feed-misses-basmuderris-and-ders-nazir, rule: "The feed holds the courses its owner is enrolled in (ENROLLED or COMPLETED), teaches (MUDERRIS) or runs as köşk nazımı, and its own description says \"every course the owner manages\" (calendar-feed.repository.ts:119-190). A medrese's başmüderris and a ders nazırı have no row of those kinds, so their feed is empty of the course they run. Measured by hand on 2026-11-15 on the seeded course \"Bina ve İzhar Şerhi\": the feed of the başmüderris and of the ders nazırı held 0 events, the feed of its müderris and of the köşk's nazım held 65, and the feed of the medrese nazırı held 14, none of them from that course; the page's own copy (CalendarSubscription.what1) promises only the courses one is enrolled in, so a talebe is not misled. Not replayed: the walk's talebe is an applicant. Fix: widen the repository's roles (MEDRESE_BASMUDERRIS, DERS_NAZIR) or narrow the description." }
+  - { id: ADDCAL-1, rule: "new, provisional id. The enrolled card of the course page uses add-to-calendar.tsx (shadcn/Radix DropdownMenu, course-aside.tsx:295), while Programım and the celse page use calendar-menu.tsx (Base UI Menu): two rows instead of three, no \"Tüm derslerime abone ol\", no note, no toast, and the file row is a link (CRS-09). The comment of add-to-calendar.tsx says it follows the page's outline-button pattern because B10 is not in the design system yet. Fix: one component." }
+  - { id: ADDCAL-2, rule: "new, provisional id. The toast's close button is named \"Kapat\" by a constant of the kit (libs/ui/src/mds/toast.tsx:97, aria-label=\"Kapat\"), not by a message of the catalog, and the toaster's region is named \"Bildirimler\" by a default parameter (toast.tsx:127); ToastHost passes neither (apps/tedris/components/toast-host.tsx:27). Latent while tr is the only locale a screen can show; the same default as LEAVE-2 and MDRS-233." }
+  - { id: ADDCAL-3, rule: "new, provisional id. A download that works says nothing: no toast, no status, no change on the page (calendar-menu.tsx:79-86). Only the browser's own download list tells the person that medaris-<id>.ics was saved. A failure, by contrast, has a toast. Fix: a success toast (\"Takvim dosyası indirildi\"), as the subscription page has for \"Bağlantı kopyalandı\"." }
+  - { id: menu-focus-on-popup, rule: "Opened with the pointer, both menus put the focus on their popup, not on the first row (measured: document.activeElement is the popup's div with role=menu, in Base UI's and in Radix's). Opened with the keyboard it is not verified. Not drawn." }
+  - { id: focus-not-set, rule: "None of the three pages sets a focus on load (document.activeElement is body, measured), so the page nodes carry no initialFocus." }
+  - { id: toast-aria-hidden, rule: "Base UI renders a high-priority (error) toast with role=alertdialog, tabindex=0 and aria-hidden=true until it is focused (toast Root, measured on the toast of a failed download), and announces it through the viewport's own role=alert element. The toast is therefore not found by role in the accessibility tree (a replay finds it by its role attribute); whether a screen reader announces it is not verified." }
+  - { id: google-popup-unhandled, rule: "window.open's result is not read (calendar-menu.tsx:117): a popup blocker's refusal gives no message. The new tab opens at Google Takvim's sign-in page when the person is signed out of Google, with the event as its continue address (measured with a signed-out browser)." }

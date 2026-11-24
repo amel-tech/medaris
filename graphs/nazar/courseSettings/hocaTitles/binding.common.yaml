@@ -1,0 +1,94 @@
+# What the walks of nazar.courseSettings.hocaTitles share: the walk's own course (`made`), the events a person causes by pressing a
+# list's option or the Esc key, the checks of what a save leaves in the API, and the locators role and name cannot give. It has no
+# scenario: binding.yaml (the hoca saves two titles; a course with a hoca that has no account; a caller who may only look),
+# binding.forbidden.yaml (the caller loses course.settings between the page and Kaydet) and binding.gone.yaml (the second hoca stops
+# being a hoca of the course between the page and Kaydet) extend it and bring theirs. Three files because a walk takes the first
+# scenario of a file whose `given` fits, and because the last two change the world in a `before` of the state `dirty`, which is a
+# property of a file and not of a scenario.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator and every expectation below is from the code
+# and unverified until the walk phase. Where it is a guess it says so. The binding loads (`replay <dir> --bind <file> --emit-spec`
+# wrote a spec and walked nothing).
+#
+# The data of a walk. Every scenario makes its own course (helpers/course.mjs): `Deneme dersi hocaTitles`, PUBLISHED, in the seed's second
+# köşk, one week of one celse, the MUDERRIS account (Hamdi Müderris) as its hoca and imam; the ids are read from
+# graphs/.local/made/hocaTitles.json as {made.*}. The second hoca is applicantH ("Rıza Başvuran", a spare talebe account of the stack),
+# seated by helpers/seat-hoca.mjs, so that the course lists two hocas with accounts in the order MUDERRIS, applicantH. `teardown`
+# removes the course with everything under it (the müderris rows and the roles of both hocas go with it, and so does a ders nazırı's
+# post). No seeded course is touched, so no seeded course's titles move: the MUDERRIS account teaches three seeded courses and a check
+# below reads that none of them got a title. Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# What a walk leaves and cannot remove: audit rows (course.muderris_unvan_update for each title written, and course.open and the like
+# for the course). audit_log is append-only and nothing depends on them. No SQL writes except in `guest` (below).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseSettings.hocaTitles
+
+data:
+  made: { json: ../.local/made/hocaTitles.json }
+
+# {name} of the subtitle and of the toast is the walk's course title
+samples:
+  name: '{made.title}'
+
+# The events no node of the screen sends, or whose node the replay cannot choose between. Opening a select and pressing Kaydet or Vazgeç
+# are the nodes' own.
+events:
+  # a Base UI select: the option in the list it opened. One title for both hocas ({title}, "Doç. Dr." in every scenario): the event has no way
+  # to say which select is open, and the rows are told apart by their order in the checks below
+  CHOOSE_TITLE:
+    - click: { role: option, name: '{title}' }
+  CHOOSE_UNTITLED:
+    - click: { role: option, name: Hoca (unvansız) }
+  CLOSE_LIST:
+    - key: Escape
+  RELOAD:
+    - reload: true
+  # "Hesap", the one page of the portal that the person's own row in the sidebar leads to; it leaves the course's scope and the page
+  NAVIGATE:
+    - goto: '{nazar}/hesap'
+
+# What a step leaves outside the screen, read from tedrisat's database (helpers/sql.mjs) as invariants that hold on every path of a walk.
+# `allPlainPlain` .. `allTitledTitled` are flow effects that say what the course has stored once a save or a Vazgeç is over: they apply on every
+# transition that leaves the card holding those titles, so each check names the two rows by their order (the first is MUDERRIS, the second
+# is applicantH, or the hoca with no account in `guest`) and compares them with "Doç. Dr." (DOC_DR). In a walk where the second hoca is gone
+# (FAIL.gone) there is no second row and the second value reads null, which the effect also says.
+effects:
+  allPlainPlain:
+    - run: [node, helpers/sql.mjs, "select (array_agg(unvan order by order_index, id))[1] as first, (array_agg(unvan order by order_index, id))[2] as second from course_muderris where course_id = '{made.course}'"]
+      expect: '"first":null,"second":null'
+  allTitledPlain:
+    - run: [node, helpers/sql.mjs, "select (array_agg(unvan order by order_index, id))[1] as first, (array_agg(unvan order by order_index, id))[2] as second from course_muderris where course_id = '{made.course}'"]
+      expect: '"first":"DOC_DR","second":null'
+  allPlainTitled:
+    - run: [node, helpers/sql.mjs, "select (array_agg(unvan order by order_index, id))[1] as first, (array_agg(unvan order by order_index, id))[2] as second from course_muderris where course_id = '{made.course}'"]
+      expect: '"first":null,"second":"DOC_DR"'
+  allTitledTitled:
+    - run: [node, helpers/sql.mjs, "select (array_agg(unvan order by order_index, id))[1] as first, (array_agg(unvan order by order_index, id))[2] as second from course_muderris where course_id = '{made.course}'"]
+      expect: '"first":"DOC_DR","second":"DOC_DR"'
+  # after a save that was taken: the API wrote an audit row for what it changed; no hoca with no account was titled; and the same account's
+  # rows in every other course (the three seeded ones) have no title, because a title belongs to the course it was set in
+  setMuderrisUnvan:
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as audited from audit_log where action = 'course.muderris_unvan_update' and entity_id = '{made.course}'"]
+      expect: '"audited":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris where course_id = '{made.course}' and user_id is null and unvan is not null"]
+      expect: '{"n":0}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris where user_id = '{secret.E2E_MUDERRIS_SUB}' and course_id <> '{made.course}' and unvan is not null"]
+      expect: '{"n":0}'
+
+# Role and name find most nodes. Below are the ones they cannot find alone.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the account page): the card is in this one
+  page: { css: 'main:has([data-testid=hoca-unvan-card])' }
+  # the page has four named cards (two forms, two sections) and two "Kaydet" and two "Vazgeç" (F-D2c-14): the card's own are found inside it
+  card: { testId: hoca-unvan-card }
+  save: { role: button, name: Kaydet, within: { testId: hoca-unvan-card } }
+  cancel: { role: button, name: Vazgeç, within: { testId: hoca-unvan-card } }
+  # the hidden <output> of the busy Kaydet, the only status of the card that holds this text
+  savingStatus: { role: status, hasText: Kaydediliyor…, within: { testId: hoca-unvan-card } }
+  # the four error toasts share a title; each is found by its sentence (not verified: a toast is an alertdialog named by its title)
+  toastForbidden: { role: alertdialog, hasText: Bunu yapma izniniz yok }
+  toastGone: { role: alertdialog, hasText: Bu kişi artık dersin hocası değil }
+  toastInvalid: { role: alertdialog, hasText: Bu değer kaydedilemez }
+  toastFailed: { role: alertdialog, hasText: İşlem tamamlanamadı }

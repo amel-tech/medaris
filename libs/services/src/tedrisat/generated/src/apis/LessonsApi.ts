@@ -29,9 +29,11 @@ import type {
   LessonNoteResponse,
   LessonQuestionResponse,
   LessonTeacherNoteResponse,
+  LessonViewResponse,
   LiveStreamResponse,
   PaginatedCourseQuestionResponse,
   PaginatedLessonQuestionResponse,
+  RecordLessonViewDto,
   RecordingAvailabilityResponse,
   RecordingResponse,
   RecordingUploadResponse,
@@ -78,12 +80,16 @@ import {
     LessonQuestionResponseToJSON,
     LessonTeacherNoteResponseFromJSON,
     LessonTeacherNoteResponseToJSON,
+    LessonViewResponseFromJSON,
+    LessonViewResponseToJSON,
     LiveStreamResponseFromJSON,
     LiveStreamResponseToJSON,
     PaginatedCourseQuestionResponseFromJSON,
     PaginatedCourseQuestionResponseToJSON,
     PaginatedLessonQuestionResponseFromJSON,
     PaginatedLessonQuestionResponseToJSON,
+    RecordLessonViewDtoFromJSON,
+    RecordLessonViewDtoToJSON,
     RecordingAvailabilityResponseFromJSON,
     RecordingAvailabilityResponseToJSON,
     RecordingResponseFromJSON,
@@ -225,9 +231,18 @@ export interface ListMyCourseQuestionsRequest {
     cursor?: string;
 }
 
+export interface ListMyLessonViewsRequest {
+    id: string;
+}
+
 export interface PreviewSessionBatchRequest {
     courseId: string;
     weeklyPatternDto: WeeklyPatternDto;
+}
+
+export interface RecordLessonViewRequest {
+    id: string;
+    recordLessonViewDto: RecordLessonViewDto;
 }
 
 export interface ResignRecordingUploadRequest {
@@ -1423,6 +1438,50 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Only the caller\'s own, one per celse they have played; a celse never played has none. Hidden celses are left out. A talebe who was removed still reads theirs while the course is open; a course in a passive scope is closed (403 LESSON_VIEW_FORBIDDEN), and a course the caller may not see is not found.
+     * The caller\'s watch records on a course\'s celses
+     */
+    async listMyLessonViewsRaw(requestParameters: ListMyLessonViewsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LessonViewResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listMyLessonViews().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/lesson-views`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(LessonViewResponseFromJSON));
+    }
+
+    /**
+     * Only the caller\'s own, one per celse they have played; a celse never played has none. Hidden celses are left out. A talebe who was removed still reads theirs while the course is open; a course in a passive scope is closed (403 LESSON_VIEW_FORBIDDEN), and a course the caller may not see is not found.
+     * The caller\'s watch records on a course\'s celses
+     */
+    async listMyLessonViews(requestParameters: ListMyLessonViewsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LessonViewResponse>> {
+        const response = await this.listMyLessonViewsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Expands the pattern exactly as `POST /courses/:courseId/sessions/batch` would and writes nothing, so the editor can show the list before it is saved (MDRS-109).
      * Preview the sessions a weekly pattern would create
      */
@@ -1473,6 +1532,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async previewSessionBatch(requestParameters: PreviewSessionBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionBatchPreviewResponse> {
         const response = await this.previewSessionBatchRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Sent by the watch page\'s player while it plays. An enrolled talebe only (ENROLLED or COMPLETED, and not barred), while the course\'s content is open. The first report that ends the video or reaches nine tenths of it marks the celse watched, and the mark stays; that report also works the enrollment\'s `progress` out again, as the share of the course\'s celses watched (hidden and cancelled ones left out).
+     * Record how far the caller has watched a celse
+     */
+    async recordLessonViewRaw(requestParameters: RecordLessonViewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonViewResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling recordLessonView().'
+            );
+        }
+
+        if (requestParameters['recordLessonViewDto'] == null) {
+            throw new runtime.RequiredError(
+                'recordLessonViewDto',
+                'Required parameter "recordLessonViewDto" was null or undefined when calling recordLessonView().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/view`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RecordLessonViewDtoToJSON(requestParameters['recordLessonViewDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonViewResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Sent by the watch page\'s player while it plays. An enrolled talebe only (ENROLLED or COMPLETED, and not barred), while the course\'s content is open. The first report that ends the video or reaches nine tenths of it marks the celse watched, and the mark stays; that report also works the enrollment\'s `progress` out again, as the share of the course\'s celses watched (hidden and cancelled ones left out).
+     * Record how far the caller has watched a celse
+     */
+    async recordLessonView(requestParameters: RecordLessonViewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonViewResponse> {
+        const response = await this.recordLessonViewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

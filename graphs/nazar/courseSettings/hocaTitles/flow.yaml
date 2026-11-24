@@ -1,0 +1,376 @@
+# "Hocalar ve unvanları", the second card of Ders ayarları (/ders/<id>/ayarlar) in nazar-web, read from the code of PR #394's branch on
+# 15 Nov 2026 (apps/nazar/features/course-settings/components/{course-settings-page,hoca-unvan-card}.tsx, features/course-settings/
+# {hoca-unvan,actions}.ts, libs/utils/src/hoca-unvan.js, and the API's PUT /courses/:id/muderris/:userId/unvan). Nothing here was walked
+# and nothing was seen in a browser: "from the code" is the only source of every behaviour below, apart from the unit spec that pins the
+# card (apps/nazar/test/hoca-unvan-card.spec.tsx). No e2e spec touches the card.
+#
+# What the card does. Each hoca of the course has a select: the plain "Hoca (unvansız)" first, then the eight unvans written as they go
+# before a name (Prof. Dr., Doç. Dr., Dr., Müderris, Molla, Müftü, Şeyh, Hafız). Under each select a line says how the course will show
+# the name ("Derste “Doç. Dr. Hamdi Müderris” olarak görünür."), and it follows the choice at once. Nothing is sent until the card's own
+# Kaydet: one PUT for each hoca whose unvan differs, in list order; the first refusal stops the loop, a toast words it from its code, and
+# the page is read again. The unvan belongs to this hoca in this course only (the same person keeps theirs in another course) and shows
+# wherever the person appears as this course's hoca; the API writes an audit row only when a value changed.
+#
+# Who. The card draws for whoever opens the page: the page asks any of course.edit, course.settings, course.publish, session.manage or
+# course.partner_codes (PAGE_CODES.settings). The selects are open for a holder of course.settings alone (the API's own code on the PUT,
+# course-settings-page.tsx:118); another holder (a ders nazırı with session.manage) sees the same card with every select shut and the
+# sentence "Unvanları değiştirme izniniz yok; yalnız görebilirsiniz." instead of the buttons. A hoca shown by name with no account (a
+# legacy row the API can no longer make) keeps a shut select, because the unvan is set by account.
+#
+# Where this card ends. It is one of four on the page, each its own <form> or <section> with its own save: above it the form "Erişim,
+# kayıt ve saat dilimi" with its own Kaydet and Vazgeç (nazar.courseSettings.access), below it "Ortak uygulama kodları" for the partner
+# codes (nazar.courseSettings.partnerCodes), in the aside column the "Yayın" card and, in the header, "Tanıtım sayfasını gör"
+# (nazar.courseSettings.publish). The four are independent: the form is keyed by the stored course settings and this card by the hocas, so
+# a save of one re-reads the page and leaves the other's unsaved choices where they are. Who teaches, and who is the imam, is not changed
+# here (nazar.courses.changeHocas, nizam.courses.editHocalar); this card changes only how each is titled.
+#
+# Findings this flow touches (ui.yaml `rules` has the same ids): F-D2c-7 (a save that changes a title remounts the card, so the focused
+# Kaydet is destroyed and the focus falls to the page), F-D2c-14 (the card draws a second "Kaydet" and "Vazgeç" beside the form's, which
+# is why the page's e2e locators are stale), and four of its own: HOCA-1 (after a refused write that leaves the hocas as they were, the card
+# keeps showing the refused choice as if it were the course's name), HOCA-2 (a refusal at the second write leaves the first one stored and
+# the toast says only that a title could not be saved), HOCA-3 (Kaydet and Vazgeç are natively off until something differs and nothing says
+# why) and HOCA-4 (leaving with a choice not yet saved asks nothing).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseSettings.hocaTitles
+status: captured
+domain: medaris.api
+ui: nazar.courseSettings.hocaTitles
+title: Give each hoca a title
+summary: >-
+  The hoca opens Ders ayarları and, in the card "Hocalar ve unvanları", finds every hoca of the course with a select of titles and the
+  name the course will show under it. Choosing a title changes that line at once and turns the card's own Kaydet and Vazgeç on; Vazgeç
+  puts the saved titles back. Kaydet writes one title for each hoca that differs, in list order, and a toast says the hocas now show with
+  their new titles. A refusal is worded from its code in a toast that stays: the person is no longer a hoca of the course (the list is read
+  again and the card shows who is left), the caller lost course.settings (the card is shut), or anything else (the card keeps the choices).
+  A person who may only look sees the same card with the selects shut and a sentence saying so.
+
+scope:
+  shows: >-
+    the card "Hocalar ve unvanları" on Ders ayarları: the selects and their open lists, the line under each, Kaydet and Vazgeç, the toasts
+    of a save, the read-only card, and the page's title and subtitle around it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the other three cards and the header link of the page: the form 'Erişim, kayıt ve saat dilimi' (nazar.courseSettings.access), 'Yayın' and 'Tanıtım sayfasını gör' (nazar.courseSettings.publish), 'Ortak uygulama kodları' (nazar.courseSettings.partnerCodes)"
+    - "a caller who holds none of the page's codes meets 'Bu sayfaya izniniz yok' where the cards would be (nazar.access.dersNazirPages), and a read that fails outright draws the retry state 'Ders ayarları yüklenemedi' (nazar.shell.errorStates); the loading skeleton and the phone layout are not drawn"
+    - "an ended session: the permission and course reads, and every PUT, send the person to sign in (realm.auth.signIn, realm.auth.sessionEnded) instead of drawing an error"
+    - "which people teach the course, and who is its imam: nazar.courses.changeHocas and nizam.courses.editHocalar; a course made with no hoca at all cannot exist (the API refuses an empty list), so the card's 'Bu dersin hocası yok.' line is not drawn"
+    - "a body the page itself cannot produce (an unvan outside the eight codes, VALIDATION_ERROR) and a call that fails outright (the network): both end in the card keeping the choices with a toast, drawn as one refusal class; the first is unreachable from this page, the second was not verified"
+    - "where else the title shows (the course page, Derslerim, the celse page, the home page, the köşk and medrese pages in Tedris; the course tables in Nizam): the flows of those pages; here only the API's answer is read"
+    - "a new choice on the card after the second hoca left (`refusedGone`): the card then has one select, a course of one hoca that no start of this graph draws; its first press ends the flow in `edit_not_drawn`"
+    - "setting a title when a course is opened (the select beside each hoca of the Dersi aç form): nazar.courses.open and nizam.courses.open"
+    - "the sidebar and the menu of the course scope: nazar.shell.scopeAndMenu; the menu offers 'Ders ayarları' to every course persona whatever they hold (F-D2c-2)"
+
+decisions:
+  D1:
+    question: >-
+      Should a refused save leave the card showing what the course really has? After a refusal that leaves the hocas as they were
+      (the caller lost course.settings, or the API failed), the page is read again but the card is keyed by the hocas, so it is not
+      mounted anew and keeps the choices that were refused (HOCA-1).
+    recommend: >-
+      Put the saved titles back (or key the card by what the caller may do as well) when a write is refused, and say in the toast how many
+      titles were saved before the refusal (HOCA-2).
+    affects: [saving, readOnly, dirty, refusedGone]
+  D2:
+    question: >-
+      Where should the focus go after Kaydet? The card is mounted anew when a title changed (F-D2c-7), so the pressed button is gone and
+      the toast is the only word.
+    recommend: >-
+      Keep one card across the re-read and update its saved titles, or focus the card's heading after a save.
+    affects: [saved, refusedGone]
+
+context:
+  reader:
+    values: [editor, viewer]
+    initial: any
+    say:
+      editor: "the caller holds course.settings in the course (the hoca of the course, the başmüderris, the köşk's nazım, a ders nazırı given the code): the selects are open"
+      viewer: "the caller opens the page for another code (a ders nazırı with session.manage) and does not hold course.settings: the selects are shut"
+  team:
+    values: [pair, guest]
+    initial: any
+    say:
+      pair: "two hocas, both with an account"
+      guest: "a hoca with an account and a hoca shown by name alone, with no account (a legacy row): the second select is shut for ever"
+  answer:
+    values: [saved, notHoca, forbidden, invalid, failed]
+    initial: any
+    say:
+      saved: "the API writes every title the page sends"
+      notHoca: "the second hoca is no longer on the course's list: the API answers COURSE_MUDERRIS_NOT_FOUND to their write (a title for the first, if it was changed, is stored before it)"
+      forbidden: "the caller no longer holds course.settings: the API answers AUTHZ_FORBIDDEN to the first write and nothing is stored"
+      invalid: "the API refuses the body (VALIDATION_ERROR), which the page's own options make unreachable"
+      failed: "anything else: the course is gone (COURSE_NOT_FOUND), a malformed id (HTTP_400), or the call fails outright"
+  first: { values: [plain, titled], initial: plain } # the first hoca's select holds a title (the draft)
+  second: { values: [plain, titled], initial: plain } # the second hoca's select holds a title (the draft)
+  storedFirst: { values: [plain, titled], initial: plain } # the title the course has stored for the first hoca
+  storedSecond: { values: [plain, titled], initial: plain }
+  which: { values: [first, second], initial: first } # the select whose list is open
+  toast: { values: [none, saved, forbidden, gone, invalid, failed], initial: none } # the toast the last step left
+
+guards:
+  pair: "team == 'pair'"
+  # the card's `dirty`: unvanChanges(saved, draft) is not empty (hoca-unvan.ts:73)
+  differs: "first != storedFirst or second != storedSecond"
+  # the second hoca's write is the one the API refuses: it is only sent when the second select was changed
+  goneNow: "answer == 'notHoca' and second != storedSecond"
+  # every write is accepted: either the API takes them all, or the refusal is about a write that is never sent
+  accepted: "answer == 'saved' or (answer == 'notHoca' and second == storedSecond)"
+
+effects:
+  openedFirst: { set: { which: first, toast: none } }
+  openedSecond: { set: { which: second, toast: none } }
+  firstTitled: { set: { first: titled } }
+  firstPlain: { set: { first: plain } }
+  secondTitled: { set: { second: titled } }
+  secondPlain: { set: { second: plain } }
+  # the draft and the stored titles become one: Vazgeç sets the draft to the stored titles, a save sets the stored titles to the draft
+  allPlainPlain: { set: { first: plain, second: plain, storedFirst: plain, storedSecond: plain } }
+  allTitledPlain: { set: { first: titled, second: plain, storedFirst: titled, storedSecond: plain } }
+  allPlainTitled: { set: { first: plain, second: titled, storedFirst: plain, storedSecond: titled } }
+  allTitledTitled: { set: { first: titled, second: titled, storedFirst: titled, storedSecond: titled } }
+  clearToast: { set: { toast: none } }
+  toastSaved: { set: { toast: saved } }
+  toastForbidden: { set: { toast: forbidden } }
+  toastGone: { set: { toast: gone } }
+  toastInvalid: { set: { toast: invalid } }
+  toastFailed: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND, HTTP_400]
+  saving:
+    from: setMuderrisUnvan
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [COURSE_MUDERRIS_NOT_FOUND]
+    invalid: [VALIDATION_ERROR]
+    other: [COURSE_NOT_FOUND, HTTP_400]
+
+# The story the card tells first: the hoca opens Ders ayarları, chooses a title for the first hoca and one for the second, sees both lines
+# change, and saves; the toast says the hocas show with their new titles.
+main:
+  given: { reader: editor, team: pair, answer: saved }
+  events: [DONE, OPEN_FIRST, CHOOSE_TITLE, OPEN_SECOND, CHOOSE_TITLE, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The page is read
+    description: >-
+      The page reads the course (GET /courses/:id, whose `muderris` list is what the card shows, with each hoca's account, name and
+      stored unvan) and what the caller holds in it (GET /courses/:id/my-permissions) on the server, behind a loading skeleton
+      (loading.tsx). Nothing is on the screen of this step. The card is drawn for every caller the page opens for; whether its selects
+      are open is `holds course.settings`. A 404 is the portal's 404 page; a caller with none of the page's codes and a read that fails
+      outright are drawn by nazar.access.dersNazirPages and nazar.shell.errorStates. After a save in this visit a reload comes back
+      here and the card holds what was stored.
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "reader == 'editor'", target: card, source: apps/nazar/features/course-settings/components/course-settings-page.tsx:118, say: "the caller holds course.settings: the selects are open" }
+        - { target: readOnly, source: apps/nazar/features/course-settings/components/course-settings-page.tsx:118, say: "the caller does not hold course.settings: the same card, every select shut" }
+      FAIL.missing: { target: not_found, source: apps/nazar/lib/tedrisat-read.ts:46, say: "the course is not there: Next's not-found page, 'Sayfa bulunamadı'" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
+
+  card:
+    title: The card holds what the course has stored
+    by: human
+    description: >-
+      One select for each hoca, each holding the title the course has stored for them (the plain "Hoca (unvansız)" for a hoca with
+      none), and under it "Derste “…” olarak görünür." with the name the course shows. "Kaydet" and "Vazgeç" are natively off while
+      nothing differs and nothing says why (HOCA-3). The page sets no focus (focus-not-set). A hoca shown by name alone has a shut select
+      and the line says why. The card and the form above it have a "Kaydet" each (F-D2c-14).
+    on:
+      OPEN_FIRST: { target: choosing, effect: [openedFirst], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the first hoca's select" }
+      OPEN_SECOND: { guard: pair, target: choosing, effect: [openedSecond], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the second hoca's select" }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:107
+
+  choosing:
+    title: A list of titles is open, nothing differs
+    by: human
+    description: >-
+      The select's list (Base UI Select): the plain "Hoca (unvansız)" first, then the eight titles in the order the API lists them, each
+      written as it goes before a name and the same in every language. The one the select holds is marked selected. Choosing closes the
+      list and changes only the draft; Esc closes it and changes nothing. The card behind has "Kaydet" and "Vazgeç" off.
+    on:
+      CHOOSE_TITLE:
+        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
+        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
+      CHOOSE_UNTITLED:
+        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
+        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
+      CLOSE_LIST: { target: card, say: "Esc: the list closes and the select keeps its value" }
+      OPEN_FIRST: { target: card, say: "a click on the first select while a list is open: the list closes and none opens (the kit's Select is modal: a backdrop takes the click)", source: libs/ui/src/mds/select.tsx:79 }
+      OPEN_SECOND: { guard: pair, target: card, say: "the same on the second select", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  choosingDirty:
+    title: A list of titles is open, something differs
+    by: human
+    description: >-
+      The same list over a card whose "Kaydet" and "Vazgeç" are on, because an earlier choice differs from what is stored. Split from
+      `choosing` only because the buttons behind it are on here and off there.
+    on:
+      CHOOSE_TITLE:
+        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
+        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
+      CHOOSE_UNTITLED:
+        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
+        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
+      CLOSE_LIST: { target: dirty, say: "Esc: the list closes and the select keeps its value" }
+      OPEN_FIRST: { target: dirty, say: "a click on the first select while a list is open: the list closes and none opens (the kit's Select is modal: a backdrop takes the click)", source: libs/ui/src/mds/select.tsx:79 }
+      OPEN_SECOND: { guard: pair, target: dirty, say: "the same on the second select", source: libs/ui/src/mds/select.tsx:79 }
+      SUBMIT: { target: dirty, say: "a click on Kaydet while a list is open only closes the list: nothing is sent", source: libs/ui/src/mds/select.tsx:79 }
+      CANCEL: { target: dirty, say: "a click on Vazgeç while a list is open only closes the list: the choices stay", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  settle:
+    title: Does anything differ from what is stored?
+    description: >-
+      Not a screen: after every choice "Kaydet" and "Vazgeç" are on when `unvanChanges(saved, draft)` is not empty (hoca-unvan-card.tsx:63)
+      and off when it is (a title chosen and then chosen back turns them off again). A hoca with no account never counts.
+    always:
+      - { guard: differs, target: dirty, source: apps/nazar/features/course-settings/hoca-unvan.ts:73, say: "a title differs from the stored one: the buttons are on" }
+      - { target: card, source: apps/nazar/features/course-settings/hoca-unvan.ts:73, say: "nothing differs: the buttons are off" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:63
+
+  dirty:
+    title: A title differs from the stored one
+    by: human
+    description: >-
+      The card with the new choices: the line under a changed select already shows the new name ("Derste “Doç. Dr. Hamdi Müderris”
+      olarak görünür."), and "Kaydet" and "Vazgeç" are on. Nothing is sent until Kaydet, and leaving the page loses the choices without a
+      word (HOCA-4). After a refusal of the generic kind this is where the person is, with the error toast over the page (it stays until
+      closed) and the choices as they were; the toast of such a refusal is not drawn in the steps after this one.
+    on:
+      OPEN_FIRST: { target: choosingDirty, effect: [openedFirst], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the first hoca's select" }
+      OPEN_SECOND: { guard: pair, target: choosingDirty, effect: [openedSecond], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the second hoca's select" }
+      SUBMIT: { target: saving, effect: [clearToast], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:73, say: "they press Kaydet: one write for each hoca whose title differs" }
+      CANCEL: { target: reverting, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "they press Vazgeç: the stored titles come back and nothing asks first" }
+      NAVIGATE: { target: left, say: "they leave the page: the choices are lost and nothing warned them (HOCA-4)" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:155
+
+  reverting:
+    title: Vazgeç puts the stored titles back
+    description: >-
+      Not a screen: the draft becomes what the card was mounted with, or what the last save in this visit left (`setDraft(saved)`).
+      Vazgeç is natively off once nothing differs, so the pressed button turns off under the focus (HOCA-3).
+    always:
+      - { guard: "storedFirst == 'plain' and storedSecond == 'plain'", target: card, effect: [allPlainPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to no title for either" }
+      - { guard: "storedFirst == 'titled' and storedSecond == 'plain'", target: card, effect: [allTitledPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to the first hoca's title" }
+      - { guard: "storedFirst == 'plain' and storedSecond == 'titled'", target: card, effect: [allPlainTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to the second hoca's title" }
+      - { target: card, effect: [allTitledTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to both titles" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160
+
+  saving:
+    title: The titles are on their way
+    description: >-
+      The server action setHocaUnvan, PUT /courses/:id/muderris/:userId/unvan, once for each hoca whose title differs, awaited one after
+      the other in list order (hoca-unvan-card.tsx:78). The API needs course.settings on the course; a title equal to the stored one writes
+      nothing, a changed one writes an audit row (course.muderris_unvan_update) and the course's version does not move. The selects and
+      "Vazgeç" are off and "Kaydet" is busy (aria-disabled, aria-busy, a hidden output "Kaydediliyor…"); the card has no other sign of
+      the second write. The first refusal stops the loop, so a refusal at the second hoca leaves the first one stored (HOCA-2), and the page is
+      read again; when a stored title changed (an earlier write was taken), the card is mounted anew with the stored titles and the choice that
+      was refused is gone, which the model does not draw for `invalid` and `failed`. The writes are not one transaction. Each refusal is worded from its code (`unvanErrorKey`): AUTHZ_FORBIDDEN "Bunu yapma
+      izniniz yok.", COURSE_MUDERRIS_NOT_FOUND "Bu kişi artık dersin hocası değil; liste yeniden okundu.", VALIDATION_ERROR "Bu değer
+      kaydedilemez. Sayfayı yenileyip yeniden deneyin.", anything else (a missing course, a call that fails outright) "İşlem tamamlanamadı.
+      Biraz sonra yeniden deneyin.". The session ending sends the person to sign in with no toast.
+    invoke: { action: setMuderrisUnvan }
+    on:
+      DONE:
+        - { guard: "accepted and first == 'plain' and second == 'plain'", target: saved, effect: [allPlainPlain, toastSaved], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:98, say: "every write was taken: the toast says the hocas show with their new titles, and the page is read again" }
+        - { guard: "accepted and first == 'titled' and second == 'plain'", target: saved, effect: [allTitledPlain, toastSaved], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:98, say: "every write was taken: the toast says the hocas show with their new titles, and the page is read again" }
+        - { guard: "accepted and first == 'plain' and second == 'titled'", target: saved, effect: [allPlainTitled, toastSaved], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:98, say: "every write was taken: the toast says the hocas show with their new titles, and the page is read again" }
+        - { guard: accepted, target: saved, effect: [allTitledTitled, toastSaved], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:98, say: "every write was taken: the toast says the hocas show with their new titles, and the page is read again" }
+      FAIL.gone:
+        - { guard: "goneNow and first == 'titled'", target: refusedGone, effect: [allTitledPlain, toastGone], source: apps/nazar/features/course-settings/hoca-unvan.ts:90, say: "the first hoca's title was written and the second is no longer a hoca: a toast says so, the list is read again and the card shows who is left" }
+        - { guard: goneNow, target: refusedGone, effect: [allPlainPlain, toastGone], source: apps/nazar/features/course-settings/hoca-unvan.ts:90, say: "the second is no longer a hoca: a toast says so, the list is read again and the card shows who is left" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: readOnly, effect: [toastForbidden], source: apps/nazar/features/course-settings/hoca-unvan.ts:88, say: "'Bunu yapma izniniz yok.' in a toast; the page is read again and the card is shut, still showing the refused choices (HOCA-1)" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: dirty, effect: [toastInvalid], source: apps/nazar/features/course-settings/hoca-unvan.ts:92, say: "a toast says the value cannot be saved; the card keeps the choices" }
+      FAIL.other: { guard: "answer == 'failed'", target: dirty, effect: [toastFailed], source: apps/nazar/features/course-settings/hoca-unvan.ts:94, say: "a toast says it could not be completed, try later; the card keeps the choices" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:73
+
+  saved:
+    title: The titles are saved
+    by: human
+    goal: true
+    description: >-
+      The toast "Unvanlar kaydedildi" with "… dersinin hocaları yeni unvanlarıyla görünür." (it closes by itself after 6 seconds, so it is
+      drawn here and not in the steps after this one). The card is read again and, because a title changed, mounted anew with the stored
+      titles: "Kaydet" and "Vazgeç" are off, and the pressed button and its focus are gone (F-D2c-7). A reload reads the card again with
+      what the API holds; a further choice goes through the same lists.
+    on:
+      OPEN_FIRST: { target: choosing, effect: [openedFirst], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the first hoca's select again" }
+      OPEN_SECOND: { guard: pair, target: choosing, effect: [openedSecond], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the second hoca's select again" }
+      RELOAD: { target: opened, effect: [clearToast], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:79, say: "they reload the page: the card is read again with what the API holds" }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:100
+
+  refusedGone:
+    title: The second hoca is gone
+    by: human
+    description: >-
+      The first hoca's title (if it was changed) was written, the second hoca's write was refused, and the error toast stays until closed:
+      "Unvan kaydedilemedi" with "Bu kişi artık dersin hocası değil; liste yeniden okundu." (HOCA-2: it does not say the first title was
+      saved). The page was read again; the list now lacks the second hoca, so the card is mounted anew with one select, holding the first
+      hoca's stored title. "Kaydet" and "Vazgeç" are off.
+    on:
+      OPEN_FIRST: { target: edit_not_drawn, say: "they open the one select left: a card of one hoca, which the graph does not draw", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:114
+
+  readOnly:
+    title: The selects are shut
+    by: human
+    description: >-
+      The same card with every select shut and, in place of "Kaydet" and "Vazgeç", "Unvanları değiştirme izniniz yok; yalnız görebilirsiniz."
+      Two ways in: the caller opened the page for another code than course.settings (a ders nazırı with session.manage), or a save was
+      refused with AUTHZ_FORBIDDEN and the re-read took course.settings from the caller. In the second the card is not mounted anew (its hocas
+      are the same), so it keeps the refused choices and the lines "Derste “…” olarak görünür." still show names the course does not have,
+      with no Vazgeç to take them back (HOCA-1). The error toast "Unvan kaydedilemedi" with "Bunu yapma izniniz yok." stays until closed.
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:174
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course or permission read is Next's not-found page, 'Sayfa bulunamadı' (lib/tedrisat-read.ts:46)."
+    type: final
+    leavesPage: true
+
+  edit_not_drawn:
+    title: They choose again on a card of one hoca
+    type: final
+    description: >-
+      After the second hoca left (`refusedGone`) the card is mounted anew with one select, which is open
+      (hoca-unvan-card.tsx:147). Choosing on it is a new round of this flow on a course of one hoca, which the graph does not draw
+      (scope.outOfView). The person stays on the page.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-changed-card-is-sent
+    never: "state == 'saving' and not differs"
+    say: "A save is sent only when some title differs from the stored one: Kaydet is off otherwise."
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:75
+  - id: a-caller-without-the-code-never-sends
+    never: "state == 'saving' and reader == 'viewer'"
+    say: A caller who does not hold course.settings never sends a title; the selects are shut and there is no Kaydet.
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:75
+  - id: a-hoca-with-no-account-is-never-titled
+    never: "team == 'guest' and second == 'titled'"
+    say: A hoca shown by name alone is never given a title; the unvan is set by account.
+    source: apps/nazar/features/course-settings/hoca-unvan.ts:77
+  - id: a-saved-card-has-nothing-to-save
+    never: "state == 'saved' and differs"
+    say: After a save the card holds what the API stored, so Kaydet is off.
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:98
+  - id: a-caller-with-the-code-is-shut-out-only-by-a-refusal
+    never: "state == 'readOnly' and reader == 'editor' and toast != 'forbidden'"
+    say: A caller who holds course.settings meets the shut card only after the API refused a write with AUTHZ_FORBIDDEN.
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:147

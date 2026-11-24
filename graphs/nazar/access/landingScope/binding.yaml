@@ -1,0 +1,163 @@
+# nazar.access.landingScope on the local stack (graphs/README.md, "The stack and the bindings"): nazar-web at http://localhost:4002, "/" and
+# the address of a scope, walked in nine scenarios as six of the seeded people.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/access/landingScope \
+#     --bind graphs/nazar/access/landingScope/binding.yaml --absent --out <dir>                                       (the main story)
+#   ... --cover transitions --absent --out <dir>                                                                      (every scenario)
+#
+# NOT RUN: the owner's word is that replays and runs happen once, at the end, so every locator and every account fact below is from the
+# code and unverified until the walk phase. The binding loads: `replay <dir> --bind <this file> --emit-spec` wrote the spec of the main
+# story (1 walk, bound) and, with `--cover transitions`, of every scenario (24 walks, 22 bound; the two that are not are the two
+# FAIL.unreadable transitions, which the stack cannot make). Nothing else was run: no setup, no helper. The one thing looked at on the
+# running app is two GETs with curl: "/" answers 307 to /auth/signin?callbackUrl=%2F, and an address under /auth that no page owns
+# (/auth/yok, which the proxy leaves alone) answers 404 with a bare <main class="mds-system-state ..."> holding h1 "Sayfa bulunamadı",
+# no <aside>, and the tab title "Medaris Nazar": that is the node `notFoundPage`, seen; the 404 a scoped layout throws is from the code.
+#
+# How a scenario begins. The walk signs in at nazar (the base's `signIn`), which lands the person where "/" sends them, and then opens
+# "/" itself. Every scenario is `as` one seeded person and walks `/`, then (OPEN_ADDRESS) the address its `typed` var names, and, where
+# the story needs it, "/" again (OPEN_ROOT). Nothing is typed into a form and nothing is written, except by the one scenario that makes
+# a course of its own. The vars: `first` is where "/" lands the person with no memory, `typed` is the address the walk types.
+#   muderris            (the main story) hoca of the three seeded courses and of no medrese: "/" lands on the first, "Bina ve İzhar Şerhi",
+#                       the walk opens the second by its address, and "/" now reopens that one (courseKept)
+#   basmuderrisCourse   the başmüderris of the seeded medrese, made a hoca of a course of its own, "Deneme dersi landingScope", by
+#                       helpers/course.mjs in `setup` and removed in `teardown`: "/" lands on her Pano, she opens the course by its address,
+#                       and "/" reopens the course and not the medrese: access#5, with a course that is hers for the length of the walk. The
+#                       seeded başmüderris teaches nothing, so without this course the memory cannot be told from the default
+#   head                the başmüderris with her medrese only: she opens "Bina ve İzhar Şerhi", a course of her medrese she holds no seat in
+#   medreseNazir        the nazır of the same medrese, who holds no grant: "/" lands on the Pano, which refuses its dashboard but keeps its title;
+#                       she opens the medrese by its address
+#   dersNazir           the ders nazırı of "Bina ve İzhar Şerhi": "/" lands on it; "İsâgûcî ile Mantığa Giriş" is not his, so it is the 404
+#   missing             the başmüderris opens a medrese id that does not exist: the 404 (access#6 a1)
+#   talebe              a talebe: "/" sends her to the verdict page, and so does a medrese's address
+#   systemAdmin         the başnazım with no seat: "/" sends him to the verdict page (F-L-8), and the address of a course's settings opens for him
+#   systemAdminMissing  the same person opens a course id that does not exist: the 404, and "Ana sayfaya dön" is "/", the verdict page again
+# Not walked, and why:
+#   - `read: unreadable` (the retry state): tedrisat answers every read here and the stack cannot make it refuse one; nazar.shell.errorStates
+#     draws the page. The exit `roles_unreadable` carries a text so that it is not "not bound".
+#   - the cookie itself: a replay does not read a cookie, so access#5 a1 and a3 stay in Playwright; the walk sees only where "/" lands.
+#   - the memory of a medrese (access#5 a3-a4) is not told from the first medrese by this stack: the seed has one medrese.
+#   - a course of the medrese opened by its nazır or the başnazım opening a medrese he holds no seat in beyond the seeded one: same states.
+#   - NAVIGATE (the way out of the portal) is bound and not on any main story.
+# What a walk leaves: the one made course is removed in `teardown`; the walks of the başnazım read a course as the başnazım, which writes an
+# audit row (course.content_read); nothing else is written. After the last walk, `node helpers/course.mjs remove landingScope` says `none`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.access.landingScope
+
+data:
+  made: { json: ../.local/made/landingScope.json }
+
+scenarios:
+  muderris:
+    given: { read: ok, holds: course, admin: no, address: ownCourse }
+    as: muderris
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/ders/{seed.courses.open}'
+      typed: '{nazar}/ders/{seed.courses.approval}'
+  basmuderrisCourse:
+    given: { read: ok, holds: both, admin: no, address: ownCourse }
+    as: basmuderris
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/medrese/{seed.madrasah}'
+      typed: '{nazar}/ders/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, landingScope, --madrasah, '{seed.madrasah}', --hoca, basmuderris]
+        expect: '"tag":"landingScope"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, landingScope]
+        expect: 'course remove landingScope'
+  head:
+    given: { read: ok, holds: medrese, admin: no, address: courseOfMedrese }
+    as: basmuderris
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/medrese/{seed.madrasah}'
+      typed: '{nazar}/ders/{seed.courses.open}'
+  medreseNazir:
+    given: { read: ok, holds: medrese, admin: no, address: ownMedrese }
+    as: medreseNazir
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/medrese/{seed.madrasah}'
+      typed: '{nazar}/medrese/{seed.madrasah}'
+  dersNazir:
+    given: { read: ok, holds: course, admin: no, address: elsewhere }
+    as: dersNazir
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/ders/{seed.courses.open}'
+      typed: '{nazar}/ders/{seed.courses.approval}'
+  missing:
+    given: { read: ok, holds: medrese, admin: no, address: missing }
+    as: basmuderris
+    open: '{nazar}/'
+    vars:
+      first: '{nazar}/medrese/{seed.madrasah}'
+      typed: '{nazar}/medrese/a0000000-0000-4000-8000-0000000000ff'
+  talebe:
+    given: { read: ok, holds: nothing, admin: no, address: elsewhere }
+    as: talebe
+    open: '{nazar}/'
+    vars:
+      typed: '{nazar}/medrese/{seed.madrasah}'
+  systemAdmin:
+    given: { read: ok, holds: nothing, admin: yes, address: elsewhere }
+    as: systemAdmin
+    open: '{nazar}/'
+    vars:
+      typed: '{nazar}/ders/{seed.courses.open}/ayarlar'
+      pageText: Ders ayarları
+  systemAdminMissing:
+    given: { read: ok, holds: nothing, admin: yes, address: missing }
+    as: systemAdmin
+    open: '{nazar}/'
+    vars:
+      typed: '{nazar}/ders/a0000000-0000-4000-8000-0000000000ff'
+
+events:
+  # the address bar: the person types, or follows, the address the scenario names
+  OPEN_ADDRESS: [{ goto: '{typed}' }]
+  # "/" typed again. The scope's page leaves the cookie from the browser once it has hydrated (scope-memory.tsx:11, an effect), and `goto`
+  # waits only for the document, so a pause comes first; whether 2.5 s is enough is for the walk phase (an asked-for page that is
+  # navigated away from at once is not remembered)
+  OPEN_ROOT:
+    - { run: [node, -e, 'setTimeout(() => {}, 2500)'] }
+    - { goto: '{nazar}/' }
+  # a link out of the portal: Tedris's Ana sayfa, which every person may open
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+states:
+  # the page "/" redirects to, and the page an address opens, by where the browser is when the state is checked
+  medreseLanded: { url: '{first}' }
+  courseLanded: { url: '{first}' }
+  courseKept: { url: '{typed}' }
+  noAccess: { url: '{nazar}/erisim-yok' }
+  medreseOpened: { url: '{typed}' }
+  courseOpened: { url: '{typed}' }
+  courseOfMedrese: { url: '{typed}' }
+  # the başnazım's address opens the course's settings: its menu has the entry of that name, and the page its title (e2e course-settings#12
+  # a1 reads the h1; this text is found anywhere on the page, so it proves the menu entry at least)
+  adminOpened: { url: '{typed}', text: '{pageText}' }
+  # a 404 keeps the address it was typed at
+  notFound: { url: '{typed}' }
+  # not walked (see the header): the retry state's heading
+  roles_unreadable: { text: Görevleriniz okunamadı }
+  left: { url: '{tedris}/**' }
+
+# Where role and name cannot find a node. The frame is the shell's: AppShell's <main id="main" data-density="compact"> (the 404 has a <main>
+# of its own with no id, and Tedris's, where a walk leaves for, has no such density), the sidebar's scope card names the scope (the name
+# is data, so it is a pattern of the names the seed and the walk's own course give) and its second line is the role; the Pano's title and a
+# course's title are told apart by their words. Every text is read inside the sidebar (`aside`), because the page says the same words.
+nodes:
+  framePage: { css: 'main#main[data-density=compact]' }
+  scopeName: { text: '/^(Hadis ve Siyer Medresesi|Bina ve İzhar Şerhi|İsâgûcî ile Mantığa Giriş|Nahiv Metinleri|Deneme dersi landingScope)$/', within: { css: aside } }
+  medreseRole: { text: '/^(Medrese başmüderrisi|Medrese nazırı)$/', within: { css: aside } }
+  courseRole: { text: '/^(Hoca|Ders nazırı)$/', within: { css: aside } }
+  headRole: { text: '/^(Medrese başmüderrisi|Medrese nazırı)$/', within: { css: aside } }
+  adminRole: { text: Medaris başnazımı, within: { css: aside } }
+  # h1 "<title>" plus the state badge ("Yayında", "Taslak" or "Gizli") in one heading
+  courseTitle: { role: heading, name: '/^(Bina ve İzhar Şerhi|İsâgûcî ile Mantığa Giriş|Nahiv Metinleri|Deneme dersi landingScope)\s*(Yayında|Taslak|Gizli)?$/' }
+  # the 404 is a <main> of its own, with the system-state class and no id
+  notFoundPage: { css: 'main.mds-system-state' }

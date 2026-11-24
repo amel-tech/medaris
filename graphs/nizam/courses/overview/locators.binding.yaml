@@ -1,0 +1,119 @@
+# What nizam.courses.overview's bindings share: the data the page's numbers are checked against, the events no node sends, the address of each exit,
+# and where role and name cannot find a node of the overview. It carries no scenario, so it is not walked by itself; binding.yaml has them.
+# NOT RUN: written without a replay (the first walks are a later phase). Every locator below comes from the code and the catalog; none was seen
+# in a browser.
+#
+# The numbers are data: the scenarios make their own course (helpers/course.mjs, recorded in graphs/.local/made/<tag>.json and read here as
+# {ovwMain.*}, {ovwChief.*} and {ovwDraft.*}), and `setup` runs overview-data.mjs (this folder), which shapes the course's celses, reads what the
+# page reads and writes the counts the page must show to graphs/.local/overview.json (read below as {ovw.*}). A placeholder inside a /regex/ is NOT
+# filled in (the emitted spec shows it); one inside css or a plain string is. A Stat is two spans, the label then the number, in one card, so the
+# number node is the value span of the card whose label is the node's own, with the number spelled in the css. A table is `responsive="stack"`: its
+# cells carry `data-label` (the column's words, for a header that is plain text) and its rows explicit ARIA roles, so a row is found by its cells.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.overview
+
+data:
+  ovw: { json: ../.local/overview.json }
+  ovwMain: { json: ../.local/made/ovwMain.json }
+  ovwChief: { json: ../.local/made/ovwChief.json }
+  ovwDraft: { json: ../.local/made/ovwDraft.json }
+
+events:
+  # the person goes to another page: Hesap, which every signed-in person may open
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+  # Not bound, with the reason:
+  #   RETRY  the stack cannot make a read of tedrisat fail, so neither box (the numbers', the enrollments', the whole page's) is ever on the screen
+
+states:
+  overview: { url: '{nizam}/kosks/*/courses/*' }
+  refused: { url: '{nizam}/kosks/*/courses/*' }
+  # An exit has no nodes, so its address is all the replay can check. The pages they are belong to the flows they start.
+  handed_over.curriculum: { url: '{nizam}/kosks/*/courses/*/curriculum' } # /edit redirects here (edit/page.tsx:16)
+  handed_over.manage_sessions: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  handed_over.roster: { url: '{nizam}/kosks/*/courses/*/students' }
+  handed_over.course_list: { url: '{nizam}/kosks/*/dersler' }
+  handed_over.decide_applications: { url: '{nizam}/kosks/*/courses/*' } # the page stays: the row is dropped and the numbers follow the refresh
+  # "/" sends a köşk nazımı to the home of their first köşk and shows the Medaris nazımı the Medaris home, so the address is not one
+  landing_opened: { url: '{nizam}/**' }
+  left: { url: '{nizam}/hesap' }
+  # loadFailed is not bound: the stack cannot make the reads fail
+
+nodes:
+  # ---- the page: the shell's <main> (every page the walk leaves for has one too, so it is found by what only this page holds), the head ----
+  overviewPage: { css: '#main:has([data-testid=course-overview])' }
+  crumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '.mds-breadcrumb__current', hasText: '{ovw.title}' }
+  pageTitle: { css: h1, hasText: Genel bakış }
+  badgePublished: { css: 'h1 .mds-badge', hasText: Yayında }
+  badgeDraft: { css: 'h1 .mds-badge', hasText: Taslak }
+  # the <p> under the h1: the title, the köşk, the weeks and the celses; the days and times the course meets follow and depend on the walk's day
+  courseLine: { css: '[data-testid=course-overview] > header p', hasText: '{ovw.headline}' }
+  # a new tab at nazar's Ders nazırları of this course (e2e kosk-view#13 asserts the address and `target=_blank`); the accessible name also ends with
+  # "(ders nazırları ve ders ayarları, yeni sekmede açılır)", which a css locator does not check
+  openInNazar: { css: 'a[target=_blank][href$="/ders/{ovw.course}/nazirlar"]', hasText: '/^Nazar’da aç/' }
+
+  # ---- the warning: a warning-tone Alert; its title is an ICU message with the weekday, its body names the first celse with no way in ----
+  missingAlert: { css: '.mds-alert--warning', hasText: '/ celsesinin katılım yolu eksik/' }
+  missingBody: { css: '.mds-alert--warning p:not(.mds-alert__title)', hasText: '{ovw.missingTitle}: ' }
+
+  # ---- the three numbers ----
+  statStudents: { css: 'section[aria-label="Dersin sayıları"] .mds-stat > .mds-caption:first-child', hasText: '/^Kayıtlı talebe$/' }
+  valueStudents: { css: 'section[aria-label="Dersin sayıları"] .mds-stat:has(.mds-caption:text-is("Kayıtlı talebe")) .mds-stat__value:text-is("{ovw.enrolled}")' }
+  statPending: { css: 'section[aria-label="Dersin sayıları"] .mds-stat > .mds-caption:first-child', hasText: '/^Bekleyen başvuru$/' }
+  valuePending: { css: 'section[aria-label="Dersin sayıları"] .mds-stat:has(.mds-caption:text-is("Bekleyen başvuru")) .mds-stat__value:text-is("{ovw.pending}")' }
+  statWeeks: { css: 'section[aria-label="Dersin sayıları"] .mds-stat > .mds-caption:first-child', hasText: '/^Devam eden hafta$/' }
+  valueWeeks: { css: 'section[aria-label="Dersin sayıları"] .mds-stat:has(.mds-caption:text-is("Devam eden hafta")) .mds-stat__value:text-is("{ovw.started}")' }
+  weeksOf: { css: 'section[aria-label="Dersin sayıları"] .mds-stat:has(.mds-caption:text-is("Devam eden hafta")) > .mds-caption:last-child', hasText: 'Toplam {ovw.weeks} hafta' }
+  # statsFailedAlert, statsFailedText, statsRetry, rosterFailedAlert, rosterFailedText and rosterRetry are not bound: the stack cannot make a read fail
+
+  # ---- Sıradaki celseler: the table has the names of its columns; its rows are data, found by the table's own hooks ----
+  columnSessionActions: { role: columnheader, name: İşlemler, within: { css: '[aria-labelledby=next-heading]' } }
+  rowSession: { css: '[aria-labelledby=next-heading] tbody [role=rowheader]', hasText: '/^Celse \d/', count: '{ovw.rows}' }
+  rowWeek: { css: '[aria-labelledby=next-heading] tbody [role=rowheader] .mds-caption', hasText: '/^Hafta \d+$/', count: '{ovw.rows}' }
+  rowWhen: { css: '[aria-labelledby=next-heading] tbody td[data-label="Zaman"]', hasText: '/\d{1,2}:\d{2}$/', count: '{ovw.rows}' }
+  rowLength: { css: '[aria-labelledby=next-heading] tbody td[data-label="Süre"]', hasText: '/^60 dk$/', count: '{ovw.rows}' }
+  attendanceMissing: { testId: attendance-missing, count: '{ovw.withoutRows}' }
+  # "Zoom" is a PlatformChip, "Yüz yüze" plain words; the shaped courses use only these two, and a cell may name both with " · "
+  attendanceWays: { css: '[aria-labelledby=next-heading] tbody td[data-label="Katılım"]', hasText: '/^(Zoom|Yüz yüze|Google Meet|Jitsi Meet|YouTube|Bilinmeyen platform)/', count: '{ovw.wayRows}' }
+  attendanceCancelled: { css: '[aria-labelledby=next-heading] tbody td[data-label="Katılım"]', hasText: '/^—$/', count: '{ovw.cancelledRows}' }
+  statusPlanned: { css: '[aria-labelledby=next-heading] tbody td[data-label="Durum"]', hasText: Planlandı, count: '{ovw.plannedRows}' }
+  statusCancelled: { css: '[aria-labelledby=next-heading] tbody td[data-label="Durum"]', hasText: İptal edildi, count: '{ovw.cancelledRows}' }
+  # a row's button is named "<words>: <celse>"; a cancelled row has none
+  rowAdd: { role: link, name: '/^Toplantı bağlantısı ekle: /', within: { css: '[aria-labelledby=next-heading]' }, count: '{ovw.withoutRows}' }
+  rowEdit: { role: link, name: '/^Düzenle: /', within: { css: '[aria-labelledby=next-heading]' }, count: '{ovw.editRows}' }
+
+  # ---- Bekleyen başvurular ----
+  studentsLink: { role: link, name: Talebeler, within: { css: '[aria-labelledby=pending-heading]' } }
+  columnTalebe: { role: columnheader, name: Talebe, within: { css: '[aria-labelledby=pending-heading]' } }
+  columnApplied: { role: columnheader, name: Başvuru, within: { css: '[aria-labelledby=pending-heading]' } }
+  columnDecide: { role: columnheader, name: İşlemler, within: { css: '[aria-labelledby=pending-heading]' } }
+  noPending: { role: cell, name: Bekleyen başvuru yok, within: { css: '[aria-labelledby=pending-heading]' } }
+  # every spare account is named "<first name> Başvuran" (STACK.md)
+  rowName: { css: '[aria-labelledby=pending-heading] tbody [role=rowheader]', hasText: '/ Başvuran$/', count: '{ovw.pendingRows}' }
+  rowApplied: { css: '[aria-labelledby=pending-heading] tbody td[data-label="Başvuru"]', hasText: '/\d{2}:\d{2}$/', count: '{ovw.pendingRows}' }
+  approveRow: { role: button, name: '/^Onayla: /', within: { css: '[aria-labelledby=pending-heading]' }, count: '{ovw.pendingRows}' }
+  rejectRow: { role: button, name: '/^Reddet: /', within: { css: '[aria-labelledby=pending-heading]' }, count: '{ovw.pendingRows}' }
+
+  # ---- Ders kadrosu: the hocas, each "<name> Hoca" with the caption "Hoca" ----
+  teamList: { css: '[aria-labelledby=team-heading] ul' }
+  teamRow: { css: '[aria-labelledby=team-heading] li', hasText: '/Hoca/', count: '{ovw.hocas}' }
+  imamStar: { role: button, name: Dersin imamı, within: { css: '[aria-labelledby=team-heading]' }, count: 1 }
+
+  # ---- Ders ayarları ----
+  settingsLink: { role: link, name: Ders ayarları, within: { css: '[aria-labelledby=settings-heading]' } }
+  infoStatusTerm: { css: '[aria-labelledby=settings-heading] dt', hasText: '/^Durum$/' }
+  infoStatusPublished: { css: '[aria-labelledby=settings-heading] dd', hasText: '/^Yayında$/' }
+  infoStatusDraft: { css: '[aria-labelledby=settings-heading] dd', hasText: '/^Taslak$/' }
+  infoEnrollmentTerm: { css: '[aria-labelledby=settings-heading] dt', hasText: '/^Kayıt$/' }
+  infoApprovalRequired: { css: '[aria-labelledby=settings-heading] dd', hasText: 'Onaylı: talebe başvurur' }
+  infoOpenEnrollment: { css: '[aria-labelledby=settings-heading] dd', hasText: 'Açık: talebe başvurunca' }
+  infoZoneTerm: { css: '[aria-labelledby=settings-heading] dt', hasText: '/^Saat dilimi$/' }
+  infoZone: { css: '[aria-labelledby=settings-heading] dd', hasText: '{ovw.zone}' }
+
+  # ---- the screen for a course the reader may not read: a <section> inside the shell's <main> ----
+  refusedMain: { css: '#main:has(.mds-system-state)' }
+  refusedBody: { css: '.mds-system-state__text', hasText: '/^Bu bölümün izni hesabınıza verilmemiş\./' }
+  refusedAccount: { css: '.mds-system-state p.mds-caption', hasText: '/^Giriş yaptığınız hesap: /' }
+  # loadFailedMain, loadFailedAlert, loadFailedText and loadFailedRetry are not bound: the stack cannot make the reads fail

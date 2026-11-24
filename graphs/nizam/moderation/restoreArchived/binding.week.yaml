@@ -1,0 +1,49 @@
+# nizam.moderation.restoreArchived on the local stack, with a week as the first "Geri al" (e2e archive#4, the week half): the nazım hid the first session of a course and then its second week
+# (with its own session, at one instant), so the newest row is the week "Hafta 2" and the first button is its. Restoring a week brings back the sessions hidden at its instant.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.week.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Read only the walk that covers `restoring --DONE--> settled`. After the restore the session "Celse 1" is left, so a type `week` chosen later would find none,
+# which the model (`held` kept) does not say: the walk of interest is RESTORE then DONE.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+  parts: { json: ../.local/made/arsParts.json }
+
+scenarios:
+  week:
+    given: { view: kosk, held: parts }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/course.mjs, make, arsParts, --kosk, '{mine.kosk}', --weeks, '2', --lessons, '1']
+        expect: '"title":"Deneme dersi arsParts"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-session, --as, koskNazim, --tag, arsParts, --nth, '0']
+        expect: 'hide-session arsParts'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-week, --as, koskNazim, --tag, arsParts, --nth, '1']
+        expect: 'hide-week arsParts'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsParts]
+        expect: 'course remove arsParts'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'
+
+effects:
+  # archive#4 b: the week is shown again and so is the session hidden with it; the first session, hidden on its own earlier, stays hidden
+  restoreArchiveItem:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from course_weeks where course_id = '{parts.course}' and title = 'Hafta 2'"]
+      expect: '"shown":true'
+    - run: [node, helpers/sql.mjs, "select l.archived_at is null as shown from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{parts.course}' and l.title = 'Celse 2'"]
+      expect: '"shown":true'
+    - run: [node, helpers/sql.mjs, "select l.archived_at is not null as hidden from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{parts.course}' and l.title = 'Celse 1'"]
+      expect: '"hidden":true'

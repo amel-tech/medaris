@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { env } from "~/env";
 import { getKosk } from "~/features/courses/actions";
 import {
@@ -9,10 +8,12 @@ import {
 import { CoursePage } from "~/features/courses/components/course-page";
 import { courseViewState, holdsSeat } from "~/features/courses/course-view";
 import { introMetadata } from "~/features/courses/intro-metadata";
-import { loadCourse } from "~/features/courses/load-course";
+import { loadCourseOrLeave } from "~/features/courses/load-course";
 import {
   getCourseDecks,
   getCourseForMetadata,
+  getMyGrades,
+  getMyLessonViews,
   getMySubmissions,
   getRecordings,
   isSignedIn,
@@ -23,8 +24,8 @@ type Params = Promise<{ courseId: string }>;
 type SearchParams = Promise<{ tab?: string | string[] }>;
 
 // Open to signed-out visitors (MDRS-122); its lessons are not. The metadata
-// is read with no token: a draft, a hidden course or a course of an unlisted
-// köşk gets the generic title.
+// is read with no token: a draft, a hidden course, an unlisted course
+// (MDRS-248) or a course of an unlisted köşk gets the generic title.
 export async function generateMetadata({
   params,
 }: {
@@ -52,8 +53,7 @@ export default async function Page({
 }) {
   const { courseId } = await params;
   const { tab } = await searchParams;
-  const course = await loadCourse(courseId);
-  if (!course) notFound();
+  const course = await loadCourseOrLeave(courseId);
 
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
@@ -61,25 +61,38 @@ export default async function Page({
   // Where the talebe handed homework in, read only when a celse has homework
   // they may hand in (the programme's "Ödev teslim edilmedi" marks).
   // The decks are read only for a caller who holds a seat (the tab exists only then).
-  const [kosk, signedIn, recordings, handedIn, decks] = await Promise.all([
-    getKosk(course.koskId),
-    isSignedIn(),
-    getRecordings(course.id),
-    mayHandInOn(course) && hasAssignments(course)
-      ? getMySubmissions(course.id)
-      : null,
-    (async () =>
-      holdsSeat(courseViewState(course, await isSignedIn()))
-        ? getCourseDecks(course.id)
-        : null)(),
-  ]);
+  // "Notlarım" (MDRS-248) is read, like the decks, only for a seat holder.
+  // The watch marks (MDRS-248, the "sayaç") too.
+  const [kosk, signedIn, recordings, handedIn, decks, grades, views] =
+    await Promise.all([
+      getKosk(course.koskId),
+      isSignedIn(),
+      getRecordings(course.id),
+      mayHandInOn(course) && hasAssignments(course)
+        ? getMySubmissions(course.id)
+        : null,
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getCourseDecks(course.id)
+          : null)(),
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getMyGrades(course.id)
+          : null)(),
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getMyLessonViews(course.id)
+          : null)(),
+    ]);
   const hrefs = inviteHrefs(`/courses/${course.id}`);
 
   return (
     <CoursePage
       course={course}
       koskName={kosk?.name ?? null}
-      approvalRequired={course.requiresApproval || Boolean(kosk?.isPrivate)}
+      approvalRequired={
+        course.requiresApproval || course.isUnlisted || Boolean(kosk?.isPrivate)
+      }
       signedIn={signedIn}
       signInHref={hrefs.signIn}
       registerHref={hrefs.register}
@@ -87,6 +100,8 @@ export default async function Page({
       recordings={recordings}
       handedIn={handedIn}
       decks={decks ?? []}
+      grades={grades}
+      views={views}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

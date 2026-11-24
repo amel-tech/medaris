@@ -1,0 +1,136 @@
+# nizam.moderation.reviewDeckPublication on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN)
+# signed in through Keycloak's real form, on "Deste yayın istekleri".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewDeckPublication \
+#     --bind graphs/nizam/moderation/reviewDeckPublication/binding.yaml --cover transitions --out <dir>
+# The two other readings are in the files beside this one (each its own binding, because they add a person's setup or a state's `before` that a scenario
+# of this file cannot carry): binding.medaris.yaml (a Medaris nazımı holding platform.deck_publish, and her own deck) and binding.answered.yaml (the request
+# is answered, or the deck taken back, behind the page's back). The shared locators are in locators.binding.yaml, which says what is not bound anywhere.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. Every locator, every account fact and every expectation here is from the code and
+# unverified. The file loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Data. The stack's seed makes no publication request (it has the seeded talebe's private deck, which nobody asked for), so each scenario makes its own
+# decks with ./review-data.mjs: a spare talebe, applicantD ("Salih Başvuran"), makes decks "İnceleme destesi A", "B", ... with five cards each and asks
+# for them to be published, through tedrisat's own routes, and the walk reads their ids from graphs/.local/made/nrd.json as {made.a.id} and so on. They
+# are removed, with the notices the answers sent applicantD, by `down` in `teardown`; `up` removes what a walk that died left first, so `setup` is safe
+# to run twice. Nobody else's request is ever pressed: the rows are found by their titles. What a walk cannot undo: the audit rows (`deck.private-read` of
+# every look at the cards, `deck.unpublish`): the API never deletes one. Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2).
+# The decks are made in the order the specs are given, so the first is the oldest request (the page lists the waiting ones oldest first) and the last answered
+# one is the newest answer (the answered tab lists newest first).
+#
+#   decides    the main story, from the home's "İncele" address: ?secili= names A, the first of three waiting requests. The page reads A's sample; "Bütün
+#              kartlar" reads all five; "Yayımla" publishes A with no question; B is selected and refused with a written reason; C, the third, is selected
+#              and stays waiting (a walk keeps `requested: true` through a decision, so there must be a request left). Then "Karara bağlanan": B (the newest
+#              answer) with its reason, A with "Yayından kaldır", which the başnazım writes a reason for. `--cover transitions` also takes the cancel of both
+#              dialogs, the empty-field error, the other rows and the way back to "Bekleyen". e2e deck-review#1 (the counts, the owner, the five cards and
+#              the three of the sample), #2 (the audit rows, as the `effects`), #3 (Yayımla), #4 (Reddet needs a reason, the deck stays private with it, the
+#              answered tab shows the reason).
+#   quiet      nothing waits, three answered requests: R (refused, oldest), P and A (published, A the newest answer). Entered by the menu ("Deste yayın
+#              istekleri"): "Karar bekleyen deste yayın isteği yok.", then "Karara bağlanan" with A selected, and "Yayından kaldır" on it (P stays, so the
+#              page has one more published request to select). Walks the transitions the main story cannot: the empty waiting tab and the published detail
+#              as the first one.
+#   none       nothing waits and nothing was answered: both empty lines. Needs a stack where no request is on the page (the seed makes none; a crashed walk of
+#              another flow can leave one). Nothing is made. Walk with `--to empty`.
+#   noCards    one deck with no card (its owner's page allows the request): "Bu destede henüz kart yok." in the grid's place, and "Yayımla" is on (DECKREV-6).
+#   staleLink  ?secili= names an id nobody has: the first waiting request is selected, in silence, and its cards read and recorded (DECKREV-2). Walk with
+#              `--to waitingDetail`.
+#   refused    a köşk nazımı: tedrisat answers 403 and the page is the screen "Bu bölüm için izniniz yok" (e2e deck-review#5). Nothing is made.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.reviewDeckPublication
+
+data:
+  made: { json: ../.local/made/nrd.json }
+
+scenarios:
+  decides:
+    given: { read: ok, link: waiting, requested: true, reviewer: chief, decided: rejected, sample: cards, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/deste-yayin-istekleri?secili={made.a.id}'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrd, 'a:pending:applicantD', 'b:pending:applicantD', 'c:pending:applicantD']
+        expect: '"tag":"nrd"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrd]
+        expect: 'review-data down'
+
+  quiet:
+    given: { read: ok, link: none, requested: false, reviewer: chief, decided: published, sample: cards, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->deckRequests' }
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrd, 'r:rejected:applicantD', 'p:published:applicantD', 'a:published:applicantD']
+        expect: '"tag":"nrd"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrd]
+        expect: 'review-data down'
+
+  none:
+    given: { read: ok, link: none, requested: false, reviewer: chief, decided: none, sample: cards, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->deckRequests' }
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrd]
+        expect: 'review-data down'
+
+  noCards:
+    given: { read: ok, link: waiting, requested: true, reviewer: chief, decided: none, sample: none, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/deste-yayin-istekleri?secili={made.a.id}'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrd, 'a:pending:applicantD:empty']
+        expect: '"tag":"nrd"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrd]
+        expect: 'review-data down'
+
+  staleLink:
+    given: { read: ok, link: gone, requested: true, reviewer: chief, decided: none, sample: cards, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/deste-yayin-istekleri?secili=00000000-0000-4000-8000-000000000000'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrd, 'a:pending:applicantD', 'b:pending:applicantD']
+        expect: '"tag":"nrd"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrd]
+        expect: 'review-data down'
+
+  refused:
+    given: { read: refused, link: none, requested: true, reviewer: medaris, decided: none, sample: cards, answer: done }
+    as: koskNazim
+    open: '{nizam}/talepler/deste-yayin-istekleri'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+
+# What a decision leaves outside the screen, read straight from tedrisat's database (the e2e reads it the same way, and no route reads a deck's decision
+# columns for a person who is not its owner).
+effects:
+  # deck-review#2: opening the selected request wrote the look to the audit log, with the deck, before any card left
+  readDeckPublishRequestCards:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'deck.private-read' and entity_id in (select id from decks where title like 'İnceleme destesi %')"]
+      expect: '"seen":true'
+  # deck-review#2 again: "Bütün kartlar" wrote a second row, with the scope `all`
+  allShown:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'deck.private-read' and details->>'scope' = 'all' and entity_id in (select id from decks where title like 'İnceleme destesi %')"]
+      expect: '"seen":true'
+  # deck-review#3: the deck is public and PUBLISHED
+  approveDeckPublishRequest:
+    - run: [node, helpers/sql.mjs, "select publish_status, is_public from decks where id = '{made.a.id}'"]
+      expect: '"publish_status":"PUBLISHED","is_public":true'
+  # deck-review#4: the deck is REJECTED, private, with the reason that was written
+  rejectDeckPublishRequest:
+    - run: [node, helpers/sql.mjs, "select publish_status, is_public, publish_reject_reason from decks where id = '{made.b.id}'"]
+      expect: '"publish_status":"REJECTED","is_public":false,"publish_reject_reason":"Kartlarda kaynak gösterilmemiş."'
+  # the take-back: PRIVATE again, and the audit row with the reason ("deck.unpublish" is the only decision the log keeps, DECKREV-4)
+  unpublishDeck:
+    - run: [node, helpers/sql.mjs, "select publish_status, is_public from decks where id = '{made.a.id}'"]
+      expect: '"publish_status":"PRIVATE","is_public":false'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'deck.unpublish' and entity_id = '{made.a.id}' and details->>'reason' = 'Kartlarda kaynak gösterilmemiş.'"]
+      expect: '"seen":true'

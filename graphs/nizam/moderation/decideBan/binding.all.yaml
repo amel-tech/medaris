@@ -1,0 +1,95 @@
+# nizam.moderation.decideBan on the Medaris list, /yasaklamalar, as the başnazım (viewer `chief`): she lifts anything, and widens through a dialog
+# that asks for a reason of its own. The walk opens http://localhost:4001/ and presses the menu's "Yasaklamalar" (the nav graph's entry
+# 'frame:shell->bans'); the list is every köşk's, newest first, so the walk's own bans, placed last, are its first rows.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.all.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+#   chiefDecides  (the main story) three course bans a hoca placed. LIFT, FILL_IN, SUBMIT, DONE; OPEN_LIFTED; OPEN_ACTIVE; WIDEN, FILL_IN, SUBMIT,
+#                 DONE (bans-medaris#5: the dialog needs a reason, a köşk ban stands beside the course ban, the audit row says `ban.extend`; #6: the
+#                 köşk row offers the lift and no widening). The lift decides the last placed (Betül), the widening the next (Salih).
+#   chiefPlatform one course ban the başnazım placed: she is Medaris administration, so the row offers the lift ("Yasağı kaldır") and the walk lifts it.
+#   chiefStaff    a course ban on a person who is then named hoca of the same course: the widening dialog is accepted and a köşk ban is opened over
+#                 them (finding ban-staff-check-gaps, NDB-1; extendBan reads no roles, ban.service.ts:270-312). The one-click widening of the
+#                 köşk's list refuses the same person (binding.staff.yaml). This is what the code does today, not what it should do.
+# Not bound: the Medaris list's search, chips and "Daha fazla göster" (nizam.moderation.reviewBans) and a medrese-wide ban's "Köşk" row (NDB-4).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+# the server actions are Next server actions: a POST to the page's own address, held while the busy state is checked. (The page's own
+# reads are GETs with a query, so the glob, which is anchored, matches only the POST.)
+states:
+  listed: { url: '{nizam}/yasaklamalar' }
+  empty: { url: '{nizam}/yasaklamalar' }
+  liftedTab: { url: '{nizam}/yasaklamalar' }
+  lifting: { call: '{nizam}/yasaklamalar' }
+  extending: { call: '{nizam}/yasaklamalar' }
+
+scenarios:
+  chiefDecides:
+    given: { viewer: chief, read: ok, row: low, answer: done, after: more }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: 'ready: 3 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: 'APPLICANT_C,APPLICANT_D,APPLICANT_E'
+      liftHas: 'COURSE lifted by SYSTEM_ADMIN "Yeniden değerlendirildi"'
+      widenHas: KOSK open
+
+  chiefPlatform:
+    given: { viewer: chief, read: ok, row: platform, answer: done, after: more }
+    as: systemAdmin
+    open: '{nizam}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --platform, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'COURSE lifted by SYSTEM_ADMIN "Yeniden değerlendirildi"'
+      widenHas: KOSK open
+
+  chiefStaff:
+    given: { viewer: chief, read: ok, row: staff, answer: done, after: more }
+    as: systemAdmin
+    open: '{nizam}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, APPLICANT_D]
+        expect: 'ready: 1 open'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'seat-hoca APPLICANT_D'
+    teardown:
+      - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'unseat-hoca APPLICANT_D'
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_D]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Genişletildi
+      who: APPLICANT_D
+      liftHas: 'COURSE lifted by SYSTEM_ADMIN'
+      widenHas: KOSK open

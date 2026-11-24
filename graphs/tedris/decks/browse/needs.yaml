@@ -1,0 +1,274 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.decks.browse
+status: proposed
+summary: >-
+  What must exist for a talebe who reads their decks and their collection: tedris.decks.browse. Each need is what the product must
+  do, from the flow's story; none is read off what the page does today. No planned feature of planned.md (P-nn) names this page.
+  The page decides no seat, so the per-gender kontenjan need (MDRS-284) has no place here. No replay ran while this was written
+  (the owner's phase rule), so no `walked` entry names a replay scenario: a need with no e2e check is "unwalked" below until the
+  walk phase has passed one.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# The gaps this file leaves, for the orchestrator's merge into graphs/needs.gaps.yaml:
+# missing    (no code, or the code is wrong for its users and no Linear issue exists): the-count-is-announced (DCK-11), the-failed-read-has-a-heading
+# (DCK-12), loading-is-announced (DCK-25), the-empty-sentence-names-its-cause (DECKLIST-1), study-needs-a-card (DECKLIST-2),
+# a-long-list-is-paged (DECKLIST-3), words-come-from-the-catalog (DCK-23)
+# unwalked   (code, and no e2e or replay walks it): open-a-deck-from-the-list (no e2e presses a deck's name here), reach-explore-and-create (decks#1
+# only sees the two links, nobody presses them), a-person-with-nothing-is-pointed-on (no e2e has a talebe with no deck and none
+# collected), a-failed-read-says-so (only the unit spec test/decks-page.spec.ts proves the markup; the stack cannot make tedrisat refuse
+# the read)
+
+needs:
+  - id: my-decks-with-their-state
+    need: >-
+      A talebe reads, in one list, every deck they wrote, each with the state of its publication (private, waiting for review,
+      published or refused), how many cards it has and of what kind, how far they have mastered it and how many of its cards wait
+      for a repeat.
+    evidence:
+      - state: list
+      - node: ownList
+      - node: ownBadge
+      - node: deckProgress
+      - node: ownDue
+      - node: deckCards
+      - node: deckKind
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:109
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:152
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:45
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+    note: decks.e2e.ts decks#1 (a2, a3, a7 to a10, a12 to a14)
+
+  - id: when-a-publication-was-asked
+    need: A deck whose publication was asked for shows the day it was asked, in the viewer's time zone, beside its state.
+    evidence:
+      - state: list
+      - node: ownRequested
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:88
+      - source: apps/tedris/features/flashcards/deck-model.ts:191
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+    note: >-
+      decks.e2e.ts decks#1 (a11: "18 kart·Kelime·29 Eylül’de istendi"; the day is fixed by the e2e seed and the zone
+      Europe/Istanbul)
+
+  - id: my-collection-and-where-each-deck-comes-from
+    need: >-
+      A talebe reads, apart from their own decks, the decks of other people they collected, each with where it comes from (a
+      course and its hoca, a köşk, a medrese or everyone) and with their progress in it. An author who makes a deck private again
+      takes it out of the list.
+    evidence:
+      - state: list
+      - node: collectedList
+      - node: collectedBadge
+      - node: deckContext
+      - node: deckProgress
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:109
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:213
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "shows the decks of the caller's courses and the published ones, with counts"
+    note: >-
+      decks.e2e.ts decks#1 (a15, a16: "Herkese açık", "Tamamlanan: 2 / 8 kart"; the context line of a course deck is asserted on
+      Keşfet, decks#6)
+
+  - id: new-cards-in-a-collected-deck
+    need: >-
+      A talebe is told how many cards were written in a collected deck after they collected it, so they know there is something
+      new to study.
+    evidence:
+      - state: list
+      - node: collectedAdded
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:143
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+    note: "decks.e2e.ts decks#1 (a17: \"2 yeni kart\")"
+
+  - id: only-my-decks-and-the-ones-i-collected
+    need: >-
+      The list holds the decks the talebe wrote and the ones they collected and may still read, and no other: another person's
+      published deck they did not collect, and a stranger's private deck, are not in it.
+    evidence:
+      - state: list
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:109
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+    note: >-
+      decks.e2e.ts decks#1 (a19, a20: the screen shows no such deck; the rule belongs to the API, and the graph draws only decks
+      that are in the list)
+
+  - id: narrow-my-decks-by-status
+    need: >-
+      A talebe narrows the decks they wrote to those private, waiting for review or published, and takes the filter off, and the
+      page says how many decks are left. A refused deck is counted as private, and the filter leaves the collection alone.
+    evidence:
+      - state: list
+      - node: chipAll
+      - node: chipPrivate
+      - node: chipPending
+      - node: chipPublished
+      - node: filterGroup
+      - node: ownCount
+      - node: ownEmptyByChip
+      - source: apps/tedris/features/flashcards/deck-model.ts:48
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:162
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "the status chips narrow the caller's own decks and the counts say how many"
+    note: |-
+      Also drawn as the rule chips-narrow-only-own.
+      decks.e2e.ts decks#2 (a2 to a10; the aria-pressed of a chip in a1 is not drawn: the format has no pressed state)
+
+  - id: find-a-deck-by-a-word
+    need: >-
+      A talebe types a word and both lists keep the decks that have every word of it in their name or description, in the Turkish
+      alphabet; a list with nothing left says so.
+    evidence:
+      - state: list
+      - node: searchBox
+      - node: searchLandmark
+      - node: ownEmptyBySearch
+      - node: collectedEmptyBySearch
+      - source: apps/tedris/features/flashcards/deck-model.ts:26
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:140
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "the search box narrows both lists"
+
+  - id: study-a-deck-from-the-list
+    need: >-
+      A talebe starts a study round of a deck from its card in the list, with one press, and the button names the deck it belongs
+      to.
+    evidence:
+      - state: list
+      - node: deckStudy
+      - state: study_opened
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:156
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Çalış' opens the study page of that deck"
+
+  - id: open-a-deck-from-the-list
+    need: >-
+      A talebe opens a deck from its card, and meets the owner's page for a deck they wrote and the reader's page for one they
+      collected.
+    evidence:
+      - state: list
+      - node: deckLink
+      - state: deck_opened
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72
+    note: >-
+      walked: nothing. No e2e presses a deck's name here (decks#11 and #12 open a deck from the create form, the others by
+      address).
+
+  - id: reach-explore-and-create
+    need: >-
+      From their decks a talebe reaches the page that finds more decks to collect and the form that makes a deck, from the head of
+      the page and, when a list is empty, from the sentence that says so.
+    evidence:
+      - state: list
+      - node: exploreLink
+      - node: createLink
+      - node: exploreFromEmpty
+      - node: createFromEmpty
+      - state: explore_opened
+      - state: create_opened
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:126
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:133
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists the caller's own decks and the ones they collected, with progress and status"
+    note: "decks.e2e.ts decks#1 (a5, a6: both links are seen and not pressed)"
+
+  - id: a-person-with-nothing-is-pointed-on
+    need: >-
+      A talebe who has no deck of their own is told so and is offered the form that makes one; one who collected none is told so
+      and is offered the page that finds some.
+    evidence:
+      - state: list
+      - node: ownEmptyNoDeck
+      - node: createFromEmpty
+      - node: collectedEmptyNoDeck
+      - node: exploreFromEmpty
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:178
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:223
+    note: >-
+      walked: nothing. Every e2e account has decks and a collection; the replay's scenario `nothing` (binding.none.yaml) is bound
+      and not yet run.
+
+  - id: a-failed-read-says-so
+    need: When the decks cannot be read the talebe is told so, with a way to try again, and is never told they have no deck.
+    evidence:
+      - state: loadFailed
+      - node: loadFailedBox
+      - node: retryButton
+      - source: apps/tedris/features/flashcards/components/decks-page.tsx:85
+      - source: apps/tedris/features/flashcards/reads.ts:31
+    note: |-
+      Also drawn as the assertion a-failed-read-draws-no-list, the assertion box-only-after-a-failed-read.
+      walked: nothing. The unit spec apps/tedris/test/decks-page.spec.ts proves the markup; no e2e and no replay makes tedrisat
+      fail, and the stack cannot be made to.
+
+  - id: a-visitor-is-sent-to-sign-in
+    need: A person who is not signed in and opens Desteler is sent to sign in and brought back to it.
+    evidence:
+      - source: "apps/tedris/app/decks/(medaris)/(liste)/page.tsx:16"
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "a signed-out visitor is sent to sign in"
+    note: decks.e2e.ts decks#5 (carried by realm.auth.signIn; this flow draws a signed-in talebe only)
+
+  - id: the-count-is-announced
+    need: >-
+      When a chip is pressed or a word typed, a person who cannot see the page is told how many decks are left in each section.
+    missing: "DCK-11: the counts are plain spans, not live regions; no Linear issue"
+    note: >-
+      Drawn on the state list and on the nodes ownCount and collectedCount, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-failed-read-has-a-heading
+    need: The box that says the decks could not be read is the page's h1, and a retry says that it is working.
+    missing: >-
+      DCK-12: SystemState has headingLevel 2 inside <main>, and "Yeniden dene" is a bare router.refresh(); no Linear issue
+    note: >-
+      Drawn on the state loadFailed and on the nodes loadFailedTitle and retryButton, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: loading-is-announced
+    need: While Desteler loads, a screen reader is told that it is loading.
+    missing: "DCK-25: loading.tsx is an aria-busy block of skeletons with no word; no screen of this flow; no Linear issue"
+
+  - id: the-empty-sentence-names-its-cause
+    need: >-
+      When a chip and a word together leave nothing, the page says which of the two hides the decks, and does not say that nothing
+      matches the word when the word matches.
+    missing: DECKLIST-1, a finding of this flow; no Linear issue
+    note: >-
+      Drawn on the state list and on the nodes ownEmptyBySearch and ownEmptyByChip, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: study-needs-a-card
+    need: A deck is offered for study only when it has a card to study; a deck with none is not.
+    missing: DECKLIST-2 and decision D1 of the flow; the study page's side is DCK-27; no Linear issue
+    note: >-
+      Drawn on the state list and on the node deckStudy, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-long-list-is-paged
+    need: >-
+      A talebe with very many decks reads them a page at a time: the read has a limit and the page draws what it was given, so
+      that the answer and the grid do not grow with the number of decks.
+    missing: >-
+      DECKLIST-3, a finding of this flow, not measured; the TODO at flashcard-deck.repository.ts:102 and :111 is about two other
+      queries; no Linear issue
+    note: >-
+      Drawn on the states reading and list, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
+  - id: words-come-from-the-catalog
+    need: Every word the page draws or a screen reader reads comes from the catalog and so can be translated.
+    missing: >-
+      DCK-23: "tamamlandı" (Progress at %100) and the toaster's "Bildirimler" are kit defaults; MDRS-233 is the toast close
+      button; no Linear issue for these two
+    note: >-
+      Drawn on the state list and on the nodes deckProgress and deckPercent, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).

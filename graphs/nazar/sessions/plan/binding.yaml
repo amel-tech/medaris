@@ -1,0 +1,377 @@
+# nazar.sessions.plan on the local stack (graphs/README.md, "The stack and the bindings"): nazar-web at http://localhost:4002, the hoca "Hamdi Müderris" of a
+# course made for the walk, and the form "Celse planla".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/sessions/plan \
+#     --bind graphs/nazar/sessions/plan/binding.yaml --out <dir>                                 (the main story)
+#   ... --cover transitions --absent --out <dir>                                                 (every scenario below)
+#   ... --bind graphs/nazar/sessions/plan/binding.forbiddenWrite.yaml --cover transitions ...    (the permission taken away between preview and write)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end; every locator, every account fact and every address is from the code and unverified
+# until the walk. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>`, read-only). locators.binding.yaml holds what the scenarios share.
+#
+# The data. Every scenario makes the one course "Deneme dersi planWk" (tag planWk: one week with one celse from tomorrow, MUDERRIS its hoca) and the
+# dates file the form is typed from, and removes both in `teardown`; `make` removes a planWk left by a crashed walk first. The seeded courses are never
+# planned into. A walk that makes celses deletes them with the course (helpers/course.mjs remove deletes the course as the başnazım, with everything under
+# it). What a walk cannot undo: the audit rows of the writes, and the calendar-invitation mails to the enrolled talebe, of whom the course has none.
+#
+# Scenarios not bound, with the reason: `read: failed` (the course read fails: nothing on the stack makes it), `answer: patternRefused` and `answer: failed` (the API
+# would have to refuse a pattern it has just previewed, or fail: the stack cannot be made to), and the preview's second answer after a refusal (`previewed` stays what
+# it is). `answer: forbidden` is in binding.forbiddenWrite.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.sessions.plan
+
+scenarios:
+  # The main story: from Celseler (e2e course-scope#1 a3: the link "Celse planla"), a weekly repeat on Tuesday and Thursday from a Tuesday two to three
+  # weeks away, ending 8 days later (three celses), the first with a link, the preview read, the celses made. Lands on Celseler with the toast.
+  weekly:
+    given: { read: ok, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersSessions->dersSessionsPlanla' }
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # The same repeat, ended after a number of celses: "Belirli sayıda celseden sonra" and 4: four celses.
+  weeklyCount:
+    given: { read: ok, plan: weeklyCount, fields: valid, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '4'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # One celse, "Tek seferlik", on a date nine days away.
+  single:
+    given: { read: ok, plan: single, fields: valid, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '1'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # An exam as exam#1 plans it: "Sınav", the date (today + 5), "Sınavı planla"; one lesson "Ara sınav" and its lesson_exams row.
+  exam:
+    given: { read: ok, plan: exam, fields: valid, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '1'
+      createdTitle: Ara sınav
+      exams: '1'
+
+  # A pattern on Monday and Saturday over a Tuesday and the Wednesday after: no day of it falls in the range, tedrisat answers INVALID_SESSION_PATTERN (NO_SESSIONS),
+  # the preview is cleared and the alert says so. Nothing is made.
+  previewRefused:
+    given: { read: ok, plan: weekly, fields: valid, previewed: refused, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Pzt
+      dayB: Cmt
+      startDate: '{when.noStart}'
+      endDate: '{when.noEnd}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # An empty title: the preview works (it does not read the title), the button is on, and pressing it says "Celse başlığını yazın." under the field; the title is
+  # then typed and the celses are made.
+  noTitle:
+    given: { read: ok, plan: weekly, fields: noTitle, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: ''
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # A first-celse link that is not https: "Toplantı bağlantısı https:// ile başlamalı…" under the field; the link is then put right.
+  badLink:
+    given: { read: ok, plan: weekly, fields: badLink, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: http://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: meetingUrl
+      fixValue: https://meet.example.test/plan/ilk
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # An exam whose "Tam puan" is 0, typed under "Sınav ayrıntıları": "1 ile 1000 arasında bir tam puan girin." under it; then 100.
+  noScore:
+    given: { read: ok, plan: exam, fields: noScore, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '0'
+      topics: Birinci bâbın çekimleri
+      fixField: maxScore
+      fixValue: '100'
+      planned: '1'
+      createdTitle: Ara sınav
+      exams: '1'
+
+  # An in-person exam with no place: "Sınavın yapılacağı yeri yazın." under "Yer adı"; the place is then typed.
+  noPlace:
+    given: { read: ok, plan: exam, fields: noPlace, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: examLocation
+      fixValue: Merkez medrese, birinci sınıf
+      planned: '1'
+      createdTitle: Ara sınav
+      exams: '1'
+
+  # A ders nazırı of the walk's course with no permission at all (course-nazir-grants --codes none, appointed by the hoca): the page opens and says "Bu sayfaya izniniz yok"
+  # with no form. The seeded ders nazırı holds session.manage in "Bina ve İzhar Şerhi" and is not used.
+  notAllowed:
+    given: { read: forbidden, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, helpers/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, helpers/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'
+
+  # A course that is not the hoca's, by an address no course has: the layout answers the portal's 404, "Sayfa bulunamadı", before the page reads anything. Nothing is
+  # made, so there is nothing to remove.
+  unknownCourse:
+    given: { read: missing, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: muderris
+    open: '{nazar}/ders/00000000-0000-4000-8000-000000000000/celseler/planla'

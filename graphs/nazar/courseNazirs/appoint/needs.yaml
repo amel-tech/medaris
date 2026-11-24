@@ -1,0 +1,318 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.courseNazirs.appoint
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to appoint a ders nazırı, give them permissions and an end, and see who holds a post:
+  the flow's product list. Each need is what the product must do, from the flow's story (FLOWS.md), the inventory's findings
+  (F-D2c-4, F-D2c-5, F-D2c-6, F-D2c-12, F-D2c-16) and the flow's own (CAPPOINT-1 to CAPPOINT-4), not from what the page does
+  today. Nothing planned in planned.md belongs to this flow (P-15, MDRS-201, is the dismissal's; MDRS-133's "no re-delegation" is
+  built: a holder of course_nazir.assign by a grant appoints with no permission, nazar.access.dersNazirPages).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the e2e checks, the API's e2e and the unit specs named under `walked` are the
+# only runs, and the replay scenarios of binding.yaml, binding.race.yaml and binding.head.yaml are written and not run):
+# missing:  search-only-on-purpose (none), a-search-says-what-it-did (none), kaydet-says-why-it-is-off (none),
+# cancel-while-pending-answers (none), selection-count-is-announced (none)
+# unwalked: barred-person-is-refused (a unit test of the wording and the API's own e2e; no web e2e; the replay scenario `barred` is
+# written and not run), past-end-is-told (unit specs only; the replay path TYPE_PAST_END is written and not run),
+# ceiling-cuts-what-is-given (e2e course-nazirs#14 walks it, but the stack cannot be made to cut a ceiling without changing a
+# seeded medrese, so no replay: `person: overreach` is not bound)
+
+needs:
+  - id: find-by-exact-address
+    need: >-
+      The hoca finds a person by their exact e-mail address in the realm's directory, which holds people who never opened the app,
+      sees who was found by name and address before doing anything, and is told when the text is no address, when no account has
+      the address and when the directory does not answer; nobody is chosen from an unknown address.
+    evidence:
+      - state: asking
+      - state: searching
+      - state: picked
+      - node: emailField
+      - node: emailNotEmail
+      - node: emailNobody
+      - node: emailDown
+      - node: searchingStatus
+      - node: chosenRegion
+      - node: chosenTitle
+      - node: chosenName
+      - node: chosenAddress
+      - node: removePerson
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:107
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "an address no account has is not found in the dialog, and an unknown account is refused by the API (404)"
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+    note: |-
+      course-nazirs#10: a2, a3: "Bu adresle bir hesap bulunamadı." and "Kaydet" off
+      apps/nazar/test/course-nazir-dialog.spec.tsx: :207-241, Enter and not a key, no address, no account, the directory
+
+  - id: appoint-with-permissions-and-an-end
+    need: >-
+      The hoca makes a person ders nazırı with the permissions she ticks (only ones she holds herself) and, if she wants, an end;
+      the post and its permissions end together, the appointment is written to the audit log, and the list says what was given:
+      "{n} izin", the sentences of the codes, the end or "Süresiz", who appointed and when.
+    evidence:
+      - state: appointing
+      - state: listed
+      - node: permSession
+      - node: permRecording
+      - node: endField
+      - node: summaryNone
+      - node: summaryCount
+      - node: save
+      - node: toastAppointed
+      - node: rowCount
+      - node: rowPermissionsLine
+      - node: rowEnd
+      - node: rowNever
+      - node: rowGiver
+      - node: rowGiverDay
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/actions.ts:33
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:106
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris appoints a person by e-mail with two permissions and an end (criterion 1)"
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+      - test: apps/tedrisat/test/e2e/course-nazirs.e2e.spec.ts
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+        name: "keeps the person and the boxes while the appointment is on its way, so what is sent is what is shown"
+    note: |-
+      course-nazirs#3: a1-a8: the person, two boxes, an end, "2 izin", the day, "(siz)", the post's end and each grant's
+      apps/nazar/test/course-nazir-dialog.spec.tsx: :263-279 and :342-389
+      apps/tedrisat/test/e2e/course-nazirs.e2e.spec.ts: the API: post, grants, end, audit row
+
+  - id: post-may-start-empty
+    need: >-
+      A person can be made ders nazırı holding nothing and be given permissions later, so that appointing and giving are two steps
+      when the hoca wants them to be; the list says "İzin yok" for such a post.
+    evidence:
+      - state: appointing
+      - state: listed
+      - node: summaryNone
+      - node: rowNoPerms
+      - node: rowNever
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:124
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "a person appointed elsewhere while the dialog is open is worded from the API's 409, and the list is read again"
+      - test: apps/nazar/test/course-nazirs.spec.ts
+    note: |-
+      course-nazirs#7: a3, a6: a post made with no permission reads "İzin yok" (made through the API there)
+      apps/nazar/test/course-nazirs.spec.ts: :89, the row of a post that holds none
+
+  - id: empty-list-says-so
+    need: >-
+      A course with no ders nazırı says so, and the button to appoint is there; the page does not show a placeholder or a blank
+      table.
+    evidence:
+      - state: listed
+      - node: emptyLine
+      - node: appointButton
+      - node: rosterTable
+      - source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:154
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris opens Ders nazırları of a course with none yet, under the course's menu"
+    note: "course-nazirs#2: a1-a4; a5 (the aside link's aria-current) is the shell's"
+
+  - id: holder-is-told-before-sending
+    need: >-
+      A person who holds a post in the course already is shown as one, with a line that says so, and cannot be appointed again;
+      the API refuses a second post with a 409 as well.
+    evidence:
+      - state: pickedMember
+      - node: alreadyAlert
+      - node: save
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:192
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "a person who holds the post already is refused in the dialog before sending, and by the API (409)"
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+    note: |-
+      course-nazirs#6: a2-a6
+      apps/nazar/test/course-nazir-dialog.spec.tsx: :243-261
+
+  - id: appointed-elsewhere-is-worded
+    need: >-
+      A person who becomes a ders nazırı through someone else while the dialog is open is met by a refusal in words ("Bu kişi bu
+      dersin ders nazırı zaten."), the dialog closes and the list is read again with the post that now exists, so the hoca is not
+      left on a stale form.
+    evidence:
+      - state: appointing
+      - state: listed
+      - node: toastExists
+      - node: rowNoPerms
+      - node: rowNever
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:256
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "a person appointed elsewhere while the dialog is open is worded from the API's 409, and the list is read again"
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+    note: |-
+      course-nazirs#7: the first half, a1-a7; the second half (the post ended while the edit dialog is open) is
+      nazar.courseNazirs.permissions'
+      apps/nazar/test/course-nazir-dialog.spec.tsx: :406-417
+
+  - id: nobody-appoints-themselves
+    need: >-
+      Nobody appoints themselves a ders nazırı, whatever route let them in: the dialog says so before sending, and the API refuses
+      with a 403 and writes nothing but the audit row of the refusal.
+    evidence:
+      - state: pickedSelf
+      - node: selfAlert
+      - node: save
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:197
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "nobody appoints themselves: the dialog offers no way, and the API refuses (403 SELF_GRANT_REFUSED)"
+    note: "course-nazirs#9: a2-a5"
+
+  - id: seat-holder-is-refused
+    need: >-
+      A person who already holds a seat over the course (the köşk's nazım, a Medaris nazımı, a medrese's staff) cannot be made a
+      ders nazırı, because their permissions could not be told from the post's; the refusal says why in words and the dialog stays
+      open.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastHoldsSeat
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:240
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "a person who holds a seat over the course is refused by the API (409), worded, and the dialog stays open"
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+    note: |-
+      course-nazirs#8: a2-a6
+      apps/nazar/test/course-nazir-dialog.spec.tsx: :391-404
+
+  - id: barred-person-is-refused
+    need: >-
+      A person barred from the course, its köşk or its medrese cannot be made a ders nazırı (the post would undo the ban), and the
+      refusal says why in words the hoca understands; the dialog stays open.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastBarred
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:242
+      - test: apps/nazar/test/course-nazirs.spec.ts
+      - test: apps/tedrisat/test/e2e/course-nazirs.e2e.spec.ts
+    note: |-
+      apps/nazar/test/course-nazirs.spec.ts: :311, the wording only
+      apps/tedrisat/test/e2e/course-nazirs.e2e.spec.ts: the API's refusal
+
+  - id: unknown-account-is-told
+    need: >-
+      An account that is gone between the search and the save is refused with the sentence "Bu hesap bulunamadı." and the dialog
+      stays open; the API answers 404 and writes nothing.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastUnknown
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:238
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "an address no account has is not found in the dialog, and an unknown account is refused by the API (404)"
+    note: "course-nazirs#10: a4, a5: the API answers 404 COURSE_NAZIR_UNKNOWN_ACCOUNT to a random id (the dialog never sends it)"
+
+  - id: ceiling-cuts-what-is-given
+    need: >-
+      The hoca gives only the permissions she holds in the course now: a box she may not give is off, one she ticked before her
+      ceiling was cut is refused by the API with a sentence that says so (a passive medrese, a policy, a medrese course cut what
+      she holds), and the dialog stays open.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastExceeds
+      - node: permSession
+      - node: permRecording
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:166
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "on a passive course the müderris hands on only what he still holds: the boxes are off and the API refuses the rest (ceiling, 403)"
+      - test: apps/nazar/test/course-nazirs.spec.ts
+    note: |-
+      course-nazirs#14: a1-a13; a14-a20 are the appointee's pages (nazar.access.dersNazirPages), and a20 is stale (F-D2c-14)
+      apps/nazar/test/course-nazirs.spec.ts: :207-243, the boxes
+
+  - id: past-end-is-told
+    need: >-
+      An end that is not after now is told in the dialog before anything is sent, and an end left half typed is told too; the
+      typed moment is read on the viewer's own clock.
+    evidence:
+      - state: picked
+      - node: endField
+      - node: endError
+      - node: endHelp
+      - source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:145
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+    note: "apps/nazar/test/course-nazir-dialog.spec.tsx: :342-389, with the clock held"
+
+  - id: row-buttons-lead-on
+    need: >-
+      The row of the person just appointed offers "İzinleri düzenle" and "Görevden al" at once, so that appointing, giving and
+      ending are one errand and not three searches.
+    evidence:
+      - node: editButton
+      - node: endButton
+      - state: handed_over.permissions
+      - state: handed_over.dismiss
+      - source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris takes a permission and then the end away, and the page it opened shuts (criterion 3)"
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris dismisses the ders nazırı, asking first, and post and permissions end together (criterion 4)"
+    note: |-
+      course-nazirs#5: context: the edit button on the row (nazar.courseNazirs.permissions carries it)
+      course-nazirs#11: context: the end button on the row (nazar.courseNazirs.dismiss carries it)
+
+  - id: search-only-on-purpose
+    need: >-
+      The e-mail address is searched only when the hoca asks (Enter or an explicit button), never when the field is left or the
+      dialog is closed, because every search is written to the audit log (F-D2c-6, decision D1).
+    missing: no Linear issue; findings F-D2c-6
+    note: >-
+      Drawn on the states asking and searching, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-search-says-what-it-did
+    need: >-
+      The search tells a reader of the screen that it ran and how it ended (found, nobody, not available, not an address), also
+      when the field is left, keeps the field enabled and gives the focus back: the person found is announced and focused, and
+      "Başka birini seç" returns to the field (F-D2c-4, F-D2c-5, CAPPOINT-4).
+    missing: no Linear issue; findings F-D2c-4, F-D2c-5, CAPPOINT-4
+    note: >-
+      Drawn on the states asking, searching and picked and on the nodes emailNotEmail, emailNobody, emailDown, searchingStatus and
+      removePerson, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only
+      missing needs name).
+
+  - id: kaydet-says-why-it-is-off
+    need: >-
+      "Kaydet" says what is missing while it cannot be pressed (find a person first), the e-mail field is marked required for a
+      reader of the screen, and the dialog is described by its first line and not by the whole form (CAPPOINT-2, F-D2c-12,
+      F-D2c-16, decision D2).
+    missing: no Linear issue; findings CAPPOINT-2, F-D2c-12, F-D2c-16
+    note: >-
+      Drawn on the state asking and on the nodes save, emailField and dialog, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: cancel-while-pending-answers
+    need: >-
+      While the appointment is on its way, "Vazgeç", the close icon and Esc are marked as not available, or closing is allowed and
+      the outcome is told in the toast (CAPPOINT-1).
+    missing: no Linear issue; findings CAPPOINT-1
+    note: >-
+      Drawn on the state appointing and on the nodes cancel and closeIcon, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: selection-count-is-announced
+    need: >-
+      The footer's count of the permissions ticked ("2 izin seçili", "İzin seçilmedi") is announced as it changes, so a reader of
+      the screen knows what "Kaydet" will give (CAPPOINT-3).
+    missing: no Linear issue; findings CAPPOINT-3
+    note: >-
+      Drawn on the nodes summaryNone, summaryCount, permSession and permRecording, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

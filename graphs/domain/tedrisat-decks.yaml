@@ -1,0 +1,1602 @@
+# The decks, cards, labels, course decks and deck review of the Medaris API: 51 handlers (domain.md of the inventory, lines 4576-5132;
+# 14 personal decks, 12 cards, 5 card labels, 5 deck labels, 5 course decks, 5 köşk decks and proposals, 5 publish review). Written from
+# the code as it is, each handler read through its guard, its pipe, its service and its repository.
+#
+# Conventions of this file
+#   route         OpenAPI style: a path parameter is {id}, not :id. The anchor of an action is its route decorator line.
+#   result        returns: an entity the response is, a row of it. A list of an entity is { type: array, items: { type: object,
+#                 references: Entity } }. A projection that is no entity (the summary rows, the study round, the köşk deck page) is
+#                 written out. A 204 is { status: 204 }.
+#   refusals      listed in full per action. HTTP_400, HTTP_404 and HTTP_429 are Nest's HttpException codes (HTTP_<status>);
+#                 the 401 of AuthGuard (HTTP_401: no token, or one that does not verify; invariant access-token-only) and the default
+#                 budgets (3000 per address and 100 per user, per route and minute; invariant rate-limit-before-auth) can answer on any
+#                 route and are not repeated: only the three bulk routes carry a 429 budget of their own. A malformed id on a guarded write route is 403
+#                 AUTHZ_FORBIDDEN for everyone but the SYSTEM_ADMIN, because the PUBLIC relation holds no write code; the HTTP_400 there is
+#                 the SYSTEM_ADMIN's.
+#                 Two answers belong to every route that takes a JSON body and are not repeated: a body that is not valid JSON is 400
+#                 HTTP_400 before any guard runs, and one over 100 KB (express's default, no limit is set) is a 500 INTERNAL_ERROR, since
+#                 nothing maps its PayloadTooLargeError (derived by reading, not run; only the bulk create can reach it by size).
+#   needs         the guards and the code: the controllers of this area use AuthGuard and AuthzGuard with @Authz or @AuthzExempt, except
+#                 the two label controllers and the two deck-review controllers, which use AuthGuard alone and decide in their service.
+#   description   what the action reads and writes; note: the author's remarks, the findings and what was derived by reading and not run.
+#
+# Names of generic controller methods (the controller method becomes the action):
+#   FlashcardDeckController   findAllUserCollections listCollectedDecks, summary listDeckSummaries, dueToday listDecksDueToday,
+#                             explore exploreDecks, findById getDeck, findAll listDecks, create createDeck, addToUserCollection collectDeck,
+#                             requestPublication requestDeckPublication, replace replaceDeck, updateDeck updateDeck, delete deleteDeck,
+#                             withdrawPublication withdrawDeckPublication, removeFromUserCollection uncollectDeck
+#   FlashcardController       findById getCard, findByDeckId listDeckCards, studyRound getStudyRound, createMany createCards,
+#                             replaceManyProgress saveCardProgress, replace replaceCard, update updateCard, deleteCard deleteCard,
+#                             bulk createCardsBulk, downloadSample downloadCardSample, exportCards exportCards, importCards importCards
+#   FlashcardlabelController  createFlashcardLabel createCardLabel, deleteFlashcardLabel deleteCardLabel, flahscardLabeling labelCard,
+#                             getById getCardLabel, getLabelStats getCardLabelStats
+#   FlashcardDeckLabelController  createFlashcardDeckLabel createDeckLabel, deleteFlashcardDeckLabel deleteDeckLabel,
+#                             deckLabeling labelDeck, getById getDeckLabel, getLabelStats getDeckLabelStats
+#   CourseDecksController     manage listCourseDecksForStaff, create createCourseDeck, update updateCourseDeck, delete deleteCourseDeck,
+#                             list listCourseDecks
+#   KoskDecksController       decks getManagedKoskDecks, createDeck createKoskDeck, propose proposeKoskDeck,
+#                             rejectProposal rejectKoskDeckProposal, hide hideKoskDeck
+#   NizamDeckRequestsController  list listDeckPublishRequests, readCards readDeckPublishRequestCards, approve approveDeckPublishRequest,
+#                             reject rejectDeckPublishRequest, unpublish unpublishDeck
+#
+# No background job belongs to this area: notifications are written inline (NotificationService.notify, swallowed on failure only in
+# DeckReviewService.tell).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+policies:
+  - actor: course-deck-staff
+    needs: deck.manage_course in the course, held by the müderris of the course, the başmüderris of its medrese, the nazım of its köşk, or a grant
+    where: >-
+      Opens, edits and deletes (while a draft) the course's decks, and reads, fills, edits and publishes-by-request them on the deck routes as
+      the author does. Not the single-card routes unless it wrote the deck (invariant course-deck-staff-edit-any-card), and not the export.
+    read: [Deck, Flashcard, FlashcardProgress, CourseWeek, Enrollment]
+    write: [Deck, Flashcard]
+    do: [listCourseDecksForStaff, createCourseDeck, updateCourseDeck, deleteCourseDeck, getDeck, getStudyRound, createCards, createCardsBulk, importCards, listDeckCards, replaceDeck, updateDeck, deleteDeck, requestDeckPublication, withdrawDeckPublication]
+    source: libs/common/src/authz/effective-permissions.ts:306
+
+  - actor: deck-reviewer
+    needs: the realm role SYSTEM_ADMIN, or platform.deck_publish held by a Medaris nazımı through a grant
+    where: >-
+      Lists the publish requests, reads the cards of a requested private deck (on the record), approves or refuses a request. A holder of
+      platform.deck_publish may not answer the request for their own deck. Unpublishing is the SYSTEM_ADMIN's alone.
+    read: [Deck, Flashcard]
+    write: [Deck, Notification, AuditLog]
+    do: [listDeckPublishRequests, readDeckPublishRequestCards, approveDeckPublishRequest, rejectDeckPublishRequest, unpublishDeck]
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:321
+
+  - actor: kosk-deck-nazim
+    needs: KOSK_NAZIM in the köşk (a role assignment, not a permission code), or the realm role SYSTEM_ADMIN
+    where: Opens the köşk's decks, answers its müderrises' proposals, hides its decks. deck.manage_kosk is not consulted.
+    read: [Deck, DeckProposal, Kosk]
+    write: [Deck, DeckProposal, Notification]
+    do: [getManagedKoskDecks, createKoskDeck, rejectKoskDeckProposal, hideKoskDeck]
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:350
+
+  - actor: deck-proposer
+    needs: MUDERRIS in a course of the köşk that is not hidden (a role assignment, not a permission code)
+    where: Suggests a deck for the köşk, tied to one of its own courses there. deck.propose_kosk is not consulted.
+    read: [Kosk, Course]
+    write: [DeckProposal]
+    do: [proposeKoskDeck]
+    source: apps/tedrisat/src/deck-review/deck-review.repository.ts:547
+
+  - actor: label-owner
+    needs: a signed-in caller who made the label
+    where: >-
+      Makes, reads, deletes and uses their own card labels and deck labels, and reads their stats, whatever the scope. Nobody else reads or uses
+      them, and no route reads labelings back.
+    read: [FlashcardLabel, FlashcardLabelStats, DeckLabel, DeckLabelStats]
+    write: [FlashcardLabel, FlashcardLabeling, FlashcardLabelStats, DeckLabel, DeckLabeling, DeckLabelStats]
+    do: [createCardLabel, deleteCardLabel, labelCard, getCardLabel, getCardLabelStats, createDeckLabel, deleteDeckLabel, labelDeck, getDeckLabel, getDeckLabelStats]
+    source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:44
+
+actions:
+  listCollectedDecks:
+    route: GET /flashcard/decks/collections
+    summary: "The decks in the caller's collection"
+    description: >-
+      The decks of other people the caller put in their collection, and their own that they collected. A deck stays
+      listed only while the caller may still read it: it must be public, the caller's own or shared with them
+      (deckSharedWith), and that is decided on every read, so a deck its author turned private drops out. Tags are []
+      unless the caller wrote the deck.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (no resource is named; the rows are chosen by the caller's own sub)"
+    result: { type: array, items: { type: object, references: Deck } }
+    note: >-
+      Hidden decks (archivedAt) are not filtered out here, unlike the summary and explore lists (finding
+      hidden-decks-in-lists). The scoping is in the query, flashcard-deck.repository.ts:126-166, and the tags are
+      blanked by the service, flashcard-deck.service.ts:21.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:90
+
+  listDeckSummaries:
+    route: GET /flashcard/decks/summary
+    summary: "The caller's decks with their progress"
+    description: >-
+      The caller's own decks, newest first and hidden ones left out, then the decks of other people the caller collected
+      and may still read (not hidden, public or shared with them), in the order they were collected. Each row carries
+      the card counts and the caller's own progress, so a list page makes one request.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (no resource is named; the rows are chosen by the caller's own sub)"
+    result:
+      type: array
+      items:
+        type: object
+        required: [id, title, authorId, isMine, cardType, publishStatus, source, inCollection, cardCount, masteredCount, learningCount, newCount, dueCount, addedSinceCollectedCount]
+        properties:
+          id: { type: string, format: uuid, references: Deck }
+          title: { type: string }
+          description: { type: [string, "null"] }
+          authorId: { type: string, format: uuid }
+          isMine: { type: boolean }
+          cardType: { enum: [VOCABULARY, HADEETH] }
+          publishStatus: { enum: [PRIVATE, PENDING, PUBLISHED, REJECTED] }
+          publishRequestedAt: { type: [string, "null"], format: date-time }
+          source: { enum: [OWN, COLLECTION], note: "OWN when the caller wrote the deck" }
+          collectionKind: { enum: [COURSE, KOSK, MADRASAH, PUBLIC, null], note: "null for the caller's own decks; else the most specific link first: the course, then the köşk, then the medrese, else PUBLIC" }
+          inCollection: { type: boolean, note: "whether a decks_users row of the caller exists" }
+          contextTitle: { type: [string, "null"], note: "the course title, else the köşk name, else the medrese name, else null" }
+          muderrisName: { type: [string, "null"], note: "the course's first müderris by order index; only for a course deck" }
+          muderrisUnvan: { type: [string, "null"], note: "that müderris' unvan in the course (the HocaUnvan values of CourseMuderris.unvan)" }
+          cardCount: { type: integer }
+          masteredCount: { type: integer, note: "the caller's MASTERED progress rows" }
+          learningCount: { type: integer, note: "the caller's LEARNING progress rows" }
+          newCount: { type: integer, note: "max(0, cardCount - masteredCount - learningCount)" }
+          dueCount: { type: integer, note: "cards waiting for a repeat now (invariant card-review-due)" }
+          addedSinceCollectedCount: { type: integer, note: "cards written after the caller collected the deck; 0 for the caller's own" }
+    note: >-
+      Declared before :id in the controller so that summary is not read as a deck id. Built in
+      flashcard-deck-summary.service.ts:73 from flashcard-deck-summary.repository.ts:105-130 and :165.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:109
+
+  listDecksDueToday:
+    route: GET /flashcard/decks/due
+    summary: "The decks with something to study today"
+    description: >-
+      From the caller's list (own and collected), first the decks with cards waiting for a repeat, the most waiting
+      first, then the collected decks of other people with nothing due that grew since they were collected. An own deck
+      with nothing due is never listed. Cut to limit.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (no resource is named; the rows are chosen by the caller's own sub)"
+    query: { type: object, properties: { limit: { type: integer, default: 3, note: "clamped to 1..10, not refused" } } }
+    result: { type: array, items: { type: object, references: Deck, description: "a row of listDeckSummaries" } }
+    refusals:
+      HTTP_400: { status: 400, note: "limit is not an integer (ParseIntPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:134 }
+    note: >-
+      Code: flashcard-deck-summary.service.ts:105-118.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:131
+
+  exploreDecks:
+    route: GET /flashcard/decks/explore
+    summary: "Decks to discover and collect"
+    description: >-
+      Two lists, newest first, each marked with whether the caller already collected the deck. courseDecks are other
+      people's private decks shared with the caller through an enrollment in the course, a course of the köşk or a
+      course of the medrese; publicDecks are every published deck that is not hidden, the caller's own included. Both
+      can be narrowed to one card type.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (no resource is named; the rows are chosen by the caller's own sub)"
+    query: { type: object, properties: { cardType: { enum: [VOCABULARY, HADEETH] } } }
+    result:
+      type: object
+      required: [courseDecks, publicDecks]
+      properties:
+        courseDecks: { type: array, items: { type: object, references: Deck, description: "a row of listDeckSummaries" } }
+        publicDecks: { type: array, items: { type: object, references: Deck, description: "a row of listDeckSummaries" } }
+    refusals:
+      HTTP_400: { status: 400, note: "cardType is not VOCABULARY or HADEETH (ParseEnumPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:160 }
+    note: >-
+      Code: flashcard-deck-summary.service.ts:82-95 and flashcard-deck-summary.repository.ts:132-163.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:157
+
+  getDeck:
+    route: GET /flashcard/decks/{id}
+    summary: "One deck"
+    description: >-
+      The author, anyone for a public deck, a talebe the deck is shared with, the course staff of a course deck, and the
+      SYSTEM_ADMIN for any deck read it. Tags come back only to the author. The SYSTEM_ADMIN's read of another person's
+      private deck is on the record.
+    needs: "anyone, with or without a token: AuthGuard and AuthzGuard with @Authz(deck.view, the deck (byParam flashcard-deck)) and @AuthzPublic; with no token only the anonymous relation is decided, so only public decks pass"
+    query: { type: object, properties: { include: { type: string, note: "a comma list, accepted and ignored: DeckIncludeEnum is empty" } } }
+    result: { returns: Deck }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. An anonymous caller meets it for every non-public deck (tedrisat-role-resolver.service.ts:240)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:187 }
+      DECK_FORBIDDEN: { status: 403, note: "a second lock: the guard has already answered, so this is reached only when the deck turned private between the guard's read and the handler's", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
+    sideEffects:
+      - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck (libs/common/src/authz/authz.service.ts:234)"
+    note: >-
+      The course staff branch asks authz.can(deck.manage_course) only when the cheaper answers did not settle the read
+      (flashcard-deck.controller.ts:204).
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+
+  listDecks:
+    route: GET /flashcard/decks
+    summary: "Public decks, and the caller's own"
+    description: >-
+      With no token only public decks. Signed in: isPublic=true gives the public decks, isPublic=false the caller's own
+      non-public ones, and with it omitted both. Decks shared through a course are not in this list (explore has them).
+      Tags are [] unless the caller wrote the deck.
+    needs: "@AuthzPublic only, with no @Authz: anyone, with or without a token (a list has no single resource; visibility is in the query)"
+    query: { type: object, properties: { isPublic: { type: boolean }, include: { type: string, note: "accepted and ignored" } } }
+    result: { type: array, items: { type: object, references: Deck } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      HTTP_400: { status: 400, note: "isPublic is not a boolean (ParseBoolPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:246 }
+    note: >-
+      An anonymous isPublic=false answers [] at once (flashcard-deck.controller.ts:256). Hidden decks are not filtered
+      out (finding hidden-decks-in-lists). The query is flashcard-deck.repository.ts:101-124.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:242
+
+  createDeck:
+    route: POST /flashcard/decks
+    summary: "Make a private deck"
+    description: >-
+      The caller becomes the author. The deck is born private whatever the body says: isPublic is not accepted, and the
+      status is PRIVATE. Tags are trimmed, blanks dropped and repeats removed without regard to case in the Turkish
+      locale.
+    needs: "a signed-in caller holding deck.create_private on the new-deck sentinel (forNew flashcard-deck); the PUBLIC relation holds it, so any signed-in caller passes (AuthGuard, AuthzGuard)"
+    body:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        cardType: { enum: [VOCABULARY, HADEETH], default: VOCABULARY, note: "fixed once the deck exists" }
+        tags: { type: array, maxItems: 20, items: { type: string, maxLength: 40 } }
+        description: { type: string, maxLength: 1000 }
+    result: { returns: Deck, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      VALIDATION_ERROR: { status: 400, note: "title shorter than 5 or longer than 100, an unknown cardType, more than 20 tags or a tag over 40 characters, a description over 1000, or an unknown property (isPublic included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      INTERNAL_ERROR: { status: 500, note: "tags or cardType sent as JSON null: @IsOptional lets null through the DTO and the insert writes NULL into a NOT NULL column. Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:173 }
+    note: >-
+      flashcard-deck.repository.ts:169-181 forces isPublic false and publishStatus PRIVATE; flashcard-deck.service.ts:25
+      normalises the tags.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276
+
+  collectDeck:
+    route: POST /flashcard/decks/{id}/collections
+    summary: "Put a deck in the caller's collection"
+    description: >-
+      Writes a decks_users row for the caller. Collecting twice is not an error: the second call returns the row that is
+      there and keeps its createdAt.
+    needs: "a signed-in caller holding deck.view on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard), and the handler asks again whether the deck is readable, without the SYSTEM_ADMIN's exception"
+    result: { returns: DeckUser, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:187)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:306 }
+      DECK_FORBIDDEN: { status: 403, note: "the guard let the caller read the deck but the handler's second look does not: the SYSTEM_ADMIN on another person's private deck, or course staff who are not enrolled and so not shared with", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
+    sideEffects:
+      - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
+    note: >-
+      The audit row is written even though the handler then refuses the SYSTEM_ADMIN with DECK_FORBIDDEN.
+      flashcard-deck.controller.ts:318 calls assertReadable; the repository insert is
+      flashcard-deck.repository.ts:183-201 (onConflictDoNothing, then a read).
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:303
+
+  requestDeckPublication:
+    route: POST /flashcard/decks/{id}/publish-request
+    summary: "Ask for a deck to be published"
+    description: >-
+      A PRIVATE or REJECTED deck becomes PENDING, with publishRequestedAt set and the last reviewer's answer cleared.
+      The write is guarded on the status that was read, so a request that lost a race answers 409.
+    needs: "a signed-in caller holding deck.manage_private on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    result: { returns: Deck, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:271)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:338 }
+      DECK_PUBLISH_STATE_CONFLICT: { status: 409, note: "the deck is PENDING or PUBLISHED already, or its status moved between the read and the write; the message names the current status", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:277 }
+    note: >-
+      Course staff hold deck.manage_private on a course deck, so they can ask to make it public (finding
+      deck-manage-private-reaches-course-decks). No notification goes out when a request is made: the reviewers poll
+      their list. flashcard-deck.service.ts:269-285, flashcard-deck.repository.ts:236-257.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:336
+
+  replaceDeck:
+    route: PUT /flashcard/decks/{id}
+    summary: "Change a deck (the whole body)"
+    description: >-
+      Sets the title, and the description, tags and cardType that are sent. Fields left out are not cleared, though the
+      route says it replaces completely, and cardType is accepted, though the deck's card type is meant to be fixed.
+    needs: "a signed-in caller holding deck.manage_private on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        cardType: { enum: [VOCABULARY, HADEETH], note: "written when sent, which the other update routes do not allow (finding put-deck-changes-card-type)" }
+        tags: { type: array, maxItems: 20, items: { type: string, maxLength: 40 } }
+        description: { type: string, maxLength: 1000 }
+    result: { returns: Deck }
+    refusals:
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:359 }
+      VALIDATION_ERROR: { status: 400, note: "the same bounds as createDeck, isPublic included", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      HTTP_404: { status: 404, note: "the update matched no row: the deck was deleted meanwhile, or the SYSTEM_ADMIN named an absent deck (the guard resolves no relation for it)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:369 }
+      INTERNAL_ERROR: { status: 500, note: "tags or cardType sent as JSON null (see createDeck): the update writes NULL into a NOT NULL column. Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:214 }
+    note: >-
+      updated_at is not touched by this route or by updateDeck (finding deck-edit-updated-at).
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:357
+
+  updateDeck:
+    route: PATCH /flashcard/decks/{id}
+    summary: "Change a deck (the fields sent)"
+    description: >-
+      Sets the title, description and tags that are sent. The card type cannot be changed here.
+    needs: "a signed-in caller holding deck.manage_private on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        tags: { type: array, maxItems: 20, items: { type: string, maxLength: 40 } }
+        description: { type: string, maxLength: 1000 }
+    result: { returns: Deck }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:392 }
+      VALIDATION_ERROR: { status: 400, note: "a bound is broken, or an unknown property is sent (cardType and isPublic included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      HTTP_404: { status: 404, note: "the update matched no row (see replaceDeck)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:398 }
+      INTERNAL_ERROR: { status: 500, note: "an empty body {} passes the DTO and leaves drizzle no value to set (drizzle-orm utils.js 'No values to set'), or title or tags is sent as JSON null (@IsOptional lets null through) and the update writes NULL into a NOT NULL column. Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:214 }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:390
+
+  deleteDeck:
+    route: DELETE /flashcard/decks/{id}
+    summary: "Delete a deck"
+    description: >-
+      Deletes the deck for good with its cards, its collection rows and its label rows. The cards' progress rows have no
+      foreign key and stay behind. No audit row is written.
+    needs: "a signed-in caller holding deck.manage_private on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    result: { status: 200, type: boolean, note: "true; false for the SYSTEM_ADMIN naming an absent deck, or for a caller who loses a race with another delete" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:419 }
+    note: >-
+      Course staff can delete a published course deck here at once, which the course route refuses
+      (COURSE_DECK_NOT_DRAFT): finding deck-manage-private-reaches-course-decks. Progress orphans: finding
+      progress-orphans.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:418
+
+  withdrawDeckPublication:
+    route: DELETE /flashcard/decks/{id}/publish-request
+    summary: "Withdraw a publication request, or take a public deck back"
+    description: >-
+      A PENDING or REJECTED deck goes back to PRIVATE. A PUBLISHED deck goes back to PRIVATE at once, isPublic false in
+      the same write. The last reviewer's answer is cleared either way.
+    needs: "a signed-in caller holding deck.manage_private on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    result: { returns: Deck }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:294)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no write code)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:441 }
+      DECK_PUBLISH_STATE_CONFLICT: { status: 409, note: "the deck is PRIVATE already (nothing to withdraw), or its status moved between the read and the write", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:296 }
+    note: >-
+      flashcard-deck.service.ts:292-329 and flashcard-deck.repository.ts:220-257. No notification and no audit row.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:439
+
+  uncollectDeck:
+    route: DELETE /flashcard/decks/{id}/collections
+    summary: "Take a deck out of the caller's collection"
+    description: >-
+      Deletes the caller's own decks_users row for the deck. It answers 200 whether or not there was a row.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (the caller's own row; leaving must not depend on still being allowed to read the deck)"
+    result: { returns: DeckUser, note: "the deleted row; an empty body, still 200, when the caller had not collected the deck (the repository returns undefined). Derived by reading, not run" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:460 }
+    note: >-
+      Code: flashcard-deck.repository.ts:268-277.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457
+
+  getCard:
+    route: GET /flashcard/cards/{id}
+    summary: "One card"
+    description: >-
+      Anyone who may read the card's deck: the author, anyone for a public deck, a talebe the deck is shared with, the
+      SYSTEM_ADMIN. With include=progress the card carries the caller's own progress rows.
+    needs: "a signed-in caller holding deck.view on the card's parent deck (byParentDeckOfCard) (AuthGuard, AuthzGuard)"
+    query: { type: object, properties: { include: { type: string, enum: [progress], note: "a comma list; only progress is honoured" } } }
+    result: { returns: Flashcard, note: "with progress: [{ flashcardId, status, userId, dueAt, intervalDays, reviewedAt }] when include=progress" }
+    refusals:
+      CARD_NOT_FOUND: { status: 404, note: "no such card, or a card of a private deck the caller did not write and is not shared with: the same answer for both. The SYSTEM_ADMIN sees every card", source: apps/tedrisat/src/flashcard/flashcard.service.ts:98 }
+      AUTHZ_RESOLVER_ERROR: { status: 500, note: "a card id that is not a uuid: the resolver's query fails in Postgres before any pipe runs and the guard wraps it. Derived by reading, not run (finding card-id-not-uuid-500)", source: libs/common/src/authz/authz.guard.ts:120 }
+      HTTP_404: { status: 404, note: "could not find card #id: the card was deleted between the guard and the handler", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:121 }
+    sideEffects:
+      - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
+    note: >-
+      Course staff who did not write the deck and are not enrolled meet CARD_NOT_FOUND here: the resolver
+      (flashcard.service.ts:86) knows the author, public decks and the shared-with rule, not the course staff rule
+      (finding course-deck-staff-card-routes-404).
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:106
+
+  listDeckCards:
+    route: GET /flashcard/cards
+    summary: "The cards of a deck"
+    description: >-
+      Every card of the deck, with no paging. Anonymous callers get the cards of a public deck and never any progress; a
+      signed-in caller gets their own progress rows with include=progress.
+    needs: "anyone, with or without a token: AuthGuard and AuthzGuard with @Authz(deck.view, the deck named by the deckId query parameter (byQuery flashcard-deck)) and @AuthzPublic; with no token only the anonymous relation is decided, so only public decks pass"
+    query: { type: object, required: [deckId], properties: { deckId: { type: string, format: uuid, references: Deck }, include: { type: string, enum: [progress], note: "a comma list; only progress is honoured" } } }
+    result: { type: array, items: { type: object, references: Flashcard } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. An anonymous caller meets it for every non-public deck. The SYSTEM_ADMIN is never refused: for an absent deck it gets 200 [] (the guard's bypass and the handler check nothing)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      HTTP_400: { status: 400, note: "deckId is missing or not a string (the guard, libs/common/src/authz/resolvers.ts:19), or not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:151 }
+    sideEffects:
+      - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
+    note: >-
+      The deck id in the query scopes the route; the userId threaded into the repository only narrows the progress
+      relation (flashcard.controller.ts:155).
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:148
+
+  getStudyRound:
+    route: GET /flashcard/decks/{id}/due
+    summary: "Today's study round of a deck"
+    description: >-
+      The cards of the deck waiting for a repeat (at most 50, the oldest due first, never-rated LEARNING cards first),
+      then the cards the caller has not started (at most 10, oldest first). Every card carries the caller's own progress
+      row, or none.
+    needs: "a signed-in caller holding deck.view on the deck (byParam flashcard-deck) (AuthGuard, AuthzGuard); not @AuthzPublic, so a caller with no token is refused 401"
+    result:
+      type: object
+      required: [cards, dueCount, newCount]
+      properties:
+        cards:
+          type: array
+          items: { type: object, references: Flashcard, note: "the card with progress: [the caller's row] or []" }
+        dueCount: { type: integer, note: "how many of cards are repeats that are due" }
+        newCount: { type: integer, note: "how many of cards the caller has not started" }
+    refusals:
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both. The SYSTEM_ADMIN is never refused: for an absent deck it gets an empty round, 200 { cards: [], dueCount: 0, newCount: 0 }", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:178 }
+    sideEffects:
+      - "audit:deck.admin_read, when the SYSTEM_ADMIN reads another person's private deck: the guard writes it before the handler runs (libs/common/src/authz/authz.service.ts:234)"
+    note: >-
+      flashcard.repository.ts:181-228. The route is declared in FlashcardController, beside GET /flashcard/decks/due of
+      the deck controller, which has no deck id.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:175
+
+  createCards:
+    route: POST /flashcard/decks/{deckId}/cards
+    summary: "Add cards to a deck (a JSON array)"
+    description: >-
+      Writes one card per element, authored by the caller. An empty array is accepted and answers []. The card's type is
+      not compared with the deck's card type, and there is no cap on the length of the array.
+    needs: "a signed-in caller holding deck.create_card on the deck (byParam flashcard-deck, deckId) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: array
+      items:
+        type: object
+        required: [type, contentFront, contentBack]
+        properties:
+          type: { enum: [VOCABULARY, HADEETH] }
+          contentFront: { type: string, minLength: 3, maxLength: 5000 }
+          contentBack: { type: string, minLength: 3, maxLength: 5000 }
+          contentMeta: { type: object }
+    result: { status: 201, type: array, items: { type: object, references: Flashcard } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "the body is not an array, or an element breaks its bounds (ParseArrayPipe: only the first failure is reported, as an HTTP_400, never VALIDATION_ERROR), or the deckId is not a uuid (:202; only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:203 }
+      INTERNAL_ERROR: { status: 500, note: "an insert the database refuses: the SYSTEM_ADMIN naming an absent deck (the guard checks nothing for it and the handler no more, so the foreign key fails), or an element with an id that is not a uuid or is taken, or with a createdAt or updatedAt (drizzle calls toISOString on a string). Derived by reading, not run (finding card-create-extra-columns)", source: apps/tedrisat/src/flashcard/flashcard.repository.ts:119 }
+    note: >-
+      ParseArrayPipe carries no whitelist, so an element's extra properties are not refused and are spread into the
+      insert: a caller can set the new card's id (flashcard.service.ts:108; a createdAt or updatedAt is a 500, since the
+      timestamp columns call toISOString on the value). Derived by reading, not run: finding card-create-extra-columns.
+      The bulk routes validate each row strictly.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+
+  saveCardProgress:
+    route: PUT /flashcard/cards/progress
+    summary: "Record the caller's study progress on cards"
+    description: >-
+      Upserts the caller's progress row for each card, on (user, card). With a rating the server works out the status,
+      the next due time and the interval, and ignores any status sent. With a bare status it stores it with no due time.
+      The caller's id always wins over any userId in the body.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (the body names cards in any number of decks, so the check is the service's, flashcard.service.ts:228, and the SYSTEM_ADMIN gets no exception)"
+    body:
+      type: array
+      items:
+        type: object
+        required: [flashcardId]
+        properties:
+          flashcardId: { type: string, format: uuid, references: Flashcard }
+          status: { enum: [NEW, LEARNING, MASTERED], note: "required unless rating is sent; ignored when it is" }
+          rating: { enum: [HARD, MEDIUM, EASY], note: "HARD: LEARNING, back in 1 day; MEDIUM: LEARNING, max(3, last gap) days; EASY: MASTERED, max(7, 2 x last gap) days; every gap at most 180 (invariant card-review-schedule)" }
+    result:
+      type: array
+      items: { type: object, references: FlashcardProgress }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      CARD_NOT_FOUND: { status: 404, note: "a card id in the body has no card", source: apps/tedrisat/src/flashcard/flashcard.service.ts:238 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "a card's deck is private and neither the caller's nor shared with them (the SYSTEM_ADMIN too, MDRS-148)", source: apps/tedrisat/src/flashcard/flashcard.service.ts:242 }
+      HTTP_400: { status: 400, note: "the body is not an array, an element has no uuid flashcardId, or has neither a status nor a rating, or names an unknown status or rating (ParseArrayPipe)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:237 }
+      INTERNAL_ERROR: { status: 500, note: "an empty array passes every check and reaches insert().values([]), which drizzle refuses; or the same flashcardId twice in one body, which one multi-row INSERT ... ON CONFLICT DO UPDATE cannot do (Postgres: cannot affect row a second time; the service de-duplicates only for the visibility check). Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/flashcard.repository.ts:150 }
+    note: >-
+      Extra properties of an element are neither stripped nor refused (the array pipe has no whitelist,
+      flashcard.service.ts:146). The upsert is flashcard.repository.ts:145-162.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:234
+
+  replaceCard:
+    route: PUT /flashcard/cards/{id}
+    summary: "Change a card (the whole body)"
+    description: >-
+      Sets the type, the front and the back, and the contentMeta when it is sent (left as it is when omitted).
+    needs: "a signed-in caller holding deck.manage_cards on the card's parent deck (byParentDeckOfCard) (AuthGuard, AuthzGuard); held by the deck's author; the course staff hold it on the deck routes, but the card resolver answers CARD_NOT_FOUND to staff who did not write the deck and are not enrolled (invariant course-deck-staff-edit-any-card); the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: object
+      required: [type, contentFront, contentBack]
+      additionalProperties: false
+      properties:
+        type: { enum: [VOCABULARY, HADEETH], note: "not compared with the deck's cardType (finding no-card-type-match)" }
+        contentFront: { type: string, minLength: 3, maxLength: 5000 }
+        contentBack: { type: string, minLength: 3, maxLength: 5000 }
+        contentMeta: { type: object, note: "free JSON; any object" }
+    result: { returns: Flashcard }
+    refusals:
+      CARD_NOT_FOUND: { status: 404, note: "no such card, or a card of a private deck the caller did not write and is not shared with: the same answer for both. Also the answer to course staff who did not write the deck and are not enrolled (finding course-deck-staff-card-routes-404). The SYSTEM_ADMIN is never given it for a private deck: the resolver skips the check for it, and the guard then refuses a write on another person's private deck with AUTHZ_FORBIDDEN", source: apps/tedrisat/src/flashcard/flashcard.service.ts:98 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the card is readable (its deck is public or shared with the caller) but the caller does not manage the deck's cards", source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400, note: "a bound is broken, or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      AUTHZ_RESOLVER_ERROR: { status: 500, note: "a card id that is not a uuid (see getCard). Derived by reading, not run (finding card-id-not-uuid-500)", source: libs/common/src/authz/authz.guard.ts:120 }
+      HTTP_404: { status: 404, note: "could not find card #id: the card was deleted between the guard and the handler", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:271 }
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:262
+
+  updateCard:
+    route: PATCH /flashcard/cards/{id}
+    summary: "Change a card (the fields sent)"
+    description: >-
+      Sets the fields that are sent.
+    needs: "a signed-in caller holding deck.manage_cards on the card's parent deck (byParentDeckOfCard) (AuthGuard, AuthzGuard); held by the deck's author; the course staff hold it on the deck routes, but the card resolver answers CARD_NOT_FOUND to staff who did not write the deck and are not enrolled (invariant course-deck-staff-edit-any-card); the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        type: { enum: [VOCABULARY, HADEETH] }
+        contentFront: { type: string, minLength: 3, maxLength: 5000 }
+        contentBack: { type: string, minLength: 3, maxLength: 5000 }
+        contentMeta: { type: object }
+    result: { returns: Flashcard }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      CARD_NOT_FOUND: { status: 404, note: "no such card, or a card of a private deck the caller did not write and is not shared with: the same answer for both. Also the answer to course staff who did not write the deck and are not enrolled (finding course-deck-staff-card-routes-404). The SYSTEM_ADMIN is never given it for a private deck: the resolver skips the check for it, and the guard then refuses a write on another person's private deck with AUTHZ_FORBIDDEN", source: apps/tedrisat/src/flashcard/flashcard.service.ts:98 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the card is readable but the caller does not manage the deck's cards", source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400, note: "a bound is broken, or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      AUTHZ_RESOLVER_ERROR: { status: 500, note: "a card id that is not a uuid (see getCard). Derived by reading, not run (finding card-id-not-uuid-500)", source: libs/common/src/authz/authz.guard.ts:120 }
+      HTTP_404: { status: 404, note: "could not find card #id: the card was deleted between the guard and the handler", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:298 }
+      INTERNAL_ERROR: { status: 500, note: "an empty body {} passes the DTO and leaves drizzle no value to set, or type, contentFront or contentBack is sent as JSON null (@IsOptional lets null through) and the update writes NULL into a NOT NULL column. Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/flashcard.repository.ts:128 }
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:291
+
+  deleteCard:
+    route: DELETE /flashcard/cards/{id}
+    summary: "Delete a card"
+    description: >-
+      Deletes the card; its labelings go with it (cascade). Its progress rows have no foreign key and stay behind.
+    needs: "a signed-in caller holding deck.manage_cards on the card's parent deck (byParentDeckOfCard) (AuthGuard, AuthzGuard); held by the deck's author; the course staff hold it on the deck routes, but the card resolver answers CARD_NOT_FOUND to staff who did not write the deck and are not enrolled (invariant course-deck-staff-edit-any-card); the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    result: { status: 200, type: boolean, note: "true" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      CARD_NOT_FOUND: { status: 404, note: "no such card, or a card of a private deck the caller did not write and is not shared with: the same answer for both. Also the answer to course staff who did not write the deck and are not enrolled (finding course-deck-staff-card-routes-404). The SYSTEM_ADMIN is never given it for a private deck: the resolver skips the check for it, and the guard then refuses a write on another person's private deck with AUTHZ_FORBIDDEN", source: apps/tedrisat/src/flashcard/flashcard.service.ts:98 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the card is readable but the caller does not manage the deck's cards", source: libs/common/src/authz/authz.guard.ts:92 }
+      AUTHZ_RESOLVER_ERROR: { status: 500, note: "a card id that is not a uuid (see getCard). Derived by reading, not run (finding card-id-not-uuid-500)", source: libs/common/src/authz/authz.guard.ts:120 }
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:318
+
+  createCardsBulk:
+    route: POST /flashcard/decks/{deckId}/cards/bulk
+    summary: "Add cards to a deck (a JSON array, every bad row reported)"
+    description: >-
+      Writes up to 1000 cards in one insert, authored by the caller, and answers how many. Every row is validated with
+      whitelist and forbidNonWhitelisted, and all the bad rows are reported at once, with their spreadsheet row numbers
+      (row = index + 2).
+    needs: "a signed-in caller holding deck.create_card on the deck (byParam flashcard-deck, deckId) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; its own bulk throttle; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: array
+      maxItems: 1000
+      items:
+        type: object
+        required: [type, contentFront, contentBack]
+        additionalProperties: false
+        properties:
+          type: { enum: [VOCABULARY, HADEETH], note: "not compared with the deck's cardType (finding no-card-type-match)" }
+          contentFront: { type: string, minLength: 3, maxLength: 5000 }
+          contentBack: { type: string, minLength: 3, maxLength: 5000 }
+          contentMeta: { type: object, note: "free JSON; any object" }
+    result: { type: object, required: [count], properties: { count: { type: integer } }, status: 201 }
+    refusals:
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "the body is not an array (ParseArrayPipe), or the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:364 }
+      BULK_PAYLOAD_INVALID: { status: 400, note: "the array is empty", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:51 }
+      BULK_ROW_LIMIT_EXCEEDED: { status: 422, note: "more than 1000 rows; context.errors names row 1002", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:54 }
+      BULK_VALIDATION_ERROR: { status: 422, note: "any row breaks its bounds or carries an unknown property; context.errors lists every bad row as { row, errors: [{ field, message }] }", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:376 }
+      HTTP_429: { status: 429, note: "over the bulk budget of this route: 10 requests per window per user and route (THROTTLE_BULK_LIMIT, THROTTLE_BULK_TTL; the per-user window when unset), with Retry-After", source: apps/tedrisat/src/config/throttle-env.ts:156 }
+      INTERNAL_ERROR: { status: 500, note: "three cases, derived by reading and not run (finding accepted-write-500): the SYSTEM_ADMIN naming an absent deck (no check anywhere, so the insert breaks the foreign key); a null element, [null], whose validation reads null.constructor; and a JSON body over 100 KB, the express default since no limit is set, whose PayloadTooLargeError nothing maps, so 1000 cards of any length can hit it", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:57 }
+    note: >-
+      The card type is not compared with the deck's card type (finding no-card-type-match).
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:350
+
+  downloadCardSample:
+    route: GET /flashcard/cards/bulk/sample
+    summary: "Download the card import template"
+    description: >-
+      A workbook (or a CSV) named sample.<format> with a sheet Cards, the header row Card Type, Content Front, Content
+      Back and two example rows, one HADEETH and one VOCABULARY. Cells that start with = + - @ tab or CR are prefixed
+      with a quote.
+    needs: "a signed-in caller: AuthGuard and AuthzGuard, with @AuthzExempt (the route reads no user data)"
+    query: { type: object, properties: { format: { type: string, default: xlsx, note: "xlsx or csv, not validated: any other value is written as csv and named sample.<value>" } } }
+    result: { status: 200, type: string, format: binary, note: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, or text/csv; Content-Disposition: attachment; filename=sample.<format>" }
+    note: >-
+      Code: libs/common/src/excel/excel.service.ts:70-88.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+
+  exportCards:
+    route: GET /flashcard/decks/{deckId}/cards/bulk/export
+    summary: "Export the cards of a deck"
+    description: >-
+      A workbook (or a CSV) of the deck's cards, in the template's three columns. The file is named after the deck's
+      title with every character other than letters, digits, underscore and hyphen replaced by an underscore. Cells that
+      start with = + - @ tab or CR are prefixed with a quote, so a formula in a card is text.
+    needs: "a signed-in caller holding deck.manage_cards on the deck (byParam flashcard-deck, deckId) (AuthGuard, AuthzGuard); its own bulk throttle; then the handler asks that the caller is the deck's author"
+    query: { type: object, properties: { format: { type: string, default: xlsx, note: "xlsx or csv, not validated: any other value is written as csv" } } }
+    result: { status: 200, type: string, format: binary, note: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, or text/csv; Content-Disposition: attachment; filename=<title>.<format>" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck, or a private deck the caller did not write and is not shared with: the same answer for both, on purpose. The SYSTEM_ADMIN skips the guard's relation check and meets the service's own 404 for an absent deck (flashcard-deck.service.ts:224)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:430 }
+      DECK_FORBIDDEN: { status: 403, note: "the caller passed the guard (the deck's course staff, or the SYSTEM_ADMIN on a public deck) but is not the deck's author: an export is an owner's affordance (finding export-refused-to-staff)", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:227 }
+      HTTP_429: { status: 429, note: "over the bulk budget of this route: 10 requests per window per user and route (THROTTLE_BULK_LIMIT, THROTTLE_BULK_TTL; the per-user window when unset), with Retry-After", source: apps/tedrisat/src/config/throttle-env.ts:156 }
+    note: >-
+      flashcard.controller.ts:445 asks findOwned. A reader of a public deck is refused by the guard already
+      (AUTHZ_FORBIDDEN).
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:411
+
+  importCards:
+    route: POST /flashcard/decks/{deckId}/cards/bulk/import
+    summary: "Add cards to a deck from a workbook or a CSV"
+    description: >-
+      Reads the first sheet of the file, matches the header names without regard to case (Card Type, Content Front,
+      Content Back), skips empty rows, removes the quote that export puts before a formula trigger, and writes the rows
+      as bulk does, up to 1000.
+    needs: "a signed-in caller holding deck.create_card on the deck (byParam flashcard-deck, deckId) (AuthGuard, AuthzGuard); held by the deck's author and, on a course deck, by its course staff; its own bulk throttle. The guard runs before the upload is buffered; the SYSTEM_ADMIN passes on any deck, refused only on a write to another person's private one (authz.service.ts:222-253)"
+    body:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary, note: "multipart/form-data field file: at most 5 MB; content type the xlsx type, text/csv, text/plain, application/octet-stream or application/vnd.ms-excel (the magic number is not checked); csv for the three text-like types unless the name ends in .xlsx, else xlsx" }
+    result: { type: object, required: [count], properties: { count: { type: integer } }, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck (resolver :290), or a private deck the caller did not write and is not shared with (:303): the same answer for both, on purpose", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:306 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller can see the resource but holds no code that allows this", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "the deckId is not a uuid (only the SYSTEM_ADMIN reaches the pipe with that); no file; a file over 5 MB or of another content type (ParseFilePipe); or a file with a header and no data rows (flashcard.controller.ts:520)", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:489 }
+      BULK_ROW_LIMIT_EXCEEDED: { status: 422, note: "more than 1000 data rows; context.errors names row 1002", source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:54 }
+      BULK_VALIDATION_ERROR: { status: 422, note: "any row breaks its bounds; context.errors lists every bad row", source: apps/tedrisat/src/flashcard/flashcard.controller.ts:529 }
+      HTTP_429: { status: 429, note: "over the bulk budget of this route: 10 requests per window per user and route (THROTTLE_BULK_LIMIT, THROTTLE_BULK_TTL; the per-user window when unset), with Retry-After", source: apps/tedrisat/src/config/throttle-env.ts:156 }
+      INTERNAL_ERROR: { status: 500, note: "a file the workbook reader cannot open, including a CSV sent as application/vnd.ms-excel, which detectFormat reads as xlsx (excel.service.ts:257-264); and the SYSTEM_ADMIN naming an absent deck, whose insert breaks the foreign key after the file was parsed. Derived by reading, not run (finding accepted-write-500)", source: libs/common/src/excel/excel.service.ts:183 }
+    note: >-
+      BULK_PAYLOAD_INVALID cannot come from this route: an empty file is refused before as HTTP_400.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+
+  createCardLabel:
+    route: POST /flashcard-label/create
+    summary: "Make a card label"
+    description: >-
+      Writes a flashcard_labels row owned by the caller (userId and createdBy are the token's sub). The title is stored
+      in the column name.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard on this controller)"
+    body:
+      type: object
+      required: [title, scope]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        scope: { enum: [PUBLIC, PERSONAL] }
+    result: { returns: FlashcardLabel, status: 201 }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "title shorter than 5 or longer than 100, a scope other than PUBLIC or PERSONAL, or an unknown property (userId and createdBy included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+    note: >-
+      A label belongs to the person who made it: nobody else may read, delete or use it, public scope or not (the
+      service asserts it, no AuthzGuard is on the controller).
+    source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:103
+
+  deleteCardLabel:
+    route: DELETE /flashcard-label/delete/{id}
+    summary: "Delete a card label"
+    description: >-
+      Deletes the label; its labelings and its stats row go with it (cascade).
+    needs: "a signed-in caller, who must be the label's owner (AuthGuard only; the service asserts it)"
+    result: { status: 200, type: boolean, note: "true" }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:129 }
+      FLASHCARD_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:47 }
+      FLASHCARD_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:50 }
+    source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:126
+
+  labelCard:
+    route: POST /flashcard-label/labeling
+    summary: "Put a label on a card"
+    description: >-
+      Writes a labeling and moves the label's stats (usageCount + 1, lastUsedAt now; the first use creates the row with
+      1) in one transaction. privateToUserId makes the labeling visible to that person only. The same label can be put
+      on the same card twice: no unique index stops it, and each time counts.
+    needs: "a signed-in caller, who must own the label and be able to read the card's deck (AuthGuard only; the service asserts both)"
+    body:
+      type: object
+      required: [labelId, flashcardId]
+      additionalProperties: false
+      properties:
+        labelId: { type: string, format: uuid, references: FlashcardLabel }
+        flashcardId: { type: string, format: uuid, references: Flashcard }
+        privateToUserId: { type: [string, "null"], format: uuid, default: null }
+    result: { returns: FlashcardLabeling, status: 201 }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "labelId, flashcardId or privateToUserId is not a uuid, or an unknown property is sent (createdBy included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      FLASHCARD_LABEL_NOT_FOUND: { status: 404, note: "no such label", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:47 }
+      FLASHCARD_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:50 }
+      CARD_NOT_FOUND: { status: 404, note: "no such card", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:173 }
+      DECK_FORBIDDEN: { status: 403, note: "the card's deck is private and neither the caller's nor shared with them: a 403, not the 404 that the card routes give (finding label-target-oracle)", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
+    note: >-
+      The deck's own 404 (DECK_NOT_FOUND) cannot come first: the card exists, so its deck does, apart from a race. No
+      route reads labelings back.
+    source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:145
+
+  getCardLabel:
+    route: GET /flashcard-label/{id}
+    summary: "One card label"
+    description: >-
+      The label row. A public label is readable by its owner only.
+    needs: "a signed-in caller, who must be the label's owner (AuthGuard only; the service asserts it)"
+    result: { returns: FlashcardLabel }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:172 }
+      FLASHCARD_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:47 }
+      FLASHCARD_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:50 }
+    source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:169
+
+  getCardLabelStats:
+    route: GET /flashcard-label/getStats/{id}
+    summary: "How often a card label is used"
+    description: >-
+      The label's usage count and the last time it was used. A label never put on a card answers zeros and null, not
+      404.
+    needs: "a signed-in caller, who must be the label's owner (AuthGuard only; the service asserts it)"
+    result: { type: object, required: [labelId, usageCount, lastUsedAt], properties: { labelId: { type: string, format: uuid, references: FlashcardLabel }, usageCount: { type: integer }, lastUsedAt: { type: [string, "null"], format: date-time } }, note: "the FlashcardLabelStats row, or zeros when there is none" }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:190 }
+      FLASHCARD_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:47 }
+      FLASHCARD_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:50 }
+    source: apps/tedrisat/src/flashcard/flashcard-label.controller.ts:187
+
+  createDeckLabel:
+    route: POST /flashcard-deck-label/create
+    summary: "Make a deck label"
+    description: >-
+      Writes a deck_label row owned by the caller (createdBy is the token's sub).
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard on this controller)"
+    body:
+      type: object
+      required: [title, scope]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        scope: { enum: [PUBLIC, PERSONAL] }
+    result: { returns: DeckLabel, status: 201 }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "title shorter than 5 or longer than 100, a scope other than PUBLIC or PERSONAL, or an unknown property (createdBy included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+    note: >-
+      A deck label belongs to the person who made it, by createdBy (this table has no userId). Nobody else may read,
+      delete or use it.
+    source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:55
+
+  deleteDeckLabel:
+    route: DELETE /flashcard-deck-label/delete/{id}
+    summary: "Delete a deck label"
+    description: >-
+      Deletes the label; its labelings and its stats row go with it (cascade).
+    needs: "a signed-in caller, who must be the label's creator (AuthGuard only; the service asserts it)"
+    result: { status: 200, type: boolean, note: "true" }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:79 }
+      FLASHCARD_DECK_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:41 }
+      FLASHCARD_DECK_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:44 }
+    source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:76
+
+  labelDeck:
+    route: POST /flashcard-deck-label/labeling
+    summary: "Put a label on a deck"
+    description: >-
+      Writes a labeling and moves the label's stats (usageCount + 1, lastUsedAt now; the first use creates the row with
+      1) in one transaction. privateToUserId makes the labeling visible to that person only. The same label can be put
+      on the same deck twice.
+    needs: "a signed-in caller, who must own the label and be able to read the deck (AuthGuard only; the service asserts both)"
+    body:
+      type: object
+      required: [labelId, deckId]
+      additionalProperties: false
+      properties:
+        labelId: { type: string, format: uuid, references: DeckLabel }
+        deckId: { type: string, format: uuid, references: Deck }
+        privateToUserId: { type: [string, "null"], format: uuid, default: null }
+    result: { type: object, required: [labelId, deckId, createdBy], properties: { labelId: { type: string, format: uuid, references: DeckLabel }, deckId: { type: string, format: uuid, references: Deck }, createdBy: { type: string, format: uuid }, privateToUserId: { type: [string, "null"], format: uuid } }, status: 201, note: "the DeckLabeling row without its id and createdAt" }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "labelId, deckId or privateToUserId is not a uuid, or an unknown property is sent (createdBy included)", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      FLASHCARD_DECK_LABEL_NOT_FOUND: { status: 404, note: "no such label", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:41 }
+      FLASHCARD_DECK_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:44 }
+      DECK_NOT_FOUND: { status: 404, note: "no such deck", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:187 }
+      DECK_FORBIDDEN: { status: 403, note: "the deck is private and neither the caller's nor shared with them: a 403, not the 404 that the deck routes give (finding label-target-oracle)", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:195 }
+    note: >-
+      No route reads labelings back.
+    source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:95
+
+  getDeckLabel:
+    route: GET /flashcard-deck-label/{id}
+    summary: "One deck label"
+    description: >-
+      The label row. A public label is readable by its creator only.
+    needs: "a signed-in caller, who must be the label's creator (AuthGuard only; the service asserts it)"
+    result: { returns: DeckLabel }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:121 }
+      FLASHCARD_DECK_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:41 }
+      FLASHCARD_DECK_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:44 }
+    source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:118
+
+  getDeckLabelStats:
+    route: GET /flashcard-deck-label/getStats/{id}
+    summary: "How often a deck label is used"
+    description: >-
+      The label's usage count and the last time it was used. A label never put on a deck answers zeros and null, not
+      404.
+    needs: "a signed-in caller, who must be the label's creator (AuthGuard only; the service asserts it)"
+    result: { type: object, required: [labelId, usageCount, lastUsedAt], properties: { labelId: { type: string, format: uuid, references: DeckLabel }, usageCount: { type: integer }, lastUsedAt: { type: [string, "null"], format: date-time } }, note: "the DeckLabelStats row, or zeros when there is none" }
+    refusals:
+      HTTP_400: { status: 400, note: "a path id that is not a uuid (ParseUUIDPipe)", source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:139 }
+      FLASHCARD_DECK_LABEL_NOT_FOUND: { status: 404, note: "no label with that id", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:41 }
+      FLASHCARD_DECK_LABEL_FORBIDDEN: { status: 403, note: "the label belongs to someone else", source: apps/tedrisat/src/flashcard/flashcard-deck-label.service.ts:44 }
+    source: apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:136
+
+  listCourseDecksForStaff:
+    route: GET /courses/{id}/decks/manage
+    summary: "A course's decks for its staff, drafts included"
+    description: >-
+      Every deck of the course in week order then creation order, drafts included, with its card count, its week,
+      whether it is a draft, the share of cards the enrolled talebe mastered, and how many are enrolled.
+    needs: "a signed-in caller holding deck.manage_course on the course (byParam course) (AuthGuard, AuthzGuard); held by the müderris of the course, the başmüderris of its medrese, the nazım of its köşk, or a grant"
+    result:
+      type: array
+      items:
+        type: object
+        required: [id, title, cardType, cardCount, draft, masteredRatio, enrolledCount]
+        properties:
+          id: { type: string, format: uuid, references: Deck }
+          title: { type: string }
+          description: { type: [string, "null"] }
+          cardType: { enum: [VOCABULARY, HADEETH] }
+          cardCount: { type: integer }
+          weekId: { type: [string, "null"], format: uuid, references: CourseWeek }
+          weekNumber: { type: [integer, "null"] }
+          draft: { type: boolean, note: "Deck.courseDraft" }
+          masteredRatio: { type: number, minimum: 0, maximum: 1, note: "MASTERED progress rows of the ENROLLED and COMPLETED talebe over cardCount x enrolledCount, capped at 1; 0 when either is 0" }
+          enrolledCount: { type: integer, note: "the course's enrollments with status ENROLLED or COMPLETED" }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course (a talebe, a pending applicant, a stranger)", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:70 }
+    note: >-
+      Code: course-deck.service.ts:30-56.
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
+
+  createCourseDeck:
+    route: POST /courses/{id}/decks
+    summary: "Open a deck of a course"
+    description: >-
+      The caller becomes the author. The deck is private, not public, and shown to the talebe unless draft is true. A
+      week, when named, must be one of the course's shown weeks. The cards are added afterwards through the card routes.
+    needs: "a signed-in caller holding deck.manage_course on the course (byParam course) (AuthGuard, AuthzGuard); held by the müderris of the course, the başmüderris of its medrese, the nazım of its köşk, or a grant"
+    body:
+      type: object
+      required: [title, cardType]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        cardType: { enum: [VOCABULARY, HADEETH], note: "fixed once the deck exists" }
+        weekId: { type: string, format: uuid, references: CourseWeek }
+        draft: { type: boolean, default: false, note: "a draft is seen by the course's staff only" }
+    result: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: Deck } }, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:89 }
+      VALIDATION_ERROR: { status: 400, note: "title shorter than 5 or longer than 100, no or an unknown cardType, a weekId that is not a uuid, a description over 1000, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      COURSE_WEEK_NOT_IN_COURSE: { status: 400, note: "weekId is not a shown (not hidden) week of this course", source: apps/tedrisat/src/flashcard/course-deck.service.ts:156 }
+      INTERNAL_ERROR: { status: 500, note: "the SYSTEM_ADMIN naming an absent course: the guard checks no course for it, so the insert breaks the foreign key decks.course_id. Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/course-deck.repository.ts:98 }
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:86
+
+  updateCourseDeck:
+    route: PATCH /courses/{id}/decks/{deckId}
+    summary: "Edit a deck of a course"
+    description: >-
+      Sets the title, description, week and draft that are sent, and answers the refreshed row of the staff list. weekId
+      null takes the deck out of its week. Setting draft true takes a published deck from the talebe and keeps their
+      progress.
+    needs: "a signed-in caller holding deck.manage_course on the course (byParam course) (AuthGuard, AuthzGuard); held by the müderris of the course, the başmüderris of its medrese, the nazım of its köşk, or a grant"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 5, maxLength: 100 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        weekId: { type: [string, "null"], format: uuid, references: CourseWeek, note: "null takes the deck out of its week" }
+        draft: { type: boolean }
+    result:
+      type: object
+      required: [id, title, cardType, cardCount, draft, masteredRatio, enrolledCount]
+      properties:
+        id: { type: string, format: uuid, references: Deck }
+        title: { type: string }
+        description: { type: [string, "null"] }
+        cardType: { enum: [VOCABULARY, HADEETH] }
+        cardCount: { type: integer }
+        weekId: { type: [string, "null"], format: uuid, references: CourseWeek }
+        weekNumber: { type: [integer, "null"] }
+        draft: { type: boolean, note: "Deck.courseDraft" }
+        masteredRatio: { type: number, minimum: 0, maximum: 1, note: "MASTERED progress rows of the ENROLLED and COMPLETED talebe over cardCount x enrolledCount, capped at 1; 0 when either is 0" }
+        enrolledCount: { type: integer, note: "the course's enrollments with status ENROLLED or COMPLETED" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a course id or a deckId that is not a uuid; the course id reaches the pipe only for the SYSTEM_ADMIN (everyone else is refused 403 by the guard first), the deckId (:109) for any caller who passed the guard", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:108 }
+      VALIDATION_ERROR: { status: 400, note: "a bound is broken, a cardType is sent (it is fixed), or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      DECK_NOT_FOUND: { status: 404, note: "the deck does not belong to this course (or is absent)", source: apps/tedrisat/src/flashcard/course-deck.service.ts:145 }
+      COURSE_WEEK_NOT_IN_COURSE: { status: 400, note: "weekId is not a shown week of this course", source: apps/tedrisat/src/flashcard/course-deck.service.ts:156 }
+      INTERNAL_ERROR: { status: 500, note: "title or draft sent as JSON null: @IsOptional lets null through and the update writes NULL into a NOT NULL column (an empty body {} is fine here, updatedAt is always set). Derived by reading, not run (finding accepted-write-500)", source: apps/tedrisat/src/flashcard/course-deck.repository.ts:114 }
+    note: >-
+      The refreshed row is looked up in the staff list afterwards; a deck that is gone by then answers DECK_NOT_FOUND
+      from course-deck.service.ts:125 too.
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:106
+
+  deleteCourseDeck:
+    route: DELETE /courses/{id}/decks/{deckId}
+    summary: "Delete a draft deck of a course"
+    description: >-
+      Deletes the deck and its cards, only while it is a draft. A published deck is first set to draft with
+      updateCourseDeck, which takes it from the talebe and keeps their progress; the progress rows of a deleted deck
+      stay behind.
+    needs: "a signed-in caller holding deck.manage_course on the course (byParam course) (AuthGuard, AuthzGuard); held by the müderris of the course, the başmüderris of its medrese, the nazım of its köşk, or a grant"
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds no deck.manage_course in the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a course id or a deckId that is not a uuid; the course id reaches the pipe only for the SYSTEM_ADMIN (everyone else is refused 403 by the guard first), the deckId (:130) for any caller who passed the guard", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:129 }
+      DECK_NOT_FOUND: { status: 404, note: "the deck does not belong to this course (or is absent)", source: apps/tedrisat/src/flashcard/course-deck.service.ts:145 }
+      COURSE_DECK_NOT_DRAFT: { status: 409, note: "the deck is published: set draft true first", source: apps/tedrisat/src/flashcard/course-deck.service.ts:136 }
+    note: >-
+      The generic deleteDeck route does not ask this and deletes a published course deck at once (finding
+      deck-manage-private-reaches-course-decks).
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:126
+
+  listCourseDecks:
+    route: GET /courses/{id}/decks
+    summary: "A course's decks for an enrolled talebe"
+    description: >-
+      The published decks of the course (not drafts, not hidden) with the caller's own progress through them. A staff
+      member who is not enrolled gets [] and uses the staff list instead.
+    needs: "a signed-in caller holding course.view_details on the course (byParam course) (AuthGuard, AuthzGuard); held by an enrolled talebe (ENROLLED or COMPLETED) and by course staff through content work; a content code, so a passive scope closes it"
+    result:
+      type: array
+      items:
+        type: object
+        required: [id, title, cardType, cardCount, masteredCount, learningCount, newCount, dueCount]
+        properties:
+          id: { type: string, format: uuid, references: Deck }
+          title: { type: string }
+          description: { type: [string, "null"] }
+          cardType: { enum: [VOCABULARY, HADEETH] }
+          weekId: { type: [string, "null"], format: uuid, references: CourseWeek }
+          weekNumber: { type: [integer, "null"] }
+          cardCount: { type: integer }
+          masteredCount: { type: integer }
+          learningCount: { type: integer }
+          newCount: { type: integer }
+          dueCount: { type: integer }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course sits in a hidden köşk, which is closed to everyone but holders of course.hide and platform.kosk_edit. The SYSTEM_ADMIN is not refused by either: for an absent course the staff and talebe lists answer 200 [], an update or a delete answers DECK_NOT_FOUND, and a create fails (see there)", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "a pending applicant, a removed or barred talebe or a stranger holds course.view only", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "a course id that is not a uuid; only the SYSTEM_ADMIN reaches the pipe with one, everyone else is refused 403 by the guard first (the PUBLIC relation holds no course code)", source: apps/tedrisat/src/flashcard/course-decks.controller.ts:148 }
+    sideEffects:
+      - "audit:scope.passive_open, when the course sits in a passive scope and a holder of platform.inactive_scopes_manage, the nazım of its köşk (libs/common/src/authz/authz.service.ts:111) or the SYSTEM_ADMIN (:246) opens it, course.view_details being a content code"
+    note: >-
+      course-deck.service.ts:59-86; the rows are the decks deckSharedWith accepts for the caller, so a deck of the
+      course's köşk or medrese is not in this list.
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:145
+
+  getManagedKoskDecks:
+    route: GET /kosks/{id}/decks/manage
+    summary: "A köşk's decks and the proposals waiting for an answer"
+    description: >-
+      The köşk's shown decks, newest update first, with their card counts, and the müderris proposals nobody has
+      answered, oldest first. Both lists are cut by page and limit; the two totals count every one.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service then asks that the köşk exists and that the caller is the SYSTEM_ADMIN or holds KOSK_NAZIM in it (DeckReviewService.assertKoskNazim)"
+    query:
+      type: object
+      properties:
+        page: { type: integer, default: 1, note: "below 1 reads as 1; a non-integer is refused" }
+        limit: { type: integer, default: 12, note: "clamped to 1..50, not refused" }
+    result:
+      type: object
+      required: [decks, proposals, decksTotal, proposalsTotal]
+      properties:
+        decks:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Deck }
+              title: { type: string }
+              description: { type: [string, "null"] }
+              cardType: { enum: [VOCABULARY, HADEETH] }
+              cardCount: { type: integer }
+              updatedAt: { type: string, format: date-time }
+        proposals:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: DeckProposal }
+              koskId: { type: string, format: uuid, references: Kosk, note: "on the wire although the response DTO does not declare it: the repository's rows are returned unmapped" }
+              title: { type: string }
+              description: { type: [string, "null"] }
+              cardType: { enum: [VOCABULARY, HADEETH] }
+              status: { enum: [PENDING], note: "always PENDING in this list; on the wire although the response DTO does not declare it" }
+              proposedBy: { type: object, properties: { id: { type: string, format: uuid }, name: { type: [string, "null"] } } }
+              courseTitle: { type: [string, "null"] }
+              createdAt: { type: string, format: date-time }
+        decksTotal: { type: integer, note: "every shown deck of the köşk, not the page" }
+        proposalsTotal: { type: integer, note: "every proposal nobody has answered, not the page" }
+    refusals:
+      HTTP_400: { status: 400, note: "the id is not a uuid, or page or limit is not an integer (ParseUUIDPipe, ParseIntPipe)", source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:71 }
+      KOSK_NOT_FOUND: { status: 404, note: "no such köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:355 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:359 }
+    note: >-
+      deck-review.service.ts:199-217 and deck-review.repository.ts:342-370 and :437-497. The permissions
+      deck.manage_kosk and deck.propose_kosk are not consulted here or anywhere (finding deck-manage-kosk-unused).
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:68
+
+  createKoskDeck:
+    route: POST /kosks/{id}/decks
+    summary: "Open a köşk deck"
+    description: >-
+      Writes a private deck of the köşk with the caller as its author. With proposalId the same transaction marks the
+      proposal ACCEPTED, with the new deck on it; a proposal answered in the meantime rolls the deck back. The cards are
+      added afterwards through the card routes, by the creating nazım.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service then asks that the köşk exists and that the caller is the SYSTEM_ADMIN or holds KOSK_NAZIM in it (DeckReviewService.assertKoskNazim)"
+    body:
+      type: object
+      required: [title, cardType]
+      additionalProperties: false
+      properties:
+        title: { type: string, maxLength: 200, pattern: "\\S", note: "not blank; trimmed" }
+        description: { type: string, maxLength: 1000 }
+        cardType: { enum: [VOCABULARY, HADEETH] }
+        proposalId: { type: string, format: uuid, references: DeckProposal, note: "the proposal this deck answers" }
+    result: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: Deck } }, status: 201 }
+    refusals:
+      HTTP_400: { status: 400, note: "the köşk id is not a uuid", source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:92 }
+      VALIDATION_ERROR: { status: 400, note: "title blank or over 200 characters, a description over 1000, no or an unknown cardType, a proposalId that is not a uuid, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      KOSK_NOT_FOUND: { status: 404, note: "no such köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:355 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:359 }
+      DECK_PROPOSAL_NOT_FOUND: { status: 404, note: "no such proposal in this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:227 }
+      DECK_PROPOSAL_NOT_PENDING: { status: 409, note: "the proposal was answered already, or while the deck was being made", source: apps/tedrisat/src/deck-review/deck-review.service.ts:229 }
+    note: >-
+      Accepting a proposal does not notify the proposer (only a rejection does). A second nazım of the köşk is a
+      stranger to a deck the first made when it comes to its cards (finding deck-manage-kosk-unused).
+      deck-review.service.ts:219-245, deck-review.repository.ts:377-421.
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:89
+
+  proposeKoskDeck:
+    route: POST /kosks/{id}/deck-proposals
+    summary: "Suggest a deck for a köşk"
+    description: >-
+      Writes a PENDING proposal for the köşk, tied to one of the proposer's courses there: the one named, else the first
+      that matches. The köşk's nazım who is not also a müderris of a course there is refused.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the köşk exists and that the caller holds MUDERRIS on a course of it that is not hidden (DeckReviewRepository.muderrisCourseInKosk)"
+    body:
+      type: object
+      required: [title, cardType]
+      additionalProperties: false
+      properties:
+        title: { type: string, maxLength: 200, pattern: "\\S", note: "not blank; trimmed" }
+        description: { type: string, maxLength: 1000 }
+        cardType: { enum: [VOCABULARY, HADEETH] }
+        courseId: { type: string, format: uuid, references: Course, note: "one of the proposer's courses in this köşk; the first match when omitted" }
+    result: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: DeckProposal } }, status: 201 }
+    refusals:
+      HTTP_400: { status: 400, note: "the köşk id is not a uuid", source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:110 }
+      VALIDATION_ERROR: { status: 400, note: "title blank or over 200 characters, a description over 1000, no or an unknown cardType, a courseId that is not a uuid, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      KOSK_NOT_FOUND: { status: 404, note: "no such köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:295 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "Only a müderris of a course in this köşk may propose a deck", source: apps/tedrisat/src/deck-review/deck-review.service.ts:303 }
+    note: >-
+      Nobody is told that a proposal was made: the nazım finds it in their list. Code: deck-review.service.ts:284-316.
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:107
+
+  rejectKoskDeckProposal:
+    route: POST /kosks/{id}/deck-proposals/{proposalId}/reject
+    summary: "Refuse a deck proposal"
+    description: >-
+      Marks the PENDING proposal REJECTED with the reason, the decider and the time, and tells the proposer. A proposal
+      answered already answers 409.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service then asks that the köşk exists and that the caller is the SYSTEM_ADMIN or holds KOSK_NAZIM in it (DeckReviewService.assertKoskNazim)"
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 1000, pattern: "\\S", note: "required and not blank; trimmed before it is stored and sent" }
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "the köşk id or the proposal id is not a uuid", source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:130 }
+      VALIDATION_ERROR: { status: 400, note: "the reason is missing, blank or over 1000 characters, or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      KOSK_NOT_FOUND: { status: 404, note: "no such köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:355 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:359 }
+      DECK_PROPOSAL_NOT_FOUND: { status: 404, note: "no such proposal in this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:271 }
+      DECK_PROPOSAL_NOT_PENDING: { status: 409, note: "the proposal was answered already", source: apps/tedrisat/src/deck-review/deck-review.service.ts:274 }
+    sideEffects:
+      - "notification:DECK_PUBLISH_RESULT to the proposer, with no target and params { outcome: proposal_rejected, deckTitle, reason }; a failure to write it is logged and ignored (deck-review.service.ts:276, :363)"
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:126
+
+  hideKoskDeck:
+    route: POST /decks/{id}/hide
+    summary: "Hide a köşk deck (Gizle)"
+    description: >-
+      Sets archivedAt, archivedBy and archivedLevel (platform for the SYSTEM_ADMIN, else kosk) on a shown deck that
+      belongs to a köşk. Nothing is deleted: the deck moves to the köşk's archive, where a restore brings it back at the
+      same level or above. A personal deck is never hidden here.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN or holds KOSK_NAZIM in the deck's köşk"
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "the deck id is not a uuid", source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:150 }
+      KOSK_DECK_NOT_FOUND: { status: 404, note: "no such deck, a deck with no köşk, or a deck that is hidden already", source: apps/tedrisat/src/deck-review/deck-review.service.ts:250 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/deck-review/deck-review.service.ts:359 }
+    note: >-
+      KOSK_NOT_FOUND cannot come from this route: a deck's koskId is set to null with its köşk, so a deck that names a
+      köşk has one (apart from a race). The deck is looked up before the caller's role is asked, so a caller who is no
+      nazım learns from 404 versus 403 whether a köşk deck exists. No audit row is written, unlike the hide of a köşk,
+      medrese, course, week or session (finding kosk-deck-hide-no-audit). deck-review.service.ts:247-261.
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:146
+
+  listDeckPublishRequests:
+    route: GET /nizam/deck-publish-requests
+    summary: "Deck publish requests, waiting or answered"
+    description: >-
+      PENDING: the decks waiting for an answer, oldest request first. DECIDED: the decks that were published or refused,
+      newest answer first. Hidden decks are left out. Both tab counts come with the page and count every request.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN or holds platform.deck_publish (DeckReviewService.assertChief)"
+    query:
+      type: object
+      properties:
+        status: { enum: [PENDING, DECIDED], default: PENDING }
+        page: { type: integer, default: 1, note: "below 1 reads as 1; a non-integer is refused" }
+        limit: { type: integer, default: 12, note: "clamped to 1..50, not refused" }
+    result:
+      type: object
+      required: [items, pendingCount, decidedCount]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Deck, note: "the deck's id" }
+              title: { type: string }
+              description: { type: [string, "null"] }
+              cardType: { enum: [VOCABULARY, HADEETH] }
+              cardCount: { type: integer }
+              owner: { type: object, properties: { id: { type: string, format: uuid }, name: { type: [string, "null"] } } }
+              requestedAt: { type: string, format: date-time, note: "falls back to the decision time, then the epoch, for a decided deck that kept no request time" }
+              outcome: { enum: [PENDING, PUBLISHED, REJECTED] }
+              decidedAt: { type: [string, "null"], format: date-time }
+              rejectReason: { type: [string, "null"] }
+        pendingCount: { type: integer }
+        decidedCount: { type: integer }
+    refusals:
+      HTTP_400: { status: 400, note: "status is not PENDING or DECIDED, or page or limit is not an integer", source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:80 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests", source: apps/tedrisat/src/deck-review/deck-review.service.ts:332 }
+    note: >-
+      Code: deck-review.service.ts:74-85 and deck-review.repository.ts:109-190.
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:74
+
+  readDeckPublishRequestCards:
+    route: GET /nizam/deck-publish-requests/{id}/cards
+    summary: "The cards of a requested deck"
+    description: >-
+      Three sample cards, or every card with all=true, in creation order, with the total. The deck is private until it
+      is published, so the read is written to the audit log before any card leaves.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN or holds platform.deck_publish (DeckReviewService.assertChief)"
+    query: { type: object, properties: { all: { type: boolean, default: false, note: "false reads a sample of 3 cards" } } }
+    result: { type: object, required: [items, total], properties: { items: { type: array, items: { type: object, properties: { id: { type: string, format: uuid, references: Flashcard }, front: { type: string }, back: { type: string } } } }, total: { type: integer, note: "every card the deck holds" } } }
+    refusals:
+      HTTP_400: { status: 400, note: "the deck id is not a uuid, or all is not a boolean", source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:113 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests", source: apps/tedrisat/src/deck-review/deck-review.service.ts:332 }
+      DECK_REQUEST_NOT_FOUND: { status: 404, note: "no such deck, a deck that is hidden, or a deck that is PRIVATE (no request on record)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:192 }
+    sideEffects:
+      - "audit:deck.private-read, written before the cards are returned, with { title, owner, scope: all or sample, cards: n } (deck-review.service.ts:102)"
+    note: >-
+      Code: deck-review.service.ts:91-118.
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:109
+
+  approveDeckPublishRequest:
+    route: POST /nizam/deck-publish-requests/{id}/approve
+    summary: "Publish a requested deck (Yayımla)"
+    description: >-
+      The PENDING deck becomes PUBLISHED: isPublic true, the request time cleared, the decision time and the decider
+      set. The write is guarded on the status PENDING.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN or holds platform.deck_publish (DeckReviewService.assertChief); a holder of platform.deck_publish may not answer the request for their own deck, the SYSTEM_ADMIN may"
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "the deck id is not a uuid", source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:132 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "two sites, one code: the caller is neither the SYSTEM_ADMIN nor a holder of platform.deck_publish (\"Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests\", service :332); or the caller holds platform.deck_publish, is not the SYSTEM_ADMIN, and the request is for their own deck (\"A Medaris nazımı may not answer the publish request of his own deck\", service :345)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:332 }
+      DECK_REQUEST_NOT_FOUND: { status: 404, note: "no such deck, a deck that is hidden, or a deck that is PRIVATE (no request on record)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:192 }
+      DECK_REQUEST_NOT_PENDING: { status: 409, note: "the request was answered or withdrawn meanwhile (also a deck that is PUBLISHED or REJECTED already)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:125 }
+    sideEffects:
+      - "notification:DECK_PUBLISH_RESULT to the deck's author, target DECK and the deck's id, params { outcome: approved, deckTitle }; a failure to write it is logged and ignored (deck-review.service.ts:127, :363)"
+    note: >-
+      Code: deck-review.service.ts:120-131.
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
+
+  rejectDeckPublishRequest:
+    route: POST /nizam/deck-publish-requests/{id}/reject
+    summary: "Refuse a requested deck (Reddet)"
+    description: >-
+      The PENDING deck becomes REJECTED with the reason, the decider and the time; it stays private and its author may
+      ask again.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN or holds platform.deck_publish (DeckReviewService.assertChief); a holder of platform.deck_publish may not answer the request for their own deck, the SYSTEM_ADMIN may"
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 1000, pattern: "\\S", note: "required and not blank; trimmed before it is stored and sent" }
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "the deck id is not a uuid", source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:151 }
+      VALIDATION_ERROR: { status: 400, note: "the reason is missing, blank or over 1000 characters, or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "two sites, one code: the caller is neither the SYSTEM_ADMIN nor a holder of platform.deck_publish (\"Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests\", service :332); or the caller holds platform.deck_publish, is not the SYSTEM_ADMIN, and the request is for their own deck (\"A Medaris nazımı may not answer the publish request of his own deck\", service :345)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:332 }
+      DECK_REQUEST_NOT_FOUND: { status: 404, note: "no such deck, a deck that is hidden, or a deck that is PRIVATE (no request on record)", source: apps/tedrisat/src/deck-review/deck-review.service.ts:192 }
+      DECK_REQUEST_NOT_PENDING: { status: 409, note: "the request was answered or withdrawn meanwhile", source: apps/tedrisat/src/deck-review/deck-review.service.ts:143 }
+    sideEffects:
+      - "notification:DECK_PUBLISH_RESULT to the deck's author, target DECK and the deck's id, params { outcome: rejected, deckTitle, reason }; a failure to write it is logged and ignored (deck-review.service.ts:145, :363)"
+    note: >-
+      Code: deck-review.service.ts:133-150.
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:147
+
+  unpublishDeck:
+    route: POST /nizam/deck-publish-requests/{id}/unpublish
+    summary: "Take a published deck back (Yayından kaldır)"
+    description: >-
+      The PUBLISHED deck becomes PRIVATE: isPublic false and every request and decision column cleared, in one
+      transaction with the audit row, so the row is the only record of who took the deck down and why. Works on a hidden
+      deck too. Its author may ask again.
+    needs: "a signed-in caller (AuthGuard only: no AuthzGuard); the service asks that the caller is the SYSTEM_ADMIN, which a holder of platform.deck_publish is not"
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 1000, pattern: "\\S", note: "required and not blank; trimmed before it is stored and sent" }
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "the deck id is not a uuid", source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:171 }
+      VALIDATION_ERROR: { status: 400, note: "the reason is missing, blank or over 1000 characters, or an unknown property is sent", source: libs/common/src/pipes/validation.pipe.ts:40 }
+      DECK_REVIEW_FORBIDDEN: { status: 403, note: "Only the Medaris başnazımı may unpublish a deck", source: apps/tedrisat/src/deck-review/deck-review.service.ts:162 }
+      DECK_REQUEST_NOT_FOUND: { status: 404, note: "no such deck", source: apps/tedrisat/src/deck-review/deck-review.service.ts:169 }
+      DECK_NOT_PUBLISHED: { status: 409, note: "the deck is not PUBLISHED, or stopped being so meanwhile", source: apps/tedrisat/src/deck-review/deck-review.service.ts:175 }
+    sideEffects:
+      - "audit:deck.unpublish with { title, owner, reason }, in the same transaction as the change (deck-review.repository.ts:316)"
+      - "notification:DECK_PUBLISH_RESULT to the deck's author, target DECK and the deck's id, params { outcome: unpublished, deckTitle, reason }; a failure to write it is logged and ignored (deck-review.service.ts:177, :363)"
+    note: >-
+      Code: deck-review.service.ts:156-182.
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:167
+
+invariants:
+  # What the code keeps
+  - id: deck-born-private
+    rule: >-
+      A deck is created with isPublic false and publishStatus PRIVATE by the repository, whatever the body says, and the body may not name
+      isPublic (400). The only writer of a public deck is the başnazım's approval of a request.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:169
+
+  - id: deck-publish-status-machine
+    rule: >-
+      PRIVATE moves to PENDING when the author asks, and PENDING to PUBLISHED when the reviewer approves. PENDING moves to REJECTED when
+      the reviewer refuses with a reason, and REJECTED to PENDING when the author asks again. PENDING and REJECTED return to PRIVATE when
+      the author withdraws, PUBLISHED returns to PRIVATE at once when the author withdraws, and PUBLISHED returns to PRIVATE when the
+      başnazım unpublishes with a reason (audit deck.unpublish, the owner told). Every move is a compare-and-set on the status that was read.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:269
+
+  - id: deck-publish-columns-in-step
+    rule: >-
+      isPublic is true exactly when publishStatus is PUBLISHED, and a request or a change of visibility wipes the previous reviewer's
+      answer (publishDecidedAt, publishDecidedBy, publishRejectReason).
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:19
+
+  - id: deck-reviewer-not-own-deck
+    rule: >-
+      A holder of platform.deck_publish may not approve or refuse the request for their own deck; the SYSTEM_ADMIN may. Unpublishing is the
+      SYSTEM_ADMIN's alone.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:343
+
+  - id: deck-private-read-on-the-record
+    rule: >-
+      Reading the cards of a requested, still private deck writes deck.private-read before the cards leave; the SYSTEM_ADMIN's read of
+      another person's private deck through the deck routes writes deck.admin_read; the başnazım's other access to it (writes, collecting,
+      progress) is refused.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:99
+
+  - id: private-deck-card-looks-absent
+    rule: >-
+      A private deck, its cards and the card routes answer a stranger and an anonymous caller exactly as an id that does not exist: 404
+      DECK_NOT_FOUND on the deck routes and 404 CARD_NOT_FOUND on the card routes. A 403 is given only for what the caller can already see
+      (a public deck, a write code missing).
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:86
+
+  - id: deck-anonymous-reads-public-only
+    rule: >-
+      With no token only GET /flashcard/decks/{id}, GET /flashcard/decks and GET /flashcard/cards?deckId= work, and only for public decks;
+      progress is never returned to an anonymous caller, any write is 401, and an invalid token is 401, never read as anonymous.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+
+  - id: deck-shared-with-enrolled-read
+    rule: >-
+      A non-public deck with a course, a köşk or a medrese is readable, collectable and studiable, never writable, by a talebe with an
+      ENROLLED or COMPLETED enrollment in that course, in a course of that köşk or in a course of that medrese, provided the enrolling
+      course is PUBLISHED and not hidden and the deck is neither hidden nor a course draft. PENDING and REVOKED enrollments do not count.
+    source: apps/tedrisat/src/flashcard/deck-sharing.ts:35
+
+  - id: course-deck-staff-rights
+    rule: >-
+      Whoever holds deck.manage_course in a course reads (drafts included), fills and edits that course's decks as the author does, on the
+      deck routes: view, create_card, manage_cards and manage_private. It exists only for a deck whose courseId is set.
+    source: libs/common/src/authz/effective-permissions.ts:306
+
+  - id: course-deck-draft-delete
+    rule: >-
+      A course deck is deleted through the course route only while it is a draft; a published one is first set to draft (the talebe lose
+      sight of it and keep their progress), then deleted.
+    source: apps/tedrisat/src/flashcard/course-deck.service.ts:134
+
+  - id: course-deck-week
+    rule: >-
+      A deck's weekId must be one of the course's shown (not hidden) weeks; a week that goes leaves its decks unplaced (on delete set null).
+    source: apps/tedrisat/src/flashcard/course-deck.service.ts:150
+
+  - id: deck-limits
+    rule: >-
+      A personal or course deck's title is 5 to 100 characters, a köşk deck's and a proposal's title is not blank and at most 200, a
+      description is at most 1000, a deck has at most 20 tags of at most 40 characters each, trimmed, blanks dropped and repeats removed
+      without regard to case in the Turkish locale. Tags are read back by the author only.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:25
+
+  - id: card-limits
+    rule: A card's front and back are 3 to 5000 characters, its type is VOCABULARY or HADEETH, and its contentMeta is a JSON object.
+    source: apps/tedrisat/src/flashcard/dto/create-flashcard.dto.ts:12
+
+  - id: card-bulk-limits
+    rule: >-
+      A bulk create or an import carries at most 1000 cards (422 BULK_ROW_LIMIT_EXCEEDED), an empty or non-array payload is 400
+      BULK_PAYLOAD_INVALID, every invalid row is reported at once (422 BULK_VALIDATION_ERROR, row = index + 2), an import file is at most 5
+      MB, and the bulk routes have their own throttle (10 per window per user and route unless configured).
+    source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:21
+
+  - id: card-export-formula-neutral
+    rule: >-
+      Every exported or sample string cell that starts with = + - @ tab or CR gets a leading quote, and an import removes the quote only
+      when what follows is such a trigger, so the round trip is exact.
+    source: libs/common/src/excel/excel.service.ts:40
+
+  - id: card-export-owner-only
+    rule: >-
+      A reader of a public deck cannot export it: export needs deck.manage_cards, and then the handler asks that the caller wrote the deck.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:445
+
+  - id: card-review-schedule
+    rule: >-
+      A rating HARD gives LEARNING with a 1 day interval, MEDIUM gives LEARNING with max(3, previous) days, EASY gives MASTERED with
+      max(7, 2 x previous) days, every interval is at most 180 days, and the due time is the review time plus the interval. The client may
+      not set the status or the due time when it sends a rating.
+    source: apps/tedrisat/src/flashcard/domain/review-schedule.ts:28
+
+  - id: card-review-due
+    rule: >-
+      A progress row is due when its status is not NEW and either it is LEARNING with no due time or its due time has come; a MASTERED row
+      with no due time is never due; a card with no progress row or status NEW is new, not due.
+    source: apps/tedrisat/src/flashcard/review-due.ts:15
+
+  - id: card-study-round-size
+    rule: >-
+      A study round holds at most 50 due cards (oldest due first, never-rated LEARNING first) then at most 10 unstarted cards (oldest
+      first); the due-today deck list shows 3 decks unless asked, never more than 10.
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:23
+
+  - id: card-progress-targets-visible
+    rule: >-
+      Every card named in a progress write must exist (404) and sit in a deck the caller may read (403), and the progress row is always
+      the caller's own.
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:228
+
+  - id: deck-collection-reevaluated
+    rule: >-
+      A collected deck stays in decks_users but is listed only while the caller may still read it; collecting is idempotent; leaving needs
+      no read right.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:126
+
+  - id: deck-labels-private-to-owner
+    rule: >-
+      Card labels and deck labels, and their stats, are readable, deletable and attachable only by their creator, whatever their scope,
+      and a labeling also needs the target card or deck to be readable by the caller. No route reads labelings back.
+    source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:44
+
+  - id: deck-proposal-machine
+    rule: >-
+      A deck proposal is PENDING until a nazım of the köşk opens a deck from it (ACCEPTED, in the same transaction) or refuses it with a
+      reason (REJECTED); an answered proposal answers 409; only a müderris of a non-hidden course of that köşk proposes; only a rejection
+      notifies the proposer.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:219
+
+  - id: kosk-deck-hide-never-deletes
+    rule: >-
+      A köşk deck is hidden, never deleted, by a nazım of its köşk or the başnazım, and the level (platform or kosk) is stored for the
+      restore rule. A hidden deck drops out of the köşk list, deckSharedWith, the summary and explore lists and the review lists, but a
+      hidden public deck is still served by the direct routes.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:247
+
+  # What the code breaks
+  - id: course-deck-staff-edit-any-card
+    rule: >-
+      Whoever holds deck.manage_course in a course may read, edit and delete every card of that course's decks, drafts included, on the
+      single-card routes as well as the deck routes.
+    holds: false
+    finding: course-deck-staff-card-routes-404
+    note: >-
+      The card routes authorize against the card's parent deck through findVisibleDeckId, which knows the deck's author, a public deck and
+      the shared-with rule, but not the course staff rule (flashcard.service.ts:86-101). A staff member who did not write the deck and is
+      not enrolled meets 404 CARD_NOT_FOUND on GET, PUT, PATCH and DELETE /flashcard/cards/{id}, while adding cards and listing them
+      (deck-level routes) work. The e2e suite covers a second müderris adding cards only (course-decks.e2e.spec.ts:248). Derived by reading,
+      not run.
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:92
+
+  - id: course-deck-staff-use-course-routes
+    rule: >-
+      A course deck is deleted, published and made public only through the course's own routes: a published one is deleted only after it
+      is set to draft, and it never becomes a public deck by a request.
+    holds: false
+    finding: deck-manage-private-reaches-course-decks
+    note: >-
+      Course staff hold deck.manage_private and deck.manage_cards on a course deck (effective-permissions.ts:215), so the generic routes
+      deleteDeck, replaceDeck, updateDeck, requestDeckPublication and withdrawDeckPublication accept them. deleteDeck removes a PUBLISHED
+      course deck at once, past COURSE_DECK_NOT_DRAFT, and requestDeckPublication lets staff ask to make a course deck public, which an
+      approval would set isPublic on. No spec covers these. Derived by reading, not run.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:418
+
+  - id: deck-card-type-fixed
+    rule: A deck's cardType is chosen at creation and never changes.
+    holds: false
+    finding: put-deck-changes-card-type
+    note: >-
+      PATCH /flashcard/decks/{id} and the course PATCH refuse a cardType, but PUT /flashcard/decks/{id} takes CreateFlashcardDeckDto, which
+      allows it, and the update writes it. PUT also leaves out fields it does not clear, though it is documented as replacing completely.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:357
+
+  - id: card-export-follows-manage-cards
+    rule: Whoever holds deck.manage_cards on a deck, the course staff of a course deck included, can export its cards.
+    holds: false
+    finding: export-refused-to-staff
+    note: >-
+      The route passes the guard for course staff and then findOwned throws 403 DECK_FORBIDDEN unless the caller is the deck's author
+      (flashcard.controller.ts:445, flashcard-deck.service.ts:218).
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:411
+
+  - id: kosk-deck-written-by-its-nazims
+    rule: Any nazım of a köşk, or whoever holds deck.manage_kosk, may fill and edit the köşk's decks, whoever opened them.
+    holds: false
+    finding: deck-manage-kosk-unused
+    note: >-
+      deck.manage_kosk and deck.propose_kosk are in the catalogue and on the nizam permission screens, but no route asks for them: köşk
+      decks and proposals check a KOSK_NAZIM role assignment and a MUDERRIS role assignment. A köşk deck has no scope chain, so a second
+      nazım of the köşk is a stranger to a deck the first opened (404 on its cards); only the creating nazım, or the başnazım through the
+      bypass on a public deck, writes its cards. See also grantable-codes-are-asked-for.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:350
+
+  - id: hidden-deck-leaves-lists
+    rule: A hidden deck is in none of the deck lists a person reads.
+    holds: false
+    finding: hidden-decks-in-lists
+    note: >-
+      GET /flashcard/decks and GET /flashcard/decks/collections do not filter archivedAt, so a hidden public deck, and the author's own
+      hidden deck, still appear; the summary and explore lists do filter it.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:101
+
+  - id: label-target-looks-absent
+    rule: >-
+      Putting a label on a card or a deck answers a private deck of someone else exactly as an id that does not exist, as the card and deck
+      routes do.
+    holds: false
+    finding: label-target-oracle
+    note: >-
+      labelCard answers 404 CARD_NOT_FOUND for an absent card and 403 DECK_FORBIDDEN for a card in someone else's private deck, and labelDeck
+      answers 404 DECK_NOT_FOUND for an absent deck and 403 DECK_FORBIDDEN for a private one (assertReadable, flashcard-deck.service.ts:114, whose comments
+      at :50-62 and :99-113 say the 404 and 403 split is kept). Ids are random uuids, so the oracle is small.
+    source: apps/tedrisat/src/flashcard/flashcard-label.service.ts:167
+
+  - id: card-routes-malformed-id-400
+    rule: A card id that is not a uuid answers 400 on every card route, as a deck id does on the deck routes.
+    holds: false
+    finding: card-id-not-uuid-500
+    note: >-
+      The four routes that authorize through the card's parent deck (GET, PUT, PATCH and DELETE /flashcard/cards/{id}) run their resolver
+      before any pipe: findVisibleDeckId puts the id into a uuid-typed query, Postgres refuses it, and AuthzGuard wraps the failure as 500
+      AUTHZ_RESOLVER_ERROR. Derived by reading, not run.
+    source: libs/common/src/authz/authz.guard.ts:120
+
+  - id: accepted-write-never-500
+    rule: A request that the validation accepts never ends in 500.
+    holds: false
+    finding: accepted-write-500
+    note: >-
+      Each case is derived by reading and not run. PATCH /flashcard/decks/{id} and PATCH /flashcard/cards/{id} with an empty body {}
+      (drizzle's update has no value to set). A JSON null in a field that the DTO marks optional but the column does not accept:
+      @IsOptional lets null through, so createDeck, replaceDeck, updateDeck (tags, cardType, title), updateCard (type, front, back) and
+      updateCourseDeck (title, draft) write NULL into a NOT NULL column. PUT /flashcard/cards/progress with an empty array
+      (insert().values([])) or the same card twice (ON CONFLICT DO UPDATE cannot touch a row twice). An import of a CSV sent as
+      application/vnd.ms-excel, which the file filter allows and detectFormat reads as xlsx, or of a corrupt workbook. A bulk create with
+      a null element, or a JSON body over 100 KB. And the SYSTEM_ADMIN naming an absent deck or course on a route that adds rows to it
+      (createCards, createCardsBulk, importCards, createCourseDeck), whose insert breaks a foreign key.
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:508
+
+  - id: card-create-takes-only-its-fields
+    rule: >-
+      A card is created from its type, front, back and contentMeta only; its id, author, deck and timestamps are the server's, on every
+      route that creates cards.
+    holds: false
+    finding: card-create-extra-columns
+    note: >-
+      POST /flashcard/decks/{deckId}/cards binds its body with ParseArrayPipe, which carries no whitelist, and spreads each element into
+      the insert (flashcard.service.ts:108), so an element may set the new card's id (a createdAt or updatedAt is a 500: the timestamp columns call toISOString on the value); an
+      id that is taken is a duplicate-key 500, which tells the caller the id exists. The bulk and import routes validate each row with forbidNonWhitelisted.
+      Derived by reading, not run.
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:108
+
+  - id: kosk-deck-hide-is-audited
+    rule: >-
+      Hiding a köşk deck is written to the audit log in the same transaction, as the hide of a köşk, a medrese, a course, a week and a
+      session is (action <entity>.hide, with the title and the level).
+    holds: false
+    finding: kosk-deck-hide-no-audit
+    note: >-
+      DeckReviewService.hideDeck writes no row, and hide-audit.ts has no deck entity, though the restore of a deck from the archive is
+      written as deck.restore.
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:247
+
+  - id: deck-edit-bumps-updated-at
+    rule: >-
+      Editing a deck sets its updatedAt, which orders the köşk's deck list (newest update first).
+    holds: false
+    finding: deck-edit-updated-at
+    note: >-
+      The column has no onUpdate and PUT and PATCH /flashcard/decks/{id} do not set it; only the course PATCH does (course-deck.repository.ts:114).
+      Adding cards to a deck does not touch it either.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:203

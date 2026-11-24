@@ -1,0 +1,82 @@
+# tedris.decks.visitorPublicDeck, a public deck of three cards, on the local stack: every row shows at once, with no "Daha fazla göster".
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/visitorPublicDeck --bind graphs/tedris/decks/visitorPublicDeck/binding.few.yaml --to deckPage --absent --out <dir>
+#   ... --to studying
+#
+# A file of its own because the scenario takes no transition that binding.yaml's do not: a walk takes the first scenario of a file whose
+# `given` fits, and the only difference from `manyCards` is the deck (the table's caption and the missing button). Not replayed in this
+# phase. It makes and removes its deck as binding.yaml does (public-deck.mjs, as APPLICANT_B) and touches nothing else.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.visitorPublicDeck
+
+data:
+  pd: { json: ../.local/public-deck.json }
+
+accounts:
+  visitor: {}
+signIn: []
+
+samples:
+  deck: Açık deste denemesi
+  title: Açık deste denemesi
+
+scenarios:
+  fewCards:
+    given: { address: deck, deck: few }
+    as: visitor
+    open: '{tedris}/decks/{pd.id}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, make, --cards, '3']
+        expect: 'public-deck made'
+    teardown:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, remove]
+
+events:
+  FLIP: [{ key: Space }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+effects:
+  nextCard:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from flashcard_progress where flashcard_id in (select id from flashcards where deck_id = '{pd.id}')"]
+      expect: '"n":0'
+
+states:
+  deckPage: { url: '{tedris}/decks/{pd.id}' }
+  studying: { url: '{tedris}/decks/study/{pd.id}' }
+  studyOver: { url: '{tedris}/decks/study/{pd.id}' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.redirected: { url: '{keycloak}/realms/medaris/**' }
+  discover_opened: { url: '{tedris}/discover' }
+  left: { url: 'about:blank' }
+
+nodes:
+  deckMain: { role: main, hasText: '/Deste hakkında/' }
+  crumbDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  crumbDeckHere: { css: 'nav[aria-label="Sayfa yolu"] [aria-current=page]', hasText: Açık deste denemesi }
+  publicBadge: { css: 'main header .mds-badge', hasText: Herkese açık }
+  deckCount: { css: 'main header span.mds-caption', hasText: '/ezber kartı/' }
+  deckKind: { css: 'main header span.mds-caption', hasText: '/Kelime/' }
+  studyLink: { role: link, name: '/^Çalış$/' }
+  cardsCaption: { css: 'section[aria-labelledby="deck-cards"] span.mds-caption', hasText: '/ kart$/' }
+  cardsTable: { role: table, name: '/destesinin kartları$/' }
+  frontCell: { css: 'table[role=table] tbody td:first-child' }
+  backCell: { css: 'table[role=table] tbody td:last-child' }
+  showing: { css: 'main p.mds-caption', hasText: '/karttan .+ gösteriliyor/' }
+  collectButton: { role: button, name: '/Koleksiyona ekle/' }
+  copyButton: { role: button, name: '/Kendi desteme kopyala/' }
+  studyMain: { role: main, hasText: '/Çalışmayı bitir/' }
+  crumbDeck: { role: link, name: Açık deste denemesi, within: { role: navigation, name: Sayfa yolu } }
+  crumbStudyHere: { css: 'nav[aria-label="Sayfa yolu"] [aria-current=page]', hasText: Çalışma }
+  studyTitle: { role: heading, name: '/^Çalışma$/' }
+  studySubtitle: { css: 'main header p.mds-caption', hasText: '/· \d+ kart$/' }
+  roundBar: { role: progressbar, name: '/^Bu tur: \d+ \/ \d+ kart$/' }
+  cardRegion: { role: region, name: '/^Kart \d+ \/ \d+$/' }
+  cardCaption: { css: 'section .mds-caption', hasText: '/^Kart \d+ \/ \d+$/' }
+  cardStatus: { css: 'section .mds-badge' }
+  frontFace: { css: 'section div.cursor-pointer' }
+  backEyebrow: { css: 'section .mds-eyebrow', hasText: Arka yüz }
+  backFace: { css: 'section p.mds-reading' }
+  rateHard: { role: button, name: '/^Zor$/' }
+  rateMedium: { role: button, name: '/^Orta$/' }
+  rateEasy: { role: button, name: '/^Kolay$/' }

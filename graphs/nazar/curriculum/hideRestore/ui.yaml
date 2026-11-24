@@ -1,0 +1,163 @@
+# The screens of nazar.curriculum.hideRestore: the hide page of a course (/ders/<id>/mufredat/gizle) with its two windows and the toasts
+# that answer them, and the course's Arşiv (/ders/<id>/arsiv) with its tabs, its table of what is hidden, "Geri al", the sentences that
+# stand where a higher kademe hid a celse, the alert a person without week.hide meets, and the toasts that answer a restore. Read from
+# the code of the branch (the tree of PR #394) on 15 Nov 2026: apps/nazar/features/curriculum-hide, features/course-archive and
+# features/archive, and libs/ui/src/mds. Nothing was seen in a browser by its writer: every behaviour is "from the code" unless a rule
+# says otherwise.
+#
+# What this file leaves to its neighbours (flow.yaml `scope.outOfView` names them): the editor of the same page and its own "Gizle"
+# (nazar.curriculum.edit), the medrese's Arşiv (nazar.archive.hideAndRestoreCourse), the real delete of a hidden item
+# (nizam.moderation.deleteArchived), the pager and the loading skeletons.
+#
+# Words: every key that has no `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nazar.json (the file the app
+# reads as `nazar`; the key is the path under its root), by <scratchpad>/hide-restore/catalog.py, except `Changes.note`, the one authored
+# message of this catalog (no message of the app says, in one place, what hiding changes and what brings it back; it is made of the
+# app's own sentences CurriculumHide.week.body, CurriculumHide.session.body and Archive.restoredBody). The `composed.*` keys are text the
+# app builds in code from data and messages; each has its code line here, and a placeholder the binding gives no sample for matches any
+# text:
+#   composed.CurriculumHide.weekHeading  "Hafta {number}: {title}"  CurriculumHide.weekLabel, ": " and the week's title in one <bdi> (curriculum-list.tsx:83-87)
+#   composed.CurriculumHide.sessionTitle "{title}"   the celse's title (curriculum-list.tsx:124)
+#   composed.CurriculumHide.sessionWhen  "{when}"    "28 Eyl 21:00", from whenLabel in the viewer's zone (curriculum.ts:44, archive.ts:113)
+#   composed.CurriculumHide.eyebrow      "{title}"   the week's or the celse's title above the window's title (curriculum-list.tsx:158, alert-dialog.tsx:75)
+#   composed.Button.loading              "Yükleniyor" the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62)
+#   composed.CourseArchive.tabAll|tabWeeks|tabSessions  a tab link: its label directly followed by the count, no space (tabs.tsx:84-85; F-A-12)
+#   composed.Archive.rowTitle|rowContext|rowHiderName|rowHiderRole|rowWhen  the cells of a row, worded and dated by archive.ts:227-262
+#                                        ("course · Hafta n · time" for a celse, the hider's name and role line "Hoca (siz)", "Dün 10:40")
+schema: delurio-graph/0
+kind: ui
+id: nazar.curriculum.hideRestore
+flow: nazar.curriculum.hideRestore
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Birinci hafta
+  number: '1'
+  count: '2'
+  when: 28 Eyl 21:00
+  context: Örnek Ders
+  name: Örnek Hoca
+  role: köşk nazımı
+
+# Neither page sets a focus on load (both pages list "Initial focus: none"), so no page node carries `initialFocus` (rule focus-not-set).
+# Only the windows' `initialFocus`, on Vazgeç, is drawn.
+nodes:
+  # ---- the hide page: what every state of the list draws ----------------------------------------------------------------------------
+  hideMain: { type: page, component: Page, role: main, in: [listed, empty], source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:19 } # the shell's one <main id="main">; it has no name; the binding tells it from the Arşiv's by its sentence
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.title }, in: [listed, empty], source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:33 } # h1 "Müfredat", the editor's own title (F-C-course-a-17)
+  hideIntro: { type: text, component: Text, text: { key: CurriculumHide.intro }, in: [listed, empty], source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:35 } # names the Arşiv and links to it nowhere (HIDEREST-2)
+  archiveLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.ders.archive }, in: [listed, empty], emits: OPEN_ARCHIVE, source: apps/nazar/features/shell/nav.ts:135 } # the sidebar's entry (the frame is nazar.shell.scopeAndMenu's), the only way to the Arşiv; it is on for every person of the course
+  weekList: { type: list, component: List, role: list, in: [listed], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:77 } # an <ol data-testid="curriculum">, one card a week, with no name
+  weekHeading: { type: text, component: Heading, role: heading, text: { key: composed.CurriculumHide.weekHeading, params: { number: week.number, title: week.title } }, in: [listed], repeat: course.weeks, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:82 } # h2 (class mds-h3), "Hafta 1: Birinci hafta"
+  weekCount: { type: text, component: Text, text: { key: CurriculumHide.sessionCount, params: { count: week.sessionCount } }, in: [listed], repeat: course.weeks, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:90 } # "2 celse"
+  hideWeek: { type: action, component: Button, role: button, intent: secondary, name: { key: CurriculumHide.hideWeekLabel, params: { title: week.title } }, text: { key: CurriculumHide.hideWeek }, in: [listed], repeat: course.weeks, emits: HIDE_WEEK, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:95 } # an outline button with an eyeOff icon; on for every person who holds a seat (D1); the visible text is in the name (WCAG 2.5.3)
+  sessionTitle: { type: text, component: Text, text: { key: composed.CurriculumHide.sessionTitle, params: { title: session.title } }, in: [listed], repeat: course.sessions, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:124 }
+  sessionWhen: { type: text, component: Text, text: { key: composed.CurriculumHide.sessionWhen, params: { when: session.when } }, in: [listed], repeat: course.sessions, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:126 } # only for a celse that has a time
+  hideSession: { type: action, component: Button, role: button, intent: secondary, name: { key: CurriculumHide.hideSessionLabel, params: { title: session.title } }, text: { key: CurriculumHide.hideSession }, in: [listed], repeat: course.sessions, emits: HIDE_SESSION, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:129 }
+  emptyLine: { type: text, component: Text, text: { key: CurriculumHide.empty }, in: [empty], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:71 } # an EmptyState
+
+  # ---- the windows: two AlertDialogs of one component, opened by the list's own state (no trigger) ----------------------------------------
+  # Base UI's AlertDialog is modal and never closed by the scrim; the page behind is inert, so no page node is drawn in these states. The
+  # buttons are one set for both windows (the same words and the same events); only the title, the eyebrow and the paragraph differ.
+  weekDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: weekDialogTitle }, in: [confirmWeek, hidingWeek], initialFocus: dialogCancel, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153 }
+  weekEyebrow: { type: text, component: Text, text: { key: composed.CurriculumHide.eyebrow, params: { title: week.title } }, in: [confirmWeek, hidingWeek], source: libs/ui/src/mds/alert-dialog.tsx:75 } # the week's title, above the window's title
+  weekDialogTitle: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.week.title }, in: [confirmWeek, hidingWeek], source: libs/ui/src/mds/alert-dialog.tsx:80 } # Base UI's Title, an h2
+  weekBody: { type: text, component: Text, text: { key: CurriculumHide.week.body, params: { title: week.title, count: week.sessionCount } }, in: [confirmWeek, hidingWeek], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:169 } # says what leaves, that nothing is deleted and which kademe brings it back
+  sessionDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: sessionDialogTitle }, in: [confirmSession, hidingSession], initialFocus: dialogCancel, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153 }
+  sessionEyebrow: { type: text, component: Text, text: { key: composed.CurriculumHide.eyebrow, params: { title: session.title } }, in: [confirmSession, hidingSession], source: libs/ui/src/mds/alert-dialog.tsx:75 }
+  sessionDialogTitle: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.session.title }, in: [confirmSession, hidingSession], source: libs/ui/src/mds/alert-dialog.tsx:80 }
+  sessionBody: { type: text, component: Text, text: { key: CurriculumHide.session.body, params: { title: session.title } }, in: [confirmSession, hidingSession], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:173 }
+  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmWeek, confirmSession, hidingWeek, hidingSession], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:88 } # an icon only, named by its aria-label; closing is ignored while the call runs (F-C-course-a-26)
+  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CurriculumHide.cancel }, in: [confirmWeek, confirmSession, hidingWeek, hidingSession], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here; it stays on while the call runs and does nothing (F-C-course-a-26)
+  dialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: CurriculumHide.confirm }, in: [confirmWeek, confirmSession, hidingWeek, hidingSession], disabledIn: [hidingWeek, hidingSession], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:109 } # a primary button, not a destructive one: nothing is deleted; busy (aria-disabled) while the call runs
+  dialogBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [hidingWeek, hidingSession], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button, "Yükleniyor" from the kit's default (F-C-course-a-28)
+
+  # ---- the toasts that answer a hide: a region "Bildirimler", each toast a dialog (an error is an alertdialog and stays) ------------------------
+  toastWeekHidden: { type: status, component: Status, role: dialog, name: { key: CurriculumHide.week.done }, text: { key: CurriculumHide.week.doneBody, params: { title: week.title } }, in: [listed, empty], when: "toast == 'weekHidden'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52 } # success, 6 seconds; it names the Arşiv and links to it nowhere (HIDEREST-2)
+  toastSessionHidden: { type: status, component: Status, role: dialog, name: { key: CurriculumHide.session.done }, text: { key: CurriculumHide.session.doneBody, params: { title: session.title } }, in: [listed], when: "toast == 'sessionHidden'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52 }
+  toastWeekGone: { type: status, component: Status, role: dialog, name: { key: CurriculumHide.week.failedTitle }, text: { key: CurriculumHide.gone }, in: [listed, empty], when: "toast == 'weekGone'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 } # tone info: it closes by itself, and the list is read again
+  toastSessionGone: { type: status, component: Status, role: dialog, name: { key: CurriculumHide.session.failedTitle }, text: { key: CurriculumHide.gone }, in: [listed], when: "toast == 'sessionGone'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+  toastWeekRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CurriculumHide.week.failedTitle }, text: { key: Problems.actionForbidden }, in: [listed], when: "toast == 'weekRefused'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 } # tone error: it stays until closed; a person with no week.hide meets it after the question (D1)
+  toastSessionRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CurriculumHide.session.failedTitle }, text: { key: Problems.actionForbidden }, in: [listed], when: "toast == 'sessionRefused'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+  toastWeekFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CurriculumHide.week.failedTitle }, text: { key: Problems.actionGeneric }, in: [listed], when: "toast == 'weekFailed'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+  toastSessionFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CurriculumHide.session.failedTitle }, text: { key: Problems.actionGeneric }, in: [listed], when: "toast == 'sessionFailed'", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+
+  # ---- the Arşiv: what every state of the page draws -----------------------------------------------------------------------------------
+  archiveMain: { type: page, component: Page, role: main, in: [archive, archiveEmpty, restoringWeek, restoringSession, archiveRefused], source: apps/nazar/features/course-archive/components/course-archive-page.tsx:29 } # the shell's one <main>; no name; the binding tells it from the hide page's by its sentence
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: CourseArchive.title }, in: [archive, archiveEmpty, restoringWeek, restoringSession, archiveRefused], source: apps/nazar/features/course-archive/components/course-archive-page.tsx:57 } # h1 "Arşiv"
+  archiveIntro: { type: text, component: Text, text: { key: CourseArchive.intro }, in: [archive, archiveEmpty, restoringWeek, restoringSession, archiveRefused], source: apps/nazar/features/course-archive/components/course-archive-page.tsx:59 }
+
+  # the tabs: three links in a named <nav>, full page loads; the one of the page has aria-current="page", which the format cannot say
+  tabsNav: { type: page, component: Page, role: navigation, name: { key: Archive.tabsLabel }, in: [archive, archiveEmpty, restoringWeek, restoringSession], source: libs/ui/src/mds/tabs.tsx:72 }
+  # While a restore runs only its own "Geri al" is busy (`busy` holds one row's key, archive-list.tsx:59-62): the tabs, plain links that
+  # load the page anew, and the other rows' "Geri al" stay live. A tab leaves at once and the restore already sent runs on on the server,
+  # so the next read shows it (its toast is lost with the page); another "Geri al" starts its own restore beside the first. The flow takes
+  # either press once the running restore is answered (`duringStep`).
+  tabAll: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.CourseArchive.tabAll, params: { count: counts.all } }, in: [archive, archiveEmpty, restoringWeek, restoringSession], emits: TAB_ALL, duringStep: true, source: libs/ui/src/mds/tabs.tsx:78 } # "Tümü1": label and count with no space between (F-A-12)
+  tabWeeks: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.CourseArchive.tabWeeks, params: { count: counts.weeks } }, in: [archive, archiveEmpty, restoringWeek, restoringSession], emits: TAB_WEEKS, duringStep: true, source: libs/ui/src/mds/tabs.tsx:78 }
+  tabSessions: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.CourseArchive.tabSessions, params: { count: counts.sessions } }, in: [archive, archiveEmpty, restoringWeek, restoringSession], emits: TAB_SESSIONS, duringStep: true, source: libs/ui/src/mds/tabs.tsx:78 }
+
+  # the table of what is hidden, newest hidden first (its "Gizlendiği tarih" header carries aria-sort="descending")
+  archiveTable: { type: list, component: List, role: table, name: { key: Archive.caption }, in: [archive, archiveEmpty, restoringWeek, restoringSession], source: apps/nazar/features/archive/components/archive-list.tsx:186 }
+  rowTitle: { type: text, component: Text, text: { key: composed.Archive.rowTitle, params: { title: item.title } }, in: [archive, restoringWeek, restoringSession], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:97 } # the row header: a week's or a celse's title
+  rowContext: { type: text, component: Text, text: { key: composed.Archive.rowContext, params: { context: item.context } }, in: [archive, restoringWeek, restoringSession], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:99 } # the course's title for a week; "course · Hafta n · time" for a celse
+  rowTypeWeek: { type: text, component: Text, text: { key: Archive.types.week }, in: [archive, restoringWeek, restoringSession], when: "weekRow == 'listed' and tab in ['all', 'weeks']", repeat: archive.weeks, source: apps/nazar/features/archive/components/archive-list.tsx:112 } # a badge with an icon and the kind's word
+  rowTypeSession: { type: text, component: Text, text: { key: Archive.types.session }, in: [archive, restoringWeek, restoringSession], when: "tab in ['all', 'sessions'] and (sessionRow == 'listed' or locks == 'higher')", repeat: archive.sessions, source: apps/nazar/features/archive/components/archive-list.tsx:112 }
+  rowHiderName: { type: text, component: Text, text: { key: composed.Archive.rowHiderName, params: { name: item.hider.name } }, in: [archive, restoringWeek, restoringSession], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:127 } # "Gizleyen": the person's name, or "Adı bilinmiyor"
+  rowHiderRole: { type: text, component: Text, text: { key: composed.Archive.rowHiderRole, params: { role: item.hider.role } }, in: [archive, restoringWeek, restoringSession], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:129 } # the role line: "Hoca (siz)" for her own, "Köşk nazımı", "Medaris yönetimi"
+  rowWhen: { type: text, component: Text, role: time, text: { key: composed.Archive.rowWhen, params: { when: item.when } }, in: [archive, restoringWeek, restoringSession], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:140 } # a <time dateTime>: "Bugün 14:05", "Dün 10:40", "28 Eyl 16:10" in the viewer's own zone
+
+  # the button where the caller's kademe reaches the one that hid the row, the sentence where it does not
+  restoreWeek: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [archive, restoringSession], when: "weekRow == 'listed' and tab in ['all', 'weeks']", repeat: archive.weeks, emits: RESTORE_WEEK, duringStep: true, source: apps/nazar/features/archive/components/archive-list.tsx:152 } # asks nothing first (the design draws no question); the name carries the week's title. The one in flight is rowRestoreWeek
+  restoreSession: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [archive, restoringWeek], when: "sessionRow == 'listed' and tab in ['all', 'sessions']", repeat: archive.sessions, emits: RESTORE_SESSION, duringStep: true, source: apps/nazar/features/archive/components/archive-list.tsx:152 }
+  rowRestoreWeek: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [restoringWeek], disabledIn: [restoringWeek], source: apps/nazar/features/archive/components/archive-list.tsx:157 } # the week being restored, the first item of restoreWeek: busy (aria-disabled) while the call runs; the other buttons stay live
+  rowRestoreSession: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [restoringSession], disabledIn: [restoringSession], source: apps/nazar/features/archive/components/archive-list.tsx:157 }
+  restoreBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoringWeek, restoringSession], source: libs/ui/src/mds/button.tsx:114 } # "Yükleniyor", the kit's default (F-C-course-a-28)
+  lockedKosk: { type: text, component: Text, text: { key: Archive.locked, params: { role: item.hider.role } }, in: [archive, restoringWeek, restoringSession], when: "locks == 'higher' and tab in ['all', 'sessions']", repeat: archive.lockedByKosk, source: apps/nazar/features/archive/components/archive-list.tsx:164 } # "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." (the role lower-cased): no button on that row
+  lockedAdmin: { type: text, component: Text, text: { key: Archive.lockedAdmin }, in: [archive, restoringWeek, restoringSession], when: "locks == 'higher' and tab in ['all', 'sessions']", repeat: archive.lockedByAdmin, source: apps/nazar/features/archive/components/archive-list.tsx:164 } # "Bunu Medaris yönetimi gizledi; ..."; a hider with no role is Medaris yönetimi (archive.ts:144-149)
+
+  # nothing to list on this tab: the table keeps its caption and headers and says it in one cell
+  emptyAll: { type: text, component: Text, text: { key: CourseArchive.empty.all }, in: [archiveEmpty], when: "tab == 'all'", source: apps/nazar/features/course-archive/components/course-archive-page.tsx:85 }
+  emptyWeeks: { type: text, component: Text, text: { key: CourseArchive.empty.weeks }, in: [archiveEmpty], when: "tab == 'weeks'", source: apps/nazar/features/course-archive/components/course-archive-page.tsx:85 }
+  emptySessions: { type: text, component: Text, text: { key: CourseArchive.empty.sessions }, in: [archiveEmpty], when: "tab == 'sessions'", source: apps/nazar/features/course-archive/components/course-archive-page.tsx:85 }
+
+  # ---- the Arşiv refuses the person: no week.hide ------------------------------------------------------------------------------------------
+  archiveRefusal: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [archiveRefused], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert: it is in the page at load and is not announced (F-A-16)
+
+  # ---- the toasts that answer a restore ---------------------------------------------------------------------------------------------------
+  toastRestored: { type: status, component: Status, role: dialog, name: { key: Archive.restored }, text: { key: Archive.restoredBody, params: { title: item.title } }, in: [archive, archiveEmpty], when: "toast == 'restored'", source: apps/nazar/features/archive/components/archive-list.tsx:67 } # success, 6 seconds; the row leaves and the counts follow when the page is read again (F-C-course-a-23); it does not say which celses came with a week (HIDEREST-4)
+  toastRestoreGone: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.gone }, in: [archive, archiveEmpty], when: "toast == 'restoreGone'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # tone error: it stays; the list is read again
+  toastRestoreLevel: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.forbidden }, in: [archive, archiveEmpty], when: "toast == 'restoreLevel'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # ARCHIVE_FORBIDDEN and ARCHIVE_RESTORE_LEVEL say the same words: a higher kademe may have hidden it
+  toastParentHidden: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.parentHidden }, in: [archive, archiveEmpty], when: "toast == 'parentHidden'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # the one refusal after which the list is not read again
+  toastRestoreFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Problems.actionGeneric }, in: [archive, archiveEmpty], when: "toast == 'restoreFailed'", source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+
+edges:
+  - { labelledBy: [weekDialog, weekDialogTitle] }
+  - { labelledBy: [sessionDialog, sessionDialogTitle] }
+  - { triggers: [hideWeek, confirmWeek] }
+  - { triggers: [hideSession, confirmSession] }
+  - { triggers: [restoreWeek, restoringWeek] }
+  - { triggers: [restoreSession, restoringSession] }
+  - { returnsFocus: [weekDialog, hideWeek] } # Vazgeç, Kapat and Esc close the window and Base UI hands the focus back to the element that had it (no trigger element is set, F-C-course-a-25; not measured here). After a hide the row is gone and so is the button: the focus is lost (F-C-course-a-15)
+  - { returnsFocus: [sessionDialog, hideSession] }
+
+rules:
+  - { id: F-C-course-a-15, rule: "After a hide the pressed button leaves with its row (curriculum-list.tsx:58, router.refresh) and no code moves the focus; the window closes at the end of the call (:67) and Base UI's fallback has no element to return to. The only word is a toast of 6 seconds. A keyboard or screen-reader user falls back to the top of the page. Not measured here. Fix: move the focus to the heading of the next week or to the list, and keep a status line." }
+  - { id: F-C-course-a-16, rule: "Not drawn here, named because the same word means two things. 'Gizle' on this page hides at once, after a confirmation; 'Gizle' and 'Haftayı gizle' in the editor (nazar.curriculum.edit) only take a row out of the draft until 'Kaydet'. The editor's own link to this page is 'Hafta ve celse gizle' (curriculum-editor.tsx:468)." }
+  - { id: F-C-course-a-17, rule: "The page has no permission gate (curriculum-page.tsx:19-58): any person who holds a seat in the course sees every 'Gizle' button, and the API's 403 arrives as a toast after the question (toastWeekRefused, toastSessionRefused). Its <title> and h1 are 'Müfredat', the editor's, and it has no link back to the editor. Fix: gate on week.hide or session.manage like the editor, title it 'Müfredat: gizle', add a way back (decision D1)." }
+  - { id: F-C-course-a-23, rule: "After 'Geri al' the page is read again (archive-list.tsx:72); the row and its button are gone and no code moves the focus. The only word is a toast of 6 seconds. Fix: focus the table's caption or the next row's button after the refresh." }
+  - { id: F-C-course-a-25, rule: "The two windows are controlled by the list's state and have no trigger element (curriculum-list.tsx:153-176), so where the focus returns when one closes depends on Base UI's fallback to the previously focused element; where the hide removed the opener row, nothing is left to return to. Not measured here. Fix: pass the opener as finalFocus, or the next week's heading." }
+  - { id: F-C-course-a-26, rule: "While 'Gizle' is busy the window ignores every way of closing it (onOpenChange does nothing while `pending`, curriculum-list.tsx:155-157), but 'Vazgeç' and the close icon stay enabled and a press does nothing and says nothing; only 'Gizle' is marked busy. The inventory names the same defect for three other dialogs; this window is a fourth place. Fix: mark 'Vazgeç' and the close icon disabled for the length of the call." }
+  - { id: F-C-course-a-28, rule: "The busy 'Gizle' of the windows and the busy 'Geri al' of a row pass no loadingLabel, so their hidden status says 'Yükleniyor' from the kit's hard-coded default (button.tsx:62), outside the catalog; Turkish only today." }
+  - { id: F-A-12, rule: "A tab link's content is its label followed by an inline count <span> with no whitespace (tabs.tsx:84-85), so the accessible name reads 'Tümü1' and 'Haftalar1'. Fix: a visually hidden space, or the count in an aria-label. Not verified in a browser." }
+  - { id: F-A-16, rule: "A refusal ('Bu sayfaya izniniz yok') is a neutral Alert = role=status that is in the page at load, so it is not announced; its title is a <p>, not a heading, and its sentence tells the person to ask 'the medrese's başmüderris', which is a medrese page's advice (page-problem.tsx:23-29). The h1 'Arşiv' still names the page. Fix: render the verdict as the page's heading or role=alert, and word it for a course." }
+  - { id: HIDEREST-1, rule: "New finding, from the code. `result.code.endsWith('_NOT_FOUND')` (curriculum-list.tsx:61,65) takes COURSE_NOT_FOUND, a course deleted or hidden meanwhile, for 'the week or celse is gone': the toast is the info tone with the generic words 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' (hideErrorKey knows only WEEK_NOT_FOUND and LESSON_NOT_FOUND, curriculum.ts:51-58), and the refresh that follows draws the 404 page, so the person is told to try again and finds the course gone. Fix: map COURSE_NOT_FOUND to its own sentence, or leave it out of the refresh." }
+  - { id: HIDEREST-2, rule: "New finding, from the code. The intro ('hiçbiri silinmez, Arşiv’den geri alınır') and every success toast ('Arşiv’den geri alabilirsiniz.') name the Arşiv and lead to it nowhere: the page has no link, the toast no action, and the sidebar's 'Müfredat' leads to the editor, not back here (the Arşiv has no way back either). The one way is the sidebar's 'Arşiv'. Fix: a link 'Arşiv' in the intro and an action on the toast (decision D3)." }
+  - { id: HIDEREST-3, rule: "New finding, from the code. A person who holds session.manage and not week.hide may hide a celse here (archiveLesson accepts either) but cannot open the course's Arşiv: GET /courses/:id/archive asks week.hide (archive.controller.ts:150) and the page shows its alert, though the sidebar offers 'Arşiv' to everyone and restoreArchiveItem would take her for a celse. She cannot see what she hid or bring it back (decision D2). The editor links to this page only for week.hide holders (curriculum-editor.tsx:468), so she reaches it by address." }
+  - { id: HIDEREST-4, rule: "New finding, from the code. Bringing back a week brings back the celses hidden with it at the same instant and not a celse hidden on its own earlier (archive.repository.ts:515), which then gets a row of its own in the Arşiv. The toast says only '“Hafta 1” asıl yerinde yeniden görünür.' (Archive.restoredBody), so a hoca who hid a celse and then its week finds the celse still gone. Fix: say which celses came back and that one is still hidden, or restore the whole week." }
+  - { id: focus-not-set, rule: "Neither page sets a focus on load (both pages list 'Initial focus: none'), so the page nodes carry no initialFocus and no focus; the replay checks only the windows', on Vazgeç." }
+  - { id: confirm-before-hiding, rule: "Hiding asks first, in an alertdialog whose focus starts on 'Vazgeç' and which says what leaves, that nothing is deleted and which kademe brings it back; 'Geri al' asks nothing (the design draws no question), because a restore deletes nothing." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Haftayı gizle' in 'Haftayı gizle: {title}', 'Celseyi gizle' in 'Celseyi gizle: {title}', 'Geri al' in 'Geri al: {title}' (WCAG 2.5.3). Holds." }
+  - { id: toast-is-the-only-word, rule: "The result of a hide and of a restore is said by a toast (a dialog in the 'Bildirimler' live region): it closes after 6 seconds for a success and an info notice and stays for an error. Nothing on the page itself says what was done, but the row and the counts change." }

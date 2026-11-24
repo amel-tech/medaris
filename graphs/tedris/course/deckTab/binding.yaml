@@ -1,0 +1,137 @@
+# tedris.course.deckTab on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantF` (a man, every profile attribute
+# set, no enrolment of his own), in a course the walk makes for itself and removes again:
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/deckTab --bind graphs/tedris/course/deckTab/binding.yaml --out <dir>
+#
+# Replay data. Nothing seeded is touched. `setup` makes the course `Deneme dersi deckTab` (helpers/course.mjs: published, in the seed's second köşk, three
+# celses a week, anyone takes a seat, `MUDERRIS` the hoca, `applicantF` seated at once) and then its decks (deck-data.mjs, as the hoca: one published deck of
+# three cards, a second of two cards in the scenario that needs several). `teardown` takes it all away in the other order: the decks and the progress rows of
+# their cards (deck-data.mjs remove), the course and its invitation mails (course.mjs remove), and the mailbox of the account. A walk that died half way leaves
+# ids in graphs/.local/made/deckTab.json and graphs/.local/deck-tab.json, which the next `setup` removes first.
+# The progress rows are deleted with SQL (sql.mjs, the stack's own Postgres container, scoped to the ids of the walk's own cards): no route deletes one, and a
+# deleted deck leaves its cards' progress rows behind (the domain's progress-orphans).
+# The walks open the course page by its address: the course is the walk's own and no page of the app lists it among a medrese's courses (its köşk's page does;
+# tedris.nav's entry kosk->course is walked by tedris.course.grades).
+#
+# The main story (viaTab) is a round of marks that writes progress rows: "Bildim" writes rating EASY, "Bilemedim" HARD, through the server action rateFlashcard.
+# `effects.saveCardProgress` reads them back after every mark.
+#
+# Not bound, so the replay cannot reach them (reported): FAIL.failed and FAIL.refused (a Next server action answers 200 on the page's own address, so a refusal
+# cannot be compared by status, and nothing on the stack makes a deck refuse its cards to an enrolled talebe), the session that is over (sent_to_sign_in), the
+# deck with no card (`deckCards: none`), RESEND, and PICK_DECK. The scenarios other than viaTab are walked only with `--to`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.deckTab
+
+data:
+  made: { json: ../.local/made/deckTab.json }
+  dt: { json: ../.local/deck-tab.json }
+
+scenarios:
+  # The main story: the course page on its first tab, then the tab.
+  viaTab:
+    given: { arrival: tab, decks: one, deckCards: some }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, deckTab, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_F]
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, make]
+        expect: 'made 1 deck'
+    teardown:
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, deckTab]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+  # e2e course-decks#1 opens the page on the tab by its address, the one start nothing in the app links to.
+  byAddress:
+    given: { arrival: address, decks: one, deckCards: some }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}?tab=deste'
+    setup:
+      - run: [node, helpers/course.mjs, make, deckTab, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_F]
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, make]
+        expect: 'made 1 deck'
+    teardown:
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, deckTab]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+  # Two decks: the second is a row of the list and a chip of the grid.
+  severalDecks:
+    given: { arrival: address, decks: several, deckCards: some }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}?tab=deste'
+    setup:
+      - run: [node, helpers/course.mjs, make, deckTab, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_F]
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, make, --decks, '2']
+        expect: 'made 2 deck'
+    teardown:
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, deckTab]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+  # A course with no deck: the course is made and no deck is added.
+  noDeck:
+    given: { arrival: address, decks: none, deckCards: some }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}?tab=deste'
+    setup:
+      - run: [node, ../tedris/course/deckTab/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, make, deckTab, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_F]
+    teardown:
+      - run: [node, helpers/course.mjs, remove, deckTab]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # A Next server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POST (the cards' read and the
+  # mark's write). It holds the call to see the state in flight.
+  readingCards: { call: '{tedris}/courses/{made.course}' }
+  rating: { call: '{tedris}/courses/{made.course}' }
+  # An exit has no nodes, so its address is all the replay can check.
+  study_opened: { url: '{tedris}/decks/study/**' }
+  deck_opened: { url: '{tedris}/decks/**' }
+  left: { url: '{tedris}/discover' }
+
+effects:
+  # a mark was written: the account holds a progress row of the walk's first deck (the rows of its cards are deleted in setup's remove and in teardown)
+  saveCardProgress:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as saved from flashcard_progress where user_id = '{secret.E2E_APPLICANT_F_SUB}' and flashcard_id in (select id from flashcards where deck_id = '{dt.decks.0.id}')"]
+      expect: '"saved":true'
+
+nodes:
+  # the course page has a <main> of its own; the tab list is only on the course page
+  coursePage: { css: 'main:has([role=tablist])' }
+  # the names carry the count of decks ("Ders destesi 2"), so they are found by their beginning
+  tabCurriculumSelected: { role: tab, name: '/^Müfredat/' }
+  tabCurriculum: { role: tab, name: '/^Müfredat/' }
+  tabDeck: { role: tab, name: '/^Ders destesi/' }
+  tabDeckSelected: { role: tab, name: '/^Ders destesi/' }
+  deckPanel: { role: tabpanel, name: '/^Ders destesi/' }
+  # "Desteler" and "Kartlar" are also words of other buttons and links of the page: the chips are found by their whole name
+  viewListPressed: { role: button, name: '/^Desteler$/' }
+  viewList: { role: button, name: '/^Desteler$/' }
+  viewCards: { role: button, name: '/^Kartlar$/' }
+  viewCardsPressed: { role: button, name: '/^Kartlar$/' }
+  # the eyebrow, the line and the bar's name hold the deck's own counts, which the marks of the walk change
+  featuredEyebrow: { text: '/^(Sıradaki deste|Bu haftanın destesi)/' }
+  featuredLine: { text: '/yeni kart|tekrar/' }
+  progressBar: { role: progressbar, name: '/karttan \d+ tanesi ezberlendi/' }
+  # a row is the other deck: its title is the second deck's, and its badge is data
+  rowLink: { role: link, name: '/^Deneme destesi deckTab ikinci$/' }
+  rowBadge: { text: '/^(Başla|Tamamlandı|\d+ kart tekrar)$/' }
+  pickChip: { role: button, name: '/^Deneme destesi deckTab/', within: { role: group, name: Deste } }
+  # "{marked} / {total} işaretlendi": the number moves with every mark
+  testCount: { text: '/\d+ \/ \d+ işaretlendi/' }
+  # a card is a button named "Ön yüz <text>" or "Arka yüz <text>"; the first of those, which is the first card not yet marked
+  cardFront: { role: button, name: '/^Ön yüz /', nth: 0 }
+  cardBack: { role: button, name: '/^Arka yüz /', nth: 0 }
+  cardsMarked: { role: button, name: '/^Arka yüz /' }
+  markBadge: { text: '/^(Bildin|Bilemedin)$/' }
+  # "Bitir" is part of "Sınamayı bitir"
+  stopTest: { role: button, name: '/^Sınamayı bitir$/' }
+  finish: { role: button, name: '/^Bitir$/' }
+  # the summary: "{total} kartın {known} tanesini bildin.", whose numbers are the round's own (the retry's is "1 kartın 1 tanesini bildin.")
+  summaryStatus: { css: '[role=status]', hasText: 'tanesini bildin' }

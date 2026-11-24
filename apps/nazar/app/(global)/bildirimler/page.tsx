@@ -1,12 +1,13 @@
-import {
-  PlaceholderPage,
-  placeholderMetadata,
-} from "~/features/shell/components/placeholder-page";
+import type { Metadata } from "next";
+import { NotificationsPage } from "~/features/notifications/components/notifications-page";
+import { getMessages } from "~/lib/i18n/messages";
 
-export const generateMetadata = () =>
-  placeholderMetadata("general.notifications");
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getMessages("nazar.Notifications");
+  return { title: t("title") };
+}
 
-/** The notification list is not in the Nazır canvas yet; the bell and the menu badge already count the unread. */
+/** Bildirimler: the caller's own notifications; the bell and the menu badge count the unread. */
 export default function Page() {
-  return <PlaceholderPage labelKey="general.notifications" />;
+  return <NotificationsPage />;
 }

@@ -1,0 +1,160 @@
+# What every binding of nizam.hosting.grantAndRevoke shares: the data the walk makes, the events no node sends, the places the states are
+# checked at, where role and name cannot find a node, and what a step leaves outside the screen. It names no scenario: binding.yaml and the
+# files beside it each extend it and give their own, because a scenario that takes no transition of its own (the same story by another
+# person, a refusal that is made by a hook) is not walked by `--cover transitions` and needs a run of its own (see binding.yaml).
+#
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every locator below comes from the code
+# (apps/nizam/features/hosting, libs/ui/src/mds) and none was looked for in a browser; where the walk may need a fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.hosting.grantAndRevoke
+
+browser: { width: 1440, height: 900 }
+
+data:
+  # walk-data.mjs make writes it; read after a scenario's `setup`, so a missing file is fine until a scenario uses it
+  made: { json: ../.local/made/hosting.json }
+
+events:
+  # Vazgeç and the close icon both send CANCEL; Escape closes the window, or only the list while the list is open
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog } }
+  ESCAPE: [{ key: Escape }]
+  CLOSE_LIST: [{ key: Escape }]
+  # the person leaves for the köşk's first settings tab, a page of the same app
+  NAVIGATE: [{ goto: '{nizam}/kosks/{made.kosk}/ayarlar' }]
+
+states:
+  # the page keeps one address through every state of both windows; `*` is one path segment
+  listed: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  grantForm: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  choosing: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  grantReady: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  revokeAsk: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  revokeReady: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  revokeNoCourses: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  # the two refusals of the page keep its address too, and show the shell's no-access face
+  forbidden: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  not_found: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  # an exit with no screen of its own is checked by its address
+  left: { url: '{nizam}/kosks/*/ayarlar' }
+
+nodes:
+  # ---- the page: the shell's <main> holds the page's own div (data-testid=hosting), which the page the walk leaves for does not ----
+  page: { css: 'main#main:has([data-testid=hosting])' }
+  breadcrumb: { role: navigation, name: Sayfa yolu }
+  crumbSettingsLink: { role: link, name: Köşk ayarları, within: { role: navigation, name: Sayfa yolu } }
+  crumbSettingsText: { css: '.mds-breadcrumb__text', within: { role: navigation, name: Sayfa yolu } }
+  # the last crumb has the h1's words; it is the one marked as the current page
+  crumbCurrent: { css: '[aria-current=page]', within: { role: navigation, name: Sayfa yolu } }
+  pageTitle: { role: heading, name: Barındırma hakları }
+  tabsNav: { role: navigation, name: Köşk ayarları bölümleri }
+  tabGeneral: { role: link, name: Genel, within: { role: navigation, name: Köşk ayarları bölümleri } }
+  tabNazims: { role: link, name: Köşk nazımları, within: { role: navigation, name: Köşk ayarları bölümleri } }
+  # the number of rights follows the label inside the link
+  tabHosting: { role: link, name: '/^Barındırma hakları/', within: { role: navigation, name: Köşk ayarları bölümleri } }
+  grantButton: { role: button, name: Barındırma hakkı ver, within: { testId: hosting } }
+
+  # ---- the table: Table responsive="stack" gives each cell a data-label; the walk's own rows are found by what they hold ----
+  emptyRow: { css: 'td.mds-table__empty', hasText: Henüz barındırma hakkı yok }
+  # the first cell holds the name and, under it, the başmüderris in two <bdi>
+  rowName: { role: rowheader, hasText: '{made.name}' }
+  rowHead: { css: 'tbody bdi.mds-caption', hasText: '/^Başmüderris /' }
+  # who gave the right is a name: the person who gave it, whoever that was
+  rowGrantedBy: { css: 'tbody td[data-label="Veren"] > span > bdi', hasText: '/^.+$/' }
+  rowGrantedRole: { css: 'tbody td[data-label="Veren"] .mds-caption', hasText: '/^(Medaris başnazımı|Medaris nazımı|Köşk nazımı)$/' }
+  # the date is the day of the walk, in Istanbul's zone
+  rowDate: { css: 'tbody td[data-label="Tarih"]', hasText: '/^\d{1,2} [A-Za-zÇĞİÖŞÜçğıöşü]+ \d{4}$/' }
+  # the number of open courses: 2 for a walk with two, 0 for the one with none (the sample says 2)
+  rowCount: { css: 'tbody td[data-label="Açık ders"] .tabular-nums', hasText: '/^\d+$/' }
+  rowSummary: { css: 'tbody td[data-label="Açık ders"] .mds-caption', hasText: 1 yayında · 1 taslak }
+  # the walk's own row: the second walk's medrese ("... ikinci") has a name that goes on from this one, so the end is anchored
+  rowRevoke: { role: button, name: '/^Barındırma hakkını geri al: Deneme medresesi hosting$/' }
+  footnote: { css: 'p.mds-caption', hasText: Barındırma hakkı geri alınınca medrese }
+
+  # ---- Sonner's toasts: found by their own hook and what they say ----
+  toastGranted: { css: '[data-sonner-toast]', hasText: Barındırma hakkı verildi }
+  toastGrantedBody: { css: '[data-sonner-toast]', hasText: bu köşkte ders açabilir }
+  toastRevoked: { css: '[data-sonner-toast]', hasText: Barındırma hakkı geri alındı }
+  toastRevokedBody: { css: '[data-sonner-toast]', hasText: bu köşkte yeni ders açamaz }
+  toastGrantFailed: { css: '[data-sonner-toast]', hasText: Barındırma hakkı verilemedi }
+  toastGrantMadrasahGone: { css: '[data-sonner-toast]', hasText: Bu medrese artık yok ya da gizli }
+  toastGrantKoskGone: { css: '[data-sonner-toast]', hasText: Bu köşk artık yok }
+  toastGrantForbidden: { css: '[data-sonner-toast]', hasText: Bunu yapma izniniz yok }
+  toastGrantGeneric: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti }
+  toastRevokeFailed: { css: '[data-sonner-toast]', hasText: Geri alınamadı }
+  toastRevokeNotHeld: { css: '[data-sonner-toast]', hasText: Bu medresenin bu köşkte barındırma hakkı yok }
+  toastRevokeKoskGone: { css: '[data-sonner-toast]', hasText: Bu köşk artık yok }
+  toastRevokeForbidden: { css: '[data-sonner-toast]', hasText: Bunu yapma izniniz yok }
+  toastRevokeGeneric: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti }
+
+  # ---- the window "Barındırma hakkı ver": the page behind it is inert, so these are found by the window they are in ----
+  grantEyebrow: { css: 'p.mds-eyebrow', within: { role: dialog, name: Barındırma hakkı ver } }
+  grantClose: { role: button, name: Kapat, within: { role: dialog, name: Barındırma hakkı ver } }
+  grantCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Barındırma hakkı ver } }
+  grantSubmit: { role: button, name: '/^Barındırma hakkı ver$/', within: { role: dialog, name: Barındırma hakkı ver } }
+  madrasahField: { role: combobox, name: Medrese, within: { role: dialog, name: Barındırma hakkı ver } }
+  # the select shows the chosen medrese as "{name} (@{handle})"
+  madrasahChosen: { role: combobox, hasText: 'Deneme medresesi hosting (@deneme-hosting)', within: { role: dialog, name: Barındırma hakkı ver } }
+  # the open list: an unnamed listbox with one option per medrese that holds no right; the walk chooses its own by name and handle (the
+  # seeded medrese and the other walks' are in the list too)
+  madrasahList: { role: listbox }
+  optMadrasah: { role: option, name: '/^Deneme medresesi hosting \(@deneme-hosting\)$/' }
+  grantBusy: { css: 'output', hasText: Yükleniyor, within: { role: dialog, name: Barındırma hakkı ver } }
+
+  # ---- the window "Barındırma hakkını geri al" ----
+  revokeEyebrow: { css: 'p.mds-eyebrow', within: { role: dialog, name: Barındırma hakkını geri al } }
+  revokeClose: { role: button, name: Kapat, within: { role: dialog, name: Barındırma hakkını geri al } }
+  revokeCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Barındırma hakkını geri al } }
+  revokeSubmit: { role: button, name: '/^Barındırma hakkını geri al$/', within: { role: dialog, name: Barındırma hakkını geri al } }
+  # the intro is one paragraph with the medrese's name in <b>; its two forms are told apart by their second sentence, and the count is
+  # the walk's own (the sample says 2, which is also the walk's)
+  introSome: { css: 'p', hasText: '/kapanmaz; onlara ne olacağını seçin\.$/', within: { role: dialog, name: Barındırma hakkını geri al } }
+  introNone: { css: 'p', hasText: 'Medresenin bu köşkte açık dersi yok.', within: { role: dialog, name: Barındırma hakkını geri al } }
+  courseList: { testId: open-courses }
+  courseTitle: { css: '[data-testid=open-courses] bdi.font-semibold', hasText: '/^Deneme dersi hosting-(ders|taslak)$/' }
+  # "Henüz talebe yok · Hamdi Müderris Hoca": the walk's courses have no talebe and the seeded müderris as their one hoca, so no star
+  courseLine: { css: '[data-testid=open-courses] span.mds-caption', hasText: Henüz talebe yok · Hamdi Müderris Hoca }
+  courseStatus: { css: '[data-testid=open-courses] .mds-badge', hasText: '/^(Yayında|Taslak)$/' }
+  # a radio's words are its label's, beside it, not inside it: found by role and name, not by the text it contains
+  choicesGroup: { role: radiogroup, name: Açık dersler }
+  choiceKeep: { role: radio, name: Dersler sürsün }
+  choiceHide: { role: radio, name: Dersleri gizle }
+  keepDesc: { css: 'span.mds-choice__desc', hasText: '/sürer; talebeler bir değişiklik görmez/' }
+  hideDesc: { css: 'span.mds-choice__desc', hasText: '/listelerden çıkar;/' }
+  auditNote: { css: 'p.mds-dialog__meta' }
+  revokeBusy: { css: 'output', hasText: Yükleniyor, within: { role: dialog, name: Barındırma hakkını geri al } }
+
+# What a step leaves outside the screen, read straight from tedrisat's database through helpers/sql.mjs (selects only). {grantRole} is the
+# role the person acts as (KOSK_NAZIM, or SYSTEM_ADMIN for the başnazım) and {hideLevel} the level a hide is made at ('kosk', or 'platform');
+# both are the scenario's own `vars`.
+effects:
+  grantKoskHostingRight:
+    # madrasahs.e2e.ts#10 a-held and a-audit: the right is held, and the newest audit row of the köşk says who gave it
+    - run: [node, helpers/sql.mjs, "select count(*) as n from madrasah_kosk_hosting where kosk_id = '{made.kosk}' and madrasah_id = '{made.madrasah}' and revoked_at is null"]
+      expect: '"n":1}'
+    - run: [node, helpers/sql.mjs, "select details->>'grantedByRole' as role from audit_log where action = 'hosting_right.grant' and entity_id = '{made.kosk}' order by seq desc limit 1"]
+      expect: '"role":"{grantRole}"'
+  revokeKoskHostingRight:
+    # madrasahs.e2e.ts#11 a-held: the right is no longer held (the row stays as history, with revoked_at)
+    - run: [node, helpers/sql.mjs, "select count(*) as n from madrasah_kosk_hosting where kosk_id = '{made.kosk}' and madrasah_id = '{made.madrasah}' and revoked_at is null"]
+      expect: '"n":0}'
+  revokedKept:
+    # #11: the courses are not hidden, and the audit row says KEEP
+    - run: [node, helpers/sql.mjs, "select count(*) as n from courses where kosk_id = '{made.kosk}' and madrasah_id = '{made.madrasah}' and archived_at is not null"]
+      expect: '"n":0}'
+    - run: [node, helpers/sql.mjs, "select details->>'coursesAction' as action from audit_log where action = 'hosting_right.revoke' and entity_id = '{made.kosk}' order by seq desc limit 1"]
+      expect: '"action":"KEEP"'
+  revokedHidden:
+    # #12: both courses, the draft too, are hidden, at the level the person acts at, and the audit row names them
+    - run: [node, helpers/sql.mjs, "select count(*) as n from courses where kosk_id = '{made.kosk}' and madrasah_id = '{made.madrasah}' and archived_at is not null"]
+      expect: '"n":2}'
+    - run: [node, helpers/sql.mjs, "select distinct archived_level as level from courses where kosk_id = '{made.kosk}' and madrasah_id = '{made.madrasah}'"]
+      expect: '"level":"{hideLevel}"'
+    - run: [node, helpers/sql.mjs, "select details->>'coursesAction' as action, jsonb_array_length(details->'hiddenCourseIds') as hidden from audit_log where action = 'hosting_right.revoke' and entity_id = '{made.kosk}' order by seq desc limit 1"]
+      expect: '"action":"HIDE","hidden":2'
+  revokedNoCourses:
+    # nothing to hide: the audit row says KEEP and names no course
+    - run: [node, helpers/sql.mjs, "select details->>'coursesAction' as action, jsonb_array_length(details->'hiddenCourseIds') as hidden from audit_log where action = 'hosting_right.revoke' and entity_id = '{made.kosk}' order by seq desc limit 1"]
+      expect: '"action":"KEEP","hidden":0'

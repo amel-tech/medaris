@@ -1,0 +1,126 @@
+# The screens of nazar.roster.complete: Talebeler of a course (/ders/<id>/talebeler) on its tabs Başvurular, Kayıtlı and Tamamlayanlar,
+# with the search, the sort, "Daha fazla göster", the busy rows and the toasts of a completion and a reopening, the page of a reader
+# with no button, the refusal and the failed read. Read from apps/nazar/features/enrolments and libs/ui/src/mds; every word is copied
+# from libs/i18n/src/locales/tr/nazar.json by a script (it fails on a missing key and compares each value). Two messages are not in
+# that file: `Changes.note`, the one authored message of this catalog (no app message says what a completion changes and what follows
+# from it: the toast says only "{name} dersi tamamladı"), and `composed.CourseStudents.tabCount`, the number the tab draws after its
+# label (libs/ui/src/mds/tabs.tsx:67, formatCount). Where a node says "repeat", the page draws it once per row; the replay finds the
+# rows through the binding.
+schema: delurio-graph/0
+kind: ui
+id: nazar.roster.complete
+flow: nazar.roster.complete
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Esma Başvuran
+  course: Deneme dersi rosCom
+  count: "12"
+  total: "12"
+  shown: "10"
+
+# The page keeps no focus of its own on load (nothing in features/enrolments sets it) and none after a completion or a reopening:
+# the pressed button's row leaves its table with the refreshed list, so the focus falls to the body (F-D1-05). There is therefore no
+# `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------
+  studentsPage: { type: page, component: Page, role: main, in: [applications, enrolled, completing, completed, reopening, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  studentsTitle: { type: text, component: Heading, role: heading, text: { key: CourseStudents.title }, in: [applications, enrolled, completing, completed, reopening, forbidden, loadFailed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:78 } # h1; the <title> says "Talebeler · Medaris Nazar"
+  subtitle: { type: text, component: Text, text: { key: CourseStudents.subtitle, params: { course: course.title } }, in: [applications, enrolled, completing, completed, reopening, forbidden, loadFailed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:79 } # CourseStudents.subtitleUnnamed when neither the course read nor the portal's scopes name it
+
+  # --- above the tabs ---------------------------------------------------------------------------------------------------
+  bulkOpen: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.bulk.open }, in: [applications, enrolled, completing, completed, reopening], when: "reader in ['team', 'decider']", source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:196 } # drawn for whoever holds enrollment.decide; pressing it is nazar.roster.bulkAdd
+
+  # --- the tabs ---------------------------------------------------------------------------------------------------------------
+  # duringStep on the tabs, the sort and "Daha fazla göster": while a row's completion or reopening runs, only that row's buttons are
+  # off (roster-table.tsx:183); the tabs, the sort header and the paging act at once, and the step goes on to its toast and its
+  # router.refresh (:101) whichever tab is open.
+  tabList: { type: list, component: List, role: tablist, name: { key: CourseStudents.tabsLabel }, in: [applications, enrolled, completing, completed, reopening], source: libs/ui/src/mds/tabs.tsx:103 } # Base UI tabs, activateOnFocus: the arrow keys move and select
+  tabApplications: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.applications }, in: [applications, enrolled, completing, completed, reopening], emits: TAB_APPLICATIONS, duringStep: true, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:212 } # its name is this word and its count (a span right after it; the exact join is not verified in a browser)
+  tabEnrolled: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.enrolled }, in: [applications, enrolled, completing, completed, reopening], emits: TAB_ENROLLED, duringStep: true, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:217 }
+  tabCompleted: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.completed }, in: [applications, enrolled, completing, completed, reopening], emits: TAB_COMPLETED, duringStep: true, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:222 }
+  tabRemoved: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.removed }, in: [applications, enrolled, completing, completed, reopening], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:227 } # drawn, never opened here: nazar.roster.remove
+  countEnrolled: { type: text, component: Text, text: { key: composed.CourseStudents.tabCount, params: { count: roster.enrolled } }, in: [applications, enrolled, completing, completed, reopening], source: libs/ui/src/mds/tabs.tsx:67 } # the number after "Kayıtlı": it drops by one with a completion and comes back with a reopening (the binding reads it by its own tab)
+  countCompleted: { type: text, component: Text, text: { key: composed.CourseStudents.tabCount, params: { count: roster.completed } }, in: [applications, enrolled, completing, completed, reopening], source: libs/ui/src/mds/tabs.tsx:67 } # after "Tamamlayanlar": 0, then 1 after a completion
+
+  # --- Başvurular -------------------------------------------------------------------------------------------------------------
+  panelApplications: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabApplications }, in: [applications], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234 } # Base UI's TabsPanel, named by its tab (not verified)
+  applicationsNote: { type: text, component: Text, text: { key: CourseStudents.applicationsNoteOpen }, in: [applications], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:235 } # a course that takes anyone; CourseStudents.applicationsNote for one that asks (nazar.roster.decide)
+  applicationsTable: { type: list, component: List, role: table, name: { key: CourseStudents.captions.applications }, in: [applications], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:244 } # Table responsive=stack: explicit table roles, named by its hidden caption
+  applicationsEmpty: { type: text, component: Text, text: { key: CourseStudents.empty.applications }, in: [applications], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:249 }
+
+  # --- Kayıtlı ----------------------------------------------------------------------------------------------------------------
+  panelEnrolled: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabEnrolled }, in: [enrolled, completing], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:254 }
+  rosterHelp: { type: text, component: Text, text: { key: CourseStudents.roster.help }, in: [enrolled, completing], source: apps/nazar/features/enrolments/components/roster-table.tsx:218 } # only on Kayıtlı
+  searchEnrolled: { type: field, component: TextField, role: searchbox, text: { key: CourseStudents.roster.searchLabel }, value: { literal: "" }, in: [enrolled, completing], source: apps/nazar/features/enrolments/components/roster-table.tsx:202 } # type=search, the label is an aria-label, the placeholder (searchPlaceholder) says "name or e-mail"; no search landmark around it; it filters the page's own list in the browser (F-D1-04)
+  enrolledTable: { type: list, component: List, role: table, name: { key: CourseStudents.captions.enrolled }, in: [enrolled, completing], source: apps/nazar/features/enrolments/components/roster-table.tsx:223 }
+  colStudent: { type: text, component: Text, role: columnheader, text: { key: CourseStudents.columns.student }, in: [enrolled, completing, completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:114 } # aria-sort on this cell: ascending at the start
+  sortByName: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.columns.student }, in: [enrolled, completing], emits: SORT, duringStep: true, source: libs/ui/src/mds/table.tsx:139 } # the header's own button; the only sortable column; it flips A-Z and Z-A and says nothing out loud
+  colEmail: { type: text, component: Text, role: columnheader, text: { key: CourseStudents.columns.email }, in: [enrolled, completing, completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:126 }
+  colJoined: { type: text, component: Text, role: columnheader, text: { key: CourseStudents.columns.joined }, in: [enrolled, completing, completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:139 } # on Tamamlayanlar too: the day the talebe joined, not the day of the completion (ROSCOM-3)
+  colProgress: { type: text, component: Text, role: columnheader, text: { key: CourseStudents.columns.progress }, in: [enrolled, completing, completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:149 }
+  colActions: { type: text, component: Text, role: columnheader, text: { key: CourseStudents.columns.actions }, in: [enrolled, completing, completed, reopening], when: teamReads, source: apps/nazar/features/enrolments/components/roster-table.tsx:165 } # visually hidden; the column is not drawn at all for a reader who holds neither enrollment.complete nor enrollment.remove
+  rowsEnrolled: { type: text, component: Text, role: rowheader, repeat: roster.enrolled, in: [enrolled, completing], when: rowsShown, source: apps/nazar/features/enrolments/components/roster-table.tsx:119 } # the talebe's name, a <th scope=row>: ten rows, then the rest after "Daha fazla göster"; one row for a search that finds one
+  rowFirstAscending: { type: text, component: Text, role: rowheader, in: [enrolled], when: "search == 'none' and order == 'ascending'", source: apps/nazar/features/enrolments/enrolments.ts:163 } # the first name in Turkish order heads the list; the binding says whose
+  rowFirstDescending: { type: text, component: Text, role: rowheader, in: [enrolled], when: "search == 'none' and order == 'descending'", source: apps/nazar/features/enrolments/enrolments.ts:163 } # the last name heads it after the sort flips
+  rowByName: { type: text, component: Text, role: rowheader, in: [enrolled], when: "search == 'name'", source: apps/nazar/features/enrolments/enrolments.ts:151 } # the one talebe the name finds
+  rowByEmail: { type: text, component: Text, role: rowheader, in: [enrolled], when: "search == 'email'", source: apps/nazar/features/enrolments/enrolments.ts:151 } # the one talebe the e-mail finds
+  progressBars: { type: text, component: Text, role: progressbar, name: { key: CourseStudents.roster.progressLabel, params: { name: student.name } }, repeat: roster.enrolled, in: [enrolled, completing], when: rowsShown, source: apps/nazar/features/enrolments/components/roster-table.tsx:154 } # the talebe's own progress, read-only; their name is its hidden label
+  complete: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseStudents.roster.completeLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.complete }, in: [enrolled], when: "reader == 'team' and search != 'nobody'", repeat: roster.enrolled, emits: COMPLETE, source: apps/nazar/features/enrolments/components/roster-table.tsx:178 } # one per row, drawn for whoever holds enrollment.complete; while a row is being completed only that row's buttons are off and the others stay live (see rowComplete)
+  remove: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseStudents.roster.removeLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.remove }, in: [enrolled], when: "reader == 'team' and search != 'nobody'", repeat: roster.enrolled, source: apps/nazar/features/enrolments/components/roster-table.tsx:178 } # drawn for whoever holds enrollment.remove, never pressed here: nazar.roster.remove
+  rowComplete: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseStudents.roster.completeLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.complete }, in: [completing], disabledIn: [completing], source: apps/nazar/features/enrolments/components/roster-table.tsx:182 } # the row being completed, the first item of complete: `loading` and `disabled` at once (aria-busy, and natively disabled, ROSCOM-1)
+  rowRemove: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseStudents.roster.removeLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.remove }, in: [completing], disabledIn: [completing], source: apps/nazar/features/enrolments/components/roster-table.tsx:183 } # the same row's twin: off, not busy
+  showing: { type: text, component: Text, text: { key: CourseStudents.roster.showing, params: { total: roster.total, shown: roster.shown } }, in: [enrolled, completing, completed, reopening], when: "search != 'nobody' and (state in ['enrolled', 'completing'] or done == 'some')", source: apps/nazar/features/enrolments/components/roster-table.tsx:239 } # "12 talebeden 10 tanesi gösteriliyor", a plain <p>, no live region (F-D1-04)
+  moreButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseStudents.roster.more }, in: [enrolled, completing], when: moreRows, emits: MORE, duringStep: true, source: apps/nazar/features/enrolments/components/roster-table.tsx:246 } # drawn while rows are hidden (more than ten, none searched); it unmounts when the list is complete (F-D1-05)
+  emptySearch: { type: text, component: Text, text: { key: CourseStudents.roster.emptySearch }, in: [enrolled], when: "search == 'nobody'", source: apps/nazar/features/enrolments/components/roster-table.tsx:233 } # the table's one cell; no "showing" line then (F-D1-04)
+  busyStatus: { type: status, component: Status, role: status, text: { key: Shell.loadingLabel }, in: [completing, reopening], source: libs/ui/src/mds/button.tsx:134 } # the busy button's visually hidden <output>; "Yükleniyor" is the button's hard-coded default, not the catalog's (the same words)
+
+  # --- Tamamlayanlar ----------------------------------------------------------------------------------------------------------
+  panelCompleted: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabCompleted }, in: [completed, reopening], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:263 }
+  searchCompleted: { type: field, component: TextField, role: searchbox, text: { key: CourseStudents.roster.searchLabel }, value: { literal: "" }, in: [completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:202 } # the same component as Kayıtlı's; its search and sort are not walked here
+  completedTable: { type: list, component: List, role: table, name: { key: CourseStudents.captions.completed }, in: [completed, reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:223 }
+  completedEmpty: { type: text, component: Text, text: { key: CourseStudents.empty.completed }, in: [completed], when: "done == 'none'", source: apps/nazar/features/enrolments/components/roster-table.tsx:231 } # before anyone completes, and after the only completion is reopened
+  rowsCompleted: { type: text, component: Text, role: rowheader, repeat: roster.completed, in: [completed, reopening], when: "done == 'some'", source: apps/nazar/features/enrolments/components/roster-table.tsx:119 } # the talebe who was marked complete, with the day they joined (ROSCOM-3)
+  reopen: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseStudents.roster.reopenLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.reopen }, in: [completed], when: "reader == 'team' and done == 'some'", repeat: roster.completed, emits: REOPEN, source: apps/nazar/features/enrolments/components/roster-table.tsx:178 } # drawn for whoever holds enrollment.complete, also on the row of a barred talebe (ROSCOM-2)
+  rowReopen: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseStudents.roster.reopenLabel, params: { name: student.name } }, text: { key: CourseStudents.roster.reopen }, in: [reopening], disabledIn: [reopening], source: apps/nazar/features/enrolments/components/roster-table.tsx:182 } # the row being reopened: busy and natively disabled (ROSCOM-1)
+
+  # --- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays ------------------------
+  toastCompleted: { type: status, component: Status, role: dialog, name: { key: CourseStudents.roster.completed }, text: { key: CourseStudents.roster.completedBody, params: { name: student.name } }, in: [applications, enrolled, completed], when: "last == 'completed'", source: apps/nazar/features/enrolments/components/roster-table.tsx:81 } # closes by itself after 6 seconds
+  toastReopened: { type: status, component: Status, role: dialog, name: { key: CourseStudents.roster.reopened }, text: { key: CourseStudents.roster.reopenedBody, params: { name: student.name } }, in: [applications, enrolled, completed], when: "last == 'reopened'", source: apps/nazar/features/enrolments/components/roster-table.tsx:81 }
+  toastGone: { type: status, component: Status, role: dialog, name: { key: CourseStudents.roster.failedTitle }, text: { key: CourseStudents.errors.gone }, in: [enrolled, completed], when: "last == 'gone'", source: apps/nazar/features/enrolments/components/roster-table.tsx:95 } # tone info: it closes by itself
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.roster.failedTitle }, text: { key: Problems.actionForbidden }, in: [enrolled, completed], when: "last == 'refused'", source: apps/nazar/features/enrolments/components/roster-table.tsx:95 } # tone error: it stays until closed
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.roster.failedTitle }, text: { key: Problems.actionGeneric }, in: [enrolled, completed], when: "last == 'failed'", source: apps/nazar/features/enrolments/components/roster-table.tsx:95 } # also what a barred talebe's reopening gets (ROSCOM-2)
+
+  # --- the reader is refused ---------------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # --- the read failed ----------------------------------------------------------------------------------------------------------
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # SystemState shell draws a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: CourseStudents.loadFailedTitle }, in: [loadFailed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:89 } # an h1, the page's second (F-D1-01)
+  failedText: { type: text, component: Text, text: { key: CourseStudents.loadFailed }, in: [loadFailed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:90 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+edges:
+  - { labelledBy: [panelApplications, tabApplications] }
+  - { labelledBy: [panelEnrolled, tabEnrolled] }
+  - { labelledBy: [panelCompleted, tabCompleted] }
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [complete, completing] }
+  - { triggers: [reopen, reopening] }
+  - { triggers: [retry, opened] }
+
+rules:
+  - { id: F-D1-04, rule: "Searching the roster, flipping the sort and pressing Daha fazla göster change the list with no announcement: the 'N talebeden M tanesi gösteriliyor' line is a plain <p>, not a live region, and the empty-search text is only a table cell (roster-table.tsx:239-243, :230-234). Fix: role=status on the line and on the empty cell." }
+  - { id: F-D1-05, rule: "After Tamamladı say or Yeniden aç the acted row leaves its table with the refreshed list, so the focused button unmounts and the focus falls to <body>; Daha fazla göster unmounts too when the list is complete (roster-table.tsx:101, :246-252). Fix: move the focus to the table's caption or the next row's button after a decision." }
+  - { id: F-D1-20, rule: "No try/catch wraps the server-action call inside startTransition (roster-table.tsx:77-103): when the browser cannot reach Next the rejection escapes, setBusy(null) never runs and the row stays busy; React hands the error to the nearest boundary. Not verified in a browser. Fix: try/catch/finally with a network toast." }
+  - { id: F-D1-01, rule: "A failed read draws the retry state with its own h1 ('Talebeler okunamadı') under the page's own h1 'Talebeler', so heading navigation lists two page titles (load-failed.tsx:28 passes no headingLevel). Fix: headingLevel 2 when the state is inside the shell." }
+  - { id: ROSCOM-1, rule: "roster-table.tsx:182-183 gives the pressed button `loading` and `disabled` together, although the Button's own contract is 'busy: aria-disabled and aria-busy, never disabled, so focus survives a submit' (libs/ui/src/mds/button.tsx:29): the button the person is on becomes natively disabled the moment it is pressed, and its twin is disabled with it. The Başvurular table does it right (enrolments-tabs.tsx:165-166 and :177-178 disable only the twin). New finding (not in the inventory); not verified in a browser. Fix: `disabled={busy === row.userId && !isThisButton}`." }
+  - { id: ROSCOM-2, rule: "The roster read carries the open ban of every talebe (`ban: {id, scope}`, course.controller.ts:562) and nothing in features/enrolments reads it: a barred talebe's row says nothing, and 'Yeniden aç' on a completed barred talebe is drawn and refused by the API with BAN_ACTIVE (403, ban.service.ts:616), which the page words as the generic 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' (enrolments.ts:218) and keeps the row, so the person retries in vain. New finding. Fix: show the ban on the row and leave 'Yeniden aç' off it, or word BAN_ACTIVE ('Bu talebe bu dersten yasaklı; yasak kalkmadan yeniden açılamaz')." }
+  - { id: ROSCOM-3, rule: "Tamamlayanlar lists 'Kayıt tarihi', the day the talebe joined (listsOf, enrolments.ts:112), because the roster response has no completedAt (RosterEnrollmentResponse extends EnrollmentResponse, which has none; MyEnrollmentResponse has it, course-response.dto.ts:417). A course team cannot see when a course was completed, which the planned icazet record (P-06, MDRS-149) needs. New finding. Fix: add completedAt to the roster response and a 'Tamamlanma tarihi' column." }
+  - { id: ROSCOM-4, rule: "A completion changes more than its toast says. setEnrollmentStatus sends no notification (course.service.ts:1762 kicks the invitation sweep only), a seat that is not ENROLLED is not owed an invitation (lesson-invitation.repository.ts:136) and a completed course is left out of Programım (schedule.repository.ts:197), so the talebe's coming celses are cancelled in their calendar and vanish from their schedule while nobody tells them, and the page asks nothing before it does it ('Tamamladı say' has no confirmation) and says only '{name} dersi tamamladı'. New finding; the sweep's effect on a completion is read from the code, not run. Fix: tell the talebe, and say so in the toast (decision D1)." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Tamamladı say' in 'Tamamladı say: {name}', 'Yeniden aç' in 'Yeniden aç: {name}', 'Dersten çıkar' in 'Dersten çıkar: {name}' (WCAG 2.5.3). Holds." }
+  - { id: focus-not-set, rule: "No code sets the focus on this page: not on load, and not after a completion or a reopening (F-D1-05). The graph draws no initialFocus and no focus." }
+  - { id: buttons-follow-the-code, rule: "A button the reader does not hold the code for is not drawn (rosterActions, enrolments.ts:199-206; the whole actions column is absent when none is allowed), and the API still decides every write; a ders nazırı who holds enrollment.decide only reads the lists with no button. The page does not say why a button is missing." }

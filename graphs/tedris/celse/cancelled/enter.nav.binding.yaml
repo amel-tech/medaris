@@ -1,0 +1,10 @@
+# The way into tedris.celse.cancelled from Programım: the title of the celse's row, which links to its page. tedris.nav's own binding gives no
+# locator for an entry that needs an item (`data: true`), because the item is the walk's to choose, so this file extends it and names the
+# celse the walk reads (the scenario's `course` and `celse`), found by its address.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  schedule->celse: { css: 'a[href="/courses/{course}/lessons/{celse}"]' }

@@ -1,0 +1,97 @@
+# The Medaris kit (SPEC.md §8 of @delurio/cli): how the components of ui.yaml look in the four web apps, so that the
+# graphs' pages and the videos drawn from them show Medaris screens rather than plain wireframes. It is data: a template
+# per component and per role, drawn with the .mds-* classes the apps ship (libs/ui/src/mds), on the tokens of
+# libs/tokens/medaris.css. tokens.json, dark.json and kit.css are generated from those two by
+# tools/graphs/build-kit.mjs; run it again after either changes. This file, the templates, is written by hand.
+#
+# What a drawing cannot carry: the fonts. Instrument Sans and Literata are loaded by the apps from the network, and a
+# kit fetches nothing, so a drawing uses them only where the machine that draws has them installed, and otherwise the
+# stacks' system fallbacks (ui-sans-serif, Georgia).
+schema: delurio-graph/0
+kind: kit
+id: medaris
+title: Medaris
+tokens: tokens.json
+dark: dark.json
+css: kit.css
+components:
+  Heading:
+    template: '<h2 class="mds-h3">{text}</h2>'
+  Text:
+    template: '<p class="mds-body-sm">{text}</p>'
+    roles:
+      alert: '<p class="mds-error" role="alert">{text}</p>'
+      cell: '<span class="mds-body-sm" role="cell">{text}</span>'
+      columnheader: '<span class="mds-caption" role="columnheader">{text}</span>'
+      rowheader: '<span class="mds-body-sm" role="rowheader">{text}</span>'
+      definition: '<span class="mds-body-sm" role="definition">{text}</span>'
+      term: '<span class="mds-caption" role="term">{text}</span>'
+      group: '<div class="mds-body-sm" role="group"{?named} aria-label="{name}"{/named}>{text}</div>'
+      img: '<span role="img"{?named} aria-label="{name}"{/named}>{text}</span>'
+      listitem: '<span class="mds-body-sm" role="listitem">{text}</span>'
+      navigation: '<nav class="mds-body-sm"{?named} aria-label="{name}"{/named}>{text}</nav>'
+      note: '<p class="mds-help" role="note">{text}</p>'
+      progressbar: '<div class="mds-progress" role="progressbar"{?named} aria-label="{name}"{/named}>{text}</div>'
+      region: '<section class="mds-body-sm"{?named} aria-label="{name}"{/named}>{text}</section>'
+      time: '<time class="mds-caption">{text}</time>'
+      timer: '<p class="mds-body-sm" role="timer"{?named} aria-label="{name}"{/named}>{text}</p>'
+  Button:
+    # {intent}: a confirming button is the primary one, a dismissing one the ghost, any other the secondary
+    template: '<button type="button" class="mds-btn mds-btn--regular mds-btn--{intent}"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
+    intents: { confirm: primary, dismiss: ghost, secondary: secondary, default: secondary }
+    roles:
+      checkbox: '<button type="button" role="checkbox" class="mds-btn mds-btn--regular mds-btn--outline" aria-checked="{?checked}true{/checked}{!checked}false{/checked}"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
+      menuitem: '<button type="button" role="menuitem" class="mds-option"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
+      tab: '<button type="button" role="tab" class="mds-tab"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
+  LinkButton:
+    template: '<a class="mds-btn mds-btn--regular mds-btn--link" href="#{id}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{text}</a>'
+    roles:
+      link: '<a class="mds-btn mds-btn--regular mds-btn--link" href="#{id}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{text}</a>'
+      menuitem: '<a role="menuitem" class="mds-option" href="#{id}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{text}</a>'
+  TextField:
+    # a field is named by its label, as a <label> around the control names it
+    template: '<label class="mds-field"><span class="mds-label">{text}</span><input class="mds-input" type="text" tabindex="-1"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}></label>'
+    roles:
+      textbox: '<label class="mds-field"><span class="mds-label">{text}</span><input class="mds-input" type="text" tabindex="-1"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}></label>'
+      searchbox: '<label class="mds-field"><span class="mds-label">{text}</span><input class="mds-input" type="search" tabindex="-1"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}></label>'
+      spinbutton: '<label class="mds-field"><span class="mds-label">{text}</span><input class="mds-input" type="number" tabindex="-1"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}></label>'
+      combobox: '<label class="mds-field"><span class="mds-label">{text}</span><select class="mds-select" tabindex="-1"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}><option></option></select></label>'
+      checkbox: '<label class="mds-choice"><input class="mds-check" type="checkbox" tabindex="-1"{?checked} checked{/checked}{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}><span class="mds-choice__label"{?named} aria-hidden="true"{/named}>{text}</span></label>'
+      switch: '<label class="mds-choice"><input class="mds-switch" type="checkbox" role="switch" tabindex="-1"{?checked} checked{/checked}{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}><span class="mds-choice__label"{?named} aria-hidden="true"{/named}>{text}</span></label>'
+      button: '<button type="button" class="mds-btn mds-btn--regular mds-btn--outline"{?named} aria-label="{name}"{/named}{?disabled} disabled{/disabled}>{text}</button>'
+  List:
+    # one element, with {children} where its items go
+    template: '<ul class="mds-body-sm">{children}</ul>'
+    roles:
+      list: '<ul class="mds-body-sm"{?named} aria-label="{name}"{/named}>{children}</ul>'
+      group: '<ul class="mds-choice-group" role="group"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{children}</ul>'
+      radiogroup: '<ul class="mds-choice-group" role="radiogroup"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{children}</ul>'
+      listbox: '<ul class="mds-popup" role="listbox"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{children}</ul>'
+      menu: '<ul class="mds-popup" role="menu"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{children}</ul>'
+      tablist: '<ul class="mds-tabs" role="tablist"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}>{children}</ul>'
+      navigation: '<nav{?named} aria-label="{name}"{/named}><ul class="mds-body-sm">{children}</ul></nav>'
+      table: '<div class="mds-table" role="table"{?named} aria-label="{name}"{/named}>{children}</div>'
+  ListItem:
+    # one element each; a list item that is a control draws the control inside it
+    template: '<li class="mds-body-sm">{text}</li>'
+    roles:
+      listitem: '<li class="mds-body-sm">{text}</li>'
+      option: '<li class="mds-option" role="option"{?named} aria-label="{name}"{/named}>{text}</li>'
+      # the dot is an input, hidden from the accessibility tree: the apps' CSS draws a checked radio on :checked, which a span never is
+      radio: '<li class="mds-choice" role="radio" aria-checked="{?checked}true{/checked}{!checked}false{/checked}"{?named} aria-label="{name}"{/named}{?disabled} aria-disabled="true"{/disabled}><input class="mds-radio" type="radio" tabindex="-1" aria-hidden="true"{?checked} checked{/checked}{?disabled} disabled{/disabled}>{text}</li>'
+      tab: '<li class="mds-tab" role="tab"{?named} aria-label="{name}"{/named}>{text}</li>'
+  Status:
+    # a status with no role is a badge; one with role status is the line a live region speaks
+    template: '<span class="mds-badge mds-badge--secondary">{text}</span>'
+    roles:
+      status: '<p class="mds-caption" role="status"{?named} aria-label="{name}"{/named}>{text}</p>'
+      progressbar: '<div class="mds-progress" role="progressbar"{?named} aria-label="{name}"{/named}>{text}</div>'
+      dialog: '<div class="mds-dialog__panel" role="dialog" aria-label="{name}">{text}</div>'
+  Alert:
+    # an alert is named by its title where it has one, which it shows above its words
+    template: '<div class="mds-alert mds-alert--error" role="alert"{?named} aria-label="{name}"{/named}>{?named}<p class="mds-alert__title">{name}</p>{/named}<p>{text}</p></div>'
+    roles:
+      alert: '<div class="mds-alert mds-alert--error" role="alert"{?named} aria-label="{name}"{/named}>{?named}<p class="mds-alert__title">{name}</p>{/named}<p>{text}</p></div>'
+      status: '<div class="mds-alert mds-alert--info" role="status"{?named} aria-label="{name}"{/named}>{?named}<p class="mds-alert__title">{name}</p>{/named}<p>{text}</p></div>'
+      alertdialog: '<div class="mds-dialog__panel" role="alertdialog" aria-label="{name}">{text}</div>'
+      dialog: '<div class="mds-dialog__panel" role="dialog" aria-label="{name}">{text}</div>'

@@ -1,0 +1,87 @@
+# tedris.celse.watchStream on the local stack: the watch page of a celse on air, as a spare talebe in a course of the walk's own.
+# NO SCENARIO HAS BEEN REPLAYED: replays are for the walk phase (the owner's word, 15 Nov 2026). The pages were only read by hand with the replay's
+# Chromium before that word (aria snapshots of the five looks); the locators below are written from those snapshots and the code. The binding loads
+# (`replay ... --emit-spec` reads it and walks nothing).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/celse/watchStream \
+#     --bind graphs/tedris/celse/watchStream/binding.yaml --absent --out <dir>                      (the main story)
+#     ... --to streamUnframed | --to sent_to_details.nothing                                        (the looks with a state of their own)
+#
+# What each scenario starts from. `watchstream-data.mjs up --seat` makes the course "Deneme dersi watchstream" in the second köşk with six celses
+# and gives the talebe a seat; the teardown has the shared `course.mjs remove watchstream` delete the course and clear its mail and notifications.
+#   talebe     (the main story)  applicantC, enrolled, on the celse that began 14 minutes ago and has a stream link: the player's frame, YouTube's chat,
+#              "Notlarım"; the way out is "Celse ayrıntıları".
+#   unframed   the same talebe on the celse whose stored link is not YouTube's (the row's column replaced by SQL; no route writes one): the placeholder,
+#              "Yayını aç", and "Soru sor" over "Notlarım" from the start.
+#   nothing    the same talebe on the celse that starts in 26 hours and already has a link: tedrisat sends none, so the address goes back to the
+#              celse's page.
+#   locked     the seeded OTHER, who holds no seat in the course: the address goes back to the celse's page, which draws the locked card.
+#   recorded   the same talebe on the celse that has an open recording: the address plays the recording (tedris.celse.watchRecording).
+# The looks that share a state with the main story are in binding.reader.yaml (the hoca, who has the chat only) and binding.held.yaml (a recording held
+# back, so the header says when it opens).
+# Not walked and not walkable on the stack: `streamEnded` (YouTube's player never starts a video in the walk's browser), the notes and questions
+# (other flows), the two links that open a new tab, a failed read and the 404 page (nothing makes tedrisat refuse a read that the layout has not
+# already answered), and the phone layout.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.watchStream
+
+scenarios:
+  talebe:
+    given: { watch: stream, viewer: talebe, link: framed, release: none }
+    as: applicantC
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.live}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up, --seat]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+  unframed:
+    given: { watch: stream, viewer: talebe, link: unframed, release: none }
+    as: applicantC
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.unframed}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up, --seat]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+  nothing:
+    given: { watch: nothing, viewer: talebe, link: framed, release: none }
+    as: applicantC
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.ahead}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up, --seat]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+  locked:
+    given: { watch: locked, viewer: reader, link: framed, release: none }
+    as: other
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.live}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+  recorded:
+    given: { watch: recording, viewer: talebe, link: framed, release: none }
+    as: applicantC
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.recorded}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up, --seat]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

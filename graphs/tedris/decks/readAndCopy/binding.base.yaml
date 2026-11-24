@@ -1,0 +1,110 @@
+# What every binding of tedris.decks.readAndCopy shares (the walks are in binding.yaml, binding.refused.yaml, binding.shared.yaml and binding.empty.yaml,
+# each of which extends this file): the data the walk's setup writes, the events no node sends, the addresses of the exits, the checks of what a step
+# writes, and the nodes that role and name cannot find. It has no scenario of its own and is not walked by itself.
+#
+# Written in the owner's no-replay phase: nothing here was replayed. The locators were read against the code and the kit's markup; a later walk
+# corrects them.
+#
+# The data: `rc` is graphs/.local/read-and-copy.json, which this flow's deck-data.mjs writes in `setup` and removes in `teardown` (the deck somebody
+# else wrote, the reader's own decks, their titles and ids). The reader is `applicantC`, a woman with a full profile and no enrolment, picked because
+# no other writer of tedris/decks uses C, D or E (browse, editOrDelete and visitorPublicDeck use G and H, manageCards F, publish G). The author of the
+# deck is the seeded müderris `MUDERRIS`, who also opens the course of `binding.shared.yaml`.
+#
+# The words each message is matched by: the replay reads a catalog message's {placeholders} from the binding's `samples` and, for one it is not given,
+# matches any text. So every placeholder the page fills is given here by the value the walk's data has.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.readAndCopy
+
+data:
+  rc: { json: ../.local/read-and-copy.json }
+
+samples:
+  title: '{rc.title}'
+  description: '{rc.description}'
+  count: '{rc.count}'
+  total: '{rc.count}'
+  done: '{rc.mastered}'
+  deck: '{rc.ownHadithTitle}'
+  kind: Hadis
+  n: '1'
+
+events:
+  # reading again is the browser's reload; Esc closes the dialog; a person who leaves goes to a page nobody here draws
+  RELOAD: [{ reload: true }]
+  ESCAPE: [{ key: Escape }]
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  # the exits are pages other flows draw; the walk checks only where it lands
+  study_opened: { url: '{tedris}/decks/study/{rc.deck}' }
+  decks_opened: { url: '{tedris}/decks' }
+  create_opened: { url: '{tedris}/decks/create' }
+  left: { url: '{tedris}/notifications' }
+  sent_to_sign_in: { url: '{keycloak}/realms/medaris/**' }
+
+# What a write leaves in the database, as e2e decks#24 and #25 read it. `{secret.E2E_APPLICANT_C_SUB}` is the reader's id.
+effects:
+  collectDeck:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from decks_users where deck_id = '{rc.deck}' and user_id = '{secret.E2E_APPLICANT_C_SUB}'"
+      expect: '"n":1'
+  uncollectDeck:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from decks_users where deck_id = '{rc.deck}' and user_id = '{secret.E2E_APPLICANT_C_SUB}'"
+      expect: '"n":0'
+  createCards:
+    # the card is in the chosen deck, with its front and its source (decks#24: the copy keeps front and content_meta.source) ...
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from flashcards where deck_id = '{rc.ownHadith}' and content_meta ->> 'source' = 'Buhârî, Müslim' and content_front like 'إِنَّمَا%'"
+      expect: '"n":1'
+    # ... and the deck that was read still has the cards it had (decks#24: "source deck still 8 cards")
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from flashcards where deck_id = '{rc.deck}'"
+      expect: '"n":{rc.count}'
+
+# Where role and name cannot find a node, or find several. The page's own <main> and the page the walk leaves for both have one, so it is found by
+# what only the reader's page holds: the section "Kartlar". Base UI's error toast is an alertdialog that is aria-hidden until it is focused, and says
+# its words twice (a visually hidden role=alert in the viewport), so each of its nodes is found by css and its own <p>.
+nodes:
+  readerMain: { css: 'main:has(section[aria-labelledby="deck-cards"])' }
+  breadcrumbDecks: { role: link, name: Desteler, within: { role: navigation, name: Sayfa yolu } }
+  # the badges are the only .mds-badge of the header
+  publicBadge: { css: 'header .mds-badge', hasText: Herkese açık }
+  collectedBadge: { css: 'header .mds-badge', hasText: Koleksiyonunda }
+  # the table's cells: the row headers are the fronts, the second cell holds the back and its source line
+  cardFrontFirst: { css: 'tbody tr th', count: 6 }
+  cardFrontAll: { css: 'tbody tr th', count: '{rc.count}' }
+  cardBack: { css: 'tbody tr td:nth-child(2) > span:first-child' }
+  cardSource: { css: 'tbody tr td:nth-child(2) .mds-caption' }
+  # "8 karttan 6’sı" and "8 karttan 8’i" are one message each with the Turkish possessive built in code: found by their beginning
+  showingPart: { css: 'main p.mds-caption', hasText: 'karttan 6’' }
+  showingAll: { css: 'main p.mds-caption', hasText: 'karttan {rc.count}’' }
+  # the dialog's own controls, by the dialog they are in (the page behind is inert, but a toast's "Kapat" is not)
+  copyClose: { role: button, name: Kapat, within: { role: dialog, name: Kendi desteme kopyala } }
+  copyCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Kendi desteme kopyala } }
+  copySubmit: { role: button, name: Kopyala, within: { role: dialog, name: Kendi desteme kopyala } }
+  createLink: { role: link, name: Deste oluştur, within: { role: dialog, name: Kendi desteme kopyala } }
+  # the walk's person holds one own deck of the deck's kind (and one of the other kind, which is not offered): one radio, no second
+  targetOption: { role: radio, name: '{rc.ownHadithTitle}', count: 1 }
+  # Base UI's toasts: a high-priority one is an alertdialog and aria-hidden until it is focused
+  addFailedToast: { css: '[role=alertdialog]', hasText: Deste eklenemedi }
+  addFailedTitle: { css: '[role=alertdialog] p', hasText: Deste eklenemedi }
+  addFailedHint: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  removeFailedToast: { css: '[role=alertdialog]', hasText: Deste çıkarılamadı }
+  removeFailedTitle: { css: '[role=alertdialog] p', hasText: Deste çıkarılamadı }
+  removeFailedHint: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  copyFailedToast: { css: '[role=alertdialog]', hasText: Kart kopyalanamadı }
+  copyFailedTitle: { css: '[role=alertdialog] p', hasText: Kart kopyalanamadı }
+  copyFailedHint: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  # the close icon of a toast, "Kapat" written in the kit
+  toastClose: { css: '.mds-toast button[aria-label=Kapat]' }

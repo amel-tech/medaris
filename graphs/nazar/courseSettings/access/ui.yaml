@@ -1,0 +1,118 @@
+# The screens of nazar.courseSettings.access: the card "Erişim, kayıt ve saat dilimi" of Ders ayarları (/ders/<id>/ayarlar) in nazar-web, its two
+# option lists, the toasts of a save, and the refusal that replaces the page when the codes are gone. Read from apps/nazar/features/course-settings
+# (course-settings-page.tsx, course-settings-form.tsx, controls.ts, course-settings.ts, actions.ts) and the kit's libs/ui/src/mds/{field,checkbox,
+# select,button,alert,toast}.tsx on 15 Nov 2026, not seen in a browser; the words are copied by script from libs/i18n/src/locales/tr/nazar.json
+# (namespaces CourseSettings, Problems, Nav; the app reads them as nazar.CourseSettings, ...).
+#
+# Words that are not in the app's i18n file (catalog keys `composed.*`, each with the code line it comes from):
+#   composed.CourseSettings.sampleFirst   "Hafta {week} · {firstTitle}"   the app's own `CourseSettings.sampleOption` ("Hafta {week} · {title}",
+#   composed.CourseSettings.sampleSecond  "Hafta {week} · {secondTitle}"   course-settings-form.tsx:201) once for each of the two sessions of the
+#                                                                         walk's course; two keys because a replay fills a sample by its placeholder's name
+#   composed.CourseSettings.zoneCity      "{city}"                          a zone's label, the last part of its IANA id with the underscores as spaces
+#                                                                         (`timeZoneCity`, libs/utils/src/time-zone.ts:150; course-settings-form.tsx:247-253)
+# `changes` is `Changes.note`, the one message authored for this catalog: no message of the app says what Kaydet changes as a whole (its own
+# `savedBody` says only that the settings were updated, after the fact), so one short note puts the page's own descriptions (closedDesc,
+# sampleHelp, approvalDesc, inPersonDesc, zoneHelp, versionConflict) together.
+#
+# The page sets no focus of its own on load, after a save or after a refusal (nothing in features/course-settings calls focus() or sets autoFocus:
+# focus-not-set), so there is no `initialFocus` and no `focus`; the replay leaves the focus unsaid. The two option lists are drawn as the account page
+# draws its own (a Base UI Select in a popup, the page behind taken to be inert, not verified in a browser).
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseSettings.access
+flow: nazar.courseSettings.access
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Örnek ders
+  week: "1"
+  firstTitle: Birinci celse
+  secondTitle: İkinci celse
+  city: Berlin
+
+nodes:
+  # --- the page: the heading, the sentence and the sidebar's entry -----------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack, refusedPage], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main>; it has no name (the app labels none)
+  title: { type: text, component: Heading, role: heading, text: { key: CourseSettings.title }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack, refusedPage], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:85 } # h1; the refusal draws it too (:64)
+  menuSettings: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.ders.settings }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack, refusedPage], source: apps/nazar/features/shell/nav.ts:142 } # the sidebar's entry for this page; it carries aria-current=page (e2e course-settings#1 a8), which a graph cannot say
+  intro: { type: text, component: Text, text: { key: CourseSettings.intro, params: { name: course.title } }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:86 }
+
+  # --- the refusal that replaces the page ------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [refusedPage], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a role=status, its title a <p>; it has no accessible name, so it is found by its words
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [refusedPage], source: apps/nazar/features/shell/components/page-problem.tsx:26 }
+
+  # --- the card ------------------------------------------------------------------------------------------------------------------------
+  accessForm: { type: page, component: Page, role: form, name: { labelledBy: accessTitle }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:146 } # <form aria-labelledby=course-access-heading data-testid=course-settings-form>, noValidate; the page has a second form below it (F-D2c-14)
+  accessTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.accessTitle }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:153 } # h2
+
+  # "Kapalı ders"
+  closedBox: { type: field, component: TextField, role: checkbox, text: { key: CourseSettings.closedLabel }, checked: "closed == 'on'", in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [sendingSample, sendingCourse], emits: TOGGLE_CLOSED, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:161 } # a bordered Checkbox with a lock icon, named by its label alone; it waits for Kaydet like the others
+  closedDesc: { type: text, component: Text, text: { key: CourseSettings.closedDesc }, in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:165 } # the box's aria-describedby
+  closedBoxLocked: { type: field, component: TextField, role: checkbox, text: { key: CourseSettings.closedLabel }, checked: true, in: [readLocked], disabledIn: [readLocked], source: apps/nazar/features/course-settings/controls.ts:38 } # held by the medrese's policy: shown ticked and shut, and never sent
+  closedLockedDesc: { type: text, component: Text, text: { key: CourseSettings.closedLocked }, in: [readLocked], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:166 }
+
+  # "Örnek ders"
+  sampleField: { type: field, component: TextField, role: combobox, text: { key: CourseSettings.sampleLabel }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [sendingSample, sendingCourse], emits: OPEN_SAMPLE, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:185 } # the kit's Select inside a Field: a button with role combobox, named by its label
+  sampleHelp: { type: text, component: Text, text: { key: CourseSettings.sampleHelp }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:187 } # the Field's description
+  sampleReadsNone: { type: text, component: Text, text: { key: CourseSettings.sampleNone }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], when: "sample == 'none'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:200 } # what the closed Select shows
+  sampleReadsFirst: { type: text, component: Text, text: { key: composed.CourseSettings.sampleFirst, params: { week: week, firstTitle: session.first } }, in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], when: "sample == 'first'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:201 }
+  sampleReadsSecond: { type: text, component: Text, text: { key: composed.CourseSettings.sampleSecond, params: { week: week, secondTitle: session.second } }, in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], when: "sample == 'second'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:201 }
+
+  # "Kayıt onayı gereksin"
+  approvalBox: { type: field, component: TextField, role: checkbox, text: { key: CourseSettings.approvalLabel }, checked: "approval == 'on'", in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [sendingSample, sendingCourse], emits: TOGGLE_APPROVAL, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:208 }
+  approvalDesc: { type: text, component: Text, text: { key: CourseSettings.approvalDesc }, in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:212 }
+  approvalBoxLocked: { type: field, component: TextField, role: checkbox, text: { key: CourseSettings.approvalLabel }, checked: true, in: [readLocked], disabledIn: [readLocked], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:219 } # `checked = locked || draft`: ticked whatever the course's own flag holds
+  approvalLockedDesc: { type: text, component: Text, text: { key: CourseSettings.approvalLocked }, in: [readLocked], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:213 }
+
+  # "Celseler yüz yüze yapılır" (MDRS-283)
+  inPersonBox: { type: field, component: TextField, role: checkbox, text: { key: CourseSettings.inPersonLabel }, checked: "inPerson == 'on'", in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [sendingSample, sendingCourse], emits: TOGGLE_IN_PERSON, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:228 } # no e2e spec touches it (CSA-3)
+  inPersonDesc: { type: text, component: Text, text: { key: CourseSettings.inPersonDesc }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:232 }
+
+  # "Saat dilimi"
+  zoneField: { type: field, component: TextField, role: combobox, text: { key: CourseSettings.zoneLabel }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [sendingSample, sendingCourse], emits: OPEN_ZONE, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:238 }
+  zoneHelp: { type: text, component: Text, text: { key: CourseSettings.zoneHelp }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:240 }
+  zoneReadsIstanbul: { type: text, component: Text, text: { key: CourseSettings.zoneIstanbul }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], when: "zone == 'istanbul'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:250 }
+  zoneReadsBerlin: { type: text, component: Text, text: { key: composed.CourseSettings.zoneCity, params: { city: zone.city } }, in: [clean, dirty, sendingSample, sendingCourse, saved, readBack], when: "zone == 'berlin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:252 }
+
+  # --- Vazgeç and Kaydet: the card's own pair (the page's second pair belongs to nazar.courseSettings.hocaTitles) -----------------------
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseSettings.cancel }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [readLocked, clean, sendingSample, sendingCourse, saved, readBack], emits: CANCEL, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 } # disabled={!dirty || busy}, nothing says why
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseSettings.save }, in: [readLocked, clean, dirty, sendingSample, sendingCourse, saved, readBack], disabledIn: [readLocked, clean, sendingSample, sendingCourse, saved, readBack], emits: SUBMIT, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:265 } # disabled={!dirty}, loading={busy}: aria-disabled and aria-busy while it is sent
+  submitBusy: { type: status, component: Status, role: status, text: { key: CourseSettings.saving }, in: [sendingSample, sendingCourse], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:269 } # the hidden <output> of the busy button
+
+  # --- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays until it is closed ----------
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: CourseSettings.saved }, text: { key: CourseSettings.savedBody, params: { name: course.title } }, in: [saved], when: "toast == 'saved'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:138 } # closes by itself after 6 seconds
+  toastStale: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: CourseSettings.errors.versionConflict }, in: [clean, dirty, sendingSample, sendingCourse], when: "toast == 'refused' and (world == 'staleValues' or world == 'staleVersion')", source: apps/nazar/features/course-settings/course-settings.ts:150 } # e2e course-settings#3 a8
+  toastPolicy: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: CourseSettings.errors.policy }, in: [clean, dirty, sendingSample, sendingCourse], when: "toast == 'refused' and (world == 'policyLate' or world == 'policyAfterSample')", source: apps/nazar/features/course-settings/course-settings.ts:148 } # names no box and no policy (CSA-1, CSA-2)
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: Problems.actionForbidden }, in: [clean, dirty, sendingSample, sendingCourse], when: "toast == 'refused' and world == 'forbidden'", source: apps/nazar/features/course-settings/course-settings.ts:146 } # e2e course-settings#10 a2-a3
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: CourseSettings.errors.generic }, in: [clean, dirty, sendingSample, sendingCourse], when: "toast == 'refused' and world == 'failed'", source: apps/nazar/features/course-settings/course-settings.ts:154 }
+
+  # --- the list "Örnek ders", open: "Örnek ders yok" and one option for each LIVE session; the page behind is inert ------------------
+  sampleList: { type: list, component: List, role: listbox, in: [choosingSample], source: libs/ui/src/mds/select.tsx:79 } # no name of its own
+  optSampleNone: { type: field, component: ListItem, role: option, text: { key: CourseSettings.sampleNone }, checked: "sample == 'none'", in: [choosingSample], emits: PICK_NONE, source: apps/nazar/features/course-settings/course-settings.ts:48 }
+  optSampleFirst: { type: field, component: ListItem, role: option, text: { key: composed.CourseSettings.sampleFirst, params: { week: week, firstTitle: session.first } }, checked: "sample == 'first'", in: [choosingSample], emits: PICK_FIRST, source: apps/nazar/features/course-settings/course-settings.ts:54 }
+  optSampleSecond: { type: field, component: ListItem, role: option, text: { key: composed.CourseSettings.sampleSecond, params: { week: week, secondTitle: session.second } }, checked: "sample == 'second'", in: [choosingSample], source: apps/nazar/features/course-settings/course-settings.ts:54 }
+
+  # --- the list "Saat dilimi", open: about 418 zones; two are drawn ----------------------------------------------------------------
+  zoneList: { type: list, component: List, role: listbox, in: [choosingZone], source: libs/ui/src/mds/select.tsx:79 }
+  optIstanbul: { type: field, component: ListItem, role: option, text: { key: CourseSettings.zoneIstanbul }, checked: "zone == 'istanbul'", in: [choosingZone], source: apps/nazar/features/course-settings/components/course-settings-form.tsx:250 }
+  optBerlin: { type: field, component: ListItem, role: option, text: { key: composed.CourseSettings.zoneCity, params: { city: zone.city } }, checked: "zone == 'berlin'", in: [choosingZone], emits: PICK_BERLIN, source: apps/nazar/features/course-settings/components/course-settings-form.tsx:252 }
+
+edges:
+  - { labelledBy: [accessForm, accessTitle] }
+  - { triggers: [submit, sending] }
+  - { triggers: [cancel, reverting] }
+
+rules:
+  - { id: F-D2c-14, rule: "The e2e specs of this card (course-settings#1 a7, #2, #3, #10) were last changed on 2026-10-06; since #344 (2026-10-16) the page also draws the card 'Hocalar ve unvanları' with its own 'Kaydet' and 'Vazgeç' for every holder of course.settings (hoca-unvan-card.tsx:155-172), so `getByRole('button', { name: 'Kaydet' })` finds two buttons and a click or an expect on it breaks in Playwright's strict mode: the specs cannot pass as written, for the müderris, the başmüderris and the başnazım alike. From the code; not run. This graph draws the form's own pair and the binding scopes every locator to `data-testid=course-settings-form`; the fix for the specs is the same scope, and for people using a screen reader two buttons of one name on one page is worth a name that tells the card (course-settings-form.tsx:258-272, hoca-unvan-card.tsx:155-172)." }
+  - { id: F-D2c-7, rule: "After a save that changes the stored values the whole form is built again (`key={JSON.stringify(stored)}`, course-settings-page.tsx:109, with `router.refresh()` at course-settings-form.tsx:142), so the pressed Kaydet is destroyed and the focus falls to the body; the toast is the only feedback. Not verified in a browser. Fix: after the refresh give the form heading `tabIndex=-1` and focus it, or keep one instance and update `saved`." }
+  - { id: F-D2c-17, rule: "The zone list offers about 418 zones, each labelled by its city alone (`timeZoneCity`: the last part of the id with underscores as spaces, so 'Europe/Berlin' reads 'Berlin' and 'America/Indiana/Knox' reads 'Knox'), in the order of the IANA ids and not of the labels, with no region and no search; 'İstanbul' is the only one worded by the catalog (course-settings-form.tsx:242-254, libs/utils/src/time-zone.ts:150-163). A hoca looking for a zone has to know its id's order. Fix: label 'Berlin (Avrupa)', sort by label, add type-ahead." }
+  - { id: CSA-1, rule: "New finding, from the code. A save that wrote the sample session and was then refused on the course's fields (a policy that came on, a code that went) answers with the toast 'Ayarlar kaydedilemedi' and the sentence of the refusal ('... ayar değiştirilmedi.' for a policy, 'Bunu yapma izniniz yok.' for a lost code) although the sample WAS changed (`stop(code)` is given no description when the first write landed, course-settings-form.tsx:83-93, 131-134), and `now !== saved` reads the page again, whose stored sample differs, so `key={JSON.stringify(stored)}` builds the form again and the pressed course fields are gone with it. The page does say 'Örnek ders kaydedilemedi; şu an bu dersin örnek dersi yok.' when the second sample write fails (:116-121), so the case is known; this one is not worded. The unit spec pins only that `refresh` is called (test/course-settings-form.spec.tsx:344). Fix: say that the sample was saved and the rest was not, and keep the draft of the course fields." }
+  - { id: CSA-2, rule: "New finding, from the code and its unit spec. A refusal that leaves the stored values as they were (PLATFORM_POLICY_LOCKED, AUTHZ_FORBIDDEN, anything else) does not read the page again: `stop` calls `refresh` only when a write landed or the code is COURSE_VERSION_CONFLICT (course-settings-form.tsx:92; test/course-settings-form.spec.tsx:323-342 pins `refresh` not called). The box stays unticked and open although the policy now holds it, Kaydet stays on, and the same press is refused the same way; the toast names no box and no policy. After a lost code the controls stay offered and only a reload says 'Bu sayfaya izniniz yok' (e2e course-settings#10 a5). Fix: read the page again after a policy lock (the box then shows shut with its reason) and after AUTHZ_FORBIDDEN, keeping the draft of the other controls." }
+  - { id: CSA-3, rule: "New finding (coverage). None of the twelve specs of apps/nazar/e2e/course-settings.e2e.ts touches 'Celseler yüz yüze yapılır' (MDRS-283, d24612bb, 2026-10-12): grep finds no `inPerson` in apps/nazar/e2e. The box is pinned by the unit spec (test/course-settings-form.spec.tsx:193-231) only. This graph draws it with the other four; its first walk is the replay's." }
+  - { id: focus-not-set, rule: "The page sets no initial focus on load, none after a save (the pressed Kaydet is gone with the remount, F-D2c-7) and none after a refusal, and moves none to the toast; a keyboard user finds the error only if the toast is read as a live region, which an alertdialog toast with priority high is (kit toast.tsx), and the focus stays where it was. The graph draws no `initialFocus` and no `focus`." }
+  - { id: stale-course-fields-not-told, rule: "Not a defect of the page, a limit of the story: a stale page is told to retry only when the sample session is among the changes. PATCH /courses/:id takes no version (course.controller.ts:300, 'Takes no version and never answers COURSE_VERSION_CONFLICT'), so a save of closed, approval, in person or the zone from an old page is accepted and the last save wins, field by field (the page sends only the fields it changed, courseSettingsPatch, course-settings.ts:91-106), and the toast says 'Ders ayarları kaydedildi' either way. e2e course-settings#3 walks the sample's conflict only." }
+  - { id: locked-approval-shown-ticked, rule: "The shut approval box is ticked whatever the course's own flag holds (`checked = locked || unlisted || draft`, course-settings-form.tsx:219-223), because a policy makes the enrolment wait anyway (MDRS-207): the page shows the effective state and not the stored one. The e2e does not read it; the replay's `policyOpen` walk stores false and expects the box ticked." }
+  - { id: checkboxes-not-switches, rule: "The three boxes are checkboxes that wait for Kaydet, not switches that commit at once (the kit's rule: a control that needs a save button beside it is not a switch). Holds." }

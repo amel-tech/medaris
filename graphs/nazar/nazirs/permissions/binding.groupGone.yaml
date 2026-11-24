@@ -1,0 +1,35 @@
+# nazar.nazirs.permissions, the walk's group is deleted while the editor is open. Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/nazirs/permissions \
+#     --bind graphs/nazar/nazirs/permissions/binding.groupGone.yaml --cover transitions --absent --out <dir>
+# The group was read when the editor opened; `before` on "Kaydet" deletes it through the API, so the save is refused with
+# PERMISSION_GROUP_NOT_FOUND: an error toast "Bu grup artık yok. Gruplar yenilendi; yeniden seçin." and the editor reads everything again, as a
+# form of what the nazır holds (nothing). The walk must have picked the group, or the save is not refused: the cover reaches `groupGone`
+# through PICK_GROUP.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.nazirs.permissions
+
+scenarios:
+  groupGone:
+    given: { row: awaiting, reads: ok, answer: groupGone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm
+
+nodes:
+  save:
+    role: button
+    name: Kaydet
+    before: [{ run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, drop-group], expect: permissions-data drop-group }]

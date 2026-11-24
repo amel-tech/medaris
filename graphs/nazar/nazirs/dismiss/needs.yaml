@@ -1,0 +1,204 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.nazirs.dismiss
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to dismiss one of its nazırs and answer for what that nazır handed on: the
+  flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For needs.gaps.yaml (nazar.nazirs.dismiss):
+# missing:  adopt-edit-or-drop-each-grant (MDRS-201), each-answer-names-its-person (none), focus-after-a-dismissal (none),
+# an-already-gone-nazir-is-not-an-error (none), not-appointed-by-you-is-worded (none)
+# unwalked: a-refusal-is-told-in-the-dialog, a-moved-list-is-asked-again, a-dropped-seat-with-a-grantee-asks-first, a-failed-read-can-be-retried
+# (code, no e2e; a walk cannot make the API refuse: the walk phase may drive them with a second browser or a stale list)
+# No replay is named below: none has run (the walk phase is later); the scenarios of binding.yaml, binding.holder.yaml and binding.drop.yaml are added to
+# `walked` as each passes.
+
+needs:
+  - id: dismiss-a-nazir
+    need: >-
+      The başmüderris ends a medrese nazır's seat from the nazırs' roster in one confirmed act: the seat and every permission the
+      nazır held in the medrese and its courses end at once, the row leaves the roster, and a message says who is no longer a
+      nazır.
+    evidence:
+      - state: roster
+      - node: dismissThis
+      - node: dismissDialog
+      - state: dismissing
+      - state: settled
+      - node: toastDismissed
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:112
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — Devral keeps what was given under the başmüderris's name, Düşür takes it back, and the nazır is gone (criteria 2, 3, 4, 5)"
+
+  - id: dismiss-from-every-row
+    need: >-
+      "Görevden al" is on the row of every nazır the başmüderris runs, whatever the date (the October version gate was lifted by
+      MDRS-215); a nazır who holds only madrasah.nazir_appoint has it on the rows they seated and no other.
+    evidence:
+      - node: dismissRow
+      - node: dismissThis
+      - source: apps/nazar/features/nazirs/components/nazirs-table.tsx:44
+      - source: apps/nazar/features/nazirs/components/nazirs-table.tsx:166
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — 'Görevden al' is on on every row, whatever the date (MDRS-215: no version gate)"
+
+  - id: ask-for-everyone-handed-on
+    need: >-
+      Before the seat ends, the başmüderris is shown every person the nazır gave a role or permission to, what each was given and
+      for how long, and answers for each one, Devral (it stays, under her name) or Düşür (it is taken back at once); nothing is
+      chosen for her, and the confirmation stays off until every person has an answer.
+    evidence:
+      - state: asking
+      - state: choosing
+      - state: partlyAnswered
+      - state: answered
+      - node: givenPerson
+      - node: personRole
+      - node: answerGroup
+      - node: takeOver
+      - node: drop
+      - node: answersNote
+      - node: gateNote
+      - node: submit
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:142
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:187
+      - source: apps/nazar/features/nazirs/nazirs.ts:273
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — after the gate it asks about each person the nazır gave something to, with nothing chosen and the button off until every row has an answer (criterion 1)"
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — Devral keeps what was given under the başmüderris's name, Düşür takes it back, and the nazır is gone (criteria 2, 3, 4, 5)"
+    note: Also drawn as the assertion choice-only-when-something-was-given, the assertion one-row-has-no-partial-answer.
+
+  - id: permission-rows-in-the-list
+    need: >-
+      A person the nazır gave a single permission or a group is listed with it ('1 izin: Başvuruyu onayla ya da reddet'), like a
+      person given a role. No API route lets a nazır give a permission (MDRS-108), so a walk cannot make such a row; the e2e seeds
+      it by SQL.
+    evidence:
+      - node: givenPerson
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:234
+      - source: apps/nazar/features/nazirs/nazirs.ts:91
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — after the gate it asks about each person the nazır gave something to, with nothing chosen and the button off until every row has an answer (criterion 1)"
+
+  - id: nothing-to-ask-when-nothing-was-given
+    need: >-
+      A nazır who gave nobody anything is dismissed without a choice step: the dialog says there is nothing to choose and what
+      falls with the seat, and the confirmation is ready at once.
+    evidence:
+      - state: nothingToAsk
+      - node: introNoneText
+      - node: dropNothing
+      - node: dropSummary
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:182
+      - source: apps/nazar/features/nazirs/nazirs.ts:316
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — a nazır who gave no one anything is dismissed without a choice step"
+    note: Also drawn as the assertion no-choice-when-nothing-was-given.
+
+  - id: cancel-writes-nothing
+    need: >-
+      "Vazgeç", Esc and the close icon close the dialog and change nothing; the scrim does not close it, so a stray click loses no
+      answers.
+    evidence:
+      - node: dismissCancel
+      - node: dismissClose
+      - node: dismissDialog
+      - state: roster
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:147
+      - source: libs/ui/src/mds/dialog.tsx:133
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — Vazgeç closes the dialog and changes nothing"
+      - test: apps/nazar/e2e/dismiss.e2e.ts
+        name: "nazir/15 — after the gate it asks about each person the nazır gave something to, with nothing chosen and the button off until every row has an answer (criterion 1)"
+
+  - id: adopt-edit-or-drop-each-grant
+    need: >-
+      Beside Devral and Düşür the başmüderris can edit a grant before the seat ends (a third answer per row, or a link to the
+      permission editor), as the removal of a role is specified in MDRS-201 (planned.md P-15). Today there are two answers and the
+      design's "Düzenle" is not drawn (decision D1).
+    missing: MDRS-201
+    note: >-
+      Drawn on the state choosing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: each-answer-names-its-person
+    need: >-
+      Every Devral and Düşür button carries the person in its accessible name ('Devral: {person}'), so a list of buttons or voice
+      control can tell the rows apart (F-B-3).
+    missing: no Linear issue; findings F-B-3
+    note: >-
+      Drawn on the nodes takeOver, drop and answerGroup, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-after-a-dismissal
+    need: >-
+      After a dismissal the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
+      button), not on the document, because the pressed button left with its row (F-B-9).
+    missing: no Linear issue; findings F-B-9
+    note: >-
+      Drawn on the state settled and on the node toastDismissed, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-already-gone-nazir-is-not-an-error
+    need: >-
+      When the nazır is already gone, the dismissal says so as a notice that closes by itself, not as an error titled 'Görevden
+      alınamadı' that stays until closed (DISMISS-1).
+    missing: no Linear issue; findings DISMISS-1
+    note: >-
+      Drawn on the node toastGone, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: not-appointed-by-you-is-worded
+    need: >-
+      A nazır who dismisses someone they did not seat is told so in a sentence of its own, not 'Bir şeyler ters gitti. Biraz sonra
+      yeniden deneyin.' which invites a retry (F-B-15).
+    missing: no Linear issue; findings F-B-15
+    note: >-
+      Drawn on the node toastFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-refusal-is-told-in-the-dialog
+    need: >-
+      A refused dismissal (no permission, a taking-over of a row the caller gave themselves, any other failure) keeps the dialog
+      and every answer and says why in a toast that stays.
+    evidence:
+      - state: backToDialog
+      - node: toastRefused
+      - node: toastSelfGrant
+      - node: toastFailed
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129
+      - source: apps/nazar/features/nazirs/nazirs.ts:357
+
+  - id: a-moved-list-is-asked-again
+    need: >-
+      When what the nazır handed on changed while the dialog was open, nothing is written, the answers are cleared, the list is
+      read again and a toast says to choose again.
+    evidence:
+      - state: asking
+      - node: toastChanged
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:134
+
+  - id: a-dropped-seat-with-a-grantee-asks-first
+    need: >-
+      A Düşür that would leave what a dropped seat's holder handed on with no seat is refused, and the toast tells the başmüderris
+      to dismiss that person first or take their seat over.
+    evidence:
+      - node: toastCascade
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+      - source: apps/nazar/features/nazirs/nazirs.ts:361
+
+  - id: a-failed-read-can-be-retried
+    need: When the list of what the nazır gave cannot be read, the dialog says so with a retry and the confirmation stays off.
+    evidence:
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: retry
+      - source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:173

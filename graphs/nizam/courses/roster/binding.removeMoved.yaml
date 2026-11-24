@@ -1,0 +1,56 @@
+# nizam.courses.roster where the seat has moved under the removal: the köşk's nazım presses "Dersten çıkar" on the first row (Betül Başvuran, applicantE), writes the
+# reason and sends it, and the talebe leaves the course while the removal is on its way, so the server answers ENROLLMENT_NOT_FOUND (404): an error toast "Talebe dersten
+# çıkarılamadı" with "Kayıt artık yok; sayfayı yenileyin." over the dialog, which stays open with the reason (it does not close on a failure, and the list is not read again:
+# NROS-3).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/courses/roster \
+#     --bind graphs/nizam/courses/roster/binding.removeMoved.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings, as binding.moved.yaml: the leaving is the `before` of the submit the walk presses. A file of its own because that `before`
+# would run in every walk of a file that holds the other scenarios; `--cover transitions` also walks DONE from here, which fails here by design (the seat is gone): read only
+# the walk that takes FAIL.moved. The toast is raised over the open modal, outside it (BULK-1): a locator by css finds it all the same.
+#
+# Same course, data and teardown as binding.yaml (see its header); the leaving is DELETE /courses/:id/enrollment as applicantE (helpers/leave.mjs).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.roster
+
+scenarios:
+  removeMoved:
+    given: { read: ok, held: none, size: short }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseOverview->courseStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD,applicantE,applicantG']
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/api.mjs, applicantC, PUT, '/courses/{made.course}/progress', '{"progress":40}']
+        expect: '"progress":40'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    vars:
+      reason: Ayrıldığı için kaydı kapatıldı
+      reasonSaved: Ayrıldığı için kaydı kapatıldı
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı
+
+# As in binding.moved.yaml: the event only waits for what the app says and marks the step drivable; what causes the refusal is `before` on the node the walk presses, the
+# dialog's submit: just before the click the talebe of the first row leaves (the API, as her), so the removal finds no seat.
+events:
+  FAIL.moved:
+    - waitText: Kayıt artık yok; sayfayı yenileyin.
+
+nodes:
+  submit:
+    role: button
+    name: '/^Dersten çıkar$/'
+    within: { role: dialog, name: '/^Dersten çıkar$/' }
+    before:
+      - run: [node, helpers/leave.mjs, applicantE, '{made.course}']
+        expect: leave APPLICANT_E

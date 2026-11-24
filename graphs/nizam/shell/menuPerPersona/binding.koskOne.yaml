@@ -1,0 +1,43 @@
+# nizam.shell.menuPerPersona for a köşk nazımı of one köşk, on the local stack, in a wide window (1440 x 900): the spare account applicantF,
+# made the nazım of a köşk of the walk's own, "Örnek Tek Köşk" (handle menu-tek), by the başnazım through POST /kosks, with one unread ban
+# notification (a row written with helpers/notify.mjs, the one SQL step: no route writes a notification). The köşk menu (ten entries) names
+# that köşk; the picker is a PLAIN LABEL, not a button, so under --absent no button "Köşk değiştir: ..." is found, and the label still carries
+# the hidden words "Köşk değiştir:" (MENU-1); Bildirimler carries the number "1 okunmamış"; Başvurular carries none (the köşk has no course).
+# The seeded köşk nazımı's two köşks are binding.yaml. The walk never opens a second köşk, so the landing and the newest are one.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.koskOne.yaml \
+#     --to wide --absent --out <dir>
+# `setup` takes a köşk with that short name away first and clears applicantF's notifications, so a walk that died before its teardown
+# leaves nothing; `teardown` removes the notification and the köşk (DELETE /kosks/:id, the başnazım's alone, takes the köşk with its role
+# assignments in one transaction). What it leaves behind: audit rows (kosk.create and kosk.delete), which the API has no way to remove.
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  koskOne:
+    given: { opensAt: wide, who: koskOne, unread: some, waiting: none }
+    as: applicantF
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/remove-kosk.mjs, menu-tek]
+        expect: 'remove-kosk menu-tek removed'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /kosks, '{"name":"Örnek Tek Köşk","handle":"menu-tek","description":"Menü yürüyüşü için açılmış, tek nazımlı bir köşk.","field":"Tefsir & Hadis","level":"ALL","tags":["Sarf"],"managerUserIds":["{secret.E2E_APPLICANT_F_SUB}"]}']
+        expect: '"handle":"menu-tek"'
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: 'notify APPLICANT_F clear'
+      - run: [node, helpers/notify.mjs, applicantF, raw, KOSK_BAN_PLACED]
+        expect: 'raw KOSK_BAN_PLACED'
+    teardown:
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: 'notify APPLICANT_F clear'
+      - run: [node, helpers/remove-kosk.mjs, menu-tek]
+        expect: 'remove-kosk menu-tek removed'
+
+nodes:
+  # the plain label of the one köşk. The walk has one köşk, so the flow draws it as the landing whatever `scope` says, and the node of the
+  # newest keeps the shared file's name (Kubbealtı Köşkü), which is nowhere on the page, so --absent finds none
+  koskLabelLanding: { css: 'aside bdi, [role=dialog] bdi', hasText: Örnek Tek Köşk }

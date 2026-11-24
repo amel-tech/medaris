@@ -1,0 +1,31 @@
+# nazar.curriculum.edit as the başmüderris of the medrese, who opens the course by its address and holds every course permission there
+# (MEDRESE_BASMUDERRIS is `codesWith(MADRASAH, COURSE)`, libs/common/src/authz/permissions.ts:358): `rights` is `full`, the frame is the course's, and
+# her scope picker is not involved (she holds no seat in the course; features/shell/opened-scope.ts).
+#   node apps/engine/src/cli.ts replay graphs/nazar/curriculum/edit --bind graphs/nazar/curriculum/edit/binding.basmuderris.yaml --out <dir>
+# NOT RUN in the writing phase. This is the walk of the e2e check course-scope#4 (a1, a3, a4): the opened, nothing-to-save state; the e2e's seed makes
+# the başmüderris a müderris of the course as well (apps/nazar/e2e/seed.ts:83-96), this walk does not, so it also says that the başmüderris who teaches
+# nothing may edit. Its own file because `rights: full` is the hoca's `given` in binding.yaml, and a walk takes the first scenario that fits.
+#
+# The course is a course of the seeded medrese, made as the başnazım with helpers/course.mjs --madrasah (a medrese opens a course with no programme; the
+# helper gives it the one week and two celses by a PUT). It sits beside the seeded courses on the medrese's Dersler page while the walk runs and is
+# removed by the teardown. The hoca is MUDERRIS, the account the effects below read as. Not verified: the helper's medrese path on this stack.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.edit
+
+data:
+  made: { json: ../.local/made/cur-edit-head.json }
+
+scenarios:
+  byAddress:
+    given: { rights: full }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cur-edit-head, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS]
+        expect: '"course":'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cur-edit-head]
+        expect: removed

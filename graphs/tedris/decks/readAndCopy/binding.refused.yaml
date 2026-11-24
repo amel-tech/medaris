@@ -1,0 +1,52 @@
+# tedris.decks.readAndCopy, the two writes tedrisat refuses: FAIL.refused of the collection (collecting) and of the copy (copying). Written in the owner's
+# no-replay phase; the file loads, nothing was walked.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/readAndCopy --bind graphs/tedris/decks/readAndCopy/binding.refused.yaml --cover transitions --out <dir>
+# or `--to` the state the toast ends on. It is a file of its own for two reasons: `before` hooks apply to every scenario of a file, and the `call` of
+# binding.yaml compares a refusal's status with the 200 a server action always answers (an engine limit, the same as tedris.discover.applyForKosk's), so
+# these two walks hold no call.
+#
+# How a refusal is made on the stack, each time by a change the page does not know of, which is what a refusal of these writes is (the page is drawn from
+# a read, and the answer is of a later state):
+#   refusedCollect  the deck is public when the page is read; deck-data.mjs `fault collect` (the author takes the publication back) runs in the `before`
+#                   of `arriving`, after the page was loaded, so "Koleksiyona ekle" is answered 404 DECK_NOT_FOUND and the toast "Deste eklenemedi"
+#                   stays. (The same 404 comes to a person who is not allowed to read the deck any more; READCOPY-2's 403 for course staff would be the
+#                   other refusal and is not made here.)
+#   refusedCopy     `fault copy` deletes the reader's own Hadis deck in the `before` of `copyDialog`, after the dialog has listed it, so "Kopyala" is
+#                   answered 404 DECK_NOT_FOUND, the toast "Kart kopyalanamadı" shows and the dialog stays open with the radio chosen.
+# `fault <given> <wanted>` is a no-op unless the two words are the same, and `{fault}` is each scenario's own word, so one hook serves both. The hook is run
+# on every visit of its state, which is why the helper tolerates the second delete (404) and the second withdrawal (409).
+schema: delurio-graph/0
+kind: binding
+extends: binding.base.yaml
+flow: tedris.decks.readAndCopy
+
+scenarios:
+  refusedCollect:
+    given: { deck: public, cards: some, held: not, targets: some, refusal: collect }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    vars: { fault: collect }
+    setup:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, public, --cards, '3', --own, both, --reader, APPLICANT_C]
+        expect: 'made public deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+
+  refusedCopy:
+    given: { deck: public, cards: some, held: not, targets: some, refusal: copy }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    vars: { fault: copy }
+    setup:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, public, --cards, '3', --own, both, --reader, APPLICANT_C]
+        expect: 'made public deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+
+states:
+  arriving:
+    before:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, fault, '{fault}', collect]
+  copyDialog:
+    before:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, fault, '{fault}', copy]

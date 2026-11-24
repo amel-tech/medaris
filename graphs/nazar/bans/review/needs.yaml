@@ -1,0 +1,147 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.bans.review
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to read its bans: the flow's product list. Each need is what the product must
+  do, from the flow's story and the planned work in the inventory (planned.md P-01, P-03), not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the gaps merge:
+# missing   counts-and-narrowing-are-told (none: F-B-4), a-refusal-says-what-it-is (none: F-B-13), the-list-is-bounded (none: BANS-2),
+# every-ban-reaches-the-people-above (MDRS-113), a-permanent-request-is-answered (MDRS-140; MDRS-194 is the later phase's issue),
+# staff-cannot-be-barred-on-any-route (none: ban-staff-check-gaps)
+# unwalked  none: each built need has an e2e check (apps/nazar/e2e/bans.e2e.ts) and a unit spec (apps/nazar/test/bans.spec.tsx). No replay has
+# run on this flow yet, so none is named.
+
+needs:
+  - id: read-the-bans
+    need: >-
+      The başmüderris reads, on one page, every ban of her medrese, the ones that stand and the ones that were lifted, each with
+      the person, what they are barred from (one course or the whole medrese), the reason, who placed it and when, and who lifted
+      it, when and why; the two tabs say how many of each the medrese has.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: tableActive
+      - node: tableLifted
+      - node: tabActiveCount
+      - node: tabLiftedCount
+      - node: rowPerson
+      - node: rowScopeCourse
+      - node: rowScopeMadrasah
+      - node: rowReason
+      - node: rowBannedBy
+      - node: rowWhen
+      - node: rowLiftedBy
+      - node: rowLiftReason
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+      - source: apps/nazar/features/bans/components/bans-page.tsx:25
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — the active and the lifted bans are told apart, and each tab counts the whole medrese (criterion 1)"
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: each-row-says-what-its-kademe-allows
+    need: >-
+      Each open ban offers the reader only what the kademe that placed it and the reader's own permissions allow (lift it, widen
+      it to the whole medrese, ask Medaris for a permanent ban), and a ban the reader may not lift says who may, instead of
+      leaving a gap.
+    evidence:
+      - node: lift
+      - node: escalate
+      - node: permanent
+      - node: platformNote
+      - node: higherNote
+      - node: badgeNew
+      - node: badgePermanent
+      - node: rowRoleYou
+      - node: rowRoleMedaris
+      - node: rowRoleKosk
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+      - source: apps/nazar/features/bans/bans.ts:127
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — a row offers the actions of its kademe, and a Medaris nazımı's ban only widens, with the note (criteria 2, 5)"
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: narrow-by-scope-and-by-name
+    need: >-
+      She narrows the list to the bans over the whole medrese or to one course, and by a person's name, and takes the filters off
+      again; the scope is in the address, so a link keeps it, and a filter that leaves nothing says so and offers the way back.
+    evidence:
+      - node: scopeFilter
+      - node: searchField
+      - state: noMatch
+      - node: noMatchLine
+      - node: clearFilters
+      - state: reading
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+      - source: apps/nazar/features/bans/components/bans-table.tsx:270
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — the scope filter and the search narrow the rows, and the filter is in the address"
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: counts-and-narrowing-are-told
+    need: >-
+      A change of the list that a person cannot see, the number a tab carries, the rows a scope or a name leaves, is said by a
+      status line, and the tab's count says what it counts (the medrese's whole), so that "Etkin 4" over one row is not a
+      contradiction (F-B-4).
+    missing: "no issue: bans-table.tsx:233 sets aria-busy and nothing else"
+    note: >-
+      Drawn on the nodes tabActiveCount, tabLiftedCount, searchField, scopeFilter and noMatchLine, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-says-what-it-is
+    need: >-
+      A reader the page refuses (a nazır the medrese gave no ban permission) meets a heading that says they have no access, in
+      place of the page's own title, with a way back to a page they may open (F-B-13).
+    missing: "no issue: page-problem.tsx:23 draws a neutral status with a <p> title and no link"
+    note: >-
+      Drawn on the state forbidden and on the nodes forbiddenAlert, forbiddenText and bansTitle, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-list-is-bounded
+    need: >-
+      A medrese with a great many bans reads them a page at a time, and the search is the server's, so that the page does not
+      carry every ban of the medrese on every tab and every scope (BANS-2).
+    missing: "no issue: the API sends every row (ban.repository.ts:682) and the search narrows what is on the screen"
+    note: >-
+      Drawn on the state listed and on the node searchField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: every-ban-reaches-the-people-above
+    need: >-
+      Every ban a medrese places is put in front of the people above it (P-01, MDRS-113): the köşk's nazımları are told of a ban
+      on a course of their köşk and see a medrese-wide ban in their own list, and Medaris administration sees every ban. Today the
+      lists of the köşk and of Medaris exist (nizam), a ban placed from the medrese tells no köşk nazımı (createMadrasahBan writes
+      only the talebe's notice), and a medrese-wide ban, which has no köşk, is in no köşk's list.
+    missing: MDRS-113
+    note: >-
+      Drawn on the state listed and on the nodes platformNote and higherNote, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-permanent-request-is-answered
+    need: >-
+      A request for a permanent ban is read by Medaris administration, which is told of it, and answered; the row says what became
+      of it (P-03, MDRS-140). Today the request is written and nothing reads it: no route lists or decides it, nobody is told, and
+      the badge "Kalıcı yasak talebi bekliyor" stays on the row until the ban is lifted.
+    missing: >-
+      MDRS-140; the deciding page is nizam.moderation.decidePermanentBan (planned); MDRS-194 is the deferred-screens issue of the
+      same later phase
+    note: >-
+      Drawn on the nodes badgePermanent and permanent, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: staff-cannot-be-barred-on-any-route
+    need: >-
+      Nobody who runs the course or the medrese (a müderris, a ders nazırı, a nazır, a başmüderris, a köşk nazımı, a Medaris
+      nazımı, the başnazım) can be barred from it, whichever route places the ban, and the page never offers to widen a ban onto
+      such a person. Today only the two create routes check; widening a ban does not, and the page offers it
+      (ban-staff-check-gaps, decision D1).
+    missing: >-
+      no issue: a security finding of the domain (invariant ban-staff-cannot-be-barred, holds: false); binding.staffRow.yaml walks
+      it
+    note: >-
+      Drawn on the state listed and on the node escalate, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).

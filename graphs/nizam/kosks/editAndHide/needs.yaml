@@ -1,0 +1,203 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.kosks.editAndHide
+status: proposed
+summary: >-
+  What must exist for a köşk's nazım (and the başnazım, and a Medaris nazımı holding platform.kosk_edit) in
+  nizam.kosks.editAndHide: the flow's product list, written from the flow's story, the e2e checks it carries and the open
+  decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# No replay has been run on this flow (the first walks are a later phase), so `walked` names e2e checks only; the scenarios saves,
+# locked and chiefOverrides of the bindings are written and load, and will be added here once they pass.
+#
+# Gaps of this file, for that merge:
+# missing:   a-locked-platform-policy-is-said-in-words, a-refused-save-is-announced-and-the-focus-goes-to-it,
+# a-save-is-confirmed-in-a-way-that-stays, the-person-lands-where-the-kosk-went, a-hidden-kosk-says-so-on-its-settings,
+# the-page-names-its-kosk, a-busy-dialog-is-not-closed-by-mistake
+# unwalked:  medaris-yonetimi-corrects-a-kosk (code, no e2e, binding.chief.yaml written and not run),
+# a-refusal-is-said-in-words (the toasts of a köşk that is gone, a right withdrawn, a köşk hidden already: no e2e, no
+# scenario can make them happen between two clicks)
+
+needs:
+  - id: edit-the-kosks-details
+    need: >-
+      A köşk's nazım changes what the köşk shows to talebeler and visitors, its name, tags, cover colour and description, and what
+      follows from it, and saves only what changed. They can put every field back to what was saved before they save. The short
+      name is read-only: Medaris yönetimi changes it.
+    evidence:
+      - state: form
+      - state: formDirty
+      - state: saving
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:67
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — Köşk ayarları opens with the köşk's values and a read-only short name, refuses an empty name without a request and saves what changed (criteria 1-3)"
+    note: Also drawn as the assertion nothing-changed-nothing-sent.
+
+  - id: a-wrong-name-is-refused-on-the-page
+    need: >-
+      A name that is empty or one character is refused before anything is sent, in words, under the field, and the köşk keeps the
+      name it had. A list of more than ten tags is refused the same way.
+    evidence:
+      - state: formDirty
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:69
+      - source: apps/nizam/features/kosks/admin-present.ts:334
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — Köşk ayarları opens with the köşk's values and a read-only short name, refuses an empty name without a request and saves what changed (criteria 1-3)"
+    note: Also drawn as the assertion only-a-valid-form-is-sent.
+
+  - id: unlisting-takes-the-kosk-out-of-the-open-list
+    need: >-
+      A nazım who ticks "Listelerde gösterme" takes the köşk out of Keşfet and the search at once; people with the link, signed
+      in, still open it, and every enrolment in its courses waits for approval.
+    evidence:
+      - state: formDirty
+      - state: saving
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:207
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — 'Listelerde gösterme' takes the köşk out of the open list (criterion 4)"
+
+  - id: the-two-kosk-policies
+    need: >-
+      A köşk can ask that every enrolment in all its courses waits for approval, and that no recording of its courses is opened to
+      everyone or put on YouTube; a course's own setting cannot loosen either.
+    evidence:
+      - state: form
+      - state: formDirty
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:223
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — Köşk ayarları opens with the köşk's values and a read-only short name, refuses an empty name without a request and saves what changed (criteria 1-3)"
+
+  - id: hide-the-kosk-asking-first
+    need: >-
+      A nazım hides their köşk after one question that names the köşk, says who loses sight of it and says nothing is deleted.
+      Nothing is hidden if they say no. The köşk and all its courses leave every list.
+    evidence:
+      - state: confirmHide
+      - state: hiding
+      - state: hidden
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+      - source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its courses and leaves it with the başnazım to bring back (criterion 6)"
+
+  - id: the-one-who-hid-it-can-bring-it-back
+    need: >-
+      A köşk that a nazım hid stays among the nazım's own köşks, marked "Gizli", and the nazım can bring it back; a köşk that
+      Medaris yönetimi hid is brought back by Medaris yönetimi, and the row says so.
+    evidence:
+      - state: hidden
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:382
+      - source: apps/nizam/features/kosks/components/kosks-directory.tsx:256
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its courses and leaves it with the başnazım to bring back (criterion 6)"
+
+  - id: a-locked-platform-policy-is-said-in-words
+    need: >-
+      A köşk nazım who cannot switch a policy off because Medaris yönetimi has switched it on for the platform is told so, in
+      words, before they try or when they do, and the box shows that it is locked. Today the box accepts the click, the save is
+      refused, and the page says only that something went wrong. DECISION D1.
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+    missing: >-
+      no Linear issue; F-W3-3; the sentence exists in the catalog (KoskApplicationsPage.errors.locked), unused here; code exists
+      in part
+    note: >-
+      Drawn on the states formDirty and saving, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refused-save-is-announced-and-the-focus-goes-to-it
+    need: >-
+      When "Kaydet" refuses a field, a screen reader says so and the focus goes to the first field to correct (or an error summary
+      says it), instead of a message under the field that nothing announces while the focus stays on the button.
+    evidence:
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:69
+    missing: no Linear issue; F-W3-13, F-UI-W3-1, F-X-2; code exists in part
+    note: >-
+      Drawn on the state formDirty, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-save-is-confirmed-in-a-way-that-stays
+    need: >-
+      After a save the person is told it worked in a way that does not vanish after 6 seconds and does not leave the focus on a
+      button that has just turned off.
+    evidence:
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:84
+    missing: no Linear issue; F-W3-edit-1 (not verified in a browser); code exists in part
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: the-person-lands-where-the-kosk-went
+    need: >-
+      After hiding, the person lands on the köşk list with the hidden köşk in view and the focus on the list's heading, so that
+      they see where it went and a keyboard user does not start again from the top. The story asks for "under Gizli"; the page
+      lands on the unfiltered list. DECISION D2.
+    evidence:
+      - source: apps/nizam/features/kosks/components/kosk-settings.tsx:289
+    missing: no Linear issue; F-W3-hide-2; code exists in part
+    note: >-
+      Drawn on the state hidden, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-hidden-kosk-says-so-on-its-settings
+    need: >-
+      The settings page of a köşk that is hidden already says that it is hidden, who hid it, and offers to bring it back, instead
+      of showing the same form and a "Köşkü gizle" that answers "zaten gizli".
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+    missing: no Linear issue; F-W3-hide-3; code exists in part
+    note: >-
+      Drawn on the states form, confirmHide and hiding, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-names-its-kosk
+    need: >-
+      The tab title and the heading of a köşk's settings name the köşk, so that a nazım of several köşks can tell their tabs
+      apart.
+    evidence:
+      - source: "apps/nizam/app/kosks/[id]/ayarlar/page.tsx:15"
+    missing: no Linear issue; F-W3-9; code exists in part
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-busy-dialog-is-not-closed-by-mistake
+    need: >-
+      While the köşk is being hidden, "Vazgeç" and the close icon say they are not available (disabled or busy) instead of being
+      on and doing nothing.
+    evidence:
+      - source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:59
+    missing: no Linear issue; F-W3-hide-1; code exists in part
+    note: >-
+      Drawn on the state hiding, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: medaris-yonetimi-corrects-a-kosk
+    need: >-
+      The başnazım, and a Medaris nazımı holding platform.kosk_edit, correct a köşk's settings and hide it on the nazım's behalf;
+      no platform policy refuses the başnazım. A Medaris nazımı has no menu entry for the page and opens its address.
+    evidence:
+      - state: form
+      - state: saving
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+      - source: apps/tedrisat/src/kosk/kosk.service.ts:235
+    note: |-
+      Also drawn as the assertion the-chief-is-never-locked.
+      the walk is binding.chief.yaml, written and not run; no e2e carries it
+
+  - id: a-refusal-is-said-in-words
+    need: >-
+      A save or a hide that the server refuses because the köşk is gone, the person's right was withdrawn or the köşk was hidden
+      meanwhile says which, in words, and keeps the form as it was typed.
+    evidence:
+      - state: saving
+      - state: hiding
+      - source: apps/nizam/features/kosks/admin-present.ts:416
+    note: no e2e, and no scenario can make the world change between two clicks of one walk

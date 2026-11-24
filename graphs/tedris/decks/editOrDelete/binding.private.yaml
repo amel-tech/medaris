@@ -1,0 +1,28 @@
+# tedris.decks.editOrDelete, the main story on a private deck: no request waits, so the badge is "Özel" and the dialog has no note "Yayın isteğin bekliyor"
+# (the same transitions as `edits`; the case differs in what is drawn). A file of its own, since a scenario that adds no transition is walked only from one.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/editOrDelete \
+#     --bind graphs/tedris/decks/editOrDelete/binding.private.yaml --to saved --out <dir>
+# NOT RUN in the writing phase.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.editOrDelete
+
+scenarios:
+  editsPrivate:
+    given: { publication: private, fields: changed, answer: ok }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: 'Deneme destesi: düzenlendi'
+      typedDescription: Düzenlemeden sonraki açıklama.
+      newTitle: 'Deneme destesi: düzenlendi'
+      wantStatus: PRIVATE
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove

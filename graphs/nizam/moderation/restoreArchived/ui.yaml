@@ -1,0 +1,127 @@
+# The screens of nizam.moderation.restoreArchived: the köşk's Arşiv (/kosks/<id>/arsiv) and the platform's (/arsiv), one component (ArchiveView, mode kosk or platform), with their
+# filters, count, table, "Geri al", the sentences that stand where a higher kademe's rows have no button, the in-place error and the toasts that answer a restore. Read from the code of
+# the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/features/archive/components/archive-view.tsx and its present.ts, hide-level.ts, reads.ts, actions.ts, apps/nizam/app/
+# {arsiv,kosks/[id]/arsiv}/page.tsx, and libs/ui/src/mds (table, select, button, alert). Nothing was seen in a browser by its writer: every behaviour is "from the code" unless a rule
+# says otherwise.
+#
+# What this file leaves to its neighbours (flow.yaml `scope.outOfView` names them): the confirmation window of "Kalıcı olarak sil" and the platform's scope filter in use and
+# "Daha fazla göster" (nizam.moderation.deleteArchived), the column headers, the loading page, and the screen that refuses a person (nizam.shell.noAccessAndNotFound).
+#
+# Words: every key that has no `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nizam.json (the file the app reads as `nizam`; the key is the path under
+# its root) by <scratchpad>/ra/catalog.py. The `changes` note is the app's own sentence on what a restore does and where each kind comes back to (ArchivePage.footer, drawn under the
+# köşk's list), so no message is authored for this catalog. The `composed.*` keys are text the app builds in code from data and messages; each has its code line here, and a
+# placeholder the binding gives no sample for matches any text:
+#   composed.ArchivePage.rowTitle       "{title}"      a row's title, in a <bdi> (archive-view.tsx:276)
+#   composed.ArchivePage.rowContext     "{context}"    the grey line under it: "2 hafta · 0 talebe" for a course, "Hafta 2 · <course>" for a week, "Hafta 1 · <course> · 17 Kas Sal 21:00" for a
+#                                                      session; on the platform the kind's word comes first, "Ders · 2 hafta · 0 talebe" (archive-view.tsx:271-279, present.ts:100-139)
+#   composed.ArchivePage.rowHider       "{hider}"      the hider's name, or "Bilinmiyor" (archive-view.tsx:326, present.ts:232-241)
+#   composed.ArchivePage.rowHiderRole   "{role}"       the role line under the name: "Köşk nazımı", "Başmüderris", ...; none for the başnazım, who holds no role in a köşk (archive-view.tsx:327)
+#   composed.ArchivePage.rowWhen        "{when}"       "Bugün 14:05", "Dün 10:40" or "29 Eyl 10:40" in the viewer's own zone (present.ts:51-74)
+#   composed.ArchivePage.rowKosk        "{koskName}"   the platform's column "Kapsam": the köşk's name and, under it, the medrese's (archive-view.tsx:298-301)
+#   composed.ArchivePage.rowMadrasah    "{madrasahName}"
+#   composed.HideLevel.lockedKosk       HideLevel.locked with HideLevel.kosk put in: "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." (archive-view.tsx:361-365)
+#   composed.HideLevel.lockedPlatform   the same with HideLevel.platform: "Bunu Medaris yönetimi gizledi; ..."
+#   composed.ArchivePage.restoreRaw     "{message}"    the API's own message, in English, where no sentence is written for the code (archive-view.tsx:193-197; RESTORE-4)
+#   composed.Button.loading             "Yükleniyor"   the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62; F-UI-W1-3)
+schema: delurio-graph/0
+kind: ui
+id: nizam.moderation.restoreArchived
+flow: nizam.moderation.restoreArchived
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: ArchivePage.footer }
+samples:
+  kosk: Örnek Köşk
+  title: Örnek Ders
+  context: 2 hafta · 0 talebe
+  name: Örnek Ders, 2 hafta · 0 talebe
+  hider: Örnek Nazım
+  role: Köşk nazımı
+  when: Dün 10:40
+  koskName: Örnek Köşk
+  madrasahName: Örnek Medrese
+  count: '4'
+  shown: '4'
+  total: '4'
+  message: You may not use this archive
+
+# Neither page sets a focus on load (nothing carries autoFocus, no effect moves it), so no page node carries `initialFocus` (rule focus-not-set). After a restore the pressed button leaves
+# with its row and no code moves the focus (F-W5-5), so no `focus` entry is written for the states a restore ends in. No dialog opens in this flow: "Geri al" asks nothing.
+nodes:
+  # ---- what every state of the page draws: the shell's <main>, the title, the intro, the named section, the filters and the count ------------------------------------------------
+  archivePage: { type: page, component: Page, role: main, in: [listed, listEmpty, restoring, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, no name; the binding tells it from the page left for by its heading
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: ArchivePage.title }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:407 } # h1
+  introKosk: { type: text, component: Text, text: { key: ArchivePage.koskIntro }, in: [listed, listEmpty, restoring, loadFailed], when: "view != 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:409 }
+  introPlatform: { type: text, component: Text, text: { key: ArchivePage.platformIntro }, in: [listed, listEmpty, restoring, loadFailed], when: "view == 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:409 }
+  archiveSection: { type: page, component: Page, role: region, name: { labelledBy: sectionHeading }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:413 } # <section aria-labelledby="archive-heading">
+  sectionHeading: { type: text, component: Heading, role: heading, text: { key: ArchivePage.heading }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:417 } # h2, visually hidden
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: ArchivePage.searchLabel }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:423 } # <input type=search aria-label>, placeholder "Gizlenen öğenin adıyla ara"; typing asks the API again 300 ms after the last key. It starts empty; no `value` is drawn, because what it holds after a step is what the walk's own fill typed
+  scopeSelect: { type: field, component: TextField, role: combobox, text: { key: ArchivePage.scopeFilterLabel }, in: [listed, listEmpty, restoring, loadFailed], when: "view == 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:434 } # a Base UI Select (a button with role combobox), "Kapsam: tümü" and the köşks and medreses that hold something hidden; the platform's alone. Its use is nizam.moderation.deleteArchived's
+  typeSelect: { type: field, component: TextField, role: combobox, text: { key: ArchivePage.typeFilterLabel }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:441 } # a Base UI Select: "Tür: tümü", Ders, Hafta, Celse, Ders kaydı, Deste (and on the platform Köşk and Medrese before them); the options are not drawn, the binding's events choose them (RESTORE-3)
+  archiveCount: { type: text, component: Text, text: { key: ArchivePage.count, params: { count: archive.total } }, in: [listed, listEmpty, restoring, loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:447 } # <p aria-live="polite" data-testid="archive-count">: it follows a filter and a restore; the format has no live-region key
+
+  # ---- the table ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+  archiveTableKosk: { type: list, component: List, role: table, name: { key: ArchivePage.koskCaption, params: { kosk: kosk.name } }, in: [listed, listEmpty, restoring], when: "view != 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:475 } # explicit table roles (responsive="stack"), named by its visually hidden caption
+  archiveTablePlatform: { type: list, component: List, role: table, name: { key: ArchivePage.platformCaption }, in: [listed, listEmpty, restoring], when: "view == 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:475 }
+  rowTitle: { type: text, component: Text, text: { key: composed.ArchivePage.rowTitle, params: { title: item.title } }, in: [listed, restoring], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:276 } # the row header: a course's title, a week's or a session's
+  rowContext: { type: text, component: Text, text: { key: composed.ArchivePage.rowContext, params: { context: item.context } }, in: [listed, restoring], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:278 }
+  rowType: { type: text, component: Text, text: { oneOf: [ArchivePage.types.course, ArchivePage.types.week, ArchivePage.types.session] }, in: [listed, restoring], when: "view != 'platform'", repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:309 } # the köşk list's column "Tür": a badge with an icon and the kind's word
+  rowKosk: { type: text, component: Text, text: { key: composed.ArchivePage.rowKosk, params: { koskName: item.kosk } }, in: [listed, restoring], when: "view == 'platform'", repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:298 } # the platform list's column "Kapsam": the köşk and, under it, the medrese when there is one
+  rowHider: { type: text, component: Text, text: { key: composed.ArchivePage.rowHider, params: { hider: item.hider.name } }, in: [listed, restoring], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:326 }
+  rowHiderRole: { type: text, component: Text, text: { key: composed.ArchivePage.rowHiderRole, params: { role: item.hider.role } }, in: [listed, restoring], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:327 } # drawn only where the hider holds a role in the köşk's scope: the başnazım holds none, so his rows have a name and no role line
+  rowWhen: { type: text, component: Text, text: { key: composed.ArchivePage.rowWhen, params: { when: item.when } }, in: [listed, restoring], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:336 } # a plain cell, not a <time>
+
+  # the button where the caller's kademe reaches the one that hid the row, the sentence where it does not
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, name: { key: ArchivePage.restoreLabel, params: { name: item.label } }, text: { key: ArchivePage.restore }, in: [listed], repeat: archive.restorable, emits: RESTORE, source: apps/nizam/features/archive/components/archive-view.tsx:349 } # asks nothing first; the name is "Geri al: " and the row's title and grey line. The one in flight is rowRestore
+  rowRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: ArchivePage.restoreLabel, params: { name: item.label } }, text: { key: ArchivePage.restore }, in: [restoring], disabledIn: [restoring], source: apps/nizam/features/archive/components/archive-view.tsx:353 } # the row being restored, the first item of restoreButton: busy (aria-disabled) while the call runs; the other rows' buttons stay live
+  restoreBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoring], source: libs/ui/src/mds/button.tsx:113 } # the visually hidden <output> beside the busy button; an empty one sits beside every "Geri al" (F-UI-W1-3)
+  lockedAdmin: { type: text, component: Text, text: { key: composed.HideLevel.lockedPlatform }, in: [listed, restoring], when: "view == 'koskLocked' and type in ['all', 'course'] and search == 'none'", repeat: archive.lockedByAdmin, source: apps/nizam/features/archive/components/archive-view.tsx:361 } # "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir." in the button's place: the başnazım hid it. A search finds the one course it was made from, which is not this one
+  lockedStale: { type: text, component: Text, text: { key: composed.HideLevel.lockedKosk }, in: [listed], when: "stale == 'flipped'", repeat: archive.flipped, source: apps/nizam/features/archive/components/archive-view.tsx:187 } # the row a refused restore turned to a sentence by hand: its `hiddenLevel` is the one the list was read with, the köşk's, so it names the köşk's nazımı to the köşk's nazımı (RESTORE-2)
+  permanentDelete: { type: action, component: Button, role: button, intent: secondary, name: { key: ArchivePage.permanentDeleteLabel, params: { name: item.label } }, text: { key: ArchivePage.permanentDelete }, in: [listed], when: "view == 'platform'", repeat: archive.items, emits: ASK_DELETE, source: apps/nizam/features/archive/components/archive-view.tsx:368 } # a link-variant Button on every row of the platform's list, locked or not; it only opens the window that asks (nizam.moderation.deleteArchived)
+
+  # ---- under the table ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  archiveShown: { type: text, component: Text, text: { key: ArchivePage.showing, params: { total: archive.total, shown: archive.shown } }, in: [listed, restoring], when: "view == 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:487 } # "Toplam 4 öğe, 4 tanesi gösteriliyor", beside "Daha fazla göster" while there is more (nizam.moderation.deleteArchived)
+  archiveFooter: { type: text, component: Text, text: { key: ArchivePage.footer }, in: [listed, listEmpty, restoring, loadFailed], when: "view != 'platform'", source: apps/nizam/features/archive/components/archive-view.tsx:503 } # where each kind comes back to: the app's own sentence on what a restore changes
+
+  # ---- a list with nothing to show -----------------------------------------------------------------------------------------------------------------------------------------------
+  emptyPlain: { type: text, component: Text, text: { key: ArchivePage.empty }, in: [listEmpty], when: "not filtered", source: apps/nizam/features/archive/components/archive-view.tsx:392 } # the table keeps its caption and headers; its one cell says it
+  emptyFiltered: { type: text, component: Text, text: { key: ArchivePage.emptyFiltered }, in: [listEmpty], when: filtered, source: apps/nizam/features/archive/components/archive-view.tsx:392 }
+
+  # ---- the page's own error, where the table would be -------------------------------------------------------------------------------------------------------------------------------
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: ArchivePage.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:457 } # Alert tone error: announced
+  failedBody: { type: text, component: Text, text: { key: ArchivePage.loadFailed }, in: [loadFailed], source: apps/nizam/features/archive/components/archive-view.tsx:458 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: ArchivePage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/archive/components/archive-view.tsx:459 }
+
+  # ---- the toasts: sonner's, in its own region (F-X-5); a success closes after 6 seconds, an error stays until closed -----------------------------------------------------------------
+  toastRestored: { type: status, component: Status, text: { key: ArchivePage.restored }, in: [listed, listEmpty], when: "toast == 'restored'", source: apps/nizam/features/archive/components/archive-view.tsx:177 } # the only word that it worked (F-W5-5)
+  toastRestoredBody: { type: status, component: Status, text: { key: ArchivePage.restoredBody, params: { title: item.title } }, in: [listed, listEmpty], when: "toast == 'restored'", source: apps/nizam/features/archive/components/archive-view.tsx:178 }
+  toastRestoreFailed: { type: status, component: Status, text: { key: ArchivePage.restoreFailed }, in: [listed, listEmpty], when: "toast in ['restoreGone', 'restoreLevel', 'parentHidden', 'restoreFailed']", source: apps/nizam/features/archive/components/archive-view.tsx:194 } # stays until closed
+  toastRestoreGone: { type: status, component: Status, text: { key: ArchivePage.restoreGone }, in: [listed, listEmpty], when: "toast == 'restoreGone'", source: apps/nizam/features/archive/present.ts:221 }
+  toastRestoreLevel: { type: status, component: Status, text: { key: ArchivePage.restoreLevel }, in: [listed, listEmpty], when: "toast == 'restoreLevel'", source: apps/nizam/features/archive/present.ts:223 } # ARCHIVE_RESTORE_LEVEL and ARCHIVE_FORBIDDEN say the same words
+  toastParentHidden: { type: status, component: Status, text: { key: ArchivePage.restoreParentHidden }, in: [listed, listEmpty], when: "toast == 'parentHidden'", source: apps/nizam/features/archive/present.ts:219 } # it names nothing and tells the köşk's nazımı to do what only the medrese's own people can (RESTORE-5)
+  toastRestoreRaw: { type: status, component: Status, text: { key: composed.ArchivePage.restoreRaw, params: { message: api.message } }, in: [listed, listEmpty], when: "toast == 'restoreFailed'", source: apps/nizam/features/archive/components/archive-view.tsx:195 } # the API's English message (RESTORE-4)
+  toastLoadFailed: { type: status, component: Status, text: { key: ArchivePage.loadFailedTitle }, in: [loadFailed], when: "toast == 'loadFailed'", source: apps/nizam/features/archive/components/archive-view.tsx:137 } # a filter or a retry that failed; the first read that fails draws only the alert
+  toastLoadFailedBody: { type: status, component: Status, text: { key: ArchivePage.loadFailed }, in: [loadFailed], when: "toast == 'loadFailed'", source: apps/nizam/features/archive/components/archive-view.tsx:138 }
+
+edges:
+  - { labelledBy: [archiveSection, sectionHeading] }
+  - { triggers: [restoreButton, restoring] }
+  - { triggers: [permanentDelete, delete_asked] }
+
+rules:
+  - { id: F-W5-5, rule: "After 'Geri al' the restored row leaves the table and the button that had the focus is unmounted with it (archive-view.tsx:174-181, the same for ARCHIVE_ITEM_NOT_FOUND at :183-186): the focus falls to the page, a keyboard or screen-reader user starts again from the top, and the only word that it worked is a toast of 6 seconds in sonner's own region. Not measured here. Fix: move the focus to the next row's 'Geri al' or to the table's caption, and keep a status line on the page." }
+  - { id: F-X-7, rule: "The family of F-W5-5: rows that leave a list after an action in nizam (this table, the deck requests, the applications, the notifications). Fix: one shared move of the focus to the next row's control or the list's heading." }
+  - { id: F-X-5, rule: "Two toast hosts are mounted (client-providers.tsx:42-51): the unified kit's and sonner's. This page uses sonner's (archive-view.tsx:10), whose live-region label is its own default and whose semantics were not read; the nodes are drawn as plain status text and the binding finds them by [data-sonner-toast]. Fix: converge on one host and take its labels from the catalog." }
+  - { id: F-UI-W1-3, rule: "The busy 'Geri al' passes no loadingLabel, so its hidden status says 'Yükleniyor' from the kit's hard-coded default (libs/ui/src/mds/button.tsx:62), outside the catalog; and, because `loading` is always given (a boolean), an empty <output> sits beside every 'Geri al' (button.tsx:113). Turkish only today." }
+  - { id: F-X-10, rule: "Not drawn. The loading pages (app/arsiv/loading.tsx, app/kosks/[id]/arsiv/loading.tsx) are an aria-busy div whose only children are aria-hidden skeletons: nothing is said while the Arşiv is read, and the in-page skeleton of a filter that reads an empty list has a visually hidden 'Yükleniyor' (archive-view.tsx:468-469) that the page-level one lacks. Fix: a visually hidden status text in the loading components." }
+  - { id: RESTORE-1, rule: "New finding, from the code; not seen in a browser. The köşk's list reads 50 rows (KOSK_ARCHIVE_PAGE_SIZE, reads.ts:24; loadArchive asks the same limit) and draws no 'Daha fazla göster': the footer with the 'Toplam N öğe, M tanesi gösteriliyor' line and the button is `platform &&` (archive-view.tsx:485-500). A köşk with more than 50 hidden rows shows the count of all of them ('60 gizli öğe') and the first 50, and the rest can be reached only by narrowing the list with a type or a search. Fix: draw the same footer in the köşk's mode, or page by 10 as the platform does." }
+  - { id: RESTORE-2, rule: "New finding, from the code; not seen in a browser. When a restore is refused with ARCHIVE_RESTORE_LEVEL (a higher kademe hid the item again since the list was read) the row is flipped by hand to `canRestore: false` and keeps the `hiddenLevel` it had (archive-view.tsx:187-192), so its sentence is built from the old level: 'Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir.' (archive-view.tsx:361-365) is said to the köşk's nazımı himself, while the toast beside it says a higher kademe hid it. The error's own context carries the real level (`hiddenAt`, archive.service.ts:342) and is not used. Fix: take the level from the refusal, or read the list again." }
+  - { id: RESTORE-3, rule: "New finding, from the code. The select 'Tür süzgeci' offers 'Ders kaydı' (and on the platform 'Medrese') but the API stores nothing for them: the köşk's archive lists no recording and a hidden medrese is not a row of any list (archive-types.ts:8-11, 48-54). Choosing one always ends in 'Bu süzgece uyan gizli öğe yok', which says no row fits and not that none can exist. The same drawing for a feature the API does not have as HIDE-2 of nazar.archive.hideAndRestoreCourse. Fix: leave the two out until something can be hidden into them." }
+  - { id: RESTORE-4, rule: "New finding, from the code. A refusal with no message written for its code (COURSE_NOT_FOUND, the 400s, and a thrown error that authenticatedAction turns into its message) puts the API's own English text in the toast: restoreErrorKey returns null for them (present.ts:217-229) and the toast falls back to `result.error` (archive-view.tsx:193-197, getErrorMessage). ARCHIVE_FORBIDDEN is told with the sentence of ARCHIVE_RESTORE_LEVEL, 'daha üst bir kademe gizledi', though it means the caller acts at no level on the item. Fix: a Turkish sentence per code, and a generic one as the fallback." }
+  - { id: RESTORE-5, rule: "New finding, from the code. ARCHIVE_PARENT_HIDDEN is told as 'Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.' (ArchivePage.restoreParentHidden), which names neither the medrese or köşk that is hidden nor who may bring it back, and the row keeps its 'Geri al' (nothing is changed on it: archive-view.tsx:193-197). A köşk's nazımı meets it for a course of a medrese its başmüderris hid: he cannot bring a medrese back (that is the başmüderris's, or Medaris yönetimi's, on the medrese's own pages), and the same press is refused again. nazar-web's Arşiv says it better ('... Medreseyi, onu gizleyen kademe ya da üstü geri getirir.'). Fix: name the parent and the kademe that restores it, and mark the row as waiting for it." }
+  - { id: focus-not-set, rule: "Neither page sets a focus on load, so the page nodes carry no initialFocus and no focus; after a filter the select (which Base UI gives back its focus) and the search box keep theirs, which the graph does not say. The replay checks no focus on these states." }
+  - { id: no-confirmation-before-a-restore, rule: "'Geri al' asks nothing: the page draws no dialog, because a restore gives a thing back and deletes nothing, and the audit log records who did it (`<type>.restore`). The one irreversible step of this page, 'Kalıcı olarak sil', does ask, in nizam.moderation.deleteArchived." }
+  - { id: label-in-name, rule: "'Geri al' is contained in the name 'Geri al: <title>, <grey line>' (WCAG 2.5.3): the name carries the row's title and its context, so two rows with the same title are told apart by the line after it. Holds." }
+  - { id: no-button-leads-to-a-refusal, rule: "A row the caller's kademe does not reach has a sentence in the button's place, never a button that will be refused (MDRS-108); the list's `canRestore` says it. It holds for the list as it was read: a hide that lands later is told by the refusal, and turns the row to a sentence by hand (RESTORE-2)." }

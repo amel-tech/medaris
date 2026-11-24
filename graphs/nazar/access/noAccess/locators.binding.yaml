@@ -1,0 +1,58 @@
+# What every binding of nazar.access.noAccess shares: where the states are, how the two typed addresses are caused, where role and name
+# cannot find a node, and what a read leaves outside the screen. It names no scenario: binding.yaml and the binding.<x>.yaml files next to
+# it each extend it and give their own, because scenarios that take no new transition are not walked by `--cover transitions` and need a
+# run of their own (see binding.yaml).
+# NOT RUN: written without a replay. Every locator is unverified until a walk.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.access.noAccess
+
+# The typed address of the verdict page is bound to a medrese of the seed: a person with no seat is sent back to this page, the başnazım
+# opens it. NAVIGATE leaves for a blank page, so that it is not an address the app answers for.
+events:
+  OPEN_ADDRESS: [{ goto: '{nazar}/medrese/{seed.madrasah}' }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  verdict: { url: '{nazar}/erisim-yok' }
+  sent_on: { url: '{nazar}/medrese/*' }
+  opened_by_address: { url: '{nazar}/medrese/*' }
+  tedris_opened: { url: '{tedris}/**' }
+  handed_over.sign_out: { url: '{keycloak}/realms/medaris/**' } # nazar asks for sign-in again at once and ends on Keycloak's form
+  left: { url: 'about:blank' }
+  load_failed: { url: '{nazar}/**' } # not walked: tedrisat answers every read on this stack
+
+# Where role and name cannot find a node. The headings, the sentence, the link, the region and the main are found from the graph (role and
+# name, or the exact text, or a text filter); what is bound here is what sits in a paragraph with another message, what is data, what must
+# be counted, and the sidebar, whose parts the page walked on to also has: a medrese's own sidebar draws the same brand, toggle and
+# person row. The verdict's sidebar is the one `<aside>` with no `<nav>` in it (a sidebar with no menu draws none, app-shell.tsx:97-101;
+# e2e access#1 a5), so every node in it is found inside `aside:not(:has(nav))` and is absent from the pages the walk goes on to.
+nodes:
+  # the page the walk leaves for (Tedris, a medrese) also has a <main>
+  pageMain: { role: main, hasText: Bu portala erişiminiz yok }
+  sidebar: { css: 'aside:not(:has(nav))' }
+  brand: { role: img, name: Medaris — Nazar, within: { css: 'aside:not(:has(nav))' } }
+  # e2e access#1 a6, a7: the sidebar holds exactly one button, the theme toggle
+  themeToggle: { role: button, name: Koyu temaya geç, within: { css: 'aside:not(:has(nav))' }, count: 1 }
+  # the person's name and role line are two spans of one row; the account's name is data, so any text is accepted
+  userName: { css: 'aside:not(:has(nav)) .mds-nav-user__name' }
+  roleStudent: { css: 'aside:not(:has(nav)) .mds-nav-user__role', hasText: Talebe }
+  roleKosk: { css: 'aside:not(:has(nav)) .mds-nav-user__role', hasText: Köşk nazımı }
+  rolePlatform: { css: 'aside:not(:has(nav)) .mds-nav-user__role', hasText: Medaris nazımı }
+  # one paragraph: the words, then the e-mail in a code element; e2e access#1 a4 asserts the text "Giriş yaptığınız hesap: <e-mail>"
+  accountLine: { css: 'main p.mds-caption', hasText: 'Giriş yaptığınız hesap:' }
+  accountEmail: { css: 'main p.mds-caption code', hasText: '{address}' }
+  signOut: { role: button, name: Çıkış yap, within: { css: main } }
+
+# What a read leaves outside the screen: the API's own answer for the account whose screen it is. It checks the premise of each scenario
+# (no seat, or a seat; the başnazım or not) against the API, as the account itself: helpers/api.mjs signs in with the real
+# authorization-code flow and only reads. A scenario gives `acct` (the account's role key), `held` (the text its assignments must hold) and
+# `chief` (what GET /me says of roles.systemAdmin).
+effects:
+  getMyAssignments:
+    - run: [node, helpers/api.mjs, '{acct}', GET, /me/assignments]
+      expect: '{held}'
+  getMe:
+    - run: [node, helpers/api.mjs, '{acct}', GET, /me]
+      expect: '"systemAdmin":{chief}'

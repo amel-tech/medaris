@@ -1,0 +1,25 @@
+# nizam.moderation.decideAppeal, the Karara bağlanan tab with an accepted appeal in it. It extends binding.yaml and adds one scenario, `acceptedBefore`:
+# an appeal the başnazım accepted before the walk (appeals.mjs up --accepted 1 makes the request, the köşk's refusal and the appeal, and the başnazım
+# accepts it through POST /appeals/:id/accept, which sends its request back to the köşk). The tab then holds it with the outcome "Kabul edildi", a badge
+# of the same word and no note (DAPP-1). `teardown` removes the request, which takes the appeal with it. It adds no transition: it is here for the
+# nodes of `firstAccepted`, which the other files' `accepts` and `opens` draw only after a decision of their own.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideAppeal \
+#     --bind graphs/nizam/moderation/decideAppeal/decided.binding.yaml --out <dir>
+# NOT RUN (see binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nizam.moderation.decideAppeal
+
+scenarios:
+  acceptedBefore:
+    given: { read: one, decidedTab: accepted, answer: rejected, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '1', --accepted, '1', --alone]
+        expect: 'ready: 1 waiting, 0 rejected, 1 accepted'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'

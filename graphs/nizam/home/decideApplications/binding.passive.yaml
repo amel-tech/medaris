@@ -1,0 +1,29 @@
+# nizam.home.decideApplications: the course's only müderris role is revoked, so its scope is passive, and the köşk's nazım still gets
+# "Onayla" and "Reddet" on its applications and the API still lets her decide (HOME-5: the engine leaves a köşk's nazım every right in a
+# passive scope, effective-permissions.ts:337-357, so the sentence "Bu dersin kapsamı pasif…" is not drawn for her). It adds no transition
+# to binding.yaml's, so it is its own file and is walked to the approval only, with --absent to check that the sentence is not there:
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/decideApplications --bind graphs/nizam/home/decideApplications/binding.passive.yaml --absent --to approving --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser; if the walk finds the sentence
+# instead of the buttons, HOME-5 is wrong and the graph's `mayDecide: passive` is reachable.
+#
+# `passive on` is SQL on tedrisat's database (role_assignments.revoked_at), because no route revokes the last müderris of a course, as
+# tedris.course.readProgramme's binding.passive.yaml does. The statement is the same: the role was held once and nobody holds it now.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.decideApplications
+
+scenarios:
+  passive:
+    given: { approval: needed, mayDecide: may }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    vars: { course: '{nhdPassive.course}', reason: 'Ön koşul sağlanmıyor.' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nhdPassive, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantF]
+        expect: '"APPLICANT_F":"PENDING"'
+      - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = now(), revoked_by = granted_by where role = 'MUDERRIS' and scope_id = '{nhdPassive.course}' and revoked_at is null"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nhdPassive]
+        expect: 'course remove nhdPassive'

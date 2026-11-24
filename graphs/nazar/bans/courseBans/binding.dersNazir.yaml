@@ -1,0 +1,29 @@
+# nazar.bans.courseBans, a ders nazırı given the two ban permissions: refused all the same (F-D2c-3).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.dersNazir.yaml --to forbidden --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The seeded ders nazırı (Rukiye Ders Nazırı, account dersNazir) is given ban.course and ban.lift_course in a course of the walk's own,
+# as the müderris gives them on Ders nazırları (helpers/course-nazir-grants.mjs, the post is made with the course and goes with it). With
+# them the API would take a ban from her (POST /courses/<id>/bans asks ban.course at the course), yet the page's list routes ask a medrese
+# or köşk code, so she meets the same refusal as the hoca and no "Yasakla". It is its own file because its `given` is the hoca's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  refusedDersNazir:
+    given: { read: refused, list: none, roster: none, banAnswer: done, answer: done, after: none }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"cbans"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, 'ban.course,ban.lift_course']
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+    vars: { who: APPLICANT_E }

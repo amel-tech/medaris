@@ -1,0 +1,242 @@
+# The screens of nazar.exams.edit: the course's Sınavlar page with its "Sıfırıncı soru" section, and the exam's page with Ayarlar, the
+# topics, the questions and their points. BUILT (MDRS-299; see flow.yaml for the PRs): apps/nazar/app/ders/[dersId]/sinavlar and
+# features/online-exams. No node carries a `source`: the graph is `proposed`. Not built, and so drawn here only as the plan: copying an
+# earlier exam, the preview, renaming a topic on the page. The keys are the plan's (`planned.Exams.*`); the words of what was added on
+# 22 November (Kaydediliyor…, Kaydedilemedi, Yeniden dene, Medaris güncellendi) are nazar.json's (OnlineExams).
+schema: delurio-graph/0
+kind: ui
+id: nazar.exams.edit
+flow: nazar.exams.edit
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Ara sınav
+  when: "28 Kas Cum 21:00"
+  startsAt: "28 Kas Cum 21:00"
+  savedAt: "14:02"
+  count: "12"
+  date: 14 Kas
+  n: "3"
+  start: Aşağıdakilerden hangisi mebnidir?
+  name: İsim cümlesi
+  topic: İsim cümlesi
+  number: "3"
+  picked: "6"
+  topics: "İsim cümlesi, Fiil cümlesi"
+  points: "1,94"
+  lacks: doğru şık
+  left: "95"
+  others: "49"
+  share: "1,94"
+  question: Bu hadisi ne zaman öğrendiniz?
+  text: Aşağıdakilerden hangisi mebnidir?
+  minutes: "60"
+
+nodes:
+  # --- the page, its path, its title and where the exam stands -------------------------------------------------------------------------
+  editorPage: { type: page, component: Page, role: main, in: [settings, savingSettings, readingCopies, copyPick, copying, zerothForm, savingZeroth, readingTopics, topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic, questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused, questionForm, savingQuestion, questionInvalid, preview, stale, readOnly] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
+  crumbs: { type: list, component: List, role: navigation, name: { key: SessionPlan.breadcrumbLabel }, in: [settings, topics, questions, readOnly] } # as the plan page's breadcrumb
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [settings, topics, questions, readOnly], emits: NAVIGATE } # to Sınavlarım (nazar.exams.mine)
+  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [settings, savingSettings, readingCopies, copyPick, copying, zerothForm, savingZeroth, readingTopics, topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic, questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused, questionForm, savingQuestion, questionInvalid, preview, stale, readOnly] } # h1: the exam's own title
+  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [settings, savingSettings, readingCopies, copyPick, copying, zerothForm, savingZeroth, readingTopics, topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic, questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused, questionForm, savingQuestion, questionInvalid, preview, stale, readOnly] } # the third format, beside "Yazılı" and "Şifahi" of the session plan
+  statusBadge: { type: status, component: Status, text: { oneOf: [planned.Exams.statusDraft, planned.Exams.statusScheduled] }, in: [settings, savingSettings, readingCopies, copyPick, copying, zerothForm, savingZeroth, readingTopics, topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic, questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused, questionForm, savingQuestion, questionInvalid, preview, stale] }
+  statusBadgeOpen: { type: status, component: Status, text: { oneOf: [planned.Exams.statusOpen, planned.Exams.statusClosed] }, in: [readOnly] }
+  savedLine: { type: status, component: Status, role: status, text: { key: planned.Exams.savedAt, params: { savedAt: exam.savedAt } }, in: [settings, topics, questions], when: "notice == 'saved'" } # a live line: what was saved last, and when; nothing is saved by a button of the page
+  stepZeroth: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.stepZeroth }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: ZEROTH }
+  stepTopics: { type: action, component: Button, role: button, intent: secondary, text: { key: SessionPlan.examTopicsLabel }, in: [settings, questions], emits: TOPICS }
+  stepQuestions: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.stepQuestions }, in: [settings, topics], emits: QUESTIONS }
+  stepSettings: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.stepSettings }, in: [topics, questions], emits: SETTINGS }
+
+  # --- the settings --------------------------------------------------------------------------------------------------------------------
+  settingsRegion: { type: page, component: Page, role: region, name: { labelledBy: settingsTitle }, in: [settings, savingSettings, readingCopies, copyPick, copying] }
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.stepSettings }, in: [settings, savingSettings, readingCopies, copyPick, copying] } # h2
+  titleField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.titleLabel }, value: { literal: Ara sınav }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # saved when the field is left
+  durationField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.durationLabel }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # a whole number above zero; no upper bound
+  durationHelp: { type: text, component: Text, text: { key: planned.Exams.durationHelp }, in: [settings, savingSettings, readingCopies, copyPick, copying] }
+  durationError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.settingsInvalid }, in: [settings], when: "notice == 'settingsInvalid'" } # under the field it is about
+  instructionsField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.instructionsLabel }, in: [settings, savingSettings, readingCopies, copyPick, copying], disabledIn: [savingSettings, readingCopies, copyPick, copying], emits: CHANGE } # a text area; the briefing shows it under what every exam says
+  instructionsHelp: { type: text, component: Text, text: { key: planned.Exams.instructionsHelp }, in: [settings, savingSettings, readingCopies, copyPick, copying] }
+  earliestStart: { type: text, component: Text, text: { key: planned.Exams.earliestStart, params: { startsAt: exam.startsAt } }, in: [settings, savingSettings, readingCopies, copyPick, copying] } # the celse's date and time; it changes where the exam is published or the celse is moved
+  questionCount: { type: text, component: Text, text: { key: planned.Exams.questionCount, params: { count: exam.questionCount } }, in: [settings, savingSettings, readingCopies, copyPick, copying, questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused] } # counted against the suggested 50; fewer or more are not stopped
+  copyButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.copyButton }, in: [settings], when: noQuestions, emits: COPY } # only a draft with no question yet takes a copy
+  copiedAlert: { type: alert, component: Alert, role: status, text: { key: planned.Exams.copied }, in: [settings], when: "notice == 'copied'" } # stays until the zeroth question is opened
+
+  # --- copying an earlier exam: a dialog over the settings -----------------------------------------------------------------------------
+  copyDialog: { type: alert, component: Alert, role: dialog, name: { key: planned.Exams.copyButton }, text: { key: planned.Exams.copyIntro }, in: [copyPick, copying] }
+  copyList: { type: list, component: List, role: list, name: { key: planned.Exams.copyListLabel }, in: [copyPick, copying] }
+  copyItem: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.copyItemLabel, params: { title: row.title } }, text: { key: planned.Exams.copyItem, params: { title: row.title, date: row.date, count: row.count } }, in: [copyPick, copying], disabledIn: [copying], emits: PICK, repeat: exams.earlier } # one per earlier exam of the course of the format Çoktan seçmeli
+  copyCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [copyPick], emits: CANCEL }
+  copyRefusedText: { type: alert, component: Text, role: alert, text: { key: planned.Exams.copyRefused }, in: [copyPick], when: "notice == 'copyRefused'" }
+
+  # --- the zeroth question -------------------------------------------------------------------------------------------------------------
+  zerothRegion: { type: page, component: Page, role: region, name: { labelledBy: zerothTitle }, in: [zerothForm, savingZeroth] }
+  zerothTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.stepZeroth }, in: [zerothForm, savingZeroth] } # h2
+  zerothIntro: { type: text, component: Text, text: { key: planned.Exams.zerothIntro }, in: [zerothForm, savingZeroth] }
+  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [zerothForm, savingZeroth, preview] } # fixed, as the talebe sees it: dir="rtl" and the Arabic font on this element itself (rule hadith-fixed)
+  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [zerothForm, savingZeroth, preview] } # fixed
+  zerothQuestionField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.zerothQuestionLabel }, in: [zerothForm, savingZeroth], disabledIn: [savingZeroth] } # the preparer's question, e.g. "Bu hadisi ne zaman öğrendiniz?"
+  zerothOptions: { type: list, component: List, role: group, name: { key: planned.Exams.optionsLabel }, in: [zerothForm, savingZeroth] }
+  zerothOptionField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.optionLabel, params: { n: row.n } }, in: [zerothForm, savingZeroth], disabledIn: [savingZeroth], repeat: zeroth.options } # two at least; none is marked correct, there is no box for it
+  zerothRemoveOption: { type: action, component: Button, role: button, intent: dismiss, name: { key: planned.Exams.removeOptionLabel, params: { n: row.n } }, text: { key: planned.Exams.removeOption }, in: [zerothForm], emits: REMOVE_ZEROTH_OPTION, repeat: zeroth.options } # off while only two are left
+  zerothAddOption: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.addOption }, in: [zerothForm], emits: ADD_ZEROTH_OPTION }
+  zerothError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.zerothInvalid }, in: [zerothForm], when: "notice == 'zerothInvalid'" }
+  zerothSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [zerothForm, savingZeroth], disabledIn: [savingZeroth], emits: SAVE_ZEROTH }
+  zerothCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [zerothForm], emits: CANCEL }
+
+  # --- the topics, from the course's list ----------------------------------------------------------------------------------------------
+  topicsRegion: { type: page, component: Page, role: region, name: { labelledBy: topicsTitle }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic] }
+  topicsTitle: { type: text, component: Heading, role: heading, text: { key: SessionPlan.examTopicsLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic] } # h2
+  topicsIntro: { type: text, component: Text, text: { key: planned.Exams.topicsIntro }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic] }
+  topicsPicked: { type: text, component: Text, text: { key: planned.Exams.topicsPicked, params: { picked: exam.topicCount } }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic] }
+  topicsGroup: { type: list, component: List, role: group, name: { key: planned.Exams.courseTopicsLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic] }
+  topicPicked: { type: field, component: TextField, role: checkbox, name: { key: composed.Exams.topicName, params: { name: row.name } }, text: { key: planned.Exams.topicRow, params: { number: row.number, name: row.name, count: row.count } }, checked: true, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: UNPICK_TOPIC, repeat: topics.picked } # a topic this exam has picked; unticking it asks first when questions carry it
+  topicUnpicked: { type: field, component: TextField, role: checkbox, name: { key: composed.Exams.topicName, params: { name: row.name } }, text: { key: planned.Exams.topicRow, params: { number: row.number, name: row.name, count: row.count } }, checked: false, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: PICK_TOPIC, repeat: topics.unpicked } # a topic of the course this exam has not picked
+  topicNameField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.topicNameLabel, params: { name: row.name } }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: RENAME_TOPIC, repeat: topics.all } # the name in its row, saved when the field is left; for the whole course
+  topicNumberField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.topicNumberLabel, params: { name: row.name } }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: RENAME_TOPIC, repeat: topics.all } # the topic's number in the course, changed in its row like its name
+  newTopicField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.newTopicLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [addingTopic, pickingNewTopic] }
+  newTopicNumberField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.newTopicNumberLabel }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [addingTopic, pickingNewTopic] } # filled with the next free number; the team may give its own, such as its book's chapter
+  topicRemoveButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: planned.Exams.removeTopicLabel, params: { topic: row.name } }, text: { key: planned.Exams.removeTopic }, in: [topics], emits: REMOVE_TOPIC, repeat: course.topics } # on each topic chip; asks once, opened by state (#410's lesson)
+  addTopic: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.addTopic }, in: [topics, unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], disabledIn: [unpickAsk, savingTopics, addingTopic, pickingNewTopic, renamingTopic], emits: ADD_TOPIC }
+  topicExistsError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.topicExists }, in: [topics], when: "notice == 'topicExists'" } # under the field that has the name
+  topicTooLongError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.topicTooLong }, in: [topics], when: "notice == 'topicTooLong'" }
+  topicEmptyError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.topicEmpty }, in: [topics], when: "notice == 'topicEmpty'" }
+  topicAddedToast: { type: status, component: Status, role: status, text: { key: planned.Exams.topicAdded }, in: [topics], when: "notice == 'topicAdded'" }
+  unpickDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.unpickTitle }, text: { key: planned.Exams.unpickBody, params: { count: row.count } }, in: [unpickAsk] }
+  unpickConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.remove }, in: [unpickAsk], emits: CONFIRM }
+  unpickCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [unpickAsk], emits: CANCEL }
+
+  # --- the questions at a glance -------------------------------------------------------------------------------------------------------
+  questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused] }
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.stepQuestions }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused] } # h2
+  pointsTotal: { type: text, component: Text, text: { key: planned.Exams.pointsTotal }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused] } # always 100: the own points and the exact shares add up to it
+  topicCount: { type: text, component: Text, text: { key: planned.Exams.topicCount, params: { number: row.number, name: row.name, count: row.count } }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.topics } # how many questions each picked topic has
+  topicFilter: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.topicFilterLabel }, in: [questions] } # a native select of the exam's topics, and "Hepsi"; filters the table, saves nothing
+  noQuestions: { type: text, component: Text, text: { key: planned.Exams.noQuestions }, in: [questions], when: noQuestions }
+  questionsTable: { type: list, component: List, role: table, name: { labelledBy: questionsTitle }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], when: "questionsSoFar == 'some'" } # in the preparer's order; a talebe sees an order of their own
+  rowText: { type: text, component: Text, role: cell, text: { key: composed.Exams.questionStart, params: { n: row.n, start: row.start } }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.questions } # the start of its text, cut
+  rowTopics: { type: text, component: Text, role: cell, text: { key: composed.Exams.topicNames, params: { topics: row.topics } }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.questions }
+  rowPoints: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.pointsShare, planned.Exams.pointsOwn] }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.questions } # two decimals, a Turkish decimal comma
+  rowMode: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.modeSingle, planned.Exams.modeMultiple] }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.questions }
+  rowState: { type: text, component: Text, role: cell, text: { oneOf: [planned.Exams.complete, planned.Exams.incomplete] }, in: [questions, addingQuestion, removeAsk, removingQuestion, points, settingPoints, pointsRefused], repeat: exam.questions } # an incomplete question keeps the exam from being published
+  rowEdit: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.editQuestionLabel, params: { n: row.n } }, text: { key: planned.Exams.edit }, in: [questions], emits: EDIT_QUESTION, repeat: exam.questions }
+  rowPointsButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.pointsButtonLabel, params: { n: row.n } }, text: { key: planned.Exams.points }, in: [questions], emits: SET_POINTS, repeat: exam.questions }
+  rowRemove: { type: action, component: Button, role: button, intent: dismiss, name: { key: planned.Exams.removeQuestionLabel, params: { n: row.n } }, text: { key: planned.Exams.remove }, in: [questions], emits: REMOVE_QUESTION, repeat: exam.questions }
+  addQuestion: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.addQuestion }, in: [questions, addingQuestion], disabledIn: [addingQuestion], emits: ADD_QUESTION } # the new question comes last, with five empty option fields
+  previewButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.preview }, in: [questions], emits: PREVIEW }
+  publishButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.publish }, in: [questions], emits: PUBLISH } # opens nazar.exams.publish, which checks the exam first
+  removedToast: { type: status, component: Status, role: status, text: { key: planned.Exams.removed }, in: [questions], when: "notice == 'removed'" }
+  questionGoneToast: { type: status, component: Status, role: status, text: { key: planned.Exams.questionGone }, in: [questions], when: "notice == 'questionGone'" }
+  removeDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.removeTitle }, text: { key: planned.Exams.removeBody, params: { n: row.n } }, in: [removeAsk, removingQuestion] }
+  removeConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.remove }, in: [removeAsk, removingQuestion], disabledIn: [removingQuestion], emits: CONFIRM }
+  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [removeAsk], emits: CANCEL }
+
+  # --- a question's points: a dialog over the list -------------------------------------------------------------------------------------
+  pointsDialog: { type: alert, component: Alert, role: dialog, name: { key: planned.Exams.pointsTitle, params: { n: question.n } }, text: { oneOf: [planned.Exams.pointsNowShare, planned.Exams.pointsNowOwn] }, in: [points, settingPoints, pointsRefused] }
+  ownPointsField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.ownPointsLabel }, in: [points, settingPoints, pointsRefused], disabledIn: [settingPoints] } # a decimal with a comma or a point, at most two places; not a spinbutton, which takes no comma
+  ownPointsHelp: { type: text, component: Text, text: { key: planned.Exams.ownPointsHelp }, in: [points, settingPoints] }
+  pointsPreview: { type: status, component: Status, role: status, text: { key: planned.Exams.pointsPreview, params: { left: preview.left, others: preview.others, share: preview.share } }, in: [points, settingPoints] } # said while it is typed, before anything is saved
+  pointsInvalidError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.pointsInvalid }, in: [points], when: "notice == 'pointsInvalid'" }
+  pointsRefusedError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.pointsRefused, params: { left: refusal.pointsLeft } }, in: [pointsRefused] } # under the field; nothing was changed
+  pointsFix: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.changePoints }, in: [pointsRefused], emits: FIX }
+  pointsSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [points, settingPoints], disabledIn: [settingPoints], emits: SET_OWN }
+  backToShare: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToShare }, in: [points], emits: CLEAR_OWN } # shown for a question that has points of its own
+  pointsCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [points], emits: CANCEL }
+
+  # --- a question ----------------------------------------------------------------------------------------------------------------------
+  questionRegion: { type: page, component: Page, role: region, name: { labelledBy: questionTitle }, in: [questionForm, savingQuestion, questionInvalid] }
+  questionTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.questionTitle, params: { n: question.n } }, in: [questionForm, savingQuestion, questionInvalid] } # h2
+  questionText: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.questionTextLabel }, in: [questionForm, savingQuestion, questionInvalid], disabledIn: [savingQuestion] } # a text area; Arabic is set right to left where it is Arabic (rule arabic-runs)
+  lackTextError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.lackText }, in: [questionInvalid] } # at the field; the focus goes to the first field that lacks something
+  optionsGroup: { type: list, component: List, role: group, name: { key: planned.Exams.optionsLabel }, in: [questionForm, savingQuestion, questionInvalid] }
+  optionField: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.optionLabel, params: { n: row.n } }, in: [questionForm, savingQuestion, questionInvalid], disabledIn: [savingQuestion], repeat: question.options } # five at first; an empty one is not sent
+  optionCorrect: { type: field, component: TextField, role: checkbox, name: { key: planned.Exams.correctLabel, params: { n: row.n } }, text: { key: planned.Exams.correct }, in: [questionForm, savingQuestion, questionInvalid], disabledIn: [savingQuestion], repeat: question.options } # a check box named by its option; one is marked unless more are
+  optionRemove: { type: action, component: Button, role: button, intent: dismiss, name: { key: planned.Exams.removeOptionLabel, params: { n: row.n } }, text: { key: planned.Exams.removeOption }, in: [questionForm], emits: REMOVE_OPTION, repeat: question.options } # off while only two are left
+  addOption: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.addOption }, in: [questionForm], emits: ADD_OPTION } # no upper limit
+  lackOptionError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.lackOption }, in: [questionInvalid] }
+  lackCorrectError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.lackCorrect }, in: [questionInvalid] }
+  modeGroup: { type: list, component: List, role: radiogroup, name: { key: planned.Exams.modeLegend }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'" } # asked only when more than one option is marked correct
+  modeSingle: { type: field, component: ListItem, role: radio, text: { key: planned.Exams.modeSingleHelp }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'", disabledIn: [savingQuestion] } # radio buttons for the talebe: one choice, any correct option gets the points
+  modeMultiple: { type: field, component: ListItem, role: radio, text: { key: planned.Exams.modeMultipleHelp }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'", disabledIn: [savingQuestion] } # check boxes for the talebe
+  scoringGroup: { type: list, component: List, role: radiogroup, name: { key: planned.Exams.scoringLegend }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'" } # asked only for check boxes
+  scoringAll: { type: field, component: ListItem, role: radio, text: { key: planned.Exams.scoringAll }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'", disabledIn: [savingQuestion] } # every correct option and no other
+  scoringShares: { type: field, component: ListItem, role: radio, text: { key: planned.Exams.scoringShares }, in: [questionForm, savingQuestion, questionInvalid], when: "correct == 'several'", disabledIn: [savingQuestion] } # each correct mark an equal share, each wrong one a share off, never below 0
+  modeError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.modeInvalid }, in: [questionForm], when: "notice == 'modeInvalid'" }
+  questionTopicNumbers: { type: field, component: TextField, role: textbox, text: { key: planned.Exams.questionTopicNumbersLabel }, in: [questionForm, savingQuestion, questionInvalid], disabledIn: [savingQuestion] } # "3, 7": the topics are picked by their numbers, with no search; each number typed checks its box below and says its name, and one the course has no topic for is said at the field
+  questionTopics: { type: list, component: List, role: group, name: { key: planned.Exams.questionTopicsLabel }, in: [questionForm, savingQuestion, questionInvalid] }
+  questionTopicBox: { type: field, component: TextField, role: checkbox, text: { key: planned.Exams.topicWithNumber, params: { number: row.number, name: row.name } }, in: [questionForm, savingQuestion, questionInvalid], disabledIn: [savingQuestion], repeat: exam.topics } # one per topic the exam has picked; one at least
+  lackTopicError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.lackTopic }, in: [questionInvalid] }
+  lacksSummary: { type: alert, component: Alert, role: status, text: { key: planned.Exams.lacksSummary, params: { lacks: question.lacks } }, in: [questionInvalid] } # a status: the question was saved, as incomplete
+  questionFix: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.fix }, in: [questionInvalid], emits: FIX }
+  questionLater: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.later }, in: [questionInvalid], emits: LATER }
+  questionSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [questionForm, savingQuestion], disabledIn: [savingQuestion], emits: SAVE_QUESTION }
+  questionCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [questionForm], emits: CANCEL }
+
+  # --- the preview: the exam as a talebe will see it -----------------------------------------------------------------------------------
+  previewRegion: { type: page, component: Page, role: region, name: { labelledBy: previewTitle }, in: [preview] }
+  previewTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.previewTitle }, in: [preview] } # h2
+  previewNote: { type: alert, component: Alert, role: status, text: { key: planned.Exams.previewNote }, in: [preview] }
+  previewBriefing: { type: text, component: Heading, role: heading, text: { key: planned.Exams.briefingTitle }, in: [preview] } # h3: the briefing of tedris.exams.take
+  previewZeroth: { type: text, component: Text, text: { key: composed.Exams.question, params: { question: exam.zerothQuestion } }, in: [preview] }
+  previewZerothOption: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [preview], repeat: exam.zeroth.options } # the zeroth question's options, as the talebe chooses among them
+  previewQuestion: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [preview], repeat: preview.questions } # in a drawn order
+  previewMode: { type: text, component: Text, text: { oneOf: [planned.Exams.modeSingle, planned.Exams.modeMultiple] }, in: [preview], repeat: preview.questions } # how the question is answered: radio buttons or check boxes
+  previewOption: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [preview], repeat: preview.options } # each question's options in their drawn order; nothing is saved and no clock runs
+  previewBack: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.previewBack }, in: [preview], emits: BACK }
+
+  # --- an exam that has opened, a refusal, a failed read, and a change made by someone else --------------------------------------------
+  readOnlyAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.readOnlyTitle }, text: { key: planned.Exams.readOnlyBody }, in: [readOnly] }
+  readOnlyLength: { type: text, component: Text, text: { key: planned.Exams.readOnlyLength, params: { minutes: exam.durationMinutes } }, in: [readOnly] }
+  readOnlyCount: { type: text, component: Text, text: { key: planned.Exams.questionCount, params: { count: exam.questionCount } }, in: [readOnly] }
+  readOnlyZeroth: { type: text, component: Text, text: { key: composed.Exams.question, params: { question: exam.zerothQuestion } }, in: [readOnly] }
+  readOnlyZerothOption: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [readOnly], repeat: exam.zeroth.options }
+  readOnlyTopics: { type: text, component: Text, text: { key: composed.Exams.topicNames, params: { topics: exam.topicNames } }, in: [readOnly] }
+  readOnlyQuestions: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [readOnly], repeat: exam.questions } # every question, read only
+  readOnlyOption: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [readOnly], repeat: exam.options } # each question's options; a correct one is said in words (Doğru), never by colour alone
+  readOnlyPoints: { type: text, component: Text, text: { oneOf: [planned.Exams.pointsShare, planned.Exams.pointsOwn] }, in: [readOnly], repeat: exam.questions } # each question's points; nothing here changes
+  resultsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.results }, in: [readOnly], emits: RESULTS }
+  publishingLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.publishing }, in: [readOnly], emits: PUBLISHING } # where it can be closed early
+  forbiddenPage: { type: page, component: Page, role: main, in: [forbidden, loadFailed] }
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden] } # as the pages' own PageProblem draws it
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.loadFailedTitle }, text: { key: Problems.actionGeneric }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.retry }, in: [loadFailed], emits: RETRY }
+  staleDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.staleTitle }, text: { key: planned.Exams.staleBody }, in: [stale] } # an alert dialog: it stays until it is answered
+  staleReload: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.readAgain }, in: [stale], emits: RELOAD }
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: Problems.actionGeneric }, in: [settings, copyPick, zerothForm, topics, questions, questionForm, points], when: "notice == 'failed'" } # as the session pages' own failures: an alert dialog that stays until closed
+
+edges:
+  - { labelledBy: [settingsRegion, settingsTitle] }
+  - { labelledBy: [zerothRegion, zerothTitle] }
+  - { labelledBy: [topicsRegion, topicsTitle] }
+  - { labelledBy: [questionsRegion, questionsTitle] }
+  - { labelledBy: [questionsTable, questionsTitle] }
+  - { labelledBy: [questionRegion, questionTitle] }
+  - { labelledBy: [previewRegion, previewTitle] }
+  - { triggers: [titleField, savingSettings] }
+  - { triggers: [copyButton, readingCopies] }
+  - { triggers: [copyItem, copying] }
+  - { triggers: [zerothSave, savingZeroth] }
+  - { triggers: [stepTopics, readingTopics] }
+  - { triggers: [topicUnpicked, savingTopics] }
+  - { triggers: [addTopic, addingTopic] }
+  - { triggers: [topicNameField, renamingTopic] }
+  - { triggers: [addQuestion, addingQuestion] }
+  - { triggers: [removeConfirm, removingQuestion] }
+  - { triggers: [questionSave, savingQuestion] }
+  - { triggers: [pointsSave, settingPoints] }
+  - { triggers: [crumbRoot, left] }
+
+rules:
+  - { id: optimistic-editor, rule: "The editor saves in the background (#409, #410): a topic or a question shows at once with \"Kaydediliyor…\", the writes run in order and each names the version the one before handed back; nothing is disabled while they run. A failed write keeps what was typed, says \"Kaydedilemedi\" and offers \"Yeniden dene\"." }
+  - { id: kept-in-the-browser, rule: "The questions not saved yet are kept in the browser per exam and come back after a reload; a save that names a Server Action a new version of Medaris no longer has says \"Medaris güncellendi\" with \"Yenile\" (#426). A newer read of the page, drawn again by the router after a save that renewed the session, is taken only when nothing is on its way and no question form is open (#428)." }
+  - { id: no-default-length, rule: "A new draft has no length; \"Süre (dakika)\" is empty and required to publish (the owner, 22 Nov 2026). The three settings are saved by one \"Ayarları kaydet\" (my choice)." }
+  - { id: each-lack-at-its-field, rule: "Each of lackTextError, lackOptionError, lackCorrectError and lackTopicError is shown only when the answer's lacks (saveExamQuestion) names it, and the focus goes to the first field among those named. The flow does not tell the lacks apart (question: incomplete), so the graph draws all four in questionInvalid." }
+  - { id: topics-by-number, rule: "Each topic of the course has a number, shown before its name (\"3. Kıyas\"). In a question, the team types the topics' numbers (\"3, 7\") instead of searching for them (the owner, 22 Nov 2026: \"Konuların konu numarası da olsun ismi ile beraber, hoca aramadan direk konunun numarasını girebilsin kolayca\"); the boxes follow what is typed, and a number of a course topic the exam has not picked yet picks it for the exam when the question is saved. A number with no topic is said at the field and nothing is saved." }
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; a form that refuses or lacks something moves the focus to the first field it names (needs what-a-question-lacks-is-said); a dialog takes the focus and gives it back to the button that opened it. Nothing is built, so the graph sets no initialFocus." }
+  - { id: hadith-fixed, rule: "The hadith above the zeroth question is the same in every exam and no one edits it: the Arabic \"مَنْ غَشَّنَا فَلَيْسَ مِنَّا\" and its meaning \"Bizi aldatan bizden değildir.\" (planned.Exams.hadithArabic, planned.Exams.hadithMeaning). Both the Arabic text, with its harakat, and the wording of the meal are for the owner to confirm before it is built." }
+  - { id: arabic-runs, rule: "An Arabic run, the hadith and any Arabic in a question or an option, gets dir=\"rtl\", the Arabic font (--font-arabic) and its leading on the element itself, never on a shared ancestor, as the Medaris design system says; a mixed text is set per run." }
+  - { id: points-exact, rule: "The shares are kept exact (a fraction) and only shown rounded, with two decimals and a decimal comma (\"1,94\"); the total line always reads \"Toplam 100\", since own points and shares add up to it. An own point is typed with a comma or a point and at most two places." }
+  - { id: saved-as-it-goes, rule: "No button saves the whole exam. A field is saved when it is left and a form by its own \"Kaydet\"; each write names the version the page read, so a change made by someone else in between is never overwritten unseen (the stale dialog). This is the course editor's rule (course-optimistic-version) applied here." }
+  - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review; Sessions.*, SessionPlan.* and Problems.* are the app's own." }

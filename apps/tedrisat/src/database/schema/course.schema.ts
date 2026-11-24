@@ -84,6 +84,12 @@ export const courses = table("courses", {
   // are never opened to everyone, whatever a recording's own visibility says.
   // The introduction page stays public.
   isClosed: boolean("is_closed").default(false).notNull(),
+  // "Listelenmeyen ders" (MDRS-248): the course-level twin of an unlisted köşk
+  // (`kosks.is_private`, MDRS-122). In no list or search but its köşk
+  // managers' own shelf; opened by its link to signed-in callers only (no
+  // token: 404); every enrollment waits for approval. Not hidden: a hidden
+  // course (`archived_at`) is not-found even by its link.
+  isUnlisted: boolean("is_unlisted").default(false).notNull(),
   // The short word printed on the cover ("Sarf", "Tecvid"); null: none.
   coverLabel: text("cover_label"),
   // "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held

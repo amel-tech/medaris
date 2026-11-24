@@ -1,0 +1,163 @@
+# The footer link "Aydınlatma Metni" that tedris-web and nizam-web draw, and where it leads: the privacy notice on the
+# public site (landing-web, /aydinlatma-metni), in a new tab. Read from the code of the branch (the tree of PR #394) on
+# 15 Nov 2026. Nothing here is approved.
+#
+# What the flow draws: one page of an app, with or without the footer under it. It covers no page of its own: the link
+# is the same component in two apps (apps/tedris/components/legal-footer/index.tsx and apps/nizam/components/
+# legal-footer/index.tsx are letter for letter the same but for one class name), and what differs is where the footer
+# sits. So a case variable says which app and which frame, and the states are the three places the link is found:
+#   footerBelow   tedris-web on any page (the root layout puts `<LegalFooter />` after the page, layout.tsx:61), and
+#                 nizam-web on a page with no shell: a signed-out visitor on "/" or on /auth/signin, or a signed-in
+#                 person on /auth/* (isBarePath). The footer is a `contentinfo` landmark after the page.
+#   footerInMain  nizam-web inside its management shell, which every signed-in page of the app has: the footer is passed
+#                 to the shell as a slot and drawn INSIDE `<main id="main">` (shell-frame.tsx:229-230), so it is no
+#                 landmark and sits after all of the page's content (F-P0-5, F-X-13).
+#   noFooter      nazar-web, which has no footer and no other link to the notice anywhere (PN-2).
+# The link opens landing's notice in a new tab and this tab stays where it was. The notice itself is landing.site.readLegal,
+# which this flow starts with `start: privacy`; the link on the Keycloak registration form and on the köşk application form
+# are other flows' (realm.auth.register, tedris.discover.applyForKosk).
+#
+# What the code does where it is wrong for its users (the graph draws what it does; none of it is fixed here). Each finding
+# is in ui.yaml `rules` with its fix:
+#   SHL-12, CLS-14  (tedris; inventory) the link opens a new tab and its name does not say so.
+#   PN-1            (new) the same in nizam: the component is a copy, with the same missing words.
+#   F-P0-5, F-X-13  (nizam; inventory) the footer is inside `<main>`, so there is no `contentinfo` landmark and the link is
+#                   reached only after the whole page.
+#   PN-2            (new) nazar-web has no footer and no link to the notice: a hoca, a nazır or a başmüderris who works only
+#                   in nazar never meets it in the app, while the other two apps say the footer is "every page" (MDRS-102).
+schema: delurio-graph/0
+kind: flow
+id: common.shell.privacyNotice
+status: captured
+domain: medaris.api
+ui: common.shell.privacyNotice
+title: Open the privacy notice from the footer
+summary: >-
+  In tedris-web and nizam-web a link "Aydınlatma Metni" sits in the footer of the page, whoever is looking, signed in or
+  not. Pressing it opens the privacy notice of the public site in a new tab, on the landing address of the environment
+  (the production address when none is set), and leaves this tab where it was. In tedris the footer is under the page, a
+  landmark of its own; in nizam it is under the page for a visitor and inside the main area of the shell for a signed-in
+  person. Nazar has no footer and no link to the notice. The link does not say it opens a new tab (SHL-12, CLS-14, PN-1),
+  the footer in nizam's shell is no landmark (F-P0-5), and nazar's people have no way to the notice from their app (PN-2).
+source: apps/tedris/components/legal-footer/index.tsx:9
+
+scope:
+  shows: a page of tedris, nizam or nazar as far as the footer and its one link go, and the press that opens the notice
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the page the footer sits under: each page is another flow's (tedris.shell.frame draws tedris's chrome, nizam.shell.menuPerPersona nizam's, nazar.shell.scopeAndMenu nazar's); this flow draws the page's `main` and the footer only"
+    - "the notice itself, which the new tab shows: landing.site.readLegal (this flow starts it with `start: privacy`). The replay does not follow a new tab, so what the tab shows is walked there and not here"
+    - "the other links to the same notice: the köşk application form (tedris.discover.applyForKosk; DSC-15 is that link's missing new-tab note), the landing pages' own footers and links (landing.site.readLegal, landing.site.faq), and the Keycloak registration and profile pages (realm.auth.register, realm.auth.profileUpdate), which link to the production address whatever the stack (K13)"
+    - "which address the link has: it is the landing address the app reads per request (LANDING_URL, set by the stack to http://localhost:4003) and the production address https://medaris.app/aydinlatma-metni when it is unset or empty (libs/utils/src/privacy-notice.ts:23); the graph draws the link, the binding checks the address the stack gives it"
+    - "the global error pages of tedris and nizam (app/global-error.tsx replaces the whole document with its own <html> and carries no LegalFooter): read from the code, not seen in a browser"
+    - "the phone layout (below 768 px): the footer is the same element in the same place in both apps; the shell's sidebar and app bar change around it, and the link does not. Not walked"
+    - "the other two languages: the label exists in en (\"Privacy Notice\") and ar (\"إشعار الخصوصية\") (libs/i18n/src/locales/{en,ar}/common.json), but only tr is routed (apps/nizam/lib/i18n/routing.ts:6) and the catalog of this graph is tr"
+    - "a keyboard visitor: the link is a native anchor, so Enter follows it; not walked, and in nizam's shell it comes after the whole page in tab order (F-P0-5)"
+
+decisions:
+  D1:
+    question: >-
+      Nazar has no footer and no link to the privacy notice (PN-2). Should the staff of a medrese find it from their own
+      app, as the talebe and the nazım do?
+    recommend: >-
+      Yes. The notice is the one the law asks to be put in front of everyone whose data Medaris keeps (KVKK Art. 10), and a
+      hoca or a nazır who signs in at Nazar and never opens Tedris or Nizam has no link to it. Give nazar's shell the same
+      footer slot as nizam's, and fix F-P0-5 in the same change so the slot is outside `<main>`.
+    affects: [noFooter]
+
+context:
+  app:
+    values: [tedris, nizamBare, nizamShell, nazar]
+    initial: any
+    say:
+      tedris: "they are on a page of tedris-web, signed in or not"
+      nizamBare: "they are on a page of nizam-web that has no shell: a signed-out visitor on the welcome page or the sign-in page, or anyone on /auth/*"
+      nizamShell: "they are on a page of nizam-web inside the management shell, signed in"
+      nazar: "they are on a page of nazar-web"
+
+# The effect only gives the binding a place to check where the link leads: it changes nothing the screen remembers.
+effects:
+  opensNoticeTab: { havoc: [] }
+
+# The main story: a person on a page of tedris presses "Aydınlatma Metni" in the footer; the notice opens in a new tab.
+main:
+  given: { app: tedris }
+  events: [OPEN_NOTICE]
+
+initial: arriving
+states:
+  arriving:
+    title: Arrive on a page of one of the apps
+    description: >-
+      Classification only. Every page of an app has the same footer or the same lack of one, so the flow starts from the
+      place the footer is found in; a person arrives by any way into any page.
+    source: apps/tedris/app/layout.tsx:61
+    always:
+      - { guard: "app == 'nazar'", target: noFooter, say: "nazar-web draws no footer" }
+      - { guard: "app == 'nizamShell'", target: footerInMain, say: "the shell of nizam-web takes the footer into its main area" }
+      - { target: footerBelow, say: "the footer is under the page" }
+
+  footerBelow:
+    title: A page with the footer under it
+    by: human
+    goal: true
+    description: >-
+      The page, and under it a `<footer>` that is the page's `contentinfo` landmark, with one link "Aydınlatma Metni"
+      centred in it. In tedris-web this is every page, signed in or not (the root layout, after the header and the page).
+      In nizam-web it is the page of a person with no shell: the welcome page "Hoş geldiniz" a signed-out visitor meets
+      at "/", the sign-in page, and any /auth/* page (the footer comes after the page). The link is a plain anchor to the
+      notice on the landing address, with `target="_blank"` and `rel="noopener noreferrer"`; its name is its text and
+      says nothing of the new tab (SHL-12, CLS-14 in tedris; PN-1 in nizam).
+    source: apps/tedris/components/legal-footer/index.tsx:13
+    on:
+      OPEN_NOTICE:
+        target: footerBelow
+        effect: [opensNoticeTab]
+        starts: { flow: landing.site.readLegal, given: { start: "'privacy'" } }
+        say: "they press \"Aydınlatma Metni\": the privacy notice of the public site opens in a new tab, and this tab stays on the page it was on"
+        source: apps/tedris/components/legal-footer/index.tsx:15
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  footerInMain:
+    title: A page of nizam's shell, with the footer inside its main area
+    by: human
+    goal: true
+    description: >-
+      nizam-web's shell for a signed-in person: the sidebar (or the app bar below 768 px) and `<main id="main">`. The
+      footer is not drawn by the shell: `app/layout.tsx` hands `<LegalFooter />` to it as a slot, and the shell draws it
+      as the last child of `<main>`, after the page's own content. A `<footer>` inside `<main>` has no landmark role, so the
+      page has no `contentinfo` (F-P0-5, F-X-13), and the link is reached after everything in the page by keyboard. The
+      link is the same anchor as in tedris, and it does not say it opens a new tab either (PN-1).
+    source: apps/nizam/components/shell/shell-frame.tsx:230
+    on:
+      OPEN_NOTICE:
+        target: footerInMain
+        effect: [opensNoticeTab]
+        starts: { flow: landing.site.readLegal, given: { start: "'privacy'" } }
+        say: "they press \"Aydınlatma Metni\": the privacy notice of the public site opens in a new tab, and this tab stays on the page it was on"
+        source: apps/nizam/components/legal-footer/index.tsx:15
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  noFooter:
+    title: A page of nazar, with no footer
+    by: human
+    description: >-
+      nazar-web's layout renders the page and nothing after it (`app/layout.tsx:55`); the shell has no footer slot, and
+      nothing else in the app links to the notice. A hoca, a nazır or a başmüderris on any page of nazar has no way to the
+      privacy notice from there (PN-2, decision D1). The page is drawn so the replay has something to stand on, and the
+      link is checked to be absent.
+    source: apps/nazar/app/layout.tsx:55
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: no-footer-only-in-nazar
+    never: "state == 'noFooter' and app != 'nazar'"
+    say: "Only nazar-web draws a page with no footer: tedris and nizam carry the link on every page they draw"
+    source: apps/tedris/app/layout.tsx:61
+  - id: shell-footer-only-in-nizam
+    never: "state == 'footerInMain' and app != 'nizamShell'"
+    say: "Only nizam's shell takes the footer into its main area: tedris draws it under the page"
+    source: apps/nizam/components/shell/shell-frame.tsx:230

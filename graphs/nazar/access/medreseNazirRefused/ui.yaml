@@ -1,0 +1,145 @@
+# The screens of nazar.access.medreseNazirRefused: the ten pages of a medrese in nazar-web as a medrese nazırı with no grant
+# meets them, under the shell's menu. Read from apps/nazar/features/{pano,courses,offsite,archive,students,nazirs,bans,appeals,
+# settings,shell}; the words are copied from libs/i18n/src/locales/tr/nazar.json, key for key. Nothing was walked in a browser
+# (from the code); the unit tests named in needs.yaml exercise the same components.
+#
+# How to read it. One state, `shown`, stands for whichever page the person is on (the flow's `page`), and `body` says whether
+# the page draws what it came for (`drawn`) or the verdict in its place (`refused`). Every page keeps the same three things whatever the
+# read said: the header (its title and the line under it), the menu and the shell around them. A node that carries `when: "page == ..."`
+# is that page's own. The nodes `when: "body == 'drawn'"` are the contrast: one control that the başmüderris has on the page and the
+# nazır with no grant has not (the e2e checks assert them absent), and, on Medrese nazırları, what a nazır given madrasah.nazir_appoint
+# is let into.
+#
+# Samples: `name` is the one sample for four kinds of {name} (the person in the greeting and in "Görevden al: {name}", the
+# medrese in the sentences of Dersler, Medrese dersi aç, Talebeler and the roster's caption); it is a person's name, so the page tool
+# draws the medrese sentences with it. The replay reads the binding's samples, which are none, so it matches any text there.
+#
+# Composed text (not in any i18n file): composed.Pano.medreseName is the name of the medrese in the card of the Pano
+# (features/pano/components/pano-page.tsx:131, a <bdi> of the API's name).
+schema: delurio-graph/0
+kind: ui
+id: nazar.access.medreseNazirRefused
+flow: nazar.access.medreseNazirRefused
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Seher
+  nameGenitive: Hadis ve Siyer Medresesi’nin
+  madrasah: Hadis ve Siyer Medresesi
+  appointer: Seher Medrese Nazırı
+  dateLocative: 15 Kasım’da
+
+# No page moves the focus on load (nothing in features/* sets it), and a menu link is a plain link to a new document, so the graph
+# draws no `initialFocus` and no `focus`: it says nothing of what the code does not say (rule focus-not-set).
+nodes:
+  # --- the shell around every page of the medrese ---------------------------------------------------------------------------------
+  mainPage: { type: page, component: Page, role: main, in: [shown], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  mainMenu: { type: page, component: Page, role: navigation, name: { key: Shell.navLabel }, in: [shown], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's menu: all nine entries to every holder of the medrese scope (MDRS-223)
+  menuPano: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.general.pano }, in: [shown], emits: OPEN_PANO, source: apps/nazar/features/shell/nav.ts:56 }
+  menuNotifications: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.general.notifications }, in: [shown], emits: NAVIGATE, source: apps/nazar/features/shell/nav.ts:58 } # the one entry that opens for the nazır; its page is nazar.notifications.inbox
+  menuCourses: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.courses }, in: [shown], emits: OPEN_COURSES, source: apps/nazar/features/shell/nav.ts:78 } # its name carries the number of courses with an application when the person may read it; a nazır with no grant reads none (the count is dropped on a 403, reads.ts:78)
+  menuStudents: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.students }, in: [shown], emits: OPEN_STUDENTS, source: apps/nazar/features/shell/nav.ts:83 }
+  menuNazirs: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.nazirs }, in: [shown], emits: OPEN_NAZIRS, source: apps/nazar/features/shell/nav.ts:84 }
+  menuBans: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.bans }, in: [shown], emits: OPEN_BANS, source: apps/nazar/features/shell/nav.ts:85 }
+  menuAppeals: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.appeals }, in: [shown], emits: OPEN_APPEALS, source: apps/nazar/features/shell/nav.ts:86 }
+  menuArchive: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.archive }, in: [shown], emits: OPEN_ARCHIVE, source: apps/nazar/features/shell/nav.ts:87 }
+  menuSettings: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.settings }, in: [shown], emits: OPEN_SETTINGS, source: apps/nazar/features/shell/nav.ts:92 }
+
+  # --- the verdict: one alert, the same on every page ----------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [shown], when: "body == 'refused'", source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a role=status that is in the page already, title in a <p>, no heading (F-A-16, F-B-13); it has no accessible name of its own, so it is found by its words
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [shown], when: "body == 'refused'", source: apps/nazar/features/shell/components/page-problem.tsx:26 } # says whom to ask and gives no way to (REFUSED-3)
+
+  # --- the Pano ---------------------------------------------------------------------------------------------------------------------------------
+  panoTitle: { type: text, component: Heading, role: heading, text: { key: Pano.title }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/components/pano-page.tsx:94 } # h1
+  greeting: { type: text, component: Text, text: { key: Pano.greeting, params: { name: viewer.givenName } }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/pano.ts:34 } # "{name} Hoca" for a nazır too, and no summary without the dashboard (F-A-17)
+  scopesRegion: { type: text, component: Text, role: region, name: { labelledBy: scopesTitle }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/components/pano-page.tsx:119 }
+  scopesTitle: { type: text, component: Heading, role: heading, text: { key: Pano.scopesTitle }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/components/pano-page.tsx:119 } # h2
+  scopesHint: { type: text, component: Text, text: { key: Pano.scopesHint }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/components/pano-page.tsx:119 }
+  scopeCard: { type: text, component: Text, text: { key: composed.Pano.medreseName, params: { madrasah: madrasah.name } }, in: [shown], when: "page == 'pano'", source: apps/nazar/features/pano/components/pano-page.tsx:131 } # the card of the medrese stays: it comes from the person's assignments, not from the dashboard
+  scopeRole: { type: text, component: Text, text: { key: Roles.MEDRESE_NAZIR }, in: [shown], when: "page == 'pano' and reader != 'head'", source: apps/nazar/features/pano/components/pano-page.tsx:145 } # the sidebar's picker card and person row say the same words, so the binding looks inside the cards
+  openCourseLink: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Pano.open }, in: [shown], when: "body == 'drawn' and (page == 'pano' or page == 'courses')", source: apps/nazar/features/pano/components/pano-page.tsx:108 } # the başmüderris's header button, on Pano and (as Courses.open, the same words) on Dersler; left out where the dashboard or the course list was refused (e2e pano#5 a4, courses#11 a3)
+  applicationsTitle: { type: text, component: Heading, role: heading, text: { key: Pano.applications.title }, in: [shown], when: "body == 'drawn' and page == 'pano'", source: apps/nazar/features/pano/components/pano-tables.tsx:288 } # h2 of the waiting applications, the section the nazır does not get (e2e pano#5 a3: the `applications` test id, count 0)
+
+  # --- Dersler ----------------------------------------------------------------------------------------------------------------------------
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: Courses.title }, in: [shown], when: "page == 'courses'", source: apps/nazar/features/courses/components/courses-page.tsx:102 } # h1
+  coursesLine: { type: text, component: Text, text: { key: Courses.subtitle, params: { nameGenitive: madrasah.nameGenitive } }, in: [shown], when: "page == 'courses'", source: apps/nazar/features/courses/components/courses-page.tsx:103 }
+  offsiteLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.offsite }, in: [shown], when: "body == 'drawn' and (page == 'pano' or page == 'courses')", source: apps/nazar/features/courses/components/courses-page.tsx:114 } # the başmüderris's second header button on Dersler; the Pano's köşk section draws a link of the same words (pano-page.tsx:224), so it is shown there too
+  coursesTable: { type: list, component: List, role: table, name: { key: Courses.caption }, in: [shown], when: "body == 'drawn' and page == 'courses'", source: apps/nazar/features/courses/components/courses-table.tsx:224 } # the nazır meets no table (e2e courses#11 a2: the `courses` test id, count 0)
+
+  # --- Medrese dersi aç and Medrese dışı ders talebi: the two pages a nazır reaches only by address ------------------------------------
+  crumbs: { type: page, component: Page, role: navigation, name: { key: OpenCourse.breadcrumb }, in: [shown], when: "page == 'courseNew' or page == 'offsite'", source: apps/nazar/features/courses/components/open-course-page.tsx:38 } # "Sayfa yolu"; the current item says the title again, so it has no node of its own
+  crumbCourses: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.title }, in: [shown], when: "page == 'courseNew' or page == 'offsite'", source: apps/nazar/features/courses/components/open-course-page.tsx:41 } # leads to Dersler, which refuses the nazır too (REFUSED-3); the menu's "Dersler" has the same words, so the binding looks inside the breadcrumb
+  courseNewTitle: { type: text, component: Heading, role: heading, text: { key: OpenCourse.title }, in: [shown], when: "page == 'courseNew'", source: apps/nazar/features/courses/components/open-course-page.tsx:45 } # h1
+  courseNewLine: { type: text, component: Text, text: { key: OpenCourse.intro, params: { name: madrasah.name } }, in: [shown], when: "page == 'courseNew'", source: apps/nazar/features/courses/components/open-course-page.tsx:46 }
+  courseNewSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: OpenCourse.submit }, in: [shown], when: "body == 'drawn' and page == 'courseNew'", source: apps/nazar/features/courses/components/open-course-form.tsx:280 } # the form's button; the nazır meets no form (e2e courses#11 a5)
+  offsiteTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.title }, in: [shown], when: "page == 'offsite'", source: apps/nazar/features/offsite/components/offsite-page.tsx:58 } # h1
+  offsiteLine: { type: text, component: Text, text: { key: Offsite.intro }, in: [shown], when: "page == 'offsite'", source: apps/nazar/features/offsite/components/offsite-page.tsx:59 }
+  offsiteSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Offsite.submit }, in: [shown], when: "body == 'drawn' and page == 'offsite'", source: apps/nazar/features/offsite/components/offsite-form.tsx:201 } # the nazır meets no form (e2e offsite#4 a2)
+
+  # --- Arşiv --------------------------------------------------------------------------------------------------------------------------------
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: Archive.title }, in: [shown], when: "page == 'archive'", source: apps/nazar/features/archive/components/archive-page.tsx:73 } # h1
+  archiveLine: { type: text, component: Text, text: { key: Archive.intro }, in: [shown], when: "page == 'archive'", source: apps/nazar/features/archive/components/archive-page.tsx:74 }
+  hideMedrese: { type: action, component: Button, role: button, intent: secondary, text: { key: Archive.hide.button }, in: [shown], when: "body == 'drawn' and page == 'archive'", source: apps/nazar/features/archive/components/hide-madrasah.tsx:94 } # drawn to the başmüderris and the başnazım only (runsMedrese); the nazır has neither the list nor this (e2e archive#8 a3)
+  archiveTable: { type: list, component: List, role: table, name: { key: Archive.caption }, in: [shown], when: "body == 'drawn' and page == 'archive'", source: apps/nazar/features/archive/components/archive-list.tsx:187 } # the list of hidden items; the nazır meets none (e2e archive#8 a2: the `archive` test id, count 0)
+
+  # --- Talebeler ----------------------------------------------------------------------------------------------------------------------------
+  studentsTitle: { type: text, component: Heading, role: heading, text: { key: Students.title }, in: [shown], when: "page == 'students'", source: apps/nazar/features/students/components/students-page.tsx:74 } # h1
+  studentsLine: { type: text, component: Text, text: { key: Students.subtitle, params: { nameGenitive: madrasah.nameGenitive } }, in: [shown], when: "page == 'students'", source: apps/nazar/features/students/components/students-page.tsx:75 }
+  studentsTable: { type: list, component: List, role: table, name: { key: Students.caption }, in: [shown], when: "body == 'drawn' and page == 'students'", source: apps/nazar/features/students/components/students-table.tsx:240 } # the nazır meets no list (e2e students#5 a2)
+
+  # --- Medrese nazırları: refused to a nazır with no grant, opened to one given madrasah.nazir_appoint --------------------------------------
+  nazirsTitle: { type: text, component: Heading, role: heading, text: { key: Nazirs.title }, in: [shown], when: "page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-page.tsx:57 } # h1
+  nazirsLine: { type: text, component: Text, text: { key: Nazirs.intro }, in: [shown], when: "page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-page.tsx:58 }
+  appointNazir: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazirs.appoint }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:128 } # drawn when the roster was read, so to the nazır who may appoint and to the başmüderris; the nazır with no grant has none (e2e nazirs#6 a3)
+  awaitingAlert: { type: alert, component: Alert, role: status, text: { key: Nazirs.awaitingTitle, params: { name: appointee.name } }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-page.tsx:79 } # warning: someone holds no permission yet; the same for every viewer (REFUSED-2)
+  awaitingText: { type: text, component: Text, text: { key: Nazirs.awaiting, params: { appointer: appointer.name, dateLocative: appointee.appointedOn } }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/nazirs.ts:213 } # "Siz izin verene kadar hiçbir işlem yapamaz": addressed to the giver, drawn to a nazır who gives nothing (REFUSED-2)
+  nazirsTable: { type: list, component: List, role: table, name: { key: Nazirs.caption, params: { name: madrasah.name } }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-table.tsx:184 } # the nazır with no grant meets no table (e2e nazirs#6 a2)
+  dismissRow: { type: action, component: Button, role: button, intent: dismiss, name: { key: Nazirs.dismissLabel, params: { name: appointee.name } }, text: { key: Nazirs.dismiss }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-table.tsx:166 } # "Görevden al": the başmüderris has it on every row; a nazır given madrasah.nazir_appoint only on the rows they seated (mayDismiss, nazirs-table.tsx:44). The binding of the `appointer` reader counts exactly one
+  givePermission: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazirs.givePermissionLabel, params: { name: nazir.name } }, text: { key: Nazirs.givePermission }, in: [shown], when: "reader == 'head' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/nazirs-table.tsx:147 } # only where `viewer.manages` (the başmüderris, the başnazım); the roster's nazır with no permission reads "İzin ver", one who holds something "İzinleri düzenle"
+  groupsTitle: { type: text, component: Heading, role: heading, text: { key: Groups.title }, in: [shown], when: "body == 'drawn' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/permission-groups.tsx:53 } # h2; the groups are read under the same code, so the nazır who appoints sees them
+  defineGroup: { type: action, component: Button, role: button, intent: secondary, text: { key: Groups.define }, in: [shown], when: "reader == 'head' and page == 'nazirs'", source: apps/nazar/features/nazirs/components/permission-groups.tsx:58 } # `manages` only
+
+  # --- Yasaklamalar -------------------------------------------------------------------------------------------------------------------------
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [shown], when: "page == 'bans'", source: apps/nazar/features/bans/components/bans-page.tsx:55 } # h1
+  bansLine: { type: text, component: Text, text: { key: Bans.intro }, in: [shown], when: "page == 'bans'", source: apps/nazar/features/bans/components/bans-page.tsx:56 }
+  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [shown], when: "body == 'drawn' and page == 'bans'", source: apps/nazar/features/bans/components/ban-dialog.tsx:316 } # the header button, left out with the list (e2e bans#8 a3)
+
+  # --- İtirazlar ------------------------------------------------------------------------------------------------------------------------------
+  appealsTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.title }, in: [shown], when: "page == 'appeals'", source: apps/nazar/features/appeals/components/appeals-page.tsx:27 } # h1
+  appealsLine: { type: text, component: Text, text: { key: Appeals.caption }, in: [shown], when: "page == 'appeals'", source: apps/nazar/features/appeals/components/appeals-page.tsx:28 }
+  appealsEmpty: { type: text, component: Text, text: { key: Appeals.empty }, in: [shown], when: "body == 'drawn' and page == 'appeals'", source: apps/nazar/features/appeals/components/appeals-page.tsx:39 } # what the başmüderris reads while no course request was refused (the stack seeds none); no e2e opens this page for a nazır (shell#4 is stale)
+
+  # --- Medrese ayarları -------------------------------------------------------------------------------------------------------------------------
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: Settings.title }, in: [shown], when: "page == 'settings'", source: apps/nazar/features/settings/components/settings-page.tsx:77 } # h1
+  settingsLine: { type: text, component: Text, text: { key: Settings.subtitle }, in: [shown], when: "page == 'settings'", source: apps/nazar/features/settings/components/settings-page.tsx:78 }
+  viewPage: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Settings.viewPage }, in: [shown], when: "page == 'settings'", source: apps/nazar/features/settings/components/settings-page.tsx:82 } # drawn whatever the read said, while TEDRIS_URL is set; a link to the medrese's public page in Tedris, opened in a new tab (REFUSED-3); its name carries a hidden "(yeni sekmede açılır)"
+  saveSettings: { type: action, component: Button, role: button, intent: confirm, text: { key: Settings.save }, in: [shown], when: "body == 'drawn' and page == 'settings'", disabledIn: [shown], source: apps/nazar/features/settings/components/settings-form.tsx:228 } # off until the form changes (disabled={!dirty}); the nazır meets no form and no "Kaydet" (e2e settings#6 a3, a4)
+  settingsGeneral: { type: text, component: Heading, role: heading, text: { key: Settings.generalTitle }, in: [shown], when: "body == 'drawn' and page == 'settings'", source: apps/nazar/features/settings/components/settings-form.tsx:126 } # h2 of the form's first section; the nazır meets no form (e2e settings#6 a3: the `settings-form` test id, count 0)
+
+edges:
+  - { labelledBy: [scopesRegion, scopesTitle] }
+  - { triggers: [menuPano, shown] }
+  - { triggers: [menuCourses, shown] }
+  - { triggers: [menuStudents, shown] }
+  - { triggers: [menuNazirs, shown] }
+  - { triggers: [menuBans, shown] }
+  - { triggers: [menuAppeals, shown] }
+  - { triggers: [menuArchive, shown] }
+  - { triggers: [menuSettings, shown] }
+
+rules:
+  - { id: MDRS-223, rule: "The medrese menu is drawn in full (nine entries) to every holder of the medrese scope, and a nazır with no grant meets eight refusals behind it; only Bildirimler opens. NAV.medrese has no `requires` (features/shell/nav.ts:71-93), whereas the course menu hides Ödevler, Değerlendirme and Ders destesi to anyone who does not hold their code (nav.ts:119,125,132, MDRS-290). The nav graph's `menu-refused` check reports it for this persona. Fix: draw each entry for the codes its page asks (GET /me/effective-permissions lists them by scope), or mark the entry." }
+  - { id: F-L-20, rule: "The same defect named for the whole shell: the menu draws entries the page then refuses. On the medrese side it is this flow (MDRS-223); on the course side, the entries Yasaklamalar, Ders nazırları and Ders ayarları for a ders nazırı with no grant, and Talebeler, Celseler, Müfredat, Ders kayıtları and Sorular for those who hold none of their codes (F-D1-29): drawn in nazar.access.dersNazirPages. The nav graph reports both." }
+  - { id: F-D2c-2, rule: "The course menu draws Yasaklamalar, Ders nazırları and Ders ayarları to every holder of the course scope (nav.ts:134,141,142 have no `requires`), and the pages refuse a caller without the codes (e2e course-nazirs#12, course-settings#11). A medrese nazır who opens a course of their medrese by address meets it too. Not drawn here: the course pages are nazar.access.dersNazirPages." }
+  - { id: F-A-16, rule: "The refusal is a neutral Alert, which libs/ui/src/mds/alert.tsx:23 makes a role=status, and it is in the page already when the page loads, so a screen reader does not announce it; its title is a <p>, not a heading, and the page's own <h1> still names the page. A person who lands on Talebeler hears 'Talebeler' and learns nothing more until they browse. Fix: render the verdict as a heading or role=alert, or let the page's h1 say it." }
+  - { id: F-B-13, rule: "The refused page keeps its <title> ('Talebeler · Medaris Nazar') and its <h1>, and the verdict has no link out: it says to ask the başmüderris and gives neither a name nor a way. Fix: a refusal-specific title and a link to the first page the person may open (apps/nazar/features/shell/components/page-problem.tsx:23-29)." }
+  - { id: F-A-8, rule: "Not drawn: it needs a nazır holding part of the courses family. A nazır holding madrasah.course_hide or madrasah.muderris_manage and not madrasah.course_open reads the Dersler list but not the köşks, so the side card says the köşks 'okunamadı' (false: a refusal), 'Medrese dersi aç' stays on and leads to a refusal, and every row offers both menu items to be refused with a toast. A nazır without madrasah.settings_edit is told on Medrese dersi aç that the policies could not be read (OpenCourse.policiesUnknown). No e2e covers a partial grant of these." }
+  - { id: F-B-15, rule: "Not drawn: the roster never offers 'Görevden al' on a row the nazır did not seat, so NAZIR_NOT_APPOINTED_BY_YOU (403) is reachable only through a stale list; nazirErrorKey has no case for it and the toast is the generic 'Bir şeyler ters gitti', which wrongly invites a retry (features/nazirs/nazirs.ts:357-389). Not verified that the API sends it as `code`." }
+  - { id: F-A-17, rule: "The Pano's greeting says '{name} Hoca' to a nazır as well; with no dashboard it keeps only the greeting (apps/nazar/test/pano.spec.tsx:707-720: 'Selâmün aleyküm, Mehmet Emin Hoca.'). Product wording, not an accessibility defect." }
+  - { id: REFUSED-1, rule: "The first page a nazır with no grant meets is a refusal: '/' (the remembered scope, else the first medrese), the sign-in and the menu's Pano all lead to the Pano, whose dashboard read asks madrasah.students_view (apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:117). The pages that open for them are Bildirimler and Hesap, reached only from the menu and the person row. New finding (the inventory has MDRS-223 for the menu, not for the landing). Fix: land on the first page the held codes open, or let the Pano say what the person may do." }
+  - { id: REFUSED-2, rule: "The warning on Medrese nazırları, 'X henüz izin almadı: ... Siz izin verene kadar hiçbir işlem yapamaz' (Nazirs.awaiting), speaks to the person who gives permission, and awaitingNotice does not look at the viewer (features/nazirs/nazirs.ts:199), so a nazır given madrasah.nazir_appoint reads it too, with no 'İzin ver' button to act on it (those are drawn only where `viewer.manages`, nazirs-table.tsx:147). New finding; not verified in a browser. Fix: show the notice only where `manages`, or word it for the nazır ('izin verecek kişiyi bekliyor')." }
+  - { id: REFUSED-3, rule: "Two refused pages keep a way that goes nowhere or leaves: on Medrese dersi aç and Medrese dışı ders talebi the breadcrumb's 'Dersler' leads to Dersler, which refuses the nazır as well (open-course-page.tsx:38, offsite-page.tsx:51), and Medrese ayarları keeps its header link 'Medrese sayfasını gör' to the public page in Tedris while TEDRIS_URL is set (settings-page.tsx:82), though the story and the e2e say the page has no button ('Kaydet' count 0 is all settings#6 asserts). Harmless (the public page is public); recorded so that 'no button' is not read as 'no control'. New finding." }
+  - { id: focus-not-set, rule: "No page of the medrese gives the focus to anything on load and no menu link keeps it: the focus starts at the top of each new document. Nothing is drawn as initialFocus." }
+  - { id: label-in-name, rule: "The menu links' visible text is their accessible name ('Dersler' may be followed by a hidden count label, 'Dersler 2 derste bekleyen başvuru', when the person can read the count); the breadcrumb's 'Dersler' and the menu's 'Dersler' are two links with one name on the two address-only pages, which a locator tells apart by the landmark. Holds." }

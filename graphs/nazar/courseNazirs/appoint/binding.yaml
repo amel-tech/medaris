@@ -1,0 +1,192 @@
+# nazar.courseNazirs.appoint on the local stack: the müderris of a course the walk makes, Hamdi Müderris, at http://localhost:4002 in the
+# real Keycloak sign-in of local.nazar.binding.yaml. The data, the locators and the effects every file shares are in locators.binding.yaml
+# (it extends ../../../bindings/local.nazar.binding.yaml); this file holds the scenarios of the hoca.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/appoint \
+#     --bind graphs/nazar/courseNazirs/appoint/binding.yaml --cover transitions --absent --out <dir>
+#   (binding.race.yaml is walked on its own, with --cover transitions: a person appointed elsewhere while the dialog is open)
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). It loads: `replay <dir> --bind <this file>
+# --emit-spec --out <dir>` wrote a spec and walked nothing; every locator and every command is from the code and unverified until a walk.
+#
+# Every scenario opens the course page, presses the course menu's "Ders nazırları" (the nav graph's entry frame:ders->dersNazirs) and starts
+# from the same data (locators.binding.yaml): a course "Deneme dersi nzappoint" with no ders nazırı, the spare applicantG, and the days for
+# the end field. `setup` begins with `down`, which dismisses what a walk that died left, so each scenario can be run again at once.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   appoints    the main story (e2e course-nazirs#2 and #3): the empty list, "Ders nazırı ata", the address typed and searched, the person
+#               found, two boxes ticked, an end ahead typed, "Kaydet": the toast, the row "2 izin" with the end and "(siz)". The cover also
+#               walks, from the same start, the end in the past ("Bitiş zamanı şu andan sonra olmalı."), "Başka birini seç", Vazgeç, and
+#               the row's two buttons that start the next flows.
+#   member      the person holds a post here already (e2e course-nazirs#6): the list has her row, "bu dersin ders nazırı zaten." and "Kaydet" off
+#   herself     the hoca's own address (e2e #9): found, "Kendinizi ders nazırı yapamazsınız." and "Kaydet" off
+#   nobody      an address no account has (e2e #10): "Bu adresle bir hesap bulunamadı." and nobody is chosen
+#   notAddress  text that is no address, then Enter: "Geçerli bir e-posta adresi yazın." and nothing is searched
+#   holdsSeat   the Medaris nazımı, who holds the platform seat (e2e #8): found and chosen, "Kaydet" is refused in a toast, the dialog stays
+#   barred      the spare is barred from the course (a COURSE ban the hoca places): found and chosen, "Kaydet" is refused in a toast
+# What `up --bar` and `up --holder` make is in ./appoint-data.mjs; it prints `course-nazirs up bar` and `course-nazirs up holder`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.appoint
+
+scenarios:
+  appoints:
+    given: { person: fresh }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+  # The spare holds a post already (no permission, no end), made by the hoca in `setup`: the list has her row and the dialog warns before sending.
+  member:
+    given: { person: member }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up, --holder]
+        expect: 'course-nazirs up holder'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+  # The hoca's own address: found, and the dialog refuses before sending. Nothing is written.
+  herself:
+    given: { person: herself }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{appt.viewerEmail}'
+      foundName: '{appt.viewerName}'
+      foundEmail: '{appt.viewerEmail}'
+
+  # An address no account has: "Bu adresle bir hesap bulunamadı." and nobody is chosen. Nothing is written.
+  nobody:
+    given: { person: nobody }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: kimse.yok@example.test
+      foundName: '-'
+      foundEmail: '-'
+
+  # Text that is no address, then Enter: nothing is searched and the field says so (the medrese roster's dialog stays silent). Nothing is written.
+  notAddress:
+    given: { person: notAddress }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: kimse
+      foundName: '-'
+      foundEmail: '-'
+
+  # The Medaris nazımı holds the platform seat over every course: found and chosen like anyone, refused at "Kaydet" with COURSE_NAZIR_HOLDS_SEAT
+  # (the e2e ticks "Ders ayarlarını ..." for it; the walk ticks the two boxes it ticks everywhere). Nothing is written.
+  holdsSeat:
+    given: { person: holdsSeat }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_MEDARIS_NAZIM_EMAIL}'
+      foundName: Selma Medaris Nazımı
+      foundEmail: '{secret.E2E_MEDARIS_NAZIM_EMAIL}'
+
+  # The spare is barred from the course (a COURSE ban the hoca places in `setup`, lifted in `teardown`): the search finds her, the page cannot know,
+  # and "Kaydet" is refused with COURSE_NAZIR_BARRED. Nothing is written.
+  barred:
+    given: { person: barred }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up, --bar]
+        expect: 'course-nazirs up bar'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'

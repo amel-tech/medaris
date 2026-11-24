@@ -1,0 +1,951 @@
+# The actions of the people area of tedrisat: the caller's own record, the public profile, the user lookups, notifications, partner
+# applications (the registry, the course codes and the enrollment API) and health. Source: inventory/domain.md lines 4243-4576, the
+# chapter "People, profiles, notifications, partner applications, health", every anchor read again in the code of this branch.
+#
+# The chapter has 23 handlers (app 2, me 2, profile 3, users 2, notification 4, partner admin 4, partner codes 3, partner enrollment 3)
+# and this file has 23 actions with a route, plus 1 background job with none (the partner registry seeder, once at boot): 24 in all.
+#
+# Names. Each handler carries an operationId in its own @ApiOperation, and an action is named by it. Where the controller method is
+# specific the two are the same (getMe, updateMe, getHello, getHealth); where the method is a bare verb (list, read, counts, create,
+# update, enroll, courses ...) the operationId is the name that says what it is. Route paths use {param}, as OpenAPI does.
+#
+# Every route behind AuthGuard also runs the global UserSyncInterceptor, which upserts the caller's users row before the handler (invariant
+# user-row-follows-the-token); it is not repeated under each action, and "the handler writes nothing" means that row apart.
+#
+# Not written as a refusal of every action: the 401 of AuthGuard (HTTP_401, no token or a token that does not verify; invariant
+# access-token-only; an action lists it where a flow draws what a signed-out caller meets), the address throttle (3000 a minute per route and address, 429, invariant rate-limit-before-auth) and the per-user
+# throttle (100 a minute, 429), which any route can answer. The partner routes have their own 429 and list it. A guard refuses before a
+# pipe runs, so a request with no token is 401 whatever its body or path says.
+#
+# The refusal codes: a MedarisError reaches the client under its own code (type APP_ERROR); a Nest HttpException reaches it as
+# HTTP_<status> and keeps only its message (global-exception.filter.ts:61-74), so a missing token is HTTP_401, an unreadable path
+# parameter (ParseUUIDPipe, ParseEnumPipe, ParseIntPipe) is HTTP_400, and a DTO that fails is VALIDATION_ERROR 400.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+actions:
+  # ---- Health: apps/tedrisat/src/app.controller.ts (2) ----
+  getHello:
+    route: GET /
+    summary: The greeting of the service
+    needs: "nothing: no token and no guard; the AuthzPublic mark changes nothing today and is the explicit exemption for when deny-by-default arrives (app.controller.ts:6-9)"
+    result: { status: 200, type: string, const: "Tedrisat Hizmetinden Selamun Aleyküm!" }
+    sideEffects: ["a log line, getHello called"]
+    note: Only the address throttle can refuse it (429).
+    source: apps/tedrisat/src/app.controller.ts:16
+
+  getHealth:
+    route: GET /health
+    summary: The health of the service, for a load balancer probe
+    description: >-
+      It checks nothing: no database and no Keycloak probe, so ok means only that the process answers. Every field comes from the
+      configuration factory (MDRS-129), none is a literal.
+    needs: "nothing: no token and no guard (the AuthzPublic mark, as on GET /)"
+    result:
+      status: 200
+      type: object
+      required: [status, timestamp, service]
+      properties:
+        status: { enum: [ok, error, degraded] } # the service always answers ok
+        timestamp: { type: string, format: date-time }
+        service: { type: string } # SERVICE_NAME, else the package name
+        version: { type: string } # from package.json
+        environment: { type: string } # NODE_ENV, else development
+    sideEffects: ["a log line, Health check requested"]
+    note: Only the address throttle can refuse it (429). The invariant health-means-ready records that ok proves nothing but the process.
+    source: apps/tedrisat/src/app.controller.ts:32
+
+  # ---- The caller's own record: apps/tedrisat/src/user/me.controller.ts (2) ----
+  getMe:
+    route: GET /me
+    summary: The caller's profile and a summary of the roles they hold
+    description: >-
+      The users row the token mirrors (written by the global UserSyncInterceptor before this handler runs; if that write failed it is
+      retried here, uncached), the person's own names from user_profiles, and what the caller holds: the roles they lead or teach, their
+      live assignments and, per scope, the permissions the engine computes for them.
+    needs: "AuthGuard: any signed-in caller, about themself only (no AuthzGuard: nothing on the route names another resource)"
+    result:
+      type: object
+      required: [id, email, emailVerified, givenName, familyName, gender, timeZone, locale, lessonInvitationEmails, createdAt, lastSeenAt, roles, assignments, permissions]
+      properties:
+        id: { type: string, format: uuid, references: User }
+        email: { type: [string, "null"], format: email, sensitivity: personal }
+        emailVerified: { type: boolean }
+        givenName: { type: [string, "null"], sensitivity: personal } # the person's own typed name (UserProfile) when set, else the token's (User)
+        familyName: { type: [string, "null"], sensitivity: personal }
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] } # the UserProfile mirror of the account's gender, never another person's
+        timeZone: { type: [string, "null"] }
+        locale: { type: [string, "null"] }
+        lessonInvitationEmails: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        roles:
+          type: object
+          required: [systemAdmin, nazirOf, manages, teaches]
+          properties:
+            systemAdmin: { type: boolean } # holds the realm role SYSTEM_ADMIN
+            nazirOf: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Madrasah }, name: { type: string } } } } # medreses the caller leads (başmüderris) or is nazır of, once each, from their live roles
+            manages: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } } # köşks they are nazım of
+            teaches: { type: array, items: { type: object, required: [id, title, koskId], properties: { id: { type: string, format: uuid, references: Course }, title: { type: string }, koskId: { type: string, format: uuid, references: Kosk } } } } # courses they are müderris of; a hidden course and a course of a hidden köşk are left out
+        assignments: { type: array, items: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: RoleAssignment } } } } # each a live RoleAssignment, as GET /me/assignments lists it (the authz chapter): role, scope, isImam, grantedAt, expiresAt, grantedBy, grantedBySelf, course
+        permissions:
+          type: array
+          items:
+            type: object
+            required: [scopeType, scopeId, scopeName, roles, permissions]
+            properties:
+              scopeType: { type: string }
+              scopeId: { type: [string, "null"] } # null for the platform
+              scopeName: { type: [string, "null"] }
+              roles: { type: array, items: { type: string } } # the roles held in exactly this scope
+              permissions: { type: array, items: { type: string } } # sorted; role defaults and live grants, without the codes every signed-in caller holds and without policies or passive scopes
+    refusals:
+      USER_NOT_FOUND: { status: 404, note: "the token's sub is not a uuid (a federated id), or the users row still cannot be read after the retry", source: apps/tedrisat/src/user/user.service.ts:134 }
+    sideEffects:
+      - "the users row is upserted by the global UserSyncInterceptor before the handler runs (invariant user-row-follows-the-token); a failed write is retried here with syncNow (user.service.ts:139)"
+      - "when the token carries a gender it is mirrored into user_profiles.gender, with audit:user.gender_change when it overwrites a different value"
+    source: apps/tedrisat/src/user/me.controller.ts:30
+
+  updateMe:
+    route: PATCH /me
+    summary: Change the caller's names, time zone, locale and invitation e-mail switch
+    description: >-
+      An absent field changes nothing. The names are the person's own words, kept in user_profiles apart from the token's so the next
+      sync cannot undo them; the three settings live in users. Both writes are one transaction, and nothing is written when the body
+      names no field. The answer is the same MeResponse as GET /me, read again.
+    needs: "AuthGuard: any signed-in caller, about themself only"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        givenName: { type: string, minLength: 1, maxLength: 100 } # trimmed first; replaced, never cleared
+        familyName: { type: string, minLength: 1, maxLength: 100 }
+        timeZone: { type: [string, "null"], maxLength: 64, description: an IANA zone; null clears it }
+        locale: { type: [string, "null"], maxLength: 35, description: a BCP 47 tag; null clears it }
+        lessonInvitationEmails: { type: boolean, description: "null is refused: the column has no null" }
+    result:
+      type: object
+      description: the same MeResponse as GET /me, read again after the write
+      required: [id, email, emailVerified, givenName, familyName, gender, timeZone, locale, lessonInvitationEmails, createdAt, lastSeenAt, roles, assignments, permissions]
+      properties:
+        id: { type: string, format: uuid, references: User }
+        email: { type: [string, "null"], format: email, sensitivity: personal }
+        emailVerified: { type: boolean }
+        givenName: { type: [string, "null"], sensitivity: personal }
+        familyName: { type: [string, "null"], sensitivity: personal }
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] }
+        timeZone: { type: [string, "null"] }
+        locale: { type: [string, "null"] }
+        lessonInvitationEmails: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        roles: { type: object }
+        assignments: { type: array, items: { type: object } }
+        permissions: { type: array, items: { type: object } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, an unknown time zone or locale, lessonInvitationEmails null, any other property; a name sent as null passes validation and fails as a 500 (invariant unreadable-input-is-a-400)" }
+      USER_NOT_FOUND: { status: 404, note: "as GET /me", source: apps/tedrisat/src/user/user.service.ts:134 }
+    sideEffects:
+      - "users.time_zone, users.locale and users.lesson_invitation_emails are written, and user_profiles.given_name and family_name are upserted, in one transaction"
+      - "lessonInvitationEmails false stops every further calendar invitation, update and cancellation mail to the person, and the exam reminder mail (lesson-invitation.repository.ts:166, exam.repository.ts:528)"
+      - "nothing is audited"
+    source: apps/tedrisat/src/user/me.controller.ts:40
+
+  # ---- The public profile: apps/tedrisat/src/user/profile.controller.ts (3), behind PUBLIC_PROFILE_ENABLED ----
+  getMyPublicProfile:
+    route: GET /me/public-profile
+    summary: The caller's public profile, every field and every switch
+    description: >-
+      Hidden for everyone while PUBLIC_PROFILE_ENABLED is not exactly true (the default): the route answers 404 PUBLIC_PROFILE_UNAVAILABLE
+      before it reads anything. The courses are the titles of the PUBLISHED courses, not hidden and in a köşk that is not hidden, where the
+      caller's enrollment is ENROLLED or COMPLETED, ordered by title.
+    needs: "AuthGuard, then PublicProfileEnabledGuard: any signed-in caller, about themself only, while the switch is on"
+    result:
+      type: object
+      required: [kunye, gender, genderManagedByAccount, city, about, fullName, courses, visibility]
+      properties:
+        kunye: { type: [string, "null"] } # null until the person chooses one
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] } # the token's when it carries one, else the saved one
+        genderManagedByAccount: { type: boolean } # true when the token carries a gender: read-only here
+        city: { type: [string, "null"] }
+        about: { type: [string, "null"] }
+        fullName: { type: [string, "null"] } # the name as shown on Hesap
+        courses: { type: array, items: { type: string } } # titles
+        visibility:
+          type: object
+          required: [fullName, city, about, courses]
+          properties:
+            fullName: { type: boolean }
+            city: { type: boolean }
+            about: { type: boolean }
+            courses: { type: boolean }
+    refusals:
+      PUBLIC_PROFILE_UNAVAILABLE: { status: 404, note: "the flag is not true; one code and no detail, for every signed-in caller, the başnazım included", source: apps/tedrisat/src/user/public-profile-enabled.guard.ts:21 }
+      USER_NOT_FOUND: { status: 404, note: "the token's sub is not a uuid", source: apps/tedrisat/src/user/user-profile.service.ts:139 }
+    sideEffects: ["a users row is inserted when it is missing (ensureUser), by the sync interceptor or here"]
+    source: apps/tedrisat/src/user/profile.controller.ts:55
+
+  updateMyPublicProfile:
+    route: PATCH /me/public-profile
+    summary: Change the caller's public profile
+    description: >-
+      Only the fields sent change. A blank city or about stores null. The gender is saved only when the token carries none; when it
+      carries one, naming another gender refuses the whole request and saves nothing, and naming the same one is no change.
+    needs: "AuthGuard, then PublicProfileEnabledGuard: any signed-in caller, about themself only, while the switch is on"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        kunye: { type: string, minLength: 1, maxLength: 60 } # the ilmî künye, trimmed
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] }
+        city: { type: [string, "null"], maxLength: 80 }
+        about: { type: [string, "null"], maxLength: 1000 }
+        visibility:
+          type: object
+          additionalProperties: false
+          properties:
+            fullName: { type: boolean }
+            city: { type: boolean }
+            about: { type: boolean }
+            courses: { type: boolean }
+    result:
+      type: object
+      description: the same MyPublicProfileResponse as GET /me/public-profile, read again after the write
+      required: [kunye, gender, genderManagedByAccount, city, about, fullName, courses, visibility]
+      properties:
+        kunye: { type: [string, "null"] }
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] }
+        genderManagedByAccount: { type: boolean }
+        city: { type: [string, "null"] }
+        about: { type: [string, "null"] }
+        fullName: { type: [string, "null"] }
+        courses: { type: array, items: { type: string } }
+        visibility: { type: object, required: [fullName, city, about, courses], properties: { fullName: { type: boolean }, city: { type: boolean }, about: { type: boolean }, courses: { type: boolean } } }
+    refusals:
+      PUBLIC_PROFILE_UNAVAILABLE: { status: 404, note: "the flag is not true", source: apps/tedrisat/src/user/public-profile-enabled.guard.ts:21 }
+      VALIDATION_ERROR: { status: 400, note: "an empty, blank or over-60 künye, a gender that is not FEMALE or MALE, an over-long city or about, a switch that is not a boolean, any other property; a künye sent as null passes validation and fails as a 500 (invariant unreadable-input-is-a-400)" }
+      GENDER_MANAGED_BY_ACCOUNT: { status: 409, note: "the token carries a gender and the body names another one (null counts as another); nothing of the request is saved", source: apps/tedrisat/src/user/user-profile.service.ts:63 }
+      KUNYE_TAKEN: { status: 409, note: "the unique index user_profiles_kunye_lower_idx rejects the künye, whatever its case", source: apps/tedrisat/src/user/user-profile.service.ts:81 }
+      USER_NOT_FOUND: { status: 404, note: "the token's sub is not a uuid", source: apps/tedrisat/src/user/user-profile.service.ts:139 }
+    sideEffects:
+      - "user_profiles is upserted with the fields sent: kunye (trimmed), gender (only when the token carries none), city, about, show_full_name, show_city, show_about, show_courses"
+      - "a users row is inserted when it is missing"
+      - "nothing is audited"
+    source: apps/tedrisat/src/user/profile.controller.ts:74
+
+  getUserPublicProfile:
+    route: GET /users/{id}/public-profile
+    summary: Another person's public profile, filtered to what they show
+    description: >-
+      The künye and the gender are always in the answer; every other field only while its switch is on, and a hidden field is absent, not
+      null. A person with no künye has no public profile.
+    needs: "AuthGuard, then PublicProfileEnabledGuard: any signed-in caller, about any person with a künye (no ownership check)"
+    result:
+      type: object
+      required: [id, kunye, gender]
+      properties:
+        id: { type: string, format: uuid, references: User }
+        kunye: { type: string }
+        gender: { type: [string, "null"], enum: [FEMALE, MALE, null] }
+        fullName: { type: string } # only when show_full_name is on and a name exists: the person's typed names, else the token's
+        city: { type: string } # only when show_city is on and a city is set
+        about: { type: string } # only when show_about is on and an about is set
+        courses: { type: array, items: { type: string } } # only when show_courses is on
+    refusals:
+      PUBLIC_PROFILE_UNAVAILABLE: { status: 404, note: "the flag is not true", source: apps/tedrisat/src/user/public-profile-enabled.guard.ts:21 }
+      PUBLIC_PROFILE_NOT_FOUND: { status: 404, note: "the person has chosen no künye, or has no row; the message is 'User <id> has no public profile'", source: apps/tedrisat/src/user/user-profile.service.ts:91 }
+      HTTP_400: { status: 400, note: "id is not a uuid (ParseUUIDPipe); the flag guard runs first, so with the flag off this is the 404" }
+    sideEffects: ["the handler writes nothing; with the flag off the guard refuses before the sync interceptor runs, so no users row is written for the caller either"]
+    source: apps/tedrisat/src/user/profile.controller.ts:90
+
+  # ---- User lookup: apps/tedrisat/src/user/users.controller.ts (2) ----
+  findUserByEmail:
+    route: GET /users
+    summary: Find a person who has signed in, by exact e-mail address
+    description: >-
+      Matched on lower(email), exactly, never as a prefix, so it cannot list accounts; at most one row, the most recently seen holder
+      of that address. Only people who have signed in are found. The catalogue code user.lookup is not consulted.
+    needs: "AuthGuard, then the service: SYSTEM_ADMIN, or a person who holds a live KOSK_NAZIM role in any köşk. A müderris who manages no köşk, a talebe, a nazır and a Medaris nazımı are refused"
+    query:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 320, sensitivity: personal }
+    result:
+      type: array
+      maxItems: 1
+      items:
+        type: object
+        required: [id, givenName, familyName, email]
+        properties:
+          id: { type: string, format: uuid, references: User }
+          givenName: { type: [string, "null"], sensitivity: personal }
+          familyName: { type: [string, "null"], sensitivity: personal }
+          email: { type: [string, "null"], format: email, sensitivity: personal }
+    refusals:
+      USER_LOOKUP_FORBIDDEN: { status: 403, note: "the caller is neither SYSTEM_ADMIN nor a köşk nazımı, or the sub is not a uuid; the message says 'Only platform admins, nazırs and köşk managers may look users up' though nazırs are not admitted", source: apps/tedrisat/src/user/user.service.ts:109 }
+      VALIDATION_ERROR: { status: 400, note: "email missing, not an address, or longer than 320" }
+    sideEffects: ["the handler writes and audits nothing"]
+    source: apps/tedrisat/src/user/users.controller.ts:40
+
+  lookupUser:
+    route: GET /users/lookup
+    summary: Find a person in the realm, by exact e-mail address
+    description: >-
+      Searches Keycloak (GET /users?email=<e>&exact=true&max=2, the first enabled account), so a person who never opened the app is found
+      too. Every search is audited, found or not; a miss is filed under the all-zero entity uuid.
+    needs: "AuthGuard, then the service: SYSTEM_ADMIN, or anyone who holds any live role in any scope (a grant alone, or a relationship, is not a role)"
+    query:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 320, sensitivity: personal }
+    result:
+      type: array
+      maxItems: 1
+      items:
+        type: object
+        required: [id, givenName, familyName, email]
+        properties:
+          id: { type: string, format: uuid } # a Keycloak sub: the person may have no users row yet
+          givenName: { type: [string, "null"], sensitivity: personal }
+          familyName: { type: [string, "null"], sensitivity: personal }
+          email: { type: [string, "null"], format: email, sensitivity: personal }
+    refusals:
+      USER_LOOKUP_FORBIDDEN: { status: 403, note: "the caller holds no role and is not SYSTEM_ADMIN, or the sub is not a uuid; nothing is sent to the directory and no audit row is written", source: apps/tedrisat/src/assignment/user-directory.service.ts:42 }
+      KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503, note: KEYCLOAK_ADMIN_CLIENT_ID and KEYCLOAK_ADMIN_CLIENT_SECRET are not set, source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:83 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the directory did not answer in 5 s, answered a non-success status or an unreadable body", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+      VALIDATION_ERROR: { status: 400, note: "email missing, not an address, or longer than 320" }
+    sideEffects:
+      - "a Keycloak admin read, with the service account's client credentials"
+      - "audit:user.lookup, entity user, entity id the found person's id or 00000000-0000-0000-0000-000000000000 when nothing was found, details email (lower-cased) and found"
+    source: apps/tedrisat/src/user/users.controller.ts:57
+
+  # ---- Notifications: apps/tedrisat/src/notification/notification.controller.ts (4). No create, delete or bulk-delete route: the producers
+  # of other modules write the rows (invariant notify-never-undoes-the-action), and this module reads and marks them read.
+  listNotifications:
+    route: GET /notifications
+    summary: The caller's notifications, newest first
+    description: >-
+      Ordered (created_at desc, id desc), one extra row read to know whether a page follows. The cursor is base64url of '<epoch ms>.<uuid>'
+      of the last row of the previous page. The row holds no sentence: the web app words type and params in the reader's language.
+    needs: "AuthGuard: any signed-in caller, their own rows only (every query is scoped to request.user.sub)"
+    query:
+      type: object
+      properties:
+        status: { enum: [all, unread], default: all }
+        types: { type: string, description: "a comma separated list of notification types; empty or absent means every type; any unknown entry is refused" }
+        cursor: { type: string, description: "opaque, as an earlier page's nextCursor" }
+        limit: { type: integer, default: 20, description: "1 to 50; a value outside that range is clamped, not refused: 0 and -5 become 1 and 1000 becomes 50" }
+    result:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, type, targetType, targetId, params, readAt, createdAt]
+            properties:
+              id: { type: string, format: uuid, references: Notification } # a Notification without its userId
+              type: { type: string, enum: [ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED] }
+              targetType: { type: [string, "null"], enum: [COURSE, SESSION, DECK, KOSK, null] }
+              targetId: { type: [string, "null"], format: uuid }
+              params: { type: object, additionalProperties: { type: [string, number, boolean, "null"] } }
+              readAt: { type: [string, "null"], format: date-time }
+              createdAt: { type: string, format: date-time }
+        nextCursor: { type: [string, "null"] } # null on the last page
+    refusals:
+      HTTP_400: { status: 400, note: "types holds an entry that is not a known type (the thrown code INVALID_NOTIFICATION_TYPES does not reach the client, see invariant notification-types-code-reaches-the-client), status is not all or unread, or limit is not an integer", source: apps/tedrisat/src/notification/notification.controller.ts:104 }
+      INVALID_NOTIFICATION_CURSOR: { status: 400, note: "the cursor is not one this server issued: no dot, non-integer milliseconds, a non-uuid id or an invalid date", source: apps/tedrisat/src/notification/notification-cursor.ts:24 }
+    sideEffects: ["the handler writes nothing"]
+    note: A key repeated in the query (types=A&types=B) reaches parseNotificationTypes as an array and fails as a 500 (invariant unreadable-input-is-a-400).
+    source: apps/tedrisat/src/notification/notification.controller.ts:88
+
+  getNotificationCounts:
+    route: GET /notifications/unread-count
+    summary: How many notifications the caller has, and how many are unread
+    description: unread is what the bell announces and total is the count of the "all" tab, both over the types filter.
+    needs: "AuthGuard: any signed-in caller, their own rows only"
+    query:
+      type: object
+      properties:
+        types: { type: string, description: "a comma separated list of notification types; empty or absent means every type" }
+    result:
+      type: object
+      required: [unread, total]
+      properties:
+        unread: { type: integer }
+        total: { type: integer }
+    refusals:
+      HTTP_400: { status: 400, note: "types holds an entry that is not a known type", source: apps/tedrisat/src/notification/notification.controller.ts:142 }
+    sideEffects: ["the handler writes nothing"]
+    source: apps/tedrisat/src/notification/notification.controller.ts:135
+
+  markAllNotificationsRead:
+    route: POST /notifications/read-all
+    summary: Mark every unread notification of the caller read
+    needs: "AuthGuard: any signed-in caller, their own rows only"
+    query:
+      type: object
+      properties:
+        types: { type: string, description: "a comma separated list of notification types; only these are marked; empty or absent means every type" }
+    result:
+      status: 200
+      type: object
+      required: [updated]
+      properties:
+        updated: { type: integer, description: how many were unread and are read now }
+    refusals:
+      HTTP_400: { status: 400, note: "types holds an entry that is not a known type", source: apps/tedrisat/src/notification/notification.controller.ts:172 }
+    sideEffects: ["notifications.read_at is set to now on the caller's unread rows of the given types; nothing is audited"]
+    source: apps/tedrisat/src/notification/notification.controller.ts:164
+
+  markNotificationRead:
+    route: POST /notifications/{id}/read
+    summary: Mark one notification read
+    description: Idempotent; a notification that is read already keeps its first readAt. Another person's notification answers as one that does not exist.
+    needs: "AuthGuard: the owner of the notification"
+    result: { status: 200, returns: Notification } # without its userId
+    refusals:
+      NOTIFICATION_NOT_FOUND: { status: 404, note: "no such id, or the row is another person's; the two cannot be told apart", source: apps/tedrisat/src/notification/notification.service.ts:67 }
+      HTTP_400: { status: 400, note: id is not a uuid (ParseUUIDPipe) }
+    sideEffects: ["notifications.read_at = coalesce(read_at, now()) where id and user_id are the caller's; nothing is audited"]
+    source: apps/tedrisat/src/notification/notification.controller.ts:190
+
+  # ---- Partner applications, the registry (nizam "Ortak uygulamalar"): apps/tedrisat/src/integration/partner-admin.controller.ts (4).
+  # Every route: AuthGuard only, then PlatformAccessService.assert(user, platform.partner_manage). Every write is one transaction with its
+  # audit rows and empties the in-process registry cache (PartnerRegistry.invalidate); another instance reads the change within
+  # PARTNER_REGISTRY_TTL_MS, 60 s. A partner is never deleted.
+  listPartnerApplications:
+    route: GET /nizam/partner-applications
+    summary: The partner applications, with their köşks
+    description: >-
+      Every registered partner, enabled or not, ordered by name and then client id, each with the köşks it works with; and every köşk,
+      hidden ones included, by name, to pick from (koskOptions has no archive filter).
+    needs: "AuthGuard, then PlatformAccessService: SYSTEM_ADMIN, or a Medaris nazımı holding platform.partner_manage by a single grant or a group (no role holds it by default)"
+    result:
+      type: object
+      required: [items, kosks]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [clientId, name, enabled, createdAt, kosks]
+            properties:
+              clientId: { type: string, references: IntegrationPartner }
+              name: { type: string }
+              enabled: { type: boolean }
+              createdAt: { type: string, format: date-time }
+              kosks: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } }
+        kosks: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "'Only the Medaris başnazımı and a Medaris nazımı holding platform.partner_manage may do this'", source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+    sideEffects: ["the handler writes nothing"]
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:59
+
+  createPartnerApplication:
+    route: POST /nizam/partner-applications
+    summary: Register a partner application
+    description: >-
+      Enabled, and bound to no köşk until köşks are chosen. From then on its token is accepted on /integrations/* and refused on every
+      other route. The name is trimmed.
+    needs: "as listPartnerApplications: SYSTEM_ADMIN, or a Medaris nazımı holding platform.partner_manage"
+    body:
+      type: object
+      required: [clientId, name]
+      additionalProperties: false
+      properties:
+        clientId: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", description: "the partner's Keycloak client id, what its tokens carry in azp" }
+        name: { type: string, minLength: 1, maxLength: 100, pattern: "\\S", description: not blank }
+    result:
+      status: 201
+      type: object
+      required: [clientId, name, enabled, createdAt, kosks]
+      properties:
+        clientId: { type: string, references: IntegrationPartner }
+        name: { type: string }
+        enabled: { type: boolean, const: true }
+        createdAt: { type: string, format: date-time }
+        kosks: { type: array, maxItems: 0 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      VALIDATION_ERROR: { status: 400, note: "a client id that is not letters, digits, '.', '_' and '-' (1 to 128, no leading punctuation), a blank or over-100 name, any other property" }
+      PARTNER_FRONT_END_CLIENT: { status: 409, note: "the client id is one of the front-ends in KEYCLOAK_ALLOWED_CLIENTS: its people's tokens would be refused everywhere but /integrations/*", source: apps/tedrisat/src/integration/partner-admin.service.ts:71 }
+      PARTNER_EXISTS: { status: 409, note: "the client id is registered already, enabled or not", source: apps/tedrisat/src/integration/partner-admin.service.ts:77 }
+    sideEffects:
+      - "integration_partners insert, enabled, created_by the caller"
+      - "audit:integration_partner.create, entity integration_partner, entity id the platform sentinel id, details clientId and name"
+      - "the registry cache is dropped, so a partner token is refused on every ordinary route from the next request in this process"
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:81
+
+  updatePartnerApplication:
+    route: PATCH /nizam/partner-applications/{clientId}
+    summary: Rename, disable or enable a partner application
+    description: >-
+      The path clientId matches the same pattern as at registration. An empty body, or a value the partner has already, changes nothing
+      and returns the row. A disabled partner's token is refused on /integrations/* with 403 PARTNER_DISABLED and stays refused
+      everywhere else, and its codes are offered in no course (the course's partner list shows enabled partners only).
+    needs: "as listPartnerApplications: SYSTEM_ADMIN, or a Medaris nazımı holding platform.partner_manage"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, pattern: "\\S" }
+        enabled: { type: boolean }
+    result:
+      type: object
+      required: [clientId, name, enabled, createdAt, kosks]
+      properties:
+        clientId: { type: string, references: IntegrationPartner }
+        name: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        kosks: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      VALIDATION_ERROR: { status: 400, note: "a clientId in the path that does not match the pattern, a blank or over-100 name, enabled that is not a boolean, any other property" }
+      PARTNER_UNKNOWN: { status: 404, note: "no partner is registered under the client id; the message is 'No such partner application'", source: apps/tedrisat/src/integration/partner-admin.service.ts:97 }
+    sideEffects:
+      - "the partner row is locked for update; name and enabled are written only when they differ"
+      - "one audit row per real change: audit:integration_partner.rename (details include was), audit:integration_partner.enable or audit:integration_partner.disable"
+      - "the registry cache is dropped"
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:98
+
+  setPartnerApplicationKosks:
+    route: PUT /nizam/partner-applications/{clientId}/kosks
+    summary: Choose the köşks a partner application works with
+    description: >-
+      The köşks named are the complete set from now on: the new ones are bound and the rest unbound (an empty list unbinds all;
+      duplicates collapse and ids are lower-cased). Unbinding a köşk deletes the partner's codes on that köşk's courses, and binding it
+      again brings none back. The registrations' links stay, so the partner's DELETE still undoes the seats they made.
+    needs: "as listPartnerApplications: SYSTEM_ADMIN, or a Medaris nazımı holding platform.partner_manage"
+    body:
+      type: object
+      required: [koskIds]
+      additionalProperties: false
+      properties:
+        koskIds: { type: array, maxItems: 1000, items: { type: string, format: uuid, references: Kosk } }
+    result:
+      type: object
+      required: [clientId, name, enabled, createdAt, kosks]
+      properties:
+        clientId: { type: string, references: IntegrationPartner }
+        name: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        kosks: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } } # the new set, by name
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      VALIDATION_ERROR: { status: 400, note: "koskIds is not an array, holds an entry that is not a uuid, or holds more than 1000 entries; a clientId in the path that does not match the pattern" }
+      PARTNER_UNKNOWN: { status: 404, note: "no partner is registered under the client id", source: apps/tedrisat/src/integration/partner-admin.service.ts:119 }
+      KOSK_NOT_FOUND: { status: 404, note: "a named köşk does not exist; nothing is changed", source: apps/tedrisat/src/integration/partner-admin.service.ts:120 }
+    sideEffects:
+      - "one transaction, the partner row locked: integration_partner_kosks insert for the newly bound köşks (created_by the caller) and delete for the ones left out"
+      - "partner_course_codes rows of this partner on the unbound köşks' courses are deleted"
+      - "audit:integration_partner.kosk_bind and audit:integration_partner.kosk_unbind per köşk (entity kosk, details clientId, name and kosk)"
+      - "audit:course.partner_code_remove per removed code (entity course, details the partner, the code and unboundKosk)"
+      - "the registry cache is dropped"
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:117
+
+  # ---- Partner applications, course codes (nazar "Ortak uygulama kodları"): apps/tedrisat/src/integration/partner-codes.controller.ts (3).
+  # AuthGuard and AuthzGuard, @Authz(course.partner_codes, byExistingCourse). The permission is köşk-scoped: held by the köşk's KOSK_NAZIM in
+  # every course of the köşk, by SYSTEM_ADMIN, and by a person granted it at köşk scope; not by the müderris. byExistingCourse answers
+  # 404 COURSE_NOT_FOUND for a non-uuid or unknown id before any pipe runs, and a course of a hidden köşk answers its own 404 to anyone
+  # without course.hide or platform.kosk_edit.
+  getCoursePartnerCodes:
+    route: GET /courses/{id}/partner-codes
+    summary: A course's partner codes
+    description: >-
+      The course's partners are the enabled partners bound to the köşk the course is held in, ordered by name; each lists its codes
+      mapped to this course (possibly none). Empty when the köşk has no enabled partner, and nazar then shows no partner section.
+    needs: "AuthGuard + AuthzGuard: course.partner_codes on the course (the köşk's KOSK_NAZIM, SYSTEM_ADMIN, a köşk-scope grantee)"
+    result:
+      type: object
+      required: [partners]
+      properties:
+        partners:
+          type: array
+          items:
+            type: object
+            required: [id, name, codes]
+            properties:
+              id: { type: string, references: IntegrationPartner } # the client id
+              name: { type: string }
+              codes: { type: array, items: { type: object, required: [code, createdAt], properties: { code: { type: string }, createdAt: { type: string, format: date-time } } } }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, note: "the id is not a uuid or names no course, or the course is hidden from this caller (a draft, or a course of a hidden köşk)", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold course.partner_codes on this course" }
+    sideEffects: ["the handler writes nothing"]
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:63
+
+  addCoursePartnerCode:
+    route: POST /courses/{id}/partner-codes
+    summary: Map a partner application's code to the course
+    description: >-
+      Idempotent: a code the course holds already for that partner returns the existing row (createdAt unchanged) and writes no audit
+      row. A code is unique per partner across all courses. Only a course's partner is accepted: enabled and bound to the course's köşk.
+    needs: "AuthGuard + AuthzGuard: course.partner_codes on the course"
+    body:
+      type: object
+      required: [partner, code]
+      additionalProperties: false
+      properties:
+        partner: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", references: IntegrationPartner, description: the partner's client id }
+        code: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$", description: "lower-case letters, digits and hyphens, 1 to 64, no leading hyphen" }
+    result:
+      status: 201
+      type: object
+      required: [code, createdAt]
+      properties:
+        code: { type: string }
+        createdAt: { type: string, format: date-time }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, note: "the id is not a uuid or names no course, or the course is hidden from this caller", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold course.partner_codes on this course" }
+      VALIDATION_ERROR: { status: 400, note: "a partner or a code that does not match its pattern, any other property" }
+      PARTNER_UNKNOWN: { status: 404, note: "the partner is not one of the course's: unregistered, disabled, or not bound to the course's köşk; the three read the same", source: apps/tedrisat/src/integration/partner-codes.service.ts:107 }
+      PARTNER_CODE_TAKEN: { status: 409, note: "the code is mapped to another course already; the message 'This code is already mapped to another course' does not name it", source: apps/tedrisat/src/integration/partner-codes.service.ts:64 }
+    sideEffects:
+      - "partner_course_codes insert (partner_client_id, code, course_id, created_by) ON CONFLICT DO NOTHING"
+      - "audit:course.partner_code_add, entity course, details the partner's client id and name and the code, only when the row is new"
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:91
+
+  removeCoursePartnerCode:
+    route: DELETE /courses/{id}/partner-codes/{partner}/{code}
+    summary: Take a partner application's code off the course
+    description: >-
+      Any registered partner's code can be taken off, enabled or not and bound to the course's köşk or not, so no code is ever stuck on a
+      course. A code the course does not have is no error. The people the code enrolled stay, and the partner's later cancellations still
+      reach them through the registration's own link.
+    needs: "AuthGuard + AuthzGuard: course.partner_codes on the course"
+    result: { status: 204 }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, note: "the id is not a uuid or names no course, or the course is hidden from this caller", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold course.partner_codes on this course" }
+      VALIDATION_ERROR: { status: 400, note: "a partner or a code in the path that does not match its pattern" }
+      PARTNER_UNKNOWN: { status: 404, note: "no partner is registered under this id at all", source: apps/tedrisat/src/integration/partner-codes.service.ts:86 }
+    sideEffects:
+      - "partner_course_codes delete of that (partner, code, course)"
+      - "audit:course.partner_code_remove, entity course, only when a row went"
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:113
+
+  # ---- Partner applications, the enrollment API: apps/tedrisat/src/integration/partner-enrollment.controller.ts (3).
+  # PartnerGuard and PartnerThrottlerGuard; AuthGuard is not on these routes (its policy admits the front-ends' clients and refuses every
+  # registered partner's). The guard sets request.partner and never request.user, so no users row is written and the per-user throttle
+  # does not count the route. The answers of the guards, in their order:
+  #   no partner registered at all: 404 HTTP_404, worded 'Cannot <METHOD> <url>', before the token is read (partner.guard.ts:98)
+  #   no or malformed Authorization header, a token the verifier refuses under the partner policy (a person's, an ID token, an expired
+  #     one), a token whose azp is not a registered partner, or a sub that is not a uuid: 401 HTTP_401, bare (:106, :114, :122, :133)
+  #   the partner is registered and disabled: 403 PARTNER_DISABLED (:125); the token lacks the realm role partner-enrollment:
+  #     403 PARTNER_ROLE_MISSING (:128)
+  #   past the partner's budget for this route: 429, with a standard Retry-After header (partner-throttler.guard.ts:56)
+  # If the registry cannot be read and no copy is held, PartnerGuard throws and the route answers 500.
+  putPartnerEnrollment:
+    route: PUT /integrations/enrollments/{registrationRef}/{courseCode}
+    summary: Enrol the person of a registration in the course its code maps to
+    description: >-
+      Idempotent. Seats the person as an approved, active talebe through the course team's own path, whatever the course's, köşk's,
+      medrese's or platform's approval setting, in the steps of PartnerEnrollmentService.enroll: (1) the code must be mapped for this
+      partner on a course held in a köşk the partner is bound to; (2) an existing link for (partner, registrationRef, courseCode) must name
+      the same person, and an open link stays with the course it seated the person in, whose köşk must still be bound; (3) the account is
+      read from the realm by id and must exist, be enabled and have a verified e-mail; (4) the course must be open to enrolment
+      (PUBLISHED, not hidden, in a köşk not hidden); (5) the link is claimed first, so two racing calls cannot seat two people; (6) the
+      person is seated through the bulk path: a barred person is refused, no row becomes a new ENROLLED row with student_name and
+      student_email from the realm, a PENDING request is approved, an ENROLLED or COMPLETED seat is already, and a REVOKED seat is refused
+      unless the integration's own removal left it exactly as it is, in which case it is given back. No gender, quota or capacity is
+      checked: none exists. A registration is bound to its first person. The path registrationRef matches ^[A-Za-z0-9_-]{1,64}$ and
+      courseCode matches ^[a-z0-9][a-z0-9-]{0,63}$.
+    needs: "PartnerGuard + PartnerThrottlerGuard: an enabled, registered partner application's service-account token carrying the realm role partner-enrollment. A person's token is refused here"
+    body:
+      type: object
+      required: [userId]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, description: "the person's Keycloak sub, never an e-mail address" }
+    result:
+      status: 200
+      type: object
+      required: [status, courseId]
+      properties:
+        status: { enum: [ENROLLED, ALREADY_ENROLLED] } # ENROLLED: this call seated them (a new seat, their request approved, or a seat given back); ALREADY_ENROLLED: they held a seat already, through this or another registration, or on their own, or completed
+        courseId: { type: string, format: uuid, references: Course }
+    refusals:
+      HTTP_404: { status: 404, note: "no partner application is registered at all; worded 'Cannot PUT <url>', as for a route that does not exist", source: apps/tedrisat/src/integration/partner.guard.ts:98 }
+      PARTNER_DISABLED: { status: 403, source: apps/tedrisat/src/integration/partner.guard.ts:125 }
+      PARTNER_ROLE_MISSING: { status: 403, note: "the token lacks the realm role partner-enrollment", source: apps/tedrisat/src/integration/partner.guard.ts:128 }
+      HTTP_429: { status: 429, note: "past THROTTLE_PARTNER_LIMIT (600) in the window, per partner and route; Retry-After says when to try again", source: apps/tedrisat/src/integration/partner-throttler.guard.ts:56 }
+      VALIDATION_ERROR: { status: 400, note: "registrationRef or courseCode in the path of the wrong shape, userId not a uuid, any other property" }
+      PARTNER_COURSE_UNKNOWN: { status: 404, note: "no course is mapped to the code for this partner in a köşk it works with; a code mapped in a köşk the partner was unbound from since reads the same, and so does an open registration whose course is no longer bound", source: apps/tedrisat/src/integration/partner-enrollment.service.ts:114 }
+      PARTNER_REGISTRATION_USER_MISMATCH: { status: 409, note: "this registration and course code are linked to another person", source: apps/tedrisat/src/integration/partner-enrollment.service.ts:122 }
+      PARTNER_USER_UNKNOWN: { status: 404, note: "no such account in the realm, or it is disabled", source: apps/tedrisat/src/integration/partner-enrollment.service.ts:314 }
+      PARTNER_USER_UNVERIFIED: { status: 409, note: "the account's e-mail address is not verified", source: apps/tedrisat/src/integration/partner-enrollment.service.ts:315 }
+      PARTNER_ENROLLMENT_REFUSED:
+        status: 409
+        note: "tedrisat refused the seat; a link this call created is deleted, so a refused call links nothing"
+        source: apps/tedrisat/src/integration/partner-enrollment.service.ts:139
+        body:
+          type: object
+          properties:
+            context:
+              type: object
+              properties:
+                reason: { enum: [BANNED, REMOVED_BY_COURSE_TEAM, CHANGED, COURSE_NOT_FOUND, COURSE_NOT_PUBLISHED, COURSE_HIDDEN, KOSK_HIDDEN] } # BANNED: an open ban bars the person from the course, its köşk or its medrese; REMOVED_BY_COURSE_TEAM: a REVOKED seat the integration did not remove; CHANGED: a request moved while the call ran
+      BAN_ACTIVE: { status: 403, note: "only when a ban lands between the barred check and the approval of a waiting request or a seat given back; the other approve-path errors (ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT) are caught and settled, so they never reach the partner", source: apps/tedrisat/src/ban/ban.service.ts:616 }
+      KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503, note: KEYCLOAK_ADMIN_CLIENT_ID and KEYCLOAK_ADMIN_CLIENT_SECRET are not set, source: apps/tedrisat/src/integration/partner-enrollment.service.ts:311 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: the realm's directory did not answer, source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+    sideEffects:
+      - "a Keycloak admin read of the account by id (GET /users/<sub>)"
+      - "partner_enrollment_links: the link is claimed, reopened or marked as having created the seat"
+      - "enrollments: a new ENROLLED row, or PENDING or REVOKED to ENROLLED, with student_name and student_email from the realm"
+      - "notification:ENROLLMENT_APPROVED to the person when a waiting request was approved or a seat given back"
+      - "calendar invitations for the new seat are queued (LessonInvitationService.kick)"
+      - "audit:enrollment.partner_add, entity course, details the partner's client id and name, userId, registrationRef, courseCode and outcome, only when this call seated the person"
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:96
+
+  deletePartnerEnrollment:
+    route: DELETE /integrations/enrollments/{registrationRef}/{courseCode}
+    summary: Undo what a registration did, and only that
+    description: >-
+      Idempotent, and always 200: asking again answers the same. It does not ask for the köşk binding, so it works for every registration
+      the partner made, also in a köşk it was unbound from since. No link is NOT_FOUND. A closed link answers as it did the first time. A
+      link that did not create the seat is closed and the seat is KEPT. A link that created the seat: if the seat is gone it is REMOVED
+      and closed; if the person took a seat again on their own, or completed the course, it is KEPT; if another open registration stands
+      for the same seat, the seat is handed over to it and KEPT; otherwise the seat is removed through the team's own removal path
+      (REVOKED, completed_at null, reason '<Partner name> üzerinden yapılan kayıt iptal edildi.') and the link closed. A seat that moved
+      while the call ran is decided as it is now.
+    needs: "PartnerGuard + PartnerThrottlerGuard: the enabled, registered partner that made the registration"
+    result:
+      status: 200
+      type: object
+      required: [status]
+      properties:
+        status: { enum: [REMOVED, KEPT, NOT_FOUND] }
+    refusals:
+      HTTP_404: { status: 404, note: "no partner application is registered at all; worded 'Cannot DELETE <url>'", source: apps/tedrisat/src/integration/partner.guard.ts:98 }
+      PARTNER_DISABLED: { status: 403, source: apps/tedrisat/src/integration/partner.guard.ts:125 }
+      PARTNER_ROLE_MISSING: { status: 403, source: apps/tedrisat/src/integration/partner.guard.ts:128 }
+      HTTP_429: { status: 429, note: "past the partner's budget for this route; Retry-After says when to try again", source: apps/tedrisat/src/integration/partner-throttler.guard.ts:56 }
+      VALIDATION_ERROR: { status: 400, note: "registrationRef or courseCode in the path of the wrong shape" }
+    sideEffects:
+      - "partner_enrollment_links is closed, or the seat handed over to another open link"
+      - "enrollments: ENROLLED to REVOKED, through CourseService.removeEnrollment, only for a seat the registration created and still owns"
+      - "audit:enrollment.remove, with the partner's details"
+      - "notification:REMOVED_FROM_COURSE to the person, with the reason naming the partner"
+      - "calendar invitations of the removed seat are cancelled (LessonInvitationService.kick)"
+    note: >-
+      The service has no refusal of its own. ENROLLMENT_NOT_FOUND and ENROLLMENT_STATE_CONFLICT thrown by removeEnrollment are caught and
+      turned into REMOVED or KEPT (partner-enrollment.service.ts:264).
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:116
+
+  listPartnerCourses:
+    route: GET /integrations/courses
+    summary: The partner's codes that are mapped to Medaris courses
+    description: For the partner's own admin panel, which of its courses are connected. Only the codes in köşks the partner works with, ordered by code.
+    needs: "PartnerGuard + PartnerThrottlerGuard: the enabled, registered partner"
+    result:
+      type: array
+      items:
+        type: object
+        required: [code, courseId, title]
+        properties:
+          code: { type: string }
+          courseId: { type: string, format: uuid, references: Course }
+          title: { type: string }
+    refusals:
+      HTTP_404: { status: 404, note: "no partner application is registered at all; worded 'Cannot GET <url>'", source: apps/tedrisat/src/integration/partner.guard.ts:98 }
+      PARTNER_DISABLED: { status: 403, source: apps/tedrisat/src/integration/partner.guard.ts:125 }
+      PARTNER_ROLE_MISSING: { status: 403, source: apps/tedrisat/src/integration/partner.guard.ts:128 }
+      HTTP_429: { status: 429, note: "past the partner's budget for this route; Retry-After says when to try again", source: apps/tedrisat/src/integration/partner-throttler.guard.ts:56 }
+    sideEffects: ["the handler writes nothing"]
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:132
+
+  # ---- The background job of this area: no route ----
+  seedPartnersFromEnvironment:
+    summary: Register the partners listed in the deprecated INTEGRATION_PARTNERS variable
+    needs: "the system itself: no caller and no token; it runs inside the API process"
+    description: >-
+      Each listed partner that is not registered yet is registered, enabled, with created_by null, and bound to every köşk that already
+      holds one of its course codes, so a partner that worked before the registry moved into the database keeps working. A partner that is
+      registered already is left exactly as the başnazım made it, so a restart never undoes a disabling or an unbinding. While the
+      variable is set a deprecation warning is logged at every boot. A value that is set but malformed stops the boot (config/
+      integration-partners-env.ts:38), as does a listed client id that is also in KEYCLOAK_ALLOWED_CLIENTS.
+    result: { returns: IntegrationPartner }
+    sideEffects:
+      - "integration_partners insert, and integration_partner_kosks inserts for the köşks that hold the partner's codes"
+      - "audit:integration_partner.create and audit:integration_partner.kosk_bind, actor 00000000-0000-0000-0000-000000000000, details seededFrom INTEGRATION_PARTNERS"
+      - "the registry cache is dropped"
+    note: >-
+      Trigger: PartnerRegistrySeeder.onApplicationBootstrap, once per boot, after the migrations and before the server listens, and only
+      when INTEGRATION_PARTNERS names at least one partner. No timer repeats it.
+    source: apps/tedrisat/src/integration/partner-registry.seeder.ts:35
+
+invariants:
+  # ---- the caller's own record, the profile and the lookups ----
+  - id: user-row-follows-the-token
+    rule: >-
+      Every request with a verified token whose sub is a uuid upserts the users row (email, email_verified, given_name, family_name;
+      locale only on insert; last_seen_at refreshed when older than 3 hours) before the handler runs. A per-process cache of 10 000 entries,
+      keyed on a fingerprint of email, verification, names and gender, skips unchanged claims. A write failure is logged and the request
+      goes on; a request that a guard refuses never reaches the interceptor, so it leaves no row.
+    note: GET /me and the profile routes retry with syncNow when the row is still missing. A partner token never reaches it, because the partner guard sets no request.user.
+    source: apps/tedrisat/src/user/user-sync.interceptor.ts:37
+
+  - id: non-uuid-sub-has-no-user
+    rule: >-
+      A sub that is not a uuid (a federated id) is skipped by the sync and answered 404 USER_NOT_FOUND by /me and the profile routes; both
+      lookups answer 403 USER_LOOKUP_FORBIDDEN for it.
+    source: apps/tedrisat/src/user/user-identity.ts:25
+
+  - id: kunye-unique-and-always-public
+    rule: >-
+      The künye is unique case-insensitively (user_profiles_kunye_lower_idx), stored trimmed, at most 60 characters. The künye and the
+      gender are always visible to any signed-in caller once a künye exists; every other field is visible only while its switch is on, and
+      all four switches default to off. A person with no künye has no public profile.
+    source: apps/tedrisat/src/user/user-profile.service.ts:89
+
+  - id: public-profile-flag
+    rule: >-
+      While PUBLIC_PROFILE_ENABLED is not exactly true, the three public-profile routes answer 404 PUBLIC_PROFILE_UNAVAILABLE to every
+      signed-in caller, before the pipes and the interceptors run and with no side effect; a request with no token stays 401.
+    note: A graph or a walk of the profile screens must turn the flag on, or every call is a 404.
+    source: apps/tedrisat/src/user/public-profile-enabled.guard.ts:19
+
+  - id: own-names-are-kept
+    rule: >-
+      Names typed through PATCH /me live in user_profiles and win over the token's names in GET /me and in the profile; the token's names stay
+      in users. A name can be replaced, never cleared.
+    source: apps/tedrisat/src/user/user.service.ts:61
+
+  - id: lookup-callers
+    rule: >-
+      GET /users admits SYSTEM_ADMIN or a held KOSK_NAZIM, reads users and writes no audit row. GET /users/lookup admits SYSTEM_ADMIN or
+      the holder of any live role, reads Keycloak and always writes the audit row user.lookup, found or not. Both match the address exactly
+      and return at most one person.
+    note: Neither route asks for the catalogue code user.lookup (invariant user-lookup-needs-user-lookup, MDRS-206), so a Medaris nazımı is refused by both.
+    source: apps/tedrisat/src/user/user.service.ts:104
+
+  - id: lookup-refusal-tells-the-truth
+    rule: The message of USER_LOOKUP_FORBIDDEN names exactly the callers the lookup admits.
+    holds: false
+    finding: lookup-message-names-nazirs
+    note: >-
+      The message reads 'Only platform admins, nazırs and köşk managers may look users up' and the swagger text says SYSTEM_ADMIN and
+      köşk managers; GET /users admits no nazır (user.service.ts:104-121). The message also reaches a caller of GET /users/lookup, where
+      any role-holder, a nazır included, is admitted.
+    source: apps/tedrisat/src/user/errors/user-lookup-forbidden.error.ts:10
+
+  - id: unreadable-input-is-a-400
+    rule: A request body, query or path that the API cannot read is refused 400 and never fails as a 500.
+    holds: false
+    finding: unreadable-input-500
+    note: >-
+      Read from the code, not run. Three inputs pass validation and then break a handler. PATCH /me with givenName or familyName null:
+      IsOptional lets null through and user.service.ts:75 calls trim on it. PATCH /me/public-profile with kunye null: user-profile.service.ts:67
+      does the same. GET /notifications or its two siblings with types repeated (types=A&types=B): the value reaches
+      parseNotificationTypes as an array and raw.trim throws (notification-types.ts:67). Each is a TypeError, answered 500 INTERNAL_ERROR.
+    source: apps/tedrisat/src/user/user.service.ts:75
+
+  - id: health-means-ready
+    rule: GET /health answers ok only when the service can do its work, which needs its database and its token keys.
+    holds: false
+    finding: health-probes-nothing
+    note: >-
+      The handler reads configuration and builds the answer; it probes neither the database nor Keycloak, and it never answers error or
+      degraded although the schema allows them. A load balancer therefore keeps a service in rotation whose database is gone.
+    source: apps/tedrisat/src/app.service.ts:26
+
+  # ---- notifications ----
+  - id: notifications-are-private
+    rule: >-
+      Every notification route filters by the caller's id, so another person's id answers 404 as one that does not exist. Reading is
+      idempotent and keeps the first readAt. The order is (created_at desc, id desc) with an opaque cursor, a page holds 1 to 50 rows
+      (default 20, out-of-range values clamped), types empty means all, and an unknown type is a 400.
+    source: apps/tedrisat/src/notification/notification.repository.ts:51
+
+  - id: notification-types-code-reaches-the-client
+    rule: The code a handler throws for an unknown notification type, INVALID_NOTIFICATION_TYPES, is the code the client receives.
+    holds: false
+    finding: notification-types-code-dropped
+    note: >-
+      The three routes throw a Nest BadRequestException whose response object carries code INVALID_NOTIFICATION_TYPES. The global filter
+      keeps only the message of an HttpException and names the code HTTP_<status> (global-exception.filter.ts:61-74), so the client sees
+      HTTP_400, the same code as a bad status or limit. The swagger text and the inventory name the lost code.
+    source: apps/tedrisat/src/notification/notification.controller.ts:104
+
+  # ---- partner applications ----
+  - id: partner-client-id-rules
+    rule: >-
+      A partner's client id matches ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$, is unique, and is never one of KEYCLOAK_ALLOWED_CLIENTS (409 at
+      registration, a failed boot for the deprecated variable). A partner is never deleted, only disabled. The name is 1 to 100 non-blank
+      characters.
+    source: apps/tedrisat/src/integration/partner-admin.service.ts:70
+
+  - id: partner-tokens-have-one-door
+    rule: >-
+      A registered partner's token, enabled or not, is refused on every ordinary route by the verifier (PartnerRegistry.isRefused), and a
+      person's token is refused on /integrations/*. When the registry cannot be read and no copy is held, the verifier refuses the token
+      rather than let a partner's through.
+    source: apps/tedrisat/src/integration/partner-registry.ts:62
+
+  - id: partner-registry-cache
+    rule: >-
+      The registry is cached 60 s per process and invalidated by every write in that process, so another instance reads a change within
+      the minute. The köşk bindings are not cached, so an unbinding is in force at once.
+    source: apps/tedrisat/src/integration/domain/partner-registry.ts:39
+
+  - id: partner-codes-per-kosk
+    rule: >-
+      A code is unique per partner across all courses. Only an enabled partner bound to the course's köşk may get a new code on that
+      course; any registered partner's code may be removed. Unbinding a köşk deletes that partner's codes on its courses, audited one by
+      one, and binding it again restores none. A code counts only in a köşk its partner works with, in /integrations/courses and in the PUT.
+    source: apps/tedrisat/src/integration/partner-registry.repository.ts:213
+
+  - id: partner-seat-ownership
+    rule: >-
+      A registration owns a seat only if it made the person a talebe: a new seat, an approved request, or a seat the integration itself had
+      taken away and gave back. A seat the person already held stays theirs on DELETE. A seat stops being the link's when the person took
+      one again on their own after leaving, and when the course is completed. When the owning link is cancelled while another registration
+      still stands for the seat, the seat passes to it.
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:379
+
+  - id: partner-seats-are-approved-seats
+    rule: >-
+      A partner registration always yields an ENROLLED seat, or approves the person's own PENDING request, whatever the course's, köşk's,
+      medrese's or platform's approval policy. It is refused for a banned person, for a seat the course team took away, and for a course
+      that is not PUBLISHED, is hidden, or is in a hidden köşk.
+    note: >-
+      The partner path is a trust path: the partner approved the person on its own site. It reads no gender, quota or capacity, as no
+      other seat path does (invariants gender-always-known and seat-quota-per-gender, MDRS-284); the planned in-person seats will have to
+      decide whether a partner seat counts against them.
+    source: apps/tedrisat/src/course/bulk-enrollment.service.ts:176
+
+  - id: partner-account-gate
+    rule: >-
+      The person must exist in the realm, be enabled and have a verified e-mail, read by id with the admin account; without admin
+      credentials the route answers 503.
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:309
+
+  - id: partner-budget
+    rule: >-
+      The partner routes allow 600 calls a minute per partner and per route by default (THROTTLE_PARTNER_LIMIT, THROTTLE_PARTNER_TTL);
+      the global per-user layer does not count them, since they set no request.user.
+    note: The per-user layer skips a request with no request.user (user-throttler.interceptor.ts:65), and the partner guard sets none.
+    source: apps/tedrisat/src/config/throttle-env.ts:125
+
+  - id: partner-audit-trail
+    rule: >-
+      Every registry write and every seat change is audited with the partner named in its details: integration_partner.create, rename,
+      enable, disable, kosk_bind and kosk_unbind; course.partner_code_add and partner_code_remove; enrollment.partner_add; and
+      enrollment.remove, whose details carry the partner. The boot seed writes create and kosk_bind rows with the all-zero actor and
+      details seededFrom INTEGRATION_PARTNERS.
+    source: apps/tedrisat/src/integration/partner-registry.repository.ts:138
+
+  - id: partner-env-seed
+    rule: >-
+      INTEGRATION_PARTNERS (deprecated, clientId=Display name pairs separated by commas) only seeds a partner that is not registered yet,
+      enabled, bound to every köşk that already holds one of its codes. A registered partner is left as the başnazım made it, a malformed
+      value stops the boot, and a deprecation warning is logged at every boot while it is set.
+    source: apps/tedrisat/src/integration/partner-registry.seeder.ts:35

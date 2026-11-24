@@ -1,0 +1,37 @@
+# tedris.learn.notes, the watch page of a recording whose host reports no position: the time is typed, there is no "Şimdiki an" and
+# the line under the field says it is optional (lesson-notes#7). The same throwaway course as binding.yaml, started in the past so
+# that its celses are over, with a recording added to the first one through the API as the hoca (a pasted link at a host the
+# page has no player for, which is what a recording on a host that reports no position is, here and with a Bunny link alike).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/notes \
+#     --bind graphs/tedris/learn/notes/binding.typed.yaml --to drafting --out <dir>
+# The recording is added after the talebe's seat, so "Kayıt eklendi" is sent to applicantF: course.mjs remove deletes the
+# notifications that point at the course and its celses and clears the course's mail.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.notes
+
+scenarios:
+  typed:
+    given: { surface: watchTyped, typing: ok, answer: saved, held: none }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}/izle'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      timeField: Videodaki an
+      body1: 'Kayıttan not: muzâride hurûf-i mudâraa'
+      time1: '12:34'
+      offset1: '754'
+      body2: ''
+      body3: ''
+      time3: ''
+      offset3: '0'
+    setup:
+      - run: [node, helpers/course.mjs, make, learnnotes, --weeks, '1', --lessons, '3', --start, '-4', --talebe, applicantF]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{made.lessons.0}/recordings', '{"title":"Not alma denemesi kaydı","url":"https://video.example.test/dersler/not-alma","visibility":"ENROLLED"}']
+        expect: '"id"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, learnnotes]
+        expect: course remove learnnotes

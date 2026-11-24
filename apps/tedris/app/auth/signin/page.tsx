@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 import { env } from "~/env";
 import { AuthEntry } from "~/features/auth/auth-entry";
+import { signInLimit } from "~/lib/auth";
 import { signInCallbackUrl } from "~/lib/post-sign-in";
 
 /**
@@ -31,6 +32,7 @@ export default async function SignInPage({
         })}
         error={error}
         reauth={reauth === "1"}
+        limit={signInLimit}
       />
     </>
   );

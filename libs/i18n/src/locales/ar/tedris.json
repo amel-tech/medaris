@@ -80,14 +80,7 @@
     "meetingNotAdded": "لم تُضَف رابط الاجتماع بعد.",
     "inPersonBadge": "حضوري",
     "progressLabel": "تقدّمك في الدرس",
-    "progressNote": "أنت تدخل تقدّمك بنفسك؛ ويؤكد طاقم الدرس إتمامك له.",
-    "updateProgress": "حدّث تقدّمك",
-    "progressField": "التقدّم (بالنسبة المئوية)",
-    "progressHelp": "عدد صحيح من 0 إلى 100.",
-    "progressInvalid": "اكتب عددًا صحيحًا من 0 إلى 100.",
-    "progressSave": "حفظ",
-    "progressSaved": "تم تحديث تقدّمك.",
-    "progressCancel": "إلغاء",
+    "progressNote": "يُحسب تلقائيًا من الجلسات التي شاهدتها؛ ويؤكد فريق الدرس إتمامك له.",
     "statusInProgress": "جارٍ",
     "statusCompleted": "مكتمل",
     "revokedTitle": "أُلغي وصولك إلى هذا الدرس.",
@@ -107,6 +100,8 @@
     "lessonCurrent": "التالية",
     "lessonCurrentLive": "التالية · مباشر الآن",
     "cancelledBadge": "أُلغيت",
+    "cancelNoteMore": "عرض الملاحظة كاملة",
+    "cancelNoteLess": "اختصار الملاحظة",
     "sampleHeading": "جلسة نموذجية",
     "sampleMark": "جلسة نموذجية",
     "sampleIntro": "يمكنك قراءة مخطط هذه الجلسة ومصادرها دون التسجيل.",
@@ -177,6 +172,25 @@
     "assignmentBadge": "واجب",
     "assignmentPending": "لم يُسلَّم الواجب",
     "assignmentsPending": "واجبات لم تُسلَّم: {count}",
+    "tabGrades": "درجاتي",
+    "examBadge": "اختبار",
+    "retakeBadge": "تعويضي",
+    "examCountdown": "{count, plural, =0 {اليوم} =1 {غدًا} other {بقي # يوم}}",
+    "gradesExams": "الاختبارات",
+    "gradesMemorizations": "الحفظ",
+    "gradesEmpty": "لا اختبارات ولا حفظ بعد.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "لم تُعلن النتيجة بعد",
+    "gradesNotEntered": "لم تُدخل",
+    "gradesAbsent": "غائب",
+    "gradesPending": "قيد الانتظار",
+    "gradesFull": "تام",
+    "gradesIncomplete": "ناقص",
+    "gradesNotRecited": "لم يُسمِّع",
+    "gradesWeek": "الأسبوع {week}",
+    "watchedBadge": "شوهدت",
+    "watchedPercent": "شوهد {percent}٪",
+    "watchedUntil": "توقفت عند {time}",
     "tabSarf": "الصرف",
     "sarfLoading": "جارٍ تحميل جداول الصرف…",
     "sarfFailed": "تعذّر تحميل جداول الصرف.",
@@ -498,7 +512,9 @@
       "SESSION_CANCELLED": {
         "title": "أُلغيت الجلسة",
         "body": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}.",
-        "bodyMakeup": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}."
+        "bodyMakeup": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}.",
+        "bodyReason": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. ملاحظة الأستاذ: {reason}",
+        "bodyMakeupReason": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}. ملاحظة الأستاذ: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "تغيّر موعد الجلسة",
@@ -546,10 +562,25 @@
         "title": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} proposal_rejected {رُفض اقتراح المجموعة} other {رُفض طلب نشر المجموعة}}",
         "body": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}}",
         "bodyReason": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}} السبب: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "تحدّد موعد الاختبار",
+        "body": "اختبار درس {courseTitle} في {sessionAt}."
+      },
+      "EXAM_REMINDER": {
+        "title": "اختبار قريب",
+        "body": "اختبار درس {courseTitle} في {sessionAt}."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "أُعلنت نتيجة اختبارك",
+        "body": "اطّلع على نتيجتك في درس {courseTitle} ضمن درجاتي."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "تحريري",
+    "examOral": "شفهي",
+    "examMaxScore": "الدرجة الكاملة {max}",
     "breadcrumb": "مسار الصفحة",
     "week": "الأسبوع {number}",
     "joinLabel": "درس مباشر",
@@ -571,6 +602,7 @@
     "minuteUnit": "د",
     "cancelledTitle": "أُلغيت هذه الحلقة",
     "replacement": "حلقة التعويض: <when>{time}</when>.",
+    "cancelNote": "ملاحظة الأستاذ: {note}",
     "replacementGo": "انتقل إلى حلقة التعويض",
     "agendaTitle": "جدول الحلقة",
     "agendaZone": "الأوقات بتوقيت {zone}.",
@@ -627,6 +659,7 @@
     "resourcesCourse": "الدرس كله",
     "rowRecording": "يوجد تسجيل",
     "download": " (يُنزَّل)",
+    "examMultipleChoice": "اختيار من متعدد",
     "glossaryLink": "معجم الدرس"
   },
   "AccountPage": {
@@ -707,7 +740,8 @@
       "deck_manage_course": "إنشاء مجموعة الدرس وتعديلها",
       "deck_propose_kosk": "اقتراح مجموعة للكوشك",
       "course_nazir_assign": "تعيين ناظر الدرس ومنح إذن أو مجموعة دون تجاوز أذونات صاحبها",
-      "permission_group_define": "تعريف مجموعة أذونات"
+      "permission_group_define": "تعريف مجموعة أذونات",
+      "exam_zeroth_read": "قراءة إجابات السؤال الصفري في الاختبارات متعددة الخيارات إجمالًا"
     },
     "permissionNotes": {
       "course_manage_all": "تُسجَّل قراءات المحتوى في سجل التدقيق.",
@@ -790,7 +824,11 @@
     "accountLabel": "حسابي: {name}",
     "notifications": "الإشعارات",
     "homeLabel": "مدارس تدريس، الصفحة الرئيسية",
-    "liveIntro": "درس {course} مباشر الآن."
+    "liveIntro": "درس {course} مباشر الآن.",
+    "exams": "امتحاناتي",
+    "examOpenIntro": "امتحان {course} مفتوح الآن.",
+    "examPage": "صفحة الامتحان",
+    "examEnter": "ادخل الامتحان"
   },
   "SchedulePage": {
     "pageTitle": "جدولي",
@@ -820,7 +858,10 @@
     "empty": "ليس لديك جلسات في هذه الأيام السبعة.",
     "loadErrorTitle": "تعذّر تحميل جدولك",
     "loadError": "تعذّرت قراءة جلساتك الآن.",
-    "retry": "أعد المحاولة"
+    "retry": "أعد المحاولة",
+    "exam": "اختبار",
+    "examOpen": "الامتحان مفتوح",
+    "examEnter": "ادخل الامتحان"
   },
   "Decks": {
     "title": "المجموعات",

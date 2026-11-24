@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.1](https://github.com/amel-tech/medaris/compare/landing-web-v2.6.0...landing-web-v2.6.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [2.6.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.5.1...landing-web-v2.6.0) (2026-10-26)
 
 

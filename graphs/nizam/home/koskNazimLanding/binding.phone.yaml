@@ -1,0 +1,31 @@
+# nizam.home.koskNazimLanding on the local stack, in a phone's window: nizam-web on http://localhost:4001, 390 x 844 (the size e2e
+# dashboard#7 sets with page.setViewportSize). The wide window is binding.yaml; both extend locators.binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/home/koskNazimLanding \
+#     --bind graphs/nizam/home/koskNazimLanding/binding.phone.yaml --cover transitions --absent --out <dir>
+# The flow's main story starts wide, so it is not bound here: use `--cover transitions`, or `--to` with each of `sheet` and `left`.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# ENGINE LIMIT, recorded as the brief asks. The binding can set a window (`browser.width` and `browser.height`), but only once per
+# binding file: a scenario has no viewport of its own, and no action resizes the window (the actions are goto, reload, click, fill, key,
+# waitUrl, waitText, waitResponse and run). So the phone is a file of its own, and a walk cannot go from the wide window to the narrow one
+# (the e2e does: it opens the refusal wide, then calls setViewportSize and opens the home again), nor widen the window with the sheet
+# open, which closes the sheet (app-bar.tsx:50: not walked, as nazar.shell.scopeAndMenu records for WIDEN).
+#
+# Scenario `phone`: the seeded köşk nazımı opens their first köşk's home by its address, as the menu's "Ana sayfa" does (the bar is
+# drawn from the same page). The bar shows "Menü" and the sidebar is hidden (dashboard#7 a4); the sheet opens (a6) and holds the entry
+# "Ana sayfa" (a7), and closes with "Kapat" or by following that entry. Read only, as binding.yaml: `setup` reads the numbers.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.koskNazimLanding
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  phone:
+    given: { arrival: own, read: ok, data: seeded, view: phone, tabRead: ok }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ana-sayfa'
+    setup:
+      - run: [node, ../nizam/home/koskNazimLanding/home-numbers.mjs, read, '{seed.kosk}', seeded]
+        expect: 'kosk-home seeded'

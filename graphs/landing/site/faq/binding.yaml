@@ -1,0 +1,45 @@
+# landing.site.faq on the local stack: the site on :4003, nobody signed in, nothing created and nothing to remove (the
+# page reads no server and writes nothing).
+#   node apps/engine/src/cli.ts replay graphs/landing/site/faq --bind graphs/landing/site/faq/binding.yaml --absent --out <dir>
+# Landing has no sign-in: the visitor account is an empty map and `signIn` is emptied so the base's real sign-in through
+# Keycloak never runs (the same as landing.site.contact and the navigation graph's binding).
+#
+# What is walked: the main story (open the question about signing up, close it, close the first question, open the last and
+# follow the link inside its answer), and the exit through "İletişime geçin" (`--to contact_opened`). The link in the card
+# "Kişisel verileriniz" (PRIVACY_ASIDE) and the leaving of the page (NAVIGATE) are not walked in this phase.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.landing.binding.yaml
+flow: landing.site.faq
+
+accounts:
+  visitor: {}
+signIn: []
+
+samples: { path: "Aydınlatma Metni’nin 7. bölümünde yazan yollardan biriyle veri sorumlusuna yazarak" }
+
+scenarios:
+  # The visitor is on the home page and follows "Sık sorulan sorular" in the footer: the way in is the navigation graph's
+  # entry frame:site->faq, found by its label in the footer's own menu. A visitor who opens the address (a link in a mail, a
+  # bookmark) has no scenario of their own: it would be this walk without the entry, and the replay takes the first scenario
+  # whose `given` matches. Nothing in the flow is a case variable, so `given` is empty.
+  fromFooter:
+    given: {}
+    as: visitor
+    open: '{landing}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:site->faq' }
+
+# NAVIGATE (the visitor leaves) is not bound: the replay's `--absent` takes the page the walk goes to for this flow's own
+# page, whose `main` it finds there.
+states:
+  questions: { url: '{landing}/sss' }
+  contact_opened: { url: '{landing}/iletisim' }
+  privacy_opened: { url: '{landing}/aydinlatma-metni' }
+
+nodes:
+  # a bare main is also the main of the page the walk leaves for: the page's own line tells them apart
+  page: { role: main, hasText: '/Medaris’te hesap açmadan önce en çok sorulanlar/' }
+  # the one link of the privacy notice that sits in the card column, and the one inside the last answer (the footer has a
+  # third, outside both)
+  privacyAside: { role: link, name: Aydınlatma Metni, within: { role: complementary } }
+  privacyInAnswer: { role: link, name: Aydınlatma Metni, within: { css: '#s11-p' } }

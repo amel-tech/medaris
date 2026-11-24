@@ -172,6 +172,16 @@ export function CourseSettingsForm({
         onCheckedChange={(checked) => set("isClosed", checked === true)}
         name="isClosed"
       />
+      <Checkbox
+        bordered
+        icon={<Icon name="link" size="sm" />}
+        label={t("CourseSettings.unlistedLabel")}
+        description={t("CourseSettings.unlistedDesc")}
+        checked={draft.isUnlisted}
+        disabled={busy || controls.unlisted !== "open"}
+        onCheckedChange={(checked) => set("isUnlisted", checked === true)}
+        name="isUnlisted"
+      />
       <Field
         label={t("CourseSettings.sampleLabel")}
         help={t("CourseSettings.sampleHelp")}
@@ -202,10 +212,16 @@ export function CourseSettingsForm({
         description={t(
           controls.approval === "locked"
             ? "CourseSettings.approvalLocked"
-            : "CourseSettings.approvalDesc"
+            : draft.isUnlisted
+              ? "CourseSettings.approvalUnlisted"
+              : "CourseSettings.approvalDesc"
         )}
-        checked={controls.approval === "locked" || draft.requiresApproval}
-        disabled={busy || controls.approval !== "open"}
+        checked={
+          controls.approval === "locked" ||
+          draft.isUnlisted ||
+          draft.requiresApproval
+        }
+        disabled={busy || controls.approval !== "open" || draft.isUnlisted}
         onCheckedChange={(checked) => set("requiresApproval", checked === true)}
         name="requiresApproval"
       />

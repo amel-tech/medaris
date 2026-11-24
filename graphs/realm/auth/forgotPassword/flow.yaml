@@ -1,0 +1,444 @@
+# Resetting a forgotten password on the realm's own pages, as the code does it today (status captured; the code is PR #394's):
+# Keycloak's reset form (login-reset-password.ftl), the mail it sends (src/email, tr), the page the mailed link opens
+# (login-update-password.ftl) and the way back into the app that asked. The round trip around it is realm.auth.signIn's.
+#
+# How Keycloak is drawn. As in realm.auth.signIn, Keycloak is this flow's environment, not a domain: its three posts and the
+# opening of the mailed link are `invoke: { external: ... }` states, and its pages are screens of ui.yaml drawn from the theme.
+# Only the app's callback is a domain action (finishSignIn, the same one signIn draws).
+#
+# What the stack measured (Keycloak 26.6.3, the Medaris theme, 2026-11-15, applicantB and invented addresses):
+#   - the answer to an address that has an account and to one that has none is the same page: login.ftl again, "Giriş yap" over
+#     the success status "Daha fazla talimatla kısa sürede bir e-posta almalısınız.", the typed address kept in the user name
+#     field. Only Mailpit tells them apart: a mail comes to the first and none to the second. The page does not say that a
+#     mail was sent: the sentence is Keycloak's stock one (emailSentMessage). The time to answer was 1.15-1.27 s for the
+#     account and 1.09-1.12 s for none (three tries each, local Mailpit; too few to call it a leak).
+#   - an empty submit is the one refusal the page names: Keycloak's "Lütfen kullanıcı adını belirtin." under the field.
+#   - the mailed link opens the new-password page in any browser, as often as the person likes, until a password is saved;
+#     after that the same link ends on error.ftl (a link used once; the 30 minutes of its lifetime, config/keycloak/realms/
+#     _base.json:44, were not waited for).
+#   - saving a good password signs the person in: Keycloak redirects to the app's callback and the app lands them (tedris:
+#     /api/auth/callback/keycloak, 303 to /, 308 to /home).
+#   - an address typed as the new password passes the page's own checks and is refused by the realm policy notEmail
+#     (config/keycloak/realms/_base.json:20) after the post.
+#   - the new-password page has a second way in: an account stopped by the UPDATE_PASSWORD required action (the stack's
+#     PENDING_PASSWORD) is held on the same page right after its password is typed on the sign-in form, with Keycloak's message
+#     "Hesabınızı etkinleştirmek için şifrenizi değiştirmeniz gerekiyor." where a mailed link gives "Şifreni değiştirmelisin."
+#     Saving there signs the person in as well. realm.auth.signIn ends in handed_over.update_password where this begins; it does
+#     not start this flow there (an ask in the report), so the flow gives itself an entry variable that the walk chooses.
+# Findings: K2, K3, K4, K5, K9, K10 (inventory), FORGOT-1..FORGOT-4 (new, in ui.yaml rules and in the states they touch).
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.forgotPassword
+status: captured
+domain: medaris.api
+ui: realm.auth.forgotPassword
+title: Reset a forgotten password
+summary: >-
+  A person who cannot sign in takes Şifremi unuttum on the sign-in form, gives their user name or e-mail address, and is told
+  to expect a mail; the answer is the same whether or not the address has an account. The mail holds a link; the link opens
+  the new-password page, where they choose a password (ten characters or more, not their user name, not their e-mail address)
+  and may leave Diğer cihazlarda çıkış yap ticked. Saving signs them in to the app that asked.
+scope:
+  shows: >-
+    The three screens Keycloak shows on the way (the reset form with its one refusal, the sign-in form again with the notice,
+    the new-password form with its three kinds of refusal), the mail as a step between them, and the app's callback at the end.
+    It is drawn for the clients tedris, nizam and nazar, for an address with an account and one with none, and for a link that
+    works and one that does not.
+  world: open
+  outOfView:
+    - "the e-mail itself: its HTML (title, button, intro, lang and dir) in tr, en and ar (email.e2e.spec#2); the walk reads the mail's subject and text only"
+    - "the e-mail an administrator's 'execute actions' sends (email.e2e.spec#3, Keycloak's own template); the page its link opens is this flow's new-password page too, but nothing in this repository sends it and the walk reaches the page through the sign-in form instead (entry: requiredAction)"
+    - "the same page opened from an app as an app-initiated action, which adds Vazgeç (cancel-aia): the theme has it (LoginUpdatePassword.tsx:116-120) and nothing in this repository starts it"
+    - "the reveal buttons of the three password fields (each keeps one name and toggles aria-pressed), and the spelling of the live rule list as each rule is met"
+    - "a reset form or a mailed link left open past Keycloak's login timeout (login-page-expired.ftl, realm.auth.signInFailures); not walked, so not verified which page a stale reset form gives"
+    - "Keycloak's brute-force lock on an account and what it does to the reset answer; not verified"
+    - "the language of the pages and of the mail: the apps ask for tr; en and ar exist in the theme and no app asks for them yet"
+    - "planned: the reset through the production SMTP sender (P-30, MDRS-188), see needs.yaml"
+
+context:
+  entry:
+    values: [forgotLink, requiredAction]
+    initial: any
+    say:
+      forgotLink: "they took Şifremi unuttum on the sign-in form: the reset form, the mail and its link come first"
+      requiredAction: "they typed the right password and Keycloak held the sign-in on the new-password page, because an administrator asked for a new password (UPDATE_PASSWORD): no reset form and no mail"
+  app:
+    values: [tedris, nizam, nazar]
+    initial: any
+    say:
+      tedris: "the sign-in they came from is tedris's"
+      nizam: "the sign-in they came from is nizam's"
+      nazar: "the sign-in they came from is nazar's"
+  account:
+    values: [known, unknown]
+    initial: any
+    say:
+      known: "the address or user name they give belongs to an account"
+      unknown: "the address or user name they give belongs to no account"
+  link:
+    values: [fresh, spent]
+    initial: any
+    say:
+      fresh: "the link they open was mailed less than 30 minutes ago and no password was saved with it"
+      spent: "the link they open was used already (a password was saved with it), or is older than 30 minutes"
+  typed:
+    values: [nothing, name, accepted, short, mismatch, usesName, usesAddress]
+    initial: nothing
+    say:
+      nothing: "the fields are empty"
+      name: "the reset form holds a user name or an address"
+      accepted: "both password fields hold a good password"
+      short: "both password fields hold the same password of under ten characters"
+      mismatch: "the password fields hold a good password and a different one"
+      usesName: "both password fields hold the person's user name"
+      usesAddress: "both password fields hold the person's e-mail address"
+  signOutOthers:
+    values: [false, true]
+    initial: true
+    say:
+      "true": "Diğer cihazlarda çıkış yap is ticked, as it is when the page opens"
+      "false": "they unticked it"
+
+guards:
+  isKnown: "account == 'known'"
+  linkFresh: "link == 'fresh'"
+  passesThePage: "typed in ['accepted', 'usesAddress']"
+  needsAFix: "typed in ['nothing', 'short', 'usesName']"
+
+effects:
+  typesName: { set: { typed: name } }
+  clearsFields: { set: { typed: nothing } }
+  typesAcceptedPassword: { set: { typed: accepted } }
+  typesShortPassword: { set: { typed: short } }
+  typesMismatchedPasswords: { set: { typed: mismatch } }
+  typesUserNameAsPassword: { set: { typed: usesName } }
+  typesAddressAsPassword: { set: { typed: usesAddress } }
+  sendsResetMail: { set: { typed: name } }
+  keepsOtherSessions: { set: { signOutOthers: false } }
+  endsOtherSessions: { set: { signOutOthers: true } }
+
+failures:
+  finishingRoundTrip:
+    from: finishSignIn
+    retryable: [OAuthCallback]
+    final: [AccessDenied, Configuration]
+
+main:
+  given: { entry: forgotLink, app: tedris, account: known, link: fresh }
+  events: [FILL_RESET_FORM, SEND, DONE, OPEN_LINK, DONE, FILL_PASSWORD, SAVE, DONE, DONE]
+
+initial: begin
+states:
+  begin:
+    title: How the person comes to the page
+    description: >-
+      Where this flow begins depends on how the person got here. Şifremi unuttum on the sign-in form (the link realm.auth.signIn
+      starts this flow with) opens the reset form. An account that an administrator asked for a new password is not asked for one
+      on the reset form: right after its password is typed Keycloak holds the sign-in on the new-password page (holdingSignIn).
+    source: apps/keycloak-theme/src/login/KcPage.tsx:103
+    always:
+      - { target: holdingSignIn, guard: "entry == 'requiredAction'", say: "an account with UPDATE_PASSWORD pending signs in" }
+      - { target: resetForm, say: "Şifremi unuttum" }
+
+  holdingSignIn:
+    title: Keycloak holds the sign-in on the new-password page
+    description: >-
+      The sign-in form posted a right user name and password (realm.auth.signIn's submitting). The account carries the required
+      action UPDATE_PASSWORD, so Keycloak does not redirect to the app: it answers login-update-password.ftl with its message
+      "Hesabınızı etkinleştirmek için şifrenizi değiştirmeniz gerekiyor." (a warning). The page, its rules and its refusals are the
+      ones the mailed link opens; there is no Vazgeç, which the page draws only for an action an app started. The stack's seeded
+      PENDING_PASSWORD account is stopped here; a walk that saves the password uses the action up, so it is armed again after.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:24
+    invoke: { external: keycloak.requiredAction }
+    on:
+      DONE: { target: newPasswordForm, guard: "entry == 'requiredAction'", say: "Keycloak shows the new-password page before it redirects", source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:59 }
+
+  resetForm:
+    title: Keycloak's reset form asks for a user name or an e-mail address
+    description: >-
+      login-reset-password.ftl: the heading "Şifrenizi mi unuttunuz?", its sentence, one field "Kullanıcı adı ya da e-posta" that
+      holds the focus when the page opens (autoFocus, unlike the sign-in form: K3), the button "Gönder" and the link "Giriş
+      sayfasına dön". The field is not marked required, so an empty one is posted. The form is native and the page has no
+      busy state: the button is a plain one, so a second press before the answer posts again (K4; not verified that it sends a
+      second mail). The page is drawn in the old shadcn kit with raw gray classes (K4), speaks to the person as "siz" where the
+      next page says "sen" (K10) and has the same tab title as every Keycloak page (K2).
+    source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:50
+    by: human
+    on:
+      FILL_RESET_FORM: { target: resetForm, effect: [typesName], say: "they type their user name or e-mail address", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:64 }
+      SEND: { target: sending, say: "they press Gönder", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:87 }
+      BACK_TO_LOGIN: { target: handed_over.sign_in, say: "they take Giriş sayfasına dön", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:90 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  resetFormError:
+    title: The reset form again, with Keycloak's one refusal
+    description: >-
+      Posted empty, the form comes back with Keycloak's "Lütfen kullanıcı adını belirtin." under the field (the field is
+      aria-invalid and holds the focus, because the page was loaded anew). K5: the sentence is not linked to the field (no
+      aria-describedby), and its aria-live is on an element that did not exist before the page loaded. Nothing else is refused on
+      this page: an address with no account is not (see sentNotice).
+    source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75
+    by: human
+    on:
+      FILL_RESET_FORM: { target: resetFormError, effect: [typesName], say: "they type their user name or e-mail address", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:64 }
+      SEND: { target: sending, say: "they press Gönder", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:87 }
+      BACK_TO_LOGIN: { target: handed_over.sign_in, say: "they take Giriş sayfasına dön", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:90 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  sending:
+    title: Keycloak looks the name up and sends the mail
+    description: >-
+      The form posts to url.loginAction. Keycloak looks the name or address up. With an account it sends the reset mail inside the
+      request (a mail to the address, subject "Şifrenizi sıfırlayın", the link in its body); with none it sends nothing. Either way
+      it answers the same page (sentNotice), which is how it keeps the answer from telling whether an address has an account;
+      only a post with nothing in the field is refused. This post is Keycloak's own, not an action of the domain.
+    source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:52
+    invoke: { external: keycloak.resetCredentials }
+    on:
+      DONE: { target: sentNotice, guard: "typed == 'name'", effect: [sendsResetMail], say: "Keycloak answers login.ftl with the success notice, for an address with an account and for one with none alike", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:42 }
+      FAIL.noName: { target: resetFormError, guard: "typed == 'nothing'", say: "the field was empty: Keycloak answers the reset form again with its sentence under the field", source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75 }
+
+  sentNotice:
+    title: The sign-in form again, with the notice that a mail is on its way
+    description: >-
+      login.ftl on the Medaris theme, as realm.auth.signIn draws it, with Keycloak's success message above the form in a status
+      region: "Daha fazla talimatla kısa sürede bir e-posta almalısınız." (Keycloak's stock Turkish emailSentMessage). The user
+      name field keeps what was typed and the password is empty. Nothing has the focus (K3). The same page, word for word, answers
+      an address that has no account: nothing here tells the two apart. FORGOT-1: the person who asked for a reset is shown the
+      sign-in page under its own title "Giriş yap", the sentence names no address, says nothing of the 30 minutes the link lasts
+      or of the spam folder (the verification page has that hint), speaks as "siz" (K10) and is not announced, since the status
+      region is part of a page that loaded anew. K2: the tab title is the same as every Keycloak page.
+    source: apps/keycloak-theme/src/login/Template.tsx:81
+    by: human
+    on:
+      OPEN_LINK: { guard: isKnown, target: openingLink, effect: [clearsFields], say: "they open the mail and its link; an address with no account got no mail, so there is nothing to open", source: apps/keycloak-theme/src/email/html/password-reset.ftl:2 }
+      FORGOT_PASSWORD: { target: resetForm, effect: [clearsFields], say: "they take Şifremi unuttum again (a mistyped address); the new form is empty", source: libs/ui/src/giris/login-form.tsx:105 }
+      SIGN_IN: { target: handed_over.sign_in, say: "they remember the password and sign in with the form that is there", source: libs/ui/src/giris/login-form.tsx:124 }
+      REGISTER: { target: handed_over.register, say: "they take Kayıt ol", source: apps/keycloak-theme/src/login/pages/Login.tsx:72 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  openingLink:
+    title: Keycloak takes the key in the link
+    description: >-
+      The browser opens the link of the mail (GET /realms/medaris/login-actions/action-token?key=...). Keycloak checks the key.
+      A key that was not used yet and is under 30 minutes old (actionTokenGeneratedByUserLifespan.reset-credentials, 1800 s)
+      sends the browser on to the new-password page, in any browser and as often as it is opened. A key that a saved password used
+      up, or that is older, gives error.ftl. The mail is src/email/html/password-reset.ftl and text/password-reset.ftl, subject
+      "Şifrenizi sıfırlayın" (messages_tr.properties:16), with the button "Yeni şifre belirle" and "Bu bağlantı 30 dakika sonra
+      geçerliliğini yitirir."
+    source: apps/keycloak-theme/src/email/text/password-reset.ftl:2
+    invoke: { external: keycloak.actionToken }
+    on:
+      DONE: { target: newPasswordForm, guard: linkFresh, say: "the key is good: the new-password page", source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:59 }
+      FAIL.spent: { target: handed_over.error_page, guard: "link == 'spent'", say: "the key was used or is old: Keycloak's error page, in the words of a failed sign-in (FORGOT-3)", source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:25 }
+
+  newPasswordForm:
+    title: The new-password page, as the link or the held sign-in opens it
+    description: >-
+      login-update-password.ftl: the heading "Yeni şifreni belirle", Keycloak's warning in a status region ("Şifreni
+      değiştirmelisin." after the mailed link, "Hesabınızı etkinleştirmek için şifrenizi değiştirmeniz gerekiyor." when the sign-in
+      was held; the second speaks as "siz", K10), the sentence "<user name> hesabın için yeni bir şifre seç.", the two fields "Yeni şifre" (the focus is on it) and
+      "Yeni şifre (tekrar)" with a reveal button each, a list of the rules ("En az 10 karakter", "Kullanıcı adından farklı"), the
+      checkbox "Diğer cihazlarda çıkış yap" ticked from the start with its help line, and the button "Şifreyi kaydet". The
+      form is noValidate: the page does its own checks on submit and posts only when they pass. K9: the length 10 is typed into
+      LoginUpdatePassword.tsx:97 and :104, not read from the realm's policy. FORGOT-2: the third rule, "E-posta adresinden
+      farklı", is left off the list, because Keycloak sends the page only the user name; an e-mail address typed as the password is
+      therefore not caught here. K10: "sen", where the reset form said "siz".
+    source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:59
+    by: human
+    on:
+      FILL_PASSWORD: { target: newPasswordForm, effect: [typesAcceptedPassword], say: "they type a new password the page accepts (ten characters or more, not the user name), the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_SHORT_PASSWORD: { target: newPasswordForm, effect: [typesShortPassword], say: "they type a password under ten characters, the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_MISMATCHED_PASSWORDS: { target: newPasswordForm, effect: [typesMismatchedPasswords], say: "they type a good password and a different one in the second field", source: libs/ui/src/giris/update-password-form.tsx:178 }
+      FILL_USER_NAME_AS_PASSWORD: { target: newPasswordForm, effect: [typesUserNameAsPassword], say: "they type their own user name as the password, in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_ADDRESS_AS_PASSWORD: { target: newPasswordForm, effect: [typesAddressAsPassword], say: "they type their own e-mail address as the password, in both fields: it is long enough and is not the user name, so the page passes it", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      TOGGLE_SIGN_OUT_OTHERS:
+        - { target: newPasswordForm, guard: signOutOthers, effect: [keepsOtherSessions], say: "they untick Diğer cihazlarda çıkış yap", source: libs/ui/src/giris/update-password-form.tsx:185 }
+        - { target: newPasswordForm, guard: "not signOutOthers", effect: [endsOtherSessions], say: "they tick it again", source: libs/ui/src/giris/update-password-form.tsx:185 }
+      SAVE:
+        - { target: savingPassword, guard: passesThePage, say: "the page's own checks pass: the form is posted", source: libs/ui/src/giris/update-password-form.tsx:117 }
+        - { target: newPasswordInvalid, guard: needsAFix, say: "a field is empty, the password is short, or it is the user name: the page posts nothing and says so under the field", source: libs/ui/src/giris/update-password-form.tsx:112 }
+        - { target: newPasswordMismatch, guard: "typed == 'mismatch'", say: "the second field differs from the first: the page posts nothing and says so under the second field", source: libs/ui/src/giris/update-password-form.tsx:110 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  newPasswordInvalid:
+    title: The new-password page, with the first field's reason under it
+    description: >-
+      The page's own check found the first field wanting and posted nothing: under "Yeni şifre" stands the reason ("Lütfen bu
+      alanı doldurun." when it is empty, "Şifre çok kısa. En az 10 karakter kullan." when short, "Şifren e-posta adresinden ve
+      kullanıcı adından farklı olmalı." when it is the user name), the field is aria-invalid and described by it, the rule
+      list gives way to it, and the focus moves to the field. An empty form also says "Lütfen bu alanı doldurun." under the
+      second field. What was typed stays. Typing in a field clears that field's reason.
+    source: libs/ui/src/giris/update-password-form.tsx:112
+    by: human
+    on:
+      FILL_PASSWORD: { target: newPasswordRetyped, effect: [typesAcceptedPassword], say: "they type a new password the page accepts (ten characters or more, not the user name), the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_SHORT_PASSWORD: { target: newPasswordRetyped, effect: [typesShortPassword], say: "they type a password under ten characters, the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_MISMATCHED_PASSWORDS: { target: newPasswordRetyped, effect: [typesMismatchedPasswords], say: "they type a good password and a different one in the second field", source: libs/ui/src/giris/update-password-form.tsx:178 }
+      FILL_USER_NAME_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesUserNameAsPassword], say: "they type their own user name as the password, in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_ADDRESS_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesAddressAsPassword], say: "they type their own e-mail address as the password, in both fields: it is long enough and is not the user name, so the page passes it", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      TOGGLE_SIGN_OUT_OTHERS:
+        - { target: newPasswordInvalid, guard: signOutOthers, effect: [keepsOtherSessions], say: "they untick Diğer cihazlarda çıkış yap", source: libs/ui/src/giris/update-password-form.tsx:185 }
+        - { target: newPasswordInvalid, guard: "not signOutOthers", effect: [endsOtherSessions], say: "they tick it again", source: libs/ui/src/giris/update-password-form.tsx:185 }
+      SAVE:
+        - { target: savingPassword, guard: passesThePage, say: "the page's own checks pass: the form is posted", source: libs/ui/src/giris/update-password-form.tsx:117 }
+        - { target: newPasswordInvalid, guard: needsAFix, say: "a field is empty, the password is short, or it is the user name: the page posts nothing and says so under the field", source: libs/ui/src/giris/update-password-form.tsx:112 }
+        - { target: newPasswordMismatch, guard: "typed == 'mismatch'", say: "the second field differs from the first: the page posts nothing and says so under the second field", source: libs/ui/src/giris/update-password-form.tsx:110 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  newPasswordMismatch:
+    title: The new-password page, with the repeat's reason under it
+    description: >-
+      The first field is good and the second differs: under "Yeni şifre (tekrar)" stands "Şifreler eşleşmiyor. Aynı şifreyi
+      yeniden yaz.", the field is aria-invalid and described by it, and the focus moves to it. The rule list is still there, its
+      rules met. Nothing was posted.
+    source: libs/ui/src/giris/update-password-form.tsx:109
+    by: human
+    on:
+      FILL_PASSWORD: { target: newPasswordRetyped, effect: [typesAcceptedPassword], say: "they type a new password the page accepts (ten characters or more, not the user name), the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_SHORT_PASSWORD: { target: newPasswordRetyped, effect: [typesShortPassword], say: "they type a password under ten characters, the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_MISMATCHED_PASSWORDS: { target: newPasswordRetyped, effect: [typesMismatchedPasswords], say: "they type a good password and a different one in the second field", source: libs/ui/src/giris/update-password-form.tsx:178 }
+      FILL_USER_NAME_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesUserNameAsPassword], say: "they type their own user name as the password, in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_ADDRESS_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesAddressAsPassword], say: "they type their own e-mail address as the password, in both fields: it is long enough and is not the user name, so the page passes it", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      TOGGLE_SIGN_OUT_OTHERS:
+        - { target: newPasswordMismatch, guard: signOutOthers, effect: [keepsOtherSessions], say: "they untick Diğer cihazlarda çıkış yap", source: libs/ui/src/giris/update-password-form.tsx:185 }
+        - { target: newPasswordMismatch, guard: "not signOutOthers", effect: [endsOtherSessions], say: "they tick it again", source: libs/ui/src/giris/update-password-form.tsx:185 }
+      SAVE:
+        - { target: savingPassword, guard: passesThePage, say: "the page's own checks pass: the form is posted", source: libs/ui/src/giris/update-password-form.tsx:117 }
+        - { target: newPasswordInvalid, guard: needsAFix, say: "a field is empty, the password is short, or it is the user name: the page posts nothing and says so under the field", source: libs/ui/src/giris/update-password-form.tsx:112 }
+        - { target: newPasswordMismatch, guard: "typed == 'mismatch'", say: "the second field differs from the first: the page posts nothing and says so under the second field", source: libs/ui/src/giris/update-password-form.tsx:110 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  newPasswordRetyped:
+    title: The new-password page after the person retyped, before the next try
+    description: >-
+      The reasons are gone (typing in a field clears its own) and the fields hold what was typed; nothing is posted until they
+      press Şifreyi kaydet again. The rule list is back, each rule marked met or not.
+    source: libs/ui/src/giris/update-password-form.tsx:140
+    by: human
+    on:
+      FILL_PASSWORD: { target: newPasswordRetyped, effect: [typesAcceptedPassword], say: "they type a new password the page accepts (ten characters or more, not the user name), the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_SHORT_PASSWORD: { target: newPasswordRetyped, effect: [typesShortPassword], say: "they type a password under ten characters, the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_MISMATCHED_PASSWORDS: { target: newPasswordRetyped, effect: [typesMismatchedPasswords], say: "they type a good password and a different one in the second field", source: libs/ui/src/giris/update-password-form.tsx:178 }
+      FILL_USER_NAME_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesUserNameAsPassword], say: "they type their own user name as the password, in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_ADDRESS_AS_PASSWORD: { target: newPasswordRetyped, effect: [typesAddressAsPassword], say: "they type their own e-mail address as the password, in both fields: it is long enough and is not the user name, so the page passes it", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      TOGGLE_SIGN_OUT_OTHERS:
+        - { target: newPasswordRetyped, guard: signOutOthers, effect: [keepsOtherSessions], say: "they untick Diğer cihazlarda çıkış yap", source: libs/ui/src/giris/update-password-form.tsx:185 }
+        - { target: newPasswordRetyped, guard: "not signOutOthers", effect: [endsOtherSessions], say: "they tick it again", source: libs/ui/src/giris/update-password-form.tsx:185 }
+      SAVE:
+        - { target: savingPassword, guard: passesThePage, say: "the page's own checks pass: the form is posted", source: libs/ui/src/giris/update-password-form.tsx:117 }
+        - { target: newPasswordInvalid, guard: needsAFix, say: "a field is empty, the password is short, or it is the user name: the page posts nothing and says so under the field", source: libs/ui/src/giris/update-password-form.tsx:112 }
+        - { target: newPasswordMismatch, guard: "typed == 'mismatch'", say: "the second field differs from the first: the page posts nothing and says so under the second field", source: libs/ui/src/giris/update-password-form.tsx:110 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  savingPassword:
+    title: Keycloak saves the new password
+    description: >-
+      The form posts to url.loginAction (password-new, password-confirm and, when ticked, logout-sessions=on). While it is on its
+      way the button is busy (aria-busy and aria-disabled) and a status line reads "Gönderiliyor"; the rest of the form stays as
+      it was. Keycloak checks the realm policy (length(10) and notEmail and notUsername, config/keycloak/realms/_base.json:20).
+      A good password is saved, the other sessions end when the box was ticked, and Keycloak redirects to the app's callback: the
+      person is signed in, with no page between. A password the policy refuses brings the page back.
+    source: libs/ui/src/giris/update-password-form.tsx:117
+    invoke: { external: keycloak.updatePassword }
+    on:
+      DONE: { target: finishingRoundTrip, guard: "typed == 'accepted'", say: "Keycloak saved the password and redirects to the app's callback with the code and the state", source: libs/ui/src/giris/update-password-form.tsx:117 }
+      FAIL.policy: { target: newPasswordRefused, guard: "typed == 'usesAddress'", effect: [clearsFields], say: "the realm policy notEmail refuses the address: Keycloak answers the page again with its message on top", source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:64 }
+
+  newPasswordRefused:
+    title: The new-password page, with the realm's refusal on top
+    description: >-
+      The page loads anew: Keycloak's message "Geçersiz şifre: e-posta adresinizle aynı olamaz." is an alert above the sentence
+      (a page-level alert, because the policy error is not a field error), both fields are empty again, the focus is on the first
+      (autoFocus on the new page) and the account's password is unchanged. FORGOT-2: the person has to type both fields again,
+      and nothing on the page told them beforehand that the address is not allowed.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:64
+    by: human
+    on:
+      FILL_PASSWORD: { target: newPasswordRefused, effect: [typesAcceptedPassword], say: "they type a new password the page accepts (ten characters or more, not the user name), the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_SHORT_PASSWORD: { target: newPasswordRefused, effect: [typesShortPassword], say: "they type a password under ten characters, the same in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_MISMATCHED_PASSWORDS: { target: newPasswordRefused, effect: [typesMismatchedPasswords], say: "they type a good password and a different one in the second field", source: libs/ui/src/giris/update-password-form.tsx:178 }
+      FILL_USER_NAME_AS_PASSWORD: { target: newPasswordRefused, effect: [typesUserNameAsPassword], say: "they type their own user name as the password, in both fields", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      FILL_ADDRESS_AS_PASSWORD: { target: newPasswordRefused, effect: [typesAddressAsPassword], say: "they type their own e-mail address as the password, in both fields: it is long enough and is not the user name, so the page passes it", source: libs/ui/src/giris/update-password-form.tsx:140 }
+      TOGGLE_SIGN_OUT_OTHERS:
+        - { target: newPasswordRefused, guard: signOutOthers, effect: [keepsOtherSessions], say: "they untick Diğer cihazlarda çıkış yap", source: libs/ui/src/giris/update-password-form.tsx:185 }
+        - { target: newPasswordRefused, guard: "not signOutOthers", effect: [endsOtherSessions], say: "they tick it again", source: libs/ui/src/giris/update-password-form.tsx:185 }
+      SAVE:
+        - { target: savingPassword, guard: passesThePage, say: "the page's own checks pass: the form is posted", source: libs/ui/src/giris/update-password-form.tsx:117 }
+        - { target: newPasswordInvalid, guard: needsAFix, say: "a field is empty, the password is short, or it is the user name: the page posts nothing and says so under the field", source: libs/ui/src/giris/update-password-form.tsx:112 }
+        - { target: newPasswordMismatch, guard: "typed == 'mismatch'", say: "the second field differs from the first: the page posts nothing and says so under the second field", source: libs/ui/src/giris/update-password-form.tsx:110 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  finishingRoundTrip:
+    title: The app finishes the round trip
+    description: >-
+      GET /api/auth/callback/keycloak, as in realm.auth.signIn: the flow cookie of this browser is found by its state (the round
+      trip that the sign-in page began is still the one this reset belongs to), the code is exchanged, the session is stored and
+      the browser is sent on to the destination the flow cookie holds (tedris: 303 to /, which is /home for a talebe).
+    source: libs/auth/src/server/routes.ts:277
+    invoke: { action: finishSignIn }
+    on:
+      DONE: { target: signed_in, say: "the session is stored and the browser is sent to where the sign-in was going" }
+      FAIL.retryable: { target: error_box.retryable, say: "no round trip of this browser has this state, or the grant failed" }
+      FAIL.final: { target: error_box.final, say: "Keycloak refused the account (access_denied) or the app (invalid_client)" }
+
+  signed_in:
+    type: final
+    title: They are signed in to the app that asked
+    description: >-
+      The reset ends signed in, on the page the sign-in was going to (the page named in the sign-in address, or the app's own
+      landing: tedris /home, nizam's landing for the role, nazar's scope). No word on the page says the password changed, and no
+      mail says so either (FORGOT-4). nizam.shell.landingByRole and nazar.access.landingScope draw the landings.
+
+  handed_over.sign_in:
+    type: final
+    title: They go back to the sign-in form
+    description: "realm.auth.signIn draws login.ftl, which Giriş sayfasına dön and the form of the notice lead to."
+
+  handed_over.register:
+    type: final
+    title: They go on to the registration form
+    description: "realm.auth.register draws register.ftl."
+
+  handed_over.error_page:
+    type: final
+    title: Keycloak shows its error page
+    description: >-
+      error.ftl, drawn by realm.auth.signInFailures: "Giriş tamamlanamadı", "Giriş işlemin yarıda kaldı ya da geçersiz hâle
+      geldi." and "Giriş sayfasına dönüp baştan dene.", with one link, "Giriş sayfasına dön", to the app's address (client.baseUrl,
+      not to the reset form). Keycloak's own message for the link ("Eylem süresi doldu. Lütfen şimdi giriş yapmaya devam edin.") is
+      not shown (ErrorPage.tsx:10-11). FORGOT-3: the page does not say the link was used or old, nor how to ask for a new one.
+      Measured with a link used once; a link older than 30 minutes was not waited for.
+
+  error_box.retryable:
+    type: final
+    title: The app's sign-in page shows its error box after a retryable failure
+    description: "OAuthCallback: the page tries once by itself, then shows Giriş sayfasına dön. realm.auth.signInFailures draws it."
+
+  error_box.final:
+    type: final
+    title: The app's sign-in page shows its error box after a failure no retry fixes
+    description: "AccessDenied or Configuration: the box at once, with Ana sayfaya dön. realm.auth.signInFailures draws it."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: no-link-for-no-account
+    never: "state == 'openingLink' and account == 'unknown'"
+    say: "A link is opened only for an address that has an account: Keycloak answers an address with no account the same way and sends it no mail."
+    source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:42
+  - id: posts-only-what-the-page-accepts
+    never: "state == 'savingPassword' and typed not in ['accepted', 'usesAddress']"
+    say: "The new-password page posts only when its own checks pass: an empty, short, mismatched or user-name password is stopped on the page and never reaches Keycloak."
+    source: libs/ui/src/giris/update-password-form.tsx:97
+  - id: signed-in-only-with-a-saved-password
+    never: "state == 'signed_in' and typed != 'accepted'"
+    say: "The reset signs the person in only after a password was saved: a password the realm refuses brings the page back."
+    source: libs/ui/src/giris/update-password-form.tsx:117
+  - id: a-spent-link-opens-no-form
+    never: "state == 'newPasswordForm' and entry == 'forgotLink' and link == 'spent'"
+    say: "A mailed link that was used or is old never shows the new-password page."
+    source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:25

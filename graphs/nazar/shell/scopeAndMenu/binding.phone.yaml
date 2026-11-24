@@ -1,0 +1,47 @@
+# nazar.shell.scopeAndMenu on the local stack, in a phone's window: nazar-web on http://localhost:4002, 390 x 844 (the size the e2e
+# uses for shell#5 to #7). The wide window is binding.yaml; both extend locators.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/scopeAndMenu --bind graphs/nazar/shell/scopeAndMenu/binding.phone.yaml \
+#     --cover transitions --absent --out <dir>
+# The flow's main story starts wide, so it is not bound here: use `--cover transitions`, or `--to` with each of `bar`, `sheet`,
+# `sheetPicking`, `course_opened`, `medrese_opened`, `page_opened`, `pano_opened`, `notifications_opened` and `account_opened`.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Scenario `headPhone`: the same başmüderris as binding.yaml, with the same two courses of the walk's own (see there for what each
+# holds and what `teardown` undoes), on a phone. He meets the bar with "Menü" and the bell, opens the sheet (the focus on "Kapat",
+# the picker, the menu and the person's row, no "Çıkış yap": shell#5), opens the picker inside it (shell#6), and leaves by a link, by
+# the person's row, by the picker's rows or by Pano and Bildirimler. A choice in the picker is a whole page load, so those steps end
+# at an exit and the next page's frame is walked as a start of its own (`course_opened`, `medrese_opened`).
+# Not walked: `WIDEN` (shell#5 a12-a13: no action resizes the window; the replay has none), and the bell's name with something unread.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.shell.scopeAndMenu
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  headPhone:
+    given: { opensAt: phone, who: head, counts: some }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    setup:
+      - run: [node, helpers/course.mjs, make, scopeA, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --approval, --talebe, applicantH]
+        expect: '"APPLICANT_H":"PENDING"'
+      - run: [node, helpers/course.mjs, make, scopeB, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi scopeB"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, scopeA]
+        expect: 'course remove scopeA'
+      - run: [node, helpers/course.mjs, remove, scopeB]
+        expect: 'course remove scopeB'
+
+nodes:
+  pickerButton: { role: button, name: '/^Kapsam değiştir: (Hadis ve Siyer Medresesi|Deneme dersi scope[AB])$/' }
+  # exactly the two courses the walk made: the picker lists only what the person holds (shell#1 a4; the e2e counts 3 rows with the medrese)
+  rowCourse: { css: '[role=menuitem][href^="/ders/"]', count: 2 }
+  courseDetail: { css: '[role=menuitem][href^="/ders/"] .mds-caption', hasText: '/^Hoca\s*·\s*Süleymaniye Köşkü$/', count: 2 }
+  currentCourseRow: { css: '[role=menuitem][href^="/ders/"][aria-current=true]', hasText: Deneme dersi scopeA }
+  # the numbers are in the sheet's menu, which the walk opens before it looks
+  coursesBadge: { css: '.mds-nav-item__count', hasText: '/^2\s*derste bekleyen başvuru$/', within: { role: navigation, name: Ana menü } }
+  sessionsBadge: { css: '.mds-nav-item__count', hasText: '/^1\s*katılım yolu eksik$/', within: { role: navigation, name: Ana menü } }
+  studentsBadge: { css: '.mds-nav-item__count', hasText: '/^1\s*bekleyen başvuru$/', within: { role: navigation, name: Ana menü } }

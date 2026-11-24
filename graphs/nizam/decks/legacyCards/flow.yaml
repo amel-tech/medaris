@@ -1,0 +1,656 @@
+# The two legacy flashcard-deck pages of nizam-web, /decks and /decks/<id>/cards, read from the code of PR #394 on 15 Nov 2026 (apps/nizam/app/decks,
+# apps/nizam/app/decks/[id]/cards, apps/nizam/features/decks, apps/nizam/components/data-table, the shadcn kit in libs/ui/src/components, and the API's
+# GET and PATCH and DELETE /flashcard/decks, GET /flashcard/cards, PATCH and DELETE /flashcard/cards/:id and the three bulk routes). Nothing here was
+# walked: it says what the code does today, "from the code" unless a rule says it was seen. The pages are the pre-redesign shadcn UI: no menu entry and no
+# link points at /decks, and the only link in the app to /decks/<id>/cards is "Kartları düzenle" on the köşk decks page (nizam.decks.koskDecks, F-W5-8).
+#   - What /decks lists. GET /flashcard/decks answers every PUBLIC deck and the caller's own, with no order (no ORDER BY) and with hidden köşk decks too
+#     (the domain's hidden-decks-in-lists). Neither page checks anything beyond sign-in (F-P0-16): a person with no role at all opens /decks, and the page
+#     draws an editable cell and a trash button on a deck the person did not write. The response carries `authorId`; the page never reads it. So an edit
+#     or a delete of someone else's public deck is sent and answered 403 AUTHZ_FORBIDDEN (the PUBLIC relation holds no deck.manage_private), and the toast
+#     says only the API's English words (LEGACY-2). The case variable `world` holds that: `listForeign` and `cardsForeign` are a public deck of another
+#     person, everything else is the person's own deck. (The başnazım would be let through to edit a public deck of anyone: the ledger's finding
+#     "SYSTEM_ADMIN can edit others' public decks", not drawn: no persona of this flow is the başnazım.)
+#   - The table. Both pages are one DataTable of editable cells keyed by row index (no getRowId): a text cell saves when the person leaves it, and, in a
+#     one-line cell only, on Enter. The cell is replaced by a Skeleton while the save runs, so the focus is lost (F-P0-11); after a refused save the
+#     cell keeps the typed text and the screen says nothing is wrong beside the toast (LEGACY-1). The model has no row identity: it keeps the deck and its
+#     cards in `held` and offers each row action on "the row" (the binding presses the first row; `rows` of two or more are out of view).
+#   - What the person types. `typed` is the text the person sends: a good one (`ok`), one the API refuses for its length (`short`: a deck title under 5
+#     characters, a card face under 3) and, in the Yeni deste dialog only, blanks (`space`), which the page stops itself with a toast. An empty title never
+#     reaches the page's own check: the field is `required`, so the browser's bubble stops it (not part of the page, drawn as a transition to itself).
+#   - Files. "Excel'den İçe Aktar" opens the browser's own file chooser through a hidden <input type=file>. The engine has no verb that chooses a file, so
+#     CHOOSE_FILE has no binding and every state after it (importing, the import-errors dialog, the toast of an import) cannot be walked; they are drawn
+#     from the code (the same limit as nazar.decks.import).
+#   - createCards (POST /flashcard/decks/{id}/cards, whose pipe has no whitelist: ledger/security.md) is not called from these pages: the only way they add
+#     cards is importCards, and every row of a file goes through validate({whitelist, forbidNonWhitelisted}) against three fixed columns
+#     (flashcard-bulk.service.ts:98-102), so a card id cannot be set from here. The binding's data helper does use createCards, as a setup tool.
+schema: delurio-graph/0
+kind: flow
+id: nizam.decks.legacyCards
+status: captured
+domain: medaris.api
+ui: nizam.decks.legacyCards
+title: Manage decks and cards on the legacy pages
+summary: >-
+  /decks is "Bilgi Kartı Desteleri": a table of the person's decks (and every public deck) whose Başlık and Açıklama are editable in place, with an eye
+  button that opens a deck's cards and a trash button that asks "Emin misin?" first, and "Yeni Güverte", a dialog that makes a private deck from a title
+  (5 to 100 characters) and a description. /decks/<id>/cards is the deck's title as the heading with its description under it, a "Toplu İşlemler" menu
+  (import from Excel or CSV, export as CSV or Excel, download a sample file) and a table of the cards whose Ön Yüz and Arka Yüz are editable in place, with a
+  trash button that asks first. A file with a bad row opens "Dosya içe aktarılamadı" with each bad row and field. Every result is a toast, partly in English
+  words hard-coded in the code. A read that fails, such as a deck that is not there or is another person's private one, is the generic "Bir şeyler ters
+  gitti" page. A person who does not own a public deck sees the same controls and is refused after pressing.
+
+scope:
+  shows: >-
+    the deck table (empty and with a row), the Yeni Güverte dialog (a blank, a refused and a made deck), an inline rename, the delete confirmation of a deck,
+    the card table with its inline edit, the delete confirmation of a card, the three levels of the Toplu İşlemler menu, the export and the sample file, the
+    import (the chooser, the import-errors dialog, the toasts) and the error page
+  world: open
+  outOfView:
+    - "the page's shell (sidebar, person row, footer): nizam.shell.menuPerPersona. Both pages are inside it; this flow draws only the shell's <main>"
+    - "a table with two rows or more: the model keeps no row identity, so NEW_DECK is offered only from an empty table, and a delete of a deck leaves an empty one. Pressing Yeni Güverte beside a row opens the same dialog and ends with two rows"
+    - "the description cell of a deck: it saves as the title cell does (same column machinery, same PATCH with both fields) and is not drawn apart"
+    - "a card face under 3 characters in the dialog-free table is drawn once as `typed: short`; a face over 5000, a deck title over 100 or a description over 1000 end in the same toast"
+    - "the last card of a deck being deleted: the empty table 'Sonuç bulunamadı.' again (the model has no card count: a delete from a deck with cards ends in a deck with cards)"
+    - "the başnazım on these pages (let through to edit a public deck of anyone) and a köşk deck of another köşk: no persona of this flow"
+    - "the 429 of the three bulk routes (10 requests per minute and user): the toast says the server's English words, like any other refusal"
+    - "a file over 1 MB, which Next's Server Action limit may stop before the API (LEGACY-7, not verified); a CSV of the xlsx type the API reads as a workbook (domain: importCards INTERNAL_ERROR)"
+    - "closing the Yeni Güverte dialog while it saves (the Close icon stays enabled), and the browser's own download bar after an export"
+    - "the session ending: every write answers { kind: unauthenticated } and the page goes to sign-in and back with no toast (realm.auth.sessionEnded); on a create the button stays 'Oluşturuluyor...' until the redirect (F-P0-15)"
+
+decisions:
+  D1:
+    question: >-
+      Do the legacy pages stay? They are the second UI for the köşk decks (F-X-18): shadcn, English toasts, no title, icon buttons with no name, and no
+      check beyond sign-in. The köşk decks page links to the card table through "Kartları düzenle", and nothing links to /decks.
+    recommend: >-
+      Retire /decks (tedris already has the person's decks) and build the card editor of a köşk deck on the design system under
+      /kosks/<id>/desteler/<deck> (F-W5-8). Until then give both pages a title, a loading file, the buttons names, the catalog's words and an owner check.
+    affects: [list, cards, pageError]
+  D2:
+    question: >-
+      Should the table offer an edit or a delete on a deck the person did not write? The response has `authorId` and the page ignores it, so a public deck of
+      someone else looks as editable as one's own and every press is answered 403.
+    recommend: >-
+      Show a deck that is not the person's as read-only text with no trash button (compare authorId with the session), and say why in the cards page
+      instead of letting the first press fail.
+    affects: [renaming, removingDeck, savingCard, removingCard, exporting]
+
+context:
+  world:
+    values: [listNone, listMine, listForeign, cardsMine, cardsEmpty, cardsForeign, cardsGone]
+    initial: any
+    say:
+      listNone: "the person opens /decks and holds no deck (a person with no role at all, and no public deck exists)"
+      listMine: "the person opens /decks and holds one deck of their own with cards (a köşk deck the köşk nazımı opened)"
+      listForeign: "the person opens /decks and the only deck is a public deck another person wrote"
+      cardsMine: "the person opens the cards of their own deck with cards, from the köşk decks page link"
+      cardsEmpty: "the person opens the cards of their own deck that holds no card"
+      cardsForeign: "the person opens the cards of a public deck another person wrote"
+      cardsGone: "the person opens the cards of an address that is no deck of theirs (a deck that is not there, or another person's private one)"
+  typed:
+    values: [ok, short, space]
+    initial: any
+    say:
+      ok: "the person types text the API takes: a deck title of 5 characters or more, a card face of 3 or more"
+      short: "the person types text the API refuses for its length: a deck title under 5 characters, a card face under 3, a file row under 3"
+      space: "the person types only blanks into the title of the new deck: the page stops it itself"
+  held:
+    values: [none, cards, empty, foreign, gone]
+    initial: none
+    say:
+      none: "the table holds no deck"
+      cards: "the deck on the page is the person's own and has cards"
+      empty: "the deck on the page is the person's own and has no card"
+      foreign: "the deck on the page is a public deck of another person"
+      gone: "the deck of the address is not there for the person"
+  filled:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "the Başlık of the open dialog is empty"
+      yes: "the Başlık of the open dialog holds text"
+  last:
+    values: [nothing, created, blankTitle, createFailed, renamed, renameFailed, removed, removeFailed, cardSaved, cardFailed, cardRemoved, cardRemoveFailed, imported]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is up"
+      created: "a toast says the deck was made"
+      blankTitle: "a toast says the title is required"
+      createFailed: "a toast says the deck could not be made, with the server's words"
+      renamed: "a toast says the deck was updated (in English)"
+      renameFailed: "a toast says the deck could not be updated (in English, with the server's words)"
+      removed: "a toast says the deck was deleted (in English, with its id)"
+      removeFailed: "a toast says the deck could not be deleted (in English, with the server's words)"
+      cardSaved: "a toast says the card was updated"
+      cardFailed: "a toast 'Güncelleme Hatası' with the server's words: a card could not be updated, or an import, an export or a sample file failed"
+      cardRemoved: "a toast says the card was deleted, with its id"
+      cardRemoveFailed: "a toast says the card could not be deleted, with the server's words"
+      imported: "a toast says how many cards were imported"
+
+guards:
+  foreign: "held == 'foreign'"
+  noCards: "held == 'empty' or held == 'none'"
+  hasRow: "held != 'none'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  # what the table holds when the page is read
+  heldNone: { set: { held: none, last: nothing } }
+  heldCards: { set: { held: cards, last: nothing } }
+  heldEmpty: { set: { held: empty, last: nothing } }
+  heldForeign: { set: { held: foreign, last: nothing } }
+  heldGone: { set: { held: gone, last: nothing } }
+  # the dialog
+  freshForm: { set: { filled: no, last: nothing } }
+  filledYes: { set: { filled: yes } }
+  blankTitle: { set: { last: blankTitle } }
+  createdDeck: { set: { held: empty, last: created, filled: no } }
+  createRefused: { set: { last: createFailed } }
+  # the table's cells and rows
+  renamedOk: { set: { last: renamed } }
+  renameRefused: { set: { last: renameFailed } }
+  removedDeck: { set: { held: none, last: removed } }
+  removeRefused: { set: { last: removeFailed } }
+  # the cards
+  cardSavedOk: { set: { last: cardSaved } }
+  cardSaveRefused: { set: { last: cardFailed } }
+  cardRemovedOk: { set: { last: cardRemoved } }
+  cardRemoveRefused: { set: { last: cardRemoveFailed } }
+  importedOk: { set: { held: cards, last: imported } }
+  fileRefused: { set: { last: cardFailed } }
+
+failures:
+  readingDecks:
+    from: listDecks
+    signedOut: [HTTP_401]
+    failed: [HTTP_400]
+  creating:
+    from: createDeck
+    signedOut: [HTTP_401]
+    invalid: [VALIDATION_ERROR]
+    other: [INTERNAL_ERROR]
+  renaming:
+    from: updateDeck
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    invalid: [VALIDATION_ERROR]
+    other: [DECK_NOT_FOUND, HTTP_404, INTERNAL_ERROR]
+  removingDeck:
+    from: deleteDeck
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [DECK_NOT_FOUND, HTTP_400]
+  readingCards:
+    from: getDeck
+    signedOut: [HTTP_401]
+    missing: [DECK_NOT_FOUND]
+    failed: [HTTP_400, DECK_FORBIDDEN]
+  savingCard:
+    from: updateCard
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    invalid: [VALIDATION_ERROR]
+    missing: [CARD_NOT_FOUND, HTTP_404]
+    other: [AUTHZ_RESOLVER_ERROR, INTERNAL_ERROR]
+  removingCard:
+    from: deleteCard
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [CARD_NOT_FOUND]
+    other: [AUTHZ_RESOLVER_ERROR]
+  exporting:
+    from: exportCards
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN, DECK_FORBIDDEN]
+    other: [DECK_NOT_FOUND, HTTP_400, HTTP_429]
+  sampling:
+    from: downloadCardSample
+    signedOut: [HTTP_401]
+    failed: []
+  importing:
+    from: importCards
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    rows: [BULK_VALIDATION_ERROR, BULK_ROW_LIMIT_EXCEEDED]
+    other: [DECK_NOT_FOUND, HTTP_400, HTTP_429, INTERNAL_ERROR]
+
+# The story the pages tell first: the köşk nazımı opens /decks, renames the deck in place, opens its cards, changes a card's back face, deletes a card and
+# exports the deck as CSV.
+main:
+  given: { world: listMine, typed: ok }
+  events: [DONE, EDIT_TITLE, DONE, OPEN_CARDS, DONE, EDIT_CARD, DONE, DELETE_CARD, CONFIRM_REMOVE_CARD, DONE, OPEN_BULK, OPEN_EXPORT, EXPORT_CSV, DONE]
+
+initial: arriving
+
+states:
+  arriving:
+    title: The person opens one of the two addresses
+    description: >-
+      /decks answers the table of decks, /decks/<id>/cards the table of one deck's cards. `world` says which address, and what the deck is. Neither page has a
+      guard of its own (F-P0-16): the proxy sends a visitor to sign in, any signed-in person is read, and `app/kosks/layout.tsx`, which sends a person with no
+      role away from every /kosks page, does not cover them. The pages have no generateMetadata, so the tab says "Nizam", and no loading.tsx.
+    always:
+      - { guard: "world == 'listNone'", target: readingDecks, effect: [heldNone], source: apps/nizam/app/decks/page.tsx:4 }
+      - { guard: "world == 'listMine'", target: readingDecks, effect: [heldCards], source: apps/nizam/app/decks/page.tsx:4 }
+      - { guard: "world == 'listForeign'", target: readingDecks, effect: [heldForeign], source: apps/nizam/app/decks/page.tsx:4 }
+      - { guard: "world == 'cardsMine'", target: readingCards, effect: [heldCards], source: "apps/nizam/app/decks/[id]/cards/page.tsx:4" }
+      - { guard: "world == 'cardsEmpty'", target: readingCards, effect: [heldEmpty], source: "apps/nizam/app/decks/[id]/cards/page.tsx:4" }
+      - { guard: "world == 'cardsForeign'", target: readingCards, effect: [heldForeign], source: "apps/nizam/app/decks/[id]/cards/page.tsx:4" }
+      - { target: readingCards, effect: [heldGone], source: "apps/nizam/app/decks/[id]/cards/page.tsx:4" }
+    source: apps/nizam/app/decks/page.tsx:4
+
+  # ======================================= /decks ======================================================================================
+  readingDecks:
+    title: The decks are read
+    description: >-
+      The server reads GET /flashcard/decks: every public deck and the caller's own, in the order the database gives (no ORDER BY), hidden köşk decks included.
+      Nothing is on the screen of this step (no loading.tsx, the shell's own skeleton stands in; not verified in a browser). A refused token goes to sign-in;
+      any other failure is not caught and reaches app/error.tsx (F-P0-16), the generic "Bir şeyler ters gitti" page.
+    invoke: { action: listDecks }
+    on:
+      DONE: list
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: pageError
+    source: apps/nizam/app/decks/page.tsx:9
+
+  list:
+    title: The table of decks
+    description: >-
+      The h1 "Bilgi Kartı Desteleri" with "Bilgi kartı destelerinizi ve çalışma materyallerinizi yönetin.", the button "Yeni Güverte" (a ship's deck, not a
+      flashcard deck: LEGACY-8) and a table whose columns are Başlık and Açıklama and an unnamed one. A row is two editable one-line cells, named only by
+      their placeholders (F-P0-11), an eye button and a trash button, both with no accessible name (F-P0-10); an empty table says "Sonuç bulunamadı.". The
+      title says "Nizam", not the page (F-P0-16). The rows come in the order the database gives, and include the public decks of everyone and the person's hidden köşk
+      decks (LEGACY-3); each has the same controls whoever wrote it (LEGACY-4). Nothing sets the focus on load. The cells save when the person leaves them or presses Enter; nothing
+      says so. A toast of the last action may be up (a success lasts 6 seconds, an error stays until it is closed; both go when the address changes).
+    by: human
+    goal: true
+    on:
+      NEW_DECK:
+        guard: "held == 'none'"
+        target: newDeck
+        effect: [freshForm]
+        say: "they press Yeni Güverte over an empty table (beside a row it is the same dialog and ends with two rows: out of view)"
+        source: apps/nizam/features/decks/components/decks-table-header.tsx:86
+      EDIT_TITLE:
+        guard: "hasRow and typed != 'space'"
+        target: renaming
+        effect: [clearNote]
+        say: "they type in the Başlık cell and press Enter (or leave the cell)"
+        source: apps/nizam/components/data-table/editable/editable-cell.tsx:61
+      OPEN_CARDS:
+        guard: hasRow
+        target: readingCards
+        effect: [clearNote]
+        say: "they press the eye button of the row (no accessible name): router.push to the deck's cards"
+        source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52
+      DELETE_DECK:
+        guard: hasRow
+        target: confirmRemoveDeck
+        effect: [clearNote]
+        say: "they press the trash button of the row (no accessible name)"
+        source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:58
+      NAVIGATE: { target: left, say: "they follow a link or the menu (nothing on the page leads on)" }
+    source: apps/nizam/features/decks/components/decks.tsx:60
+
+  newDeck:
+    title: The Yeni Deste Oluştur dialog is open
+    description: >-
+      A shadcn Dialog (Radix, modal) over the inert table: "Yeni Deste Oluştur" with its description, Başlık * (a `required` input, placeholder "Deste başlığını
+      girin...") and Açıklama (a textarea), then "İptal etmek" and "Deste Oluştur". The first tabbable element, the title box, has the focus (Radix's own
+      default; not verified in a browser). Esc, "İptal etmek" and the Close icon close it; the icon is named "Close", in English (LEGACY-8). Pressing "Deste
+      Oluştur" with the title empty never reaches the page: the browser stops a `required` field with its own bubble, which is not part of the page.
+    by: human
+    on:
+      TYPE_TITLE: { target: newDeck, effect: [filledYes], say: "they type a title and a description" }
+      SUBMIT:
+        - { guard: "filled == 'no'", target: newDeck, say: "they press Deste Oluştur with the title empty: the browser's own bubble, nothing is sent", source: apps/nizam/features/decks/components/decks-table-header.tsx:110 }
+        - { guard: "typed == 'space'", target: newDeckInvalid, effect: [blankTitle], say: "the title is blanks only: the page's own check", source: apps/nizam/features/decks/components/decks-table-header.tsx:37 }
+        - { target: creating, effect: [clearNote], say: "they press Deste Oluştur", source: apps/nizam/features/decks/components/decks-table-header.tsx:45 }
+      CANCEL: { target: list, effect: [clearNote], say: "they press İptal etmek, or Esc" }
+      CLOSE: { target: list, effect: [clearNote], say: "they press the Close icon" }
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:86
+
+  newDeckInvalid:
+    title: The title is blanks only
+    description: >-
+      handleSubmit trims the title and stops: a toast "Doğrulama Hatası" with "Deste başlığı zorunludur.", and nothing on the field (no aria-invalid, no message:
+      F-P0-12). The dialog stays open with what was typed, the focus on the button that was pressed. Nothing is sent.
+    by: human
+    on:
+      SUBMIT: { target: newDeckInvalid, effect: [blankTitle], say: "they press Deste Oluştur again: the same toast", source: apps/nizam/features/decks/components/decks-table-header.tsx:37 }
+      CANCEL: { target: list, effect: [clearNote], say: "they press İptal etmek, or Esc" }
+      CLOSE: { target: list, effect: [clearNote], say: "they press the Close icon" }
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:37
+
+  creating:
+    title: The deck is on its way
+    description: >-
+      createFlashcardDeck is a Server Action that calls POST /flashcard/decks with {title, description} (a title of 5 to 100 characters, a description of at
+      most 1000; the deck is born private whatever else is sent). The button reads "Oluşturuluyor..." and is disabled, and so are both fields and "İptal
+      etmek": the focused field loses the focus (LEGACY-9; not verified in a browser). A success toast, "Deste Oluşturuldu", closes the dialog and the page's
+      list is read again (revalidatePath). A refusal keeps the dialog. A session that has ended goes to sign-in, and the button stays busy until it does (F-P0-15).
+    invoke: { action: createDeck }
+    on:
+      DONE:
+        guard: "typed == 'ok'"
+        target: list
+        effect: [createdDeck]
+        say: "the deck exists, empty, and the table holds it"
+        source: apps/nizam/features/decks/components/decks-table-header.tsx:48
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.invalid: { guard: "typed == 'short'", target: newDeckFailed, effect: [createRefused], say: "a title under 5 characters is refused: the toast says the validator's English sentence", source: apps/nizam/features/decks/components/decks-table-header.tsx:58 }
+      FAIL.other: { target: newDeckFailed, effect: [createRefused], source: apps/nizam/features/decks/components/decks-table-header.tsx:58 }
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:46
+
+  newDeckFailed:
+    title: The API refused the new deck
+    description: >-
+      The toast "Oluşturma Hatası" with the server's own message under it, in English ("title must be longer than or equal to 5 characters": LEGACY-2). The
+      dialog stays open, the fields enabled again with what was typed. Nothing on the field says what is wrong.
+    by: human
+    on:
+      SUBMIT: { target: creating, effect: [clearNote], say: "they press Deste Oluştur again", source: apps/nizam/features/decks/components/decks-table-header.tsx:45 }
+      CANCEL: { target: list, effect: [clearNote], say: "they press İptal etmek, or Esc" }
+      CLOSE: { target: list, effect: [clearNote], say: "they press the Close icon" }
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:58
+
+  renaming:
+    title: The title is saved
+    description: >-
+      The cell was left or Enter was pressed with a text different from the stored one, so DataTable.handleUpdateData marks the cell as loading: its input is
+      replaced by a Skeleton, and the focus goes (F-P0-11, F-X-8). updateFlashcardDeck calls PATCH /flashcard/decks/:id with the row's title and description
+      both. The deck's author may; anyone else is answered 403 AUTHZ_FORBIDDEN. A success shows the toast "Card Updated" (English, hard-coded: F-P0-13) and the
+      list is read again. EditableCell has already taken the typed text as the cell's stored text, so a refusal leaves it on screen (LEGACY-1); a refusal's toast is "Update Error" with the API's English sentence (LEGACY-2).
+    invoke: { action: updateDeck }
+    on:
+      DONE:
+        guard: "not foreign and typed == 'ok'"
+        target: list
+        effect: [renamedOk]
+        say: "the deck has its new title"
+        source: apps/nizam/features/decks/components/decks.tsx:45
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: foreign, target: list, effect: [renameRefused], say: "the deck is another person's: 403, and the toast says the API's English sentence", source: apps/nizam/features/decks/components/decks.tsx:51 }
+      FAIL.invalid: { guard: "not foreign and typed == 'short'", target: list, effect: [renameRefused], say: "a title under 5 characters is refused: the typed text stays in the cell", source: apps/nizam/features/decks/components/decks.tsx:51 }
+      FAIL.other: { target: list, effect: [renameRefused], source: apps/nizam/features/decks/components/decks.tsx:51 }
+    source: apps/nizam/features/decks/components/decks.tsx:38
+
+  confirmRemoveDeck:
+    title: The trash button asks once
+    description: >-
+      A Radix AlertDialog "Emin misin?" with "Bu deste ve ilgili tüm bilgiler silinecektir. Bu işlem geri alınamaz.", "İptal etmek" and "Silmek" (infinitives:
+      LEGACY-8). Radix puts the focus on "İptal etmek". There is no Close icon; the scrim does not close it, Esc does. It does not say whose deck it is.
+    by: human
+    on:
+      CONFIRM_REMOVE_DECK: { target: removingDeck, say: "they press Silmek", source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:76 }
+      CANCEL_REMOVE_DECK: { target: list, say: "they press İptal etmek, or Esc" }
+    source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:63
+
+  removingDeck:
+    title: The deck is deleted
+    description: >-
+      The dialog closes at once (Radix's action closes it before the call), and onRowDelete, which nothing awaits, calls deleteFlashcardDeck: DELETE
+      /flashcard/decks/:id, which takes the cards, the collection rows and the label rows with it (the cards' progress rows stay: the domain's progress-orphans).
+      There is no busy state at all. A success shows the English toast "Card Deleted" with "Card with ID <the deck's uuid> was deleted." (F-P0-13, LEGACY-5) and
+      the table is read again; a refusal shows "Delete Error" with the server's sentence.
+    invoke: { action: deleteDeck }
+    on:
+      DONE:
+        guard: "not foreign"
+        target: list
+        effect: [removedDeck]
+        say: "the deck is gone and the table is empty again"
+        source: apps/nizam/features/decks/components/decks.tsx:22
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: foreign, target: list, effect: [removeRefused], say: "the deck is another person's: 403", source: apps/nizam/features/decks/components/decks.tsx:31 }
+      FAIL.other: { target: list, effect: [removeRefused], source: apps/nizam/features/decks/components/decks.tsx:31 }
+    source: apps/nizam/features/decks/components/decks.tsx:18
+
+  # ======================================= /decks/<id>/cards ==========================================================================
+  readingCards:
+    title: The deck and its cards are read
+    description: >-
+      The server reads GET /flashcard/decks/:id and GET /flashcard/cards?deckId= together. A public deck, or the person's own, answers; a deck that is not
+      there, or is another person's private one, answers the same 404 DECK_NOT_FOUND, and neither read is caught: the page throws and app/error.tsx draws
+      "Bir şeyler ters gitti" (F-P0-16), not "izniniz yok" and not "bulunamadı". The page does not look at whose deck it is, nor at the köşk (F-W5-8).
+    invoke: { action: getDeck }
+    on:
+      DONE:
+        guard: "held != 'gone'"
+        target: cards
+        source: "apps/nizam/app/decks/[id]/cards/page.tsx:25"
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.missing: { guard: "held == 'gone'", target: pageError, say: "the deck is not there for the person", source: "apps/nizam/app/decks/[id]/cards/page.tsx:17" }
+      FAIL.failed: { target: pageError, source: "apps/nizam/app/decks/[id]/cards/page.tsx:17" }
+    source: "apps/nizam/app/decks/[id]/cards/page.tsx:17"
+
+  cards:
+    title: The table of cards
+    description: >-
+      The deck's own title is the h1 (a paragraph with its description under it, empty when there is none), "Toplu İşlemler" opens the menu, and the table has
+      Ön Yüz and Arka Yüz and an unnamed column. A row is two editable textareas, named only by their placeholders (F-P0-11), and a trash button with no
+      name (F-P0-10); an empty deck says "Sonuç bulunamadı.". A textarea saves only when the person leaves it: Enter makes a new line and saves nothing
+      (LEGACY-6). The table is keyed by row index and each cell keeps its own copy of its text (LEGACY-10). The tab says "Nizam" and nothing sets the focus on
+      load. There is no way back to /decks on the page: the browser's Back button, or the address.
+    by: human
+    goal: true
+    on:
+      EDIT_CARD:
+        guard: "hasRow and not noCards and typed != 'space'"
+        target: savingCard
+        effect: [clearNote]
+        say: "they change a card's back face and leave the cell"
+        source: apps/nizam/components/data-table/editable/editable-cell.tsx:61
+      DELETE_CARD:
+        guard: "not noCards"
+        target: confirmRemoveCard
+        effect: [clearNote]
+        say: "they press the trash button of a card (no accessible name)"
+        source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:48
+      OPEN_BULK: { target: bulkMenu, effect: [clearNote], say: "they press Toplu İşlemler", source: apps/nizam/features/decks/components/cards-table-header.tsx:62 }
+      NAVIGATE: { target: left, say: "they go back, or follow a link or the menu" }
+    source: apps/nizam/features/decks/components/cards.tsx:135
+
+  savingCard:
+    title: The card is saved
+    description: >-
+      The same machinery as a deck's cell: the textarea is replaced by a Skeleton while updateFlashcard calls PATCH /flashcard/cards/:id with both faces
+      (3 to 5000 characters each). The deck's author may; the author of a public deck is the only one, so anyone else is answered 403. A success shows "Kart
+      Güncellendi" with "Kartvizit başarıyla güncellendi." (business card: F-P0-14); nothing re-reads the page (no revalidatePath). A refusal shows "Güncelleme
+      Hatası" with the server's English sentence (LEGACY-2), and the typed text stays (LEGACY-1).
+    invoke: { action: updateCard }
+    on:
+      DONE:
+        guard: "not foreign and typed == 'ok'"
+        target: cards
+        effect: [cardSavedOk]
+        say: "the card has its new back face"
+        source: apps/nizam/features/decks/components/cards.tsx:48
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: foreign, target: cards, effect: [cardSaveRefused], say: "the deck is another person's: 403", source: apps/nizam/features/decks/components/cards.tsx:54 }
+      FAIL.invalid: { guard: "not foreign and typed == 'short'", target: cards, effect: [cardSaveRefused], say: "a face under 3 characters is refused", source: apps/nizam/features/decks/components/cards.tsx:54 }
+      FAIL.missing: { target: cards, effect: [cardSaveRefused], source: apps/nizam/features/decks/components/cards.tsx:54 }
+      FAIL.other: { target: cards, effect: [cardSaveRefused], source: apps/nizam/features/decks/components/cards.tsx:54 }
+    source: apps/nizam/features/decks/components/cards.tsx:41
+
+  confirmRemoveCard:
+    title: A card's trash button asks once
+    description: >-
+      A Radix AlertDialog "Emin misin?" with "Bu kart ve ilgili tüm bilgiler silinecektir. Bu işlem geri alınamaz.", "İptal etmek" (focused) and "Silmek". No
+      Close icon.
+    by: human
+    on:
+      CONFIRM_REMOVE_CARD: { target: removingCard, say: "they press Silmek", source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:66 }
+      CANCEL_REMOVE_CARD: { target: cards, say: "they press İptal etmek, or Esc" }
+    source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:53
+
+  removingCard:
+    title: The card is deleted
+    description: >-
+      The dialog is already closed. deleteFlashcard calls DELETE /flashcard/cards/:id and then revalidatePath of the deck's cards. A success shows "Kart Silindi"
+      with "<the card's uuid> kimlik numaralı kart silindi." (the raw id: LEGACY-5) and the table is read again; there is no busy state. A refusal shows "Silme
+      Hatası" with the server's English sentence. When the deleted card was not the last, the cells that stay mounted may keep the deleted card's text
+      (LEGACY-10, derived from the code, not seen).
+    invoke: { action: deleteCard }
+    on:
+      DONE:
+        guard: "not foreign"
+        target: cards
+        effect: [cardRemovedOk]
+        say: "the card is gone (deleting the last one ends in the empty table: out of view)"
+        source: apps/nizam/features/decks/components/cards.tsx:89
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: foreign, target: cards, effect: [cardRemoveRefused], say: "the deck is another person's: 403", source: apps/nizam/features/decks/components/cards.tsx:98 }
+      FAIL.missing: { target: cards, effect: [cardRemoveRefused], source: apps/nizam/features/decks/components/cards.tsx:98 }
+      FAIL.other: { target: cards, effect: [cardRemoveRefused], source: apps/nizam/features/decks/components/cards.tsx:98 }
+    source: apps/nizam/features/decks/components/cards.tsx:85
+
+  bulkMenu:
+    title: The Toplu İşlemler menu is open
+    description: >-
+      A Radix DropdownMenu (modal, so the rest of the page is inert) with three items: "Excel'den İçe Aktar", "Dışa Aktar" and "Örnek Dosyayı İndir", the last
+      two with a submenu each. Esc closes it.
+    by: human
+    on:
+      OPEN_EXPORT: { target: exportMenu, say: "they open Dışa Aktar", source: apps/nizam/features/decks/components/cards-table-header.tsx:74 }
+      OPEN_SAMPLE: { target: sampleMenu, say: "they open Örnek Dosyayı İndir", source: apps/nizam/features/decks/components/cards-table-header.tsx:88 }
+      PICK_IMPORT: { target: choosingFile, say: "they press Excel'den İçe Aktar: the hidden file input is clicked", source: apps/nizam/features/decks/components/cards-table-header.tsx:69 }
+      ESCAPE: { target: cards, say: "they press Esc" }
+    source: apps/nizam/features/decks/components/cards-table-header.tsx:62
+
+  exportMenu:
+    title: The Dışa Aktar submenu is open
+    description: >-
+      Two items beside the open menu: "CSV" and "Excel", hard-coded words with an icon (F-P0-13). Esc closes the submenu only.
+    by: human
+    on:
+      EXPORT_CSV: { target: exporting, say: "they press CSV", source: apps/nizam/features/decks/components/cards-table-header.tsx:79 }
+      EXPORT_XLSX: { target: exporting, say: "they press Excel", source: apps/nizam/features/decks/components/cards-table-header.tsx:82 }
+      PICK_IMPORT: { target: choosingFile, say: "they press Excel'den İçe Aktar in the menu beside the submenu: the menu closes and the hidden file input is clicked", source: apps/nizam/features/decks/components/cards-table-header.tsx:69 }
+      OPEN_EXPORT: { target: exportMenu, say: "they press Dışa Aktar again: Radix's sub trigger opens a submenu only when it is closed, so nothing changes", source: apps/nizam/features/decks/components/cards-table-header.tsx:74 }
+      OPEN_SAMPLE: { target: sampleMenu, say: "they open Örnek Dosyayı İndir: its submenu takes the place of this one", source: apps/nizam/features/decks/components/cards-table-header.tsx:88 }
+      ESCAPE: { target: bulkMenu, say: "they press Esc" }
+    source: apps/nizam/features/decks/components/cards-table-header.tsx:74
+
+  sampleMenu:
+    title: The Örnek Dosyayı İndir submenu is open
+    description: >-
+      The same two items, "CSV" and "Excel", for the sample file.
+    by: human
+    on:
+      SAMPLE_CSV: { target: sampling, say: "they press CSV", source: apps/nizam/features/decks/components/cards-table-header.tsx:93 }
+      SAMPLE_XLSX: { target: sampling, say: "they press Excel", source: apps/nizam/features/decks/components/cards-table-header.tsx:98 }
+      PICK_IMPORT: { target: choosingFile, say: "they press Excel'den İçe Aktar in the menu beside the submenu: the menu closes and the hidden file input is clicked", source: apps/nizam/features/decks/components/cards-table-header.tsx:69 }
+      OPEN_EXPORT: { target: exportMenu, say: "they open Dışa Aktar: its submenu takes the place of this one", source: apps/nizam/features/decks/components/cards-table-header.tsx:74 }
+      OPEN_SAMPLE: { target: sampleMenu, say: "they press Örnek Dosyayı İndir again: the open submenu stays as it is", source: apps/nizam/features/decks/components/cards-table-header.tsx:88 }
+      ESCAPE: { target: bulkMenu, say: "they press Esc" }
+    source: apps/nizam/features/decks/components/cards-table-header.tsx:88
+
+  exporting:
+    title: The deck is exported
+    description: >-
+      exportCards calls GET /flashcard/decks/:id/cards/bulk/export?format= as a Server Action, which answers the file as base64; downloadBase64File makes an
+      anchor with a download name (cards.csv or cards.xlsx) and clicks it. The menu is closed, nothing on the page changes, and nothing says it worked. Only the
+      deck's author may export (an export is an owner's affordance: the domain's export-refused-to-staff); anyone else gets "Güncelleme Hatası" (the word for an
+      update, LEGACY-8) with the server's English sentence. The route has its own budget of 10 a minute (the 429 is out of view).
+    invoke: { action: exportCards }
+    on:
+      DONE: { guard: "not foreign", target: cards, say: "the browser saves the file", source: apps/nizam/features/decks/utils/download-base64-file.ts:17 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: foreign, target: cards, effect: [fileRefused], say: "the deck is another person's: 403", source: apps/nizam/features/decks/components/cards.tsx:109 }
+      FAIL.other: { target: cards, effect: [fileRefused], source: apps/nizam/features/decks/components/cards.tsx:109 }
+    source: apps/nizam/features/decks/components/cards.tsx:105
+
+  sampling:
+    title: The sample file is downloaded
+    description: >-
+      getSampleFile calls GET /flashcard/cards/bulk/sample?format= for any signed-in person, whatever the deck, and the browser saves sample.csv or sample.xlsx. The
+      file has the header Card Type, Content Front, Content Back and two example rows. Nothing on the page changes.
+    invoke: { action: downloadCardSample }
+    on:
+      DONE: { target: cards, say: "the browser saves the file", source: apps/nizam/features/decks/utils/download-base64-file.ts:17 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { target: cards, effect: [fileRefused], source: apps/nizam/features/decks/components/cards.tsx:122 }
+    source: apps/nizam/features/decks/components/cards.tsx:118
+
+  choosingFile:
+    title: The browser's file chooser is open
+    description: >-
+      The menu item clicks a hidden <input type=file accept=".xlsx,.xls,.csv">, and the browser draws its own chooser, which is no part of the page. The
+      engine cannot choose a file, so a walk stops here (CHOOSE_FILE has no binding). A person who dismisses the chooser leaves the page as it was.
+    by: human
+    on:
+      CHOOSE_FILE: { target: importing, say: "they choose a file", source: apps/nizam/features/decks/components/cards-table-header.tsx:41 }
+      CANCEL_CHOOSE: { target: cards, say: "they close the chooser" }
+    source: apps/nizam/features/decks/components/cards-table-header.tsx:69
+
+  importing:
+    title: The file is sent
+    description: >-
+      uploadFile hands the file to a Server Action, which calls POST /flashcard/decks/:id/cards/bulk/import. There is no busy state of any kind: the page does
+      not change while the file goes up (LEGACY-7). A Server Action's body is limited to 1 MB unless next.config.js says otherwise and it does not, while the
+      API takes 5 MB (not verified: the nazar import walk looks for the same limit). Only the deck's author, or on a course deck its staff, may import. A clean file
+      shows the toast "İthal Kartlar" with "{n} kart başarıyla içe aktarıldı." and router.refresh() reads the table again; a file with bad rows (422) opens the
+      dialog of the bad rows; any other refusal is the toast "Güncelleme Hatası".
+    invoke: { action: importCards }
+    on:
+      DONE:
+        guard: "not foreign and typed == 'ok'"
+        target: cards
+        effect: [importedOk]
+        say: "the cards are in the deck"
+        source: apps/nizam/features/decks/components/cards.tsx:65
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.rows: { guard: "not foreign and typed == 'short'", target: importErrors, say: "a row's face is under 3 characters: the whole file is refused and nothing is written", source: apps/nizam/features/decks/components/cards.tsx:72 }
+      FAIL.forbidden: { guard: foreign, target: cards, effect: [fileRefused], say: "the deck is another person's: 403", source: apps/nizam/features/decks/components/cards.tsx:78 }
+      FAIL.other: { target: cards, effect: [fileRefused], source: apps/nizam/features/decks/components/cards.tsx:78 }
+    source: apps/nizam/features/decks/components/cards.tsx:61
+
+  importErrors:
+    title: The file was refused row by row
+    description: >-
+      A Radix Dialog "Dosya içe aktarılamadı", its description the API's own word ("Validation Error", in English), and for each bad row a box "{row}. satırda
+      hata" with a list "field: message" in red (the field is the API's property name, the message its English sentence; the row is the file's own number, the
+      header being row 1). No button but the Close icon, named "Close" in English (LEGACY-8); Esc closes it too. The Close icon is the only tabbable
+      element and has the focus. Nothing was imported.
+    by: human
+    on:
+      CLOSE_ERRORS: { target: cards, say: "they press the Close icon, or Esc", source: apps/nizam/features/decks/components/cards.tsx:139 }
+    source: apps/nizam/features/decks/components/import-errors-dialog.tsx:23
+
+  pageError:
+    title: The page could not be read
+    description: >-
+      app/error.tsx under the shell: "Bir şeyler ters gitti" with "Sayfa açılırken bir sorun çıktı. Yeniden deneyin; sürerse birkaç dakika sonra tekrar bakın."
+      and "Yeniden dene", which reads the page from the server again (the same address, so a deck that is not there fails again). No role="alert", no focus
+      move. Only the error's digest goes to the console.
+    by: human
+    on:
+      RETRY: { target: arriving, say: "they press Yeniden dene", source: apps/nizam/app/error.tsx:34 }
+      NAVIGATE: { target: left, say: "they follow a menu link" }
+    source: apps/nizam/app/error.tsx:16
+
+  sent_to_sign_in:
+    title: The session is over
+    description: "Every write answers { kind: unauthenticated } and handleUnauthenticated goes to sign-in and back to this page, with no toast (realm.auth.sessionEnded). A read does it through passOnSignIn."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: blank-title-is-never-sent
+    never: "state == 'creating' and typed == 'space'"
+    say: A deck whose title is only blanks is stopped by the dialog itself and never reaches the API.
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:37
+  - id: a-foreign-deck-is-never-changed
+    never: "foreign and (last == 'renamed' or last == 'removed' or last == 'cardSaved' or last == 'cardRemoved' or last == 'imported')"
+    say: A public deck of another person is never renamed, deleted, edited or imported into; every such press is refused.
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:390
+  - id: new-decks-are-empty-and-private
+    never: "state == 'list' and last == 'created' and held != 'empty'"
+    say: The deck the dialog makes has no card; it cannot be anything else.
+    source: apps/nizam/features/decks/components/decks-table-header.tsx:46

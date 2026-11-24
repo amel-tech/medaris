@@ -1,0 +1,98 @@
+# nazar.files.download on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the müderris `muderris` signed in
+# through Keycloak's real form, on Ödevler, Müfredat and Değerlendirme of a course of its own.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/files/download \
+#     --bind graphs/nazar/files/download/binding.yaml --cover transitions --absent --out <dir>
+# or one page at a time with `--to homeworkListed`, `--to lessonOpened` (the celse's details open) or `--to evaluationRefused`. Without `--to` or `--cover` the
+# replay would take the flow's main story, which needs a file to be served and no scenario can give it (below). The 403 walks are binding.forbidden.yaml.
+#
+# NOT RUN in the writing phase: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation here is
+# from the code and unverified; what was seen are the curl answers of the routes (flow.yaml). The binding loads (`replay <dir> --bind <this file> --emit-spec
+# --out <dir>` wrote a spec and walked nothing).
+#
+# Data. Each scenario's `setup` makes a published course of its own (helpers/course.mjs make nazarfiles: the second köşk, one week of ONE celse tomorrow at
+# 21:00 Istanbul, anyone takes a seat, `muderris` its hoca) with applicantF ("Tahsin Başvuran", a man) holding a seat in it, then files-data.mjs gives it what
+# the page of the scenario reads. `teardown` takes the file rows away before the course (files-data.mjs down, then course.mjs remove nazarfiles, which also
+# clears the invitation mails of the course) and then the mail and the notifications of applicantF. Both are idempotent. The seeded courses and every other
+# account are never touched. The file rows are SQL because the stack has no storage and so no API can make one; they name no object, so every download answers
+# 503 STORAGE_NOT_CONFIGURED, which is the refusal the flow walks (files-data.mjs says why in full).
+#
+# Scenarios (each enters through the nav graph's menu entry of the course, from the course's overview: `frame:ders->dersHomework` and its two neighbours).
+#   homeworkUnavailable   Ödevler: the talebe's file is a link; the press is answered 503, the 303 comes back with ?fileError=unavailable, and the toast "Dosya
+#                         indirilemedi" with "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden deneyin." is on the page (the parameter off the address)
+#   curriculumUnavailable Müfredat: the course's file, then the celse's details opened (OPEN_DETAILS), the celse's file and the homework's file; each answered 503
+#                         and the page comes back with the details folded
+#   evaluationExport      Değerlendirme: "Excel indir" is answered 400 INVALID_PATH, whatever storage says; the page comes back at
+#                         /degerlendirme?fileError=notFound with no toast (the state's address pins the finding)
+# `answer: unavailable` is the one refusal this stack gives the four file routes; the sheet does not read `answer`.
+#
+# Not walked, and why:
+#   - the main story (a file served, `answer: saved`): the stack has no storage, so a download never succeeds. The success of the routes is read by the unit
+#     specs (apps/nazar/test/file-routes.spec.ts) and tedrisat's e2e (apps/tedrisat/test/e2e/resource-files.e2e.spec.ts, lesson-assignments.e2e.spec.ts); needs.yaml
+#     names them. The sheet is never served at all (evaluation-export-invalid-path).
+#   - `fileGone` and `pageGone`: the service asks the store first, so locally 503 comes before 404; a hidden course is the other way to a 404 and is not made.
+#   - `signedOut`: the walk cannot end the web session of the browser it drives; the redirect is read with curl as a visitor (effects `noticeUnavailable`).
+#   - `failed`: no refusal of this stack is none of the four.
+#   - the other reading of Ödevler's and Müfredat's 403: binding.forbidden.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: files.common.binding.yaml
+flow: nazar.files.download
+
+scenarios:
+  # Open: the course's overview, then the menu's "Ödevler".
+  homeworkUnavailable:
+    given: { view: homework, answer: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nazarfiles, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantF]
+        expect: '"tag":"nazarfiles"'
+      - run: [node, ../nazar/files/download/files-data.mjs, up, homework]
+        expect: 'files-data up homework'
+    teardown:
+      - run: [node, ../nazar/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, nazarfiles]
+        expect: 'course remove nazarfiles'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+
+  # Open: the course's overview, then the menu's "Müfredat".
+  curriculumUnavailable:
+    given: { view: curriculum, answer: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nazarfiles, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantF]
+        expect: '"tag":"nazarfiles"'
+      - run: [node, ../nazar/files/download/files-data.mjs, up, curriculum]
+        expect: 'files-data up curriculum'
+    teardown:
+      - run: [node, ../nazar/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, nazarfiles]
+        expect: 'course remove nazarfiles'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+
+  # Open: the course's overview, then the menu's "Değerlendirme". The course has a celse whose homework is recited (so the board has a column) and a talebe
+  # (so it has a row); without either the page is an empty state and has no link.
+  evaluationExport:
+    given: { view: evaluation, answer: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nazarfiles, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantF]
+        expect: '"tag":"nazarfiles"'
+      - run: [node, ../nazar/files/download/files-data.mjs, up, evaluation]
+        expect: 'files-data up evaluation'
+    teardown:
+      - run: [node, ../nazar/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, nazarfiles]
+        expect: 'course remove nazarfiles'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantF, clear]

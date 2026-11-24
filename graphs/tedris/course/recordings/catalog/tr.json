@@ -1,0 +1,23 @@
+{
+  "CoursePage.tabsLabel": "Ders bölümleri",
+  "CoursePage.tabCurriculum": "Müfredat",
+  "CoursePage.tabRecordings": "Ders kayıtları",
+  "RecordingsTab.allTitle": "Bütün ders kayıtları",
+  "RecordingsTab.allHint": "Haftalara göre, yeniden eskiye",
+  "RecordingsTab.weekLabel": "Hafta {number}",
+  "RecordingsTab.public": "Herkese açık",
+  "RecordingsTab.preparing": "Hazırlanıyor",
+  "RecordingsTab.watchLabel": "Kaydı izle: {title}",
+  "RecordingsTab.open": "Ders kaydını aç",
+  "RecordingsTab.empty": "Bu derste henüz yayımlanmış ders kaydı yok.",
+  "RecordingsTab.errorTitle": "Ders kayıtları yüklenemedi",
+  "RecordingsTab.errorText": "Ders kayıtlarına şu an ulaşamadık. Biraz sonra yeniden dene.",
+  "RecordingsTab.retry": "Yeniden dene",
+  "RecordingRelease.opens": "Ders kaydı {day} {time} açılır.",
+  "composed.RecordingsTab.title": "{title}",
+  "composed.RecordingsTab.openName": "Ders kaydını aç: {title} (yeni sekmede açılır)",
+  "composed.RecordingsTab.facts": "{date} · {count} dk",
+  "composed.RecordingsTab.factsPending": "{date} · Hazır olunca buradan açılır",
+  "composed.RecordingsTab.provider": "{provider}",
+  "composed.Button.loading": "Yükleniyor"
+}

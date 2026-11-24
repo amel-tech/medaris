@@ -1,0 +1,349 @@
+# The köşk home of nizam-web (/kosks/<id>/ana-sayfa), where the köşk's nazım decides the newest waiting applications of the
+# köşk's courses on the spot: "Onayla" takes the talebe in at once, "Reddet" opens a form dialog that takes a reason, which
+# may stay empty. Written from the code of PR #394 (apps/nizam/features/dashboard/components/kosk-home.tsx and
+# reject-application-dialog.tsx, the two server actions in features/kosks/actions/courses.ts, decisionErrorKey in
+# features/applications/present.ts and the API's GET /kosks/:id/dashboard with the two decision routes). It is the nizam twin
+# of nazar.pano.decideApplications and nazar.roster.decide and shares their context names (`approval`, `mayDecide`, `last`).
+# It says what the code does today:
+#   - the first value of `approval` is the hand-over of tedris.course.apply: an application that asks for approval waits here
+#     (and on the course's Talebeler in nazar, on the köşk's Başvurular page, on the Pano). tedris.course.apply's two `starts`
+#     today name nazar.roster.decide and nizam.courses.decideApplications; this flow declares the variable all the same.
+#   - unlike nazar's two places, the dialog here takes a reason of up to 500 characters, "Ret gerekçesi (isteğe bağlı)", and the
+#     button is never held back for an empty one. The dialog says the reason "talebeye gönderilmez" and the API puts it into
+#     the talebe's notice (HOME-4).
+#   - a refusal is worded in the page's own sentences by decisionErrorKey, from the HTTP status, so a barred talebe's approval
+#     (403 BAN_ACTIVE) is told as "Bu başvuruya karar verme yetkiniz yok." (HOME-1); an application someone else settled is an
+#     error toast and the row leaves; any other failure, a dropped network included, is caught: the row (and the dialog with
+#     what was typed) stay and a toast says try again. nazar's Pano has no such catch (F-A-10); this page has.
+#   - findings this flow touches (ui.yaml `rules` carries the same ids):
+#       F-W1-4   after Onayla, or after a Reddet that succeeds, the pressed row leaves and the focus with it (F-X-7)
+#       F-W1-13  a failed Reddet keeps the dialog open and says so only in a toast of another portal (F-X-4)
+#       F-UI-W1-1 the dialog is described by its whole body; F-UI-W1-3 the busy label and the toast's "Kapat" are hard-coded
+#       HOME-1 (new) a barred talebe's approval is told as "no authority"
+#       HOME-2 (new) the list and the number are copies made once: after five decisions the card can say nothing waits
+#       HOME-3 (new) one `busy` key for the table: a second press lets the first row's buttons come back on
+#       HOME-4 (new) the dialog says the reason is not sent to the talebe; the API sends it
+#       HOME-5 (new) the passive-scope sentence is not reachable by the page's own reader (the engine leaves the köşk's nazım
+#                    their rights in a passive scope), and the API's comment says the opposite
+#       HOME-6 (new) a Medaris nazım who reads the page by platform.kosk_edit alone sees a number above zero and no card
+# E2E carried: dashboard#5 (Onayla: the row goes, the number falls by one, the seat is taken, the sidebar's badge follows) and
+# dashboard#6 (Reddet with a reason and with none, the audit rows); the refusal branches exist only in the unit spec
+# apps/nizam/test/kosk-home-decisions.spec.tsx (mocked actions) and are carried as drawn states, with the ones the stack can make
+# bound in binding.gone.yaml and binding.barred.yaml. dashboard#1-4 and #7-9 are other flows' (the other home pages, the page
+# itself, another köşk's home).
+schema: delurio-graph/0
+kind: flow
+id: nizam.home.decideApplications
+status: captured
+domain: medaris.api
+ui: nizam.home.decideApplications
+title: Decide applications from the köşk home
+summary: >-
+  The köşk nazımı opens the home of her köşk. The card "Son başvurular" lists the five newest applications that wait, each
+  with "Onayla" and "Reddet", and the number "Bekleyen başvuru" and the sidebar's "Başvurular" say how many wait in all.
+  "Onayla" takes the talebe in at once: a toast says so, the row leaves, both numbers fall. "Reddet" opens a dialog, "Başvuruyu
+  reddet", with one optional field for a reason; it closes when the rejection is saved, the row leaves and a toast says so. An
+  application someone else settled meanwhile is an error toast and the row leaves (and the dialog with it); a refusal or an
+  unknown failure leaves the row, and the dialog with what was typed, and says so in a toast. Where the viewer may not decide a
+  row, a sentence stands in place of the buttons. A Medaris nazımı who reads the page by platform.kosk_edit alone gets no card.
+  The pressed button leaves with its row and the focus with it (F-W1-4).
+
+scope:
+  shows: >-
+    the card "Son başvurular" of a köşk's home with its Onayla and Reddet, the dialog "Başvuruyu reddet", the toasts of a
+    decision, the number "Bekleyen başvuru" and the sidebar's "Başvurular" with its badge
+  world: open
+  outOfView:
+    - "the rest of the home: the greeting and the week's sentence, the alert about a celse nobody can attend, the three other numbers, the Celse listesi tabs and table, the Hocalar card and 'Ders aç': nizam.home.koskNazimLanding"
+    - "another köşk's home, a köşk that does not exist and the screen 'Bu bölüm için izniniz yok' (the page's own refusal): nizam.home.koskNazimLanding and nizam.shell.noAccessAndNotFound; here they are the exit no_access"
+    - "the same decision on the köşk's Başvurular page, which rejects with no reason, and in nazar on the Pano and the course's Talebeler: nizam.courses.decideApplications, nazar.pano.decideApplications, nazar.roster.decide"
+    - "the talebe applying and the notice they are sent: tedris.course.apply, tedris.account.notifications"
+    - "'Tümünü gör' (it leaves the page) and the sidebar's other entries"
+    - "an ended session: both server actions answer 'unauthenticated' and the person is sent to sign in (realm.auth.signIn); the dialog is left as it is"
+    - "a failed read of the home ('Ana sayfa okunamadı' with 'Yeniden dene'): the exit load_failed; the stack cannot make tedrisat fail"
+    - "kontenjan: the code gives a seat with no count and no gender rule; needs.yaml carries it as missing (MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      What happens to the reason a nazım writes? The dialog says "gerekçe denetim kaydında tutulur, talebeye gönderilmez", and
+      tedrisat keeps it in the audit row `enrollment.reject` and also puts it in the talebe's notice
+      (course-notifier.ts:56-69, shown by tedris as "Gerekçe: …"). Either the sentence or the notice is wrong (HOME-4).
+    recommend: >-
+      Decide first whether the talebe should be told why. If yes, change the sentence ("talebeye bildirimde gösterilir"); if no,
+      stop the API putting the reason in the notice. The sentence must not promise what the API does not do.
+    affects: [confirmReject]
+  D2:
+    question: >-
+      Should every place that rejects an application take a reason? The köşk home takes an optional one; nizam's own Başvurular
+      page (use-decisions.ts:44) and nazar's Pano and Talebeler take none and say "Ret için gerekçe alınmaz".
+    recommend: >-
+      One behaviour for all four, decided with D1; the API is ready for it on every route.
+    affects: [confirmReject]
+  D3:
+    question: >-
+      Should the card be refilled from the server after a decision, and the number follow the server too? Today both are copies
+      made once (HOME-2).
+    recommend: >-
+      Yes: read both from the page's data, which `router.refresh()` already renews, instead of from state.
+    affects: [settled, empty]
+
+context:
+  approval:
+    values: [needed, none]
+    initial: any
+    say:
+      needed: "an application of one of the köşk's courses waits for a decision"
+      none: "no application waits"
+  mayDecide:
+    values: [may, passive, mayNot, locked]
+    initial: any
+    say:
+      may: "the API says the viewer may decide the rows (canDecide): the köşk's nazım, or the başnazım"
+      passive: "the API says she may not and the scope is passive: the row carries the sentence 'Bu dersin kapsamı pasif…' (the unit spec pins it; no real reader reaches it, HOME-5)"
+      mayNot: "the API says she may not and the scope is not passive: the row carries 'Bu başvuruya karar verme yetkiniz yok.' (the unit spec pins it)"
+      locked: "the page is read by platform.kosk_edit alone (contentLocked): the numbers stay, the applicants card is not drawn"
+  row:
+    values: [waiting, gone, barred]
+    initial: waiting
+    say:
+      waiting: "the newest waiting application is still waiting on the server, as the page shows it"
+      gone: "someone settled it behind the page's back (another nazım rejected it, or the talebe took it back): the page still draws it"
+      barred: "a ban was placed on its talebe: the page still draws it like any other (HOME-1)"
+  typed:
+    values: [true, false]
+    initial: false
+    say:
+      "true": "a reason is written in the dialog"
+      "false": "the dialog's field is empty (it is emptied each time the dialog opens)"
+  last:
+    values: [nothing, approved, rejected, gone, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      approved: "a decision just approved an application"
+      rejected: "a decision just rejected one"
+      gone: "the application was not waiting any more: an error toast says so and the row left"
+      refused: "the API refused the decision (403): 'Bu başvuruya karar verme yetkiniz yok.'"
+      failed: "any other failure, a dropped network included: 'Beklenmeyen bir hata oldu.'"
+
+guards:
+  holdsDecide: "mayDecide == 'may'"
+  nobodyWaits: "approval == 'none'"
+  isLocked: "mayDecide == 'locked'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  asking: { set: { last: nothing, typed: false } }
+  typedReason: { set: { typed: true } }
+  closedDialog: { set: { typed: false } }
+  settledElsewhere: { set: { row: gone } }
+  banPlaced: { set: { row: barred } }
+  approved: { set: { last: approved, row: waiting }, havoc: [approval] } # other applications may still wait, or this was the last
+  rejectedWithReason: { set: { last: rejected, row: waiting, typed: false }, havoc: [approval] }
+  rejectedWithNone: { set: { last: rejected, row: waiting, typed: false }, havoc: [approval] }
+  gone: { set: { last: gone, row: waiting, typed: false }, havoc: [approval] }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: getKoskDashboard
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    failed: [HTTP_400]
+  approving:
+    from: approveEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT, COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    barred: [BAN_ACTIVE]
+    other: [HTTP_400]
+  rejecting:
+    from: rejectEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the köşk's nazım approves the newest waiting application, rejects the next with a written reason
+# and the next with none; one more still waits.
+main:
+  given: { approval: needed, mayDecide: may }
+  events: [DONE, APPROVE, DONE, REJECT, WRITE_REASON, CONFIRM_REJECT, DONE, REJECT, CONFIRM_REJECT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The köşk home is read
+    description: >-
+      The page reads GET /kosks/:id/dashboard on the server, behind a skeleton (loading.tsx), once the köşk layout has let the
+      person in (a nazım, the başnazım or a Medaris nazım). The read carries the five newest waiting applications, each with
+      `canDecide` and `scopePassive`, and the numbers. A 403 or a 404 is the same screen on purpose, "Bu bölüm için izniniz yok"
+      (exit no_access, nizam.home.koskNazimLanding walks it); any other failure draws "Ana sayfa okunamadı" with "Yeniden dene"
+      (exit load_failed, not drawn here). A Medaris nazım who holds platform.kosk_edit and not kosk.manage reads the page with
+      `contentLocked`: no applicants, no card (state locked).
+    invoke: { action: getKoskDashboard }
+    on:
+      DONE:
+        - { guard: isLocked, target: locked }
+        - { guard: nobodyWaits, target: empty }
+        - { target: listed }
+      FAIL.forbidden: no_access
+      FAIL.missing: no_access
+      FAIL.failed: load_failed
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:29"
+
+  locked:
+    title: The page has no applicants card
+    description: >-
+      The reader holds platform.kosk_edit but not kosk.manage: the API sends the numbers and an empty `latestApplications`
+      (`contentLocked`), and the page leaves the whole card out ("Son başvurular", its link and its table). "Bekleyen başvuru"
+      still counts what waits, and nothing says why there is no card (HOME-6). She cannot decide from here, nor from the
+      Başvurular page.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:499
+
+  listed:
+    title: The waiting applications are listed
+    description: >-
+      The page: the heading, the four numbers ("Bekleyen başvuru" among them), and the card "Son başvurular" with the five newest
+      waiting applications, newest first, each row naming the talebe, the course and the day. Each row has "Onayla" and "Reddet"
+      where `mayDecide` is `may`; where it is `passive` or `mayNot` a sentence stands in place of both. The sidebar's "Başvurular"
+      carries the number of applications that wait in the köşk. Findings read here: F-W1-4 and F-X-7 (after a decision the pressed
+      button is gone and the focus with it; the only word is a toast), HOME-2 (the list and the number are state copies, not
+      refilled), HOME-3 (one busy key for the table), HOME-5 (the sentences of a row the viewer may not decide). A toast of the last
+      decision stands in the page for a few seconds when it is a success (`last`); an error toast stays until closed.
+      `SETTLED_ELSEWHERE` and `BAN_PLACED` are what happens to the newest row on the server behind the page: the page does not know
+      until the person presses.
+    by: human
+    goal: true
+    on:
+      APPROVE: { guard: holdsDecide, target: approving, effect: [clearNote], say: "they press Onayla on a row", source: apps/nizam/features/dashboard/components/kosk-home.tsx:377 }
+      REJECT: { guard: holdsDecide, target: confirmReject, effect: [asking], say: "they press Reddet on a row", source: apps/nizam/features/dashboard/components/kosk-home.tsx:389 }
+      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1703 }
+      BAN_PLACED: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:505
+
+  empty:
+    title: Nothing waits
+    description: >-
+      The card says "Bekleyen başvuru yok." in the table's one cell and the number reads 0; the sidebar's "Başvurular" has no badge
+      (it shows only above zero). The toast of the last decision may still be up. Nothing announces that the last row has just left
+      (F-W1-4). The card can also say this while applications still wait, once the five it was given are decided (HOME-2).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:510
+
+  confirmReject:
+    title: Reddet asks for a reason that may stay empty
+    description: >-
+      A form dialog, "Başvuruyu reddet", over the page, with the talebe and the course above its title. It says "Başvuru listeden
+      kalkar. İsterseniz nedenini yazın; gerekçe denetim kaydında tutulur, talebeye gönderilmez." and holds one field, "Ret gerekçesi
+      (isteğe bağlı)", which has the focus, with "En fazla 500 karakter." under it. "Reddet" is never held back for an empty field.
+      The scrim does not close it; Vazgeç, the close icon and Esc do. The reason is trimmed and sent as the body of the DELETE; an empty one
+      sends none. The sentence about the talebe is not true (HOME-4); the dialog is described by its whole body (F-UI-W1-1). After a
+      failed save it is here again with what was typed and an error toast of another portal says why, and nothing inside it does
+      (F-W1-13, F-X-4).
+    by: human
+    on:
+      WRITE_REASON: { target: confirmReject, effect: [typedReason], say: "they write a reason", source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:81 }
+      CONFIRM_REJECT: { target: rejecting, say: "they press Reddet in the dialog, with or without a reason", source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:44 }
+      CANCEL: { target: listed, effect: [closedDialog], say: "they press Vazgeç, or Esc", source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:66 }
+      CLOSE: { target: listed, effect: [closedDialog], say: "they press the close icon", source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:62 }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:550
+
+  approving:
+    title: The approval is on its way
+    description: >-
+      approveEnrollment (the server action) calls POST /courses/:id/enrollments/:userId/approve with no body; the API answers 201,
+      the talebe is told and the calendar invitations are sent. On the row "Onayla" is busy (aria-disabled and aria-busy, "Yükleniyor"
+      to a reader of the screen) and "Reddet" is off; the other rows stay live (HOME-3). A success removes the row at once, lowers the
+      number by one, shows the toast "Başvuru onaylandı" and reads the page's server parts again (the sidebar's badge follows). A row
+      someone else approved first is not an error: the API answers 201 again and this page says the same. A 404 or 409 (the row was
+      rejected or taken back, the course is gone) is an error toast "Başvuru yanıtlanamadı: Bu başvuru artık bekleyenler arasında
+      değil; liste yenilendi." and the row leaves all the same. A 403, a barred talebe's (BAN_ACTIVE) included, is "Bu başvuruya karar
+      verme yetkiniz yok." and the row stays (HOME-1); any other answer, or a call that never arrives, is "Beklenmeyen bir hata oldu."
+      and the row stays.
+    invoke: { action: approveEnrollment }
+    on:
+      DONE: { guard: "row == 'waiting'", target: settled, effect: [approved], source: apps/nizam/features/dashboard/components/kosk-home.tsx:159 }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: apps/nizam/features/dashboard/components/kosk-home.tsx:141 }
+      FAIL.barred: { guard: "row == 'barred'", target: listed, effect: [refused], source: apps/nizam/features/applications/present.ts:183 }
+      FAIL.forbidden: { target: listed, effect: [refused], source: apps/nizam/features/applications/present.ts:175 }
+      FAIL.other: { target: listed, effect: [failed], source: apps/nizam/features/applications/present.ts:186 }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:145
+
+  rejecting:
+    title: The rejection is on its way
+    description: >-
+      rejectEnrollment (the server action) calls DELETE /courses/:id/enrollments/:userId with the trimmed reason as its body, or none
+      (the API keeps it in the audit row `enrollment.reject` and in the talebe's notice). The dialog stays open while it runs; its
+      "Reddet" is busy and Vazgeç, the close icon and Esc do nothing until it ends. The waiting row is deleted, so the talebe may apply
+      again, and is told. A success closes the dialog, removes the row, lowers the number and shows the toast "Başvuru reddedildi".
+      A 404 or 409 is the same error toast as above and the row and the dialog go; a 403 or any other failure leaves the dialog open
+      with what was typed, and an error toast says so (F-W1-13). A ban does not stop a rejection.
+    invoke: { action: rejectEnrollment }
+    on:
+      DONE:
+        - { guard: "row != 'gone' and typed", target: settled, effect: [rejectedWithReason], source: apps/nizam/features/dashboard/components/kosk-home.tsx:189 }
+        - { guard: "row != 'gone'", target: settled, effect: [rejectedWithNone], source: apps/nizam/features/dashboard/components/kosk-home.tsx:189 }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: apps/nizam/features/dashboard/components/kosk-home.tsx:187 }
+      FAIL.forbidden: { target: confirmReject, effect: [refused], source: apps/nizam/features/applications/present.ts:175 }
+      FAIL.other: { target: confirmReject, effect: [failed], source: apps/nizam/features/applications/present.ts:186 }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:169
+
+  settled:
+    title: The list follows the decision
+    description: >-
+      The row is taken off the list by the page itself, the number is lowered by one in its own state, and the server components are
+      read again (router.refresh), which recounts the sidebar's badge but not the list or the number, which are state copies made once
+      (HOME-2). The list is then the table or its empty line. No code moves the focus, and the pressed button is gone (F-W1-4).
+    always:
+      - { guard: nobodyWaits, target: empty }
+      - { target: listed }
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:124
+
+  no_access:
+    title: The page says "Bu bölüm için izniniz yok"
+    description: >-
+      A 403 or a 404 of the read: another köşk, or one that does not exist. The same screen with its 403, drawn and walked by
+      nizam.home.koskNazimLanding.
+    type: final
+    leavesPage: true
+
+  load_failed:
+    title: The home could not be read
+    description: "Any other failure of the read draws 'Ana sayfa okunamadı' with 'Yeniden dene' (page.tsx:32). Not reachable on the local stack."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-those-the-api-lets-decide
+    never: "state in ['confirmReject', 'approving', 'rejecting'] and mayDecide != 'may'"
+    say: A row is decided only where the API said the viewer may (canDecide); the buttons are not drawn otherwise.
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:356
+  - id: locked-has-no-card
+    never: "state in ['listed', 'empty', 'approving', 'confirmReject', 'rejecting'] and mayDecide == 'locked'"
+    say: A page read by platform.kosk_edit alone has no applicants card, so nothing is decided on it.
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:499
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and approval == 'needed'"
+    say: The empty line shows only when nothing waits, as far as the page was told (HOME-2 is where it was not).
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:510
+  - id: rows-mean-something-waits
+    never: "state == 'listed' and approval == 'none'"
+    say: The list is drawn only while an application waits.
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:505
+  - id: the-reason-lives-only-in-the-dialog
+    never: "state in ['listed', 'empty', 'approving', 'settled'] and typed"
+    say: What was written lives only in the open dialog; once the rejection is saved or the dialog is closed the field is empty again.
+    source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:40

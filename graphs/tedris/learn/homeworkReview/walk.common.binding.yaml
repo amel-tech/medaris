@@ -1,0 +1,81 @@
+# What every walk of tedris.learn.homeworkReview shares (graphs/README.md, "The stack and the bindings"): the throwaway course's ids as
+# data, the events a person types, reloads or someone else causes, the places the walk finds nodes by, and the checks of what a step
+# writes. The scenarios are in binding.yaml (the main story, the review not yet sent, a refused download) and binding.noteOnly.yaml
+# (a review with no file): one file for the scenarios that add no transition of their own, so that a `--to` run is bound to one of them
+# (a scenario that adds no transition is walked only from a file of its own).
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make hwreview ...) with `applicantH` holding a seat in it, and removes
+# it (course.mjs remove hwreview: the course, its celses, the homework, the hand-in, the review and its file row, the seat's mail and the
+# notifications that point at the course or its celses, the review's SUBMISSION_REVIEWED included). review-data.mjs (in this folder)
+# sets the hoca's homework, the talebe's hand-in, the returned file and the sent review through the API, as the people who write them;
+# its one SQL write is the file row, because the route that makes one needs a file store the stack lacks. No seeded course, celse,
+# homework, hand-in or talebe is touched. course.mjs writes graphs/.local/made/hwreview.json and review-data.mjs adds `submission` and
+# `reviewFile` to it, read here as {made.*}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.homeworkReview
+
+data:
+  made: { json: ../.local/made/hwreview.json }
+
+events:
+  # the talebe changes their own note: the text area of the form "Ödevim" ("Notun" is its label)
+  TYPE_NOTE:
+    - fill: { role: textbox, name: Notun, within: { role: region, name: Ödev }, value: '{edited}' }
+  # someone else: the hoca sends the review in nazar (nazar.homework.review); here the same call, as the hoca, through the API. The
+  # page does not know until it is read again
+  REVIEW_SENT:
+    - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, send, hwreview, note]
+      expect: 'review-data send'
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+states:
+  # the note is a server action: a POST to the page's own address, held while the busy button is checked
+  saving: { call: '{tedris}/courses/{course}/lessons/**' }
+  left: { url: '{tedris}/home' }
+
+nodes:
+  # the page's one <main>; "Ödevim" tells it from the page a walk leaves for
+  celsePage: { css: main, hasText: Ödevim }
+  # the state badge: the panel's own test id
+  handedInBadge: { css: '[data-testid="homework-state"]' }
+  loadingStatus: { css: output, hasText: Ödevin getiriliyor }
+  loadFailedAlert: { css: '[role="alert"]', hasText: Ödevin açılamadı }
+  # the busy button's hidden <output> and the line "Not kaydedildi." are both <output>: told apart by their words
+  savingStatus: { css: output, hasText: Kaydediliyor }
+  savedStatus: { css: output, hasText: Not kaydedildi. }
+  # the review block is a <div> with a test id of its own; everything of it is found inside it
+  reviewTitle: { role: heading, name: Hocanın değerlendirmesi }
+  reviewedBadge: { text: Değerlendirildi, within: { css: '[data-testid="homework-review"]' } }
+  # "<hoca> · <day month hh:mm>": the name is the hoca's own and the time is the walk's clock, so only the dot is exact
+  reviewBy: { css: '[data-testid="homework-review"] p', hasText: ' · ' }
+  changedNotice: { css: '[data-testid="homework-review"] .mds-alert', hasText: Ödevin değerlendirmeden sonra değişti }
+  changedNoticeBody: { text: Bu değerlendirme ödevinin önceki hâline yazıldı., within: { css: '[data-testid="homework-review"]' } }
+  reviewNote: { css: '[data-testid="review-note"]' }
+  reviewFilesTitle: { role: heading, name: Düzeltilmiş dosyalar }
+  reviewFilesList: { css: '[data-testid="review-files"]' }
+  reviewFile: { role: link, name: duzeltilmis-odev.pdf (indirilir), within: { css: '[data-testid="review-files"]' } }
+  reviewFileType: { css: '[data-testid="review-files"] .mds-badge' }
+  reviewFileSize: { css: '[data-testid="review-files"] .mds-num' }
+  # a Sonner toast has no role: found by its own attributes and its words; its title and its description are two elements
+  toastTitle: { css: '[data-sonner-toast] [data-title]', hasText: Dosya indirilemedi }
+  toastForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu dosyayı indirme iznin yok. }
+  toastNotFound: { css: '[data-sonner-toast] [data-description]', hasText: Bu dosya artık yok. }
+  toastUnavailable: { css: '[data-sonner-toast] [data-description]', hasText: Dosyalara şu an ulaşılamıyor. }
+  toastFailed: { css: '[data-sonner-toast] [data-description]', hasText: Bir sorun çıktı. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a step leaves outside the screen: the rows of the walk's own hand-in.
+effects:
+  # the hoca sends the review: reviewed_at and reviewed_by are set together (the table's own check), and the talebe is notified
+  sentNow:
+    - run: [node, helpers/sql.mjs, "select (reviewed_at is not null) as sent, review_note is not null as noted from lesson_submissions where lesson_id = '{lesson}' and user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"sent":true'
+    - run: [node, helpers/sql.mjs, "select type from notifications where user_id = '{secret.E2E_APPLICANT_H_SUB}' and target_id = '{lesson}'"]
+      expect: SUBMISSION_REVIEWED
+  # the talebe's own save: the note is the one typed, and the hand-in is now newer than the review (what the page's notice reads)
+  homeworkChanged:
+    - run: [node, helpers/sql.mjs, "select note, (updated_at > reviewed_at) as newer from lesson_submissions where lesson_id = '{lesson}' and user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"newer":true'

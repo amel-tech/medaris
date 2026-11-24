@@ -1,0 +1,75 @@
+# nazar.nazirs.dismiss on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002, dismissing a spare talebe account the
+# walk appointed a nazır (never the seeded nazır). The shared parts are in binding.common.yaml; this file is the main story and the two cases that add
+# transitions to it (one person listed, nobody listed).
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/dismiss --bind graphs/nazar/nazirs/dismiss/binding.yaml --main --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; the walk phase comes later.
+#
+# Scenarios, in the order a transition takes its shortest one:
+#   many   the story. A (APPLICANT_A, "Aylin Başvuran") holds madrasah.nazir_appoint and course_nazir.assign, appointed B ("Ferhat Başvuran") a medrese
+#          nazır and G ("Dilek Başvuran") a ders nazırı of the walk's own course "Deneme dersi dismiss". The dialog lists two rows; the walk answers B
+#          Devral and G Düşür, so B stays (now appointed by the başmüderris) and G's post ends. The e2e: dismiss#2 a5-a12, a14-a18, #3 a1-a6, a10.
+#   one    the same with B only: the one row has no partial state, so Devral is the whole answer (choosing -> answered).
+#   bare   A was just appointed and holds nothing: the dialog has no list and says so (dismiss#4's "seçilecek bir şey yok"; its nazır held a group, see
+#          binding.holder.yaml).
+# The walk's own course is made only for `many`; the others read `course: none`, so the check of G's post answers `none` without a request.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.nazirs.dismiss
+
+scenarios:
+  many:
+    given: { nazir: giverMany }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs menu' }
+    vars:
+      rows: '2'
+      course: '{made.course}'
+      expectB: 'nazir APPLICANT_B held, appointed by MEDRESE_BASMUDERRIS'
+      expectPost: 'ders APPLICANT_G none'
+      expectAudit: '"outcome":"1/1"'
+    setup:
+      - run: [node, helpers/course.mjs, make, dismiss, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi dismiss"'
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, up, --madrasah, '{seed.madrasah}', --nazir, applicantA, --case, giverMany, --medrese, applicantB, --ders, applicantG, --course, '{made.course}']
+        expect: 'ready: APPLICANT_A'
+    teardown:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, down, --madrasah, '{seed.madrasah}', --nazir, applicantA, --medrese, applicantB, --ders, applicantG, --course, '{made.course}']
+        expect: 'restored: APPLICANT_A'
+      - run: [node, helpers/course.mjs, remove, dismiss]
+        expect: 'course remove dismiss'
+  one:
+    given: { nazir: giverOne }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs menu' }
+    vars:
+      rows: '1'
+      course: none
+      expectB: 'nazir APPLICANT_B held, appointed by MEDRESE_BASMUDERRIS'
+      expectPost: 'ders APPLICANT_G none'
+      expectAudit: '"outcome":"1/0"'
+    setup:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, up, --madrasah, '{seed.madrasah}', --nazir, applicantA, --case, giverOne, --medrese, applicantB]
+        expect: 'ready: APPLICANT_A'
+    teardown:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, down, --madrasah, '{seed.madrasah}', --nazir, applicantA, --medrese, applicantB]
+        expect: 'restored: APPLICANT_A'
+  bare:
+    given: { nazir: bare }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs menu' }
+    vars:
+      rows: '0'
+      course: none
+      expectB: 'nazir APPLICANT_B none'
+      expectPost: 'ders APPLICANT_G none'
+      expectAudit: '"outcome":"0/0"'
+    setup:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, up, --madrasah, '{seed.madrasah}', --nazir, applicantA, --case, bare]
+        expect: 'ready: APPLICANT_A'
+    teardown:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, down, --madrasah, '{seed.madrasah}', --nazir, applicantA]
+        expect: 'restored: APPLICANT_A'

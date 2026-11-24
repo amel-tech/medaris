@@ -1,0 +1,59 @@
+# nazar.nazirs.permissions on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002 in a wide window (1440 x 900), the
+# başmüderris of "Hadis ve Siyer Medresesi" (Nuri Başmüderris) signed in through Keycloak's real form, and applicantF ("Tahsin Başvuran", a spare
+# talebe) as the nazır she gives permissions to. Everything the walk needs is its own and is made in `setup` and taken away in `teardown`
+# (see locators.binding.yaml); the seeded nazır, Seher Medrese Nazırı, is never given anything.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/nazirs/permissions \
+#     --bind graphs/nazar/nazirs/permissions/binding.yaml --main --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay (the owner moved every replay to the end). It loads: `replay --emit-spec` reads it and walks nothing.
+#
+# The two scenarios (`given` differs, so each is chosen by what it starts from):
+#   gives   the main story (e2e permissions#2 and #5, the end and the cancel of #4 and #6): the nazır holds nothing, "İzin ver: Tahsin Başvuran";
+#           PICK_GROUP, TICK_COURSE_PERMISSION, CHOOSE_CHOSEN, TICK_COURSE, TYPE_FUTURE_END, SAVE; the row says what was given; "İzinleri düzenle"
+#           opens it again as it was left. The branches are the same scenario's other paths: CHOOSE_CHOSEN with no course ticked, TYPE_PAST_END, and
+#           CANCEL (the cover walks each from the same start).
+#   holds   e2e permissions#3 and #1: `up --holds` gives the nazır the group, week.hide, the walk's course only and the end ahead, so the row's
+#           button is "İzinleri düzenle: Tahsin Başvuran" at once and the editor opens with what she holds; CLEAR_END and SAVE then hold something
+#           else (`held: other`), the row of which the graph does not draw.
+# What the cover cannot drive from these two: `reads: failed`, `answer: groupGone`, `answer: nazirGone`, `answer: refused` (each has its own small
+# file, because each only changes what happens before one button is pressed), and a nazır with no seat or with no grant (nazar.access.*).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.nazirs.permissions
+
+scenarios:
+  # The main story: the nazır holds nothing; a group, one single permission, the walk's course only and an end ahead; saved; opened again.
+  gives:
+    given: { row: awaiting, reads: ok, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm
+
+  # The nazır already holds the profile (the group, week.hide, the walk's course only, an end ahead): the editor opens with it (e2e permissions#3).
+  holds:
+    given: { row: holds, reads: ok, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up, --holds]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm

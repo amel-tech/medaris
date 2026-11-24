@@ -1,0 +1,46 @@
+# What the four walks of nazar.course.overview share: where the page's nodes are found, and where its exits lead. Nothing here
+# changes data; the scenarios (binding.yaml, binding.bare.yaml) make their own courses.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# and the catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.course.overview
+
+# a wide window, so that the course's sidebar (and its menu, which the main walk enters by) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The courses of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes. A tag is not the
+# start of another, so removing one never clears another's mails.
+data:
+  ovwMain: { json: ../.local/made/ovwMain.json }
+  ovwQuiet: { json: ../.local/made/ovwQuiet.json }
+  ovwBare: { json: ../.local/made/ovwBare.json }
+  ovwRoster: { json: ../.local/made/ovwRoster.json }
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  # RETRY (the face of a course that could not be read) is pressed on its button; nothing in the stack makes the read fail
+
+# `not_found` and `loadFailed` are not bound: tedrisat answers every read here, so the walk cannot reach them.
+states:
+  listed: { url: '{nazar}/ders/*' }
+  empty: { url: '{nazar}/ders/*' }
+  students_opened: { url: '{nazar}/ders/*/talebeler' }
+  homework_opened: { url: '{nazar}/ders/*/odevler' }
+  sessions_opened: { url: '{nazar}/ders/*/celseler' }
+  sessions_refused: { url: '{nazar}/ders/*/celseler', text: Bu sayfaya izniniz yok }
+  left: { url: '{nazar}/bildirimler' }
+
+# Where role and name cannot find a node. The title, the numbers and the time are data, so each is found by what its place on the page
+# says: the page's <main> by the title of one of the walks' courses (the page a walk leaves for has a <main> of its own), a number by its
+# card, the next celse's time by the pattern sessionTime() writes ("17 Kas Sal 21:00", in the course's zone).
+nodes:
+  overviewPage: { role: main, hasText: '/Deneme dersi (ovwMain|ovwQuiet|ovwBare|ovwRoster)/' }
+  courseTitle: { css: h1, hasText: '/^Deneme dersi (ovwMain|ovwQuiet|ovwBare|ovwRoster)/' } # its name ends with the state's badge
+  courseStatus: { testId: course-status, hasText: '/^(Yayında|Taslak)$/' }
+  openInTedris: { role: link, name: '/^Tedris’te aç/' }
+  valueApplications: { css: 'li:has(h3 a[href$="/talebeler"]) p', hasText: '/^\d+$/' }
+  valueHomework: { css: 'li:has(h3 a[href$="/odevler"]) p', hasText: '/^\d+$/' }
+  valueLacking: { css: 'li:has(h3 a:text-is("Katılım yolu eksik celse")) p', hasText: '/^\d+$/' }
+  valueNext: { css: 'li:has(h3 a:text-is("Sıradaki celse")) p', hasText: '/^\d{1,2}\s\S+\s\S+\s\d{2}:\d{2}$/' }

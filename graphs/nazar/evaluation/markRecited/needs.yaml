@@ -1,0 +1,180 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.evaluation.markRecited
+status: proposed
+summary: >-
+  What must exist for the course team to mark the homework a talebe recites to the hoca and for the talebe to read the mark: the
+  flow's product list, from its story (FLOWS.md) and from the domain's rules, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+# missing:  the-talebe-is-told-of-a-mark (none; decision D4), a-save-that-cannot-pass-says-why (none; MARK-1), keys-and-focus-stay-with-the-person
+# (none; F-D1-12, F-D1-27, MARK-2), a-mark-is-heard-by-a-screen-reader (none; MARK-4), the-note-limit-is-told (none; MARK-3),
+# a-cell-has-a-row-header (none; F-D1-22), the-board-can-be-downloaded (none; evaluation-export-invalid-path),
+# a-refused-download-is-worded (none; F-D1-13)
+# unwalked: see-who-is-marked (code, e2e evaluation#1 a3 to a5 only; no replay run yet), only-the-course-team-marks (the e2e of evaluation#2 and
+# #3 belongs to nazar.access.dersNazirPages; no replay run yet)
+# Nothing here is walked by a replay yet: the owner moved every replay to the end, so `walked` holds only e2e checks that exist today. The binding's
+# scenarios (ready, noColumns, noTalebe, refused, missing) are written and load; they are walked in the walk phase.
+# Nothing here carries a kontenjan or a gender rule: a mark decides no seat (MDRS-284 does not apply).
+
+needs:
+  - id: see-who-is-marked
+    need: >-
+      The course team reads, on one page, every talebe of the course against every homework recited to the hoca: "Bekliyor" until
+      the hoca has marked it, then the mark. A homework that is handed in as a file is no column, a course with no recited
+      homework or no seated talebe says which is missing and where to set it.
+    evidence:
+      - state: overview
+      - node: cellPending
+      - node: cellFull
+      - node: cellIncomplete
+      - node: cellAbsent
+      - node: columnButton
+      - state: noColumns
+      - state: noTalebe
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:68
+      - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:22
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
+
+  - id: mark-with-a-press-or-a-key
+    need: >-
+      The hoca opens one homework and marks each talebe "Tam", "Eksik" or "Vermedi" with one press or one key, with nothing to
+      confirm and nothing to save; the count of "Tam" follows at once, and a mark can be changed by another mark.
+    evidence:
+      - state: column
+      - state: marking
+      - node: chipFull
+      - node: chipIncomplete
+      - node: chipAbsent
+      - node: chipFullOn
+      - node: count
+      - node: countAll
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:172
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
+    note: Also drawn as the assertion a-save-sends-a-mark.
+
+  - id: a-note-goes-with-the-mark
+    need: >-
+      The hoca can write a short note of at most 280 characters with a mark, and change it, and the note is kept with the mark and
+      read with it; there is no note without a mark.
+    evidence:
+      - state: noting
+      - node: noteToggle
+      - node: noteToggleWritten
+      - node: noteInput
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:534
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
+    note: Also drawn as the assertion a-note-needs-a-mark.
+
+  - id: the-talebe-reads-their-own-mark
+    need: >-
+      What the hoca saved is what the talebe reads on their own celse page, and only their own: the same status and the same note.
+    evidence:
+      - state: marking
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:145
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:78
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the talebe marks nobody, themselves included, reads no board and hands no file in on a recited homework"
+
+  - id: only-the-course-team-marks
+    need: >-
+      Only a holder of session.manage in the course reads the board and marks; the müderris holds it by role and a ders nazırı by
+      grant. A ders nazırı with none sees no menu entry and, by its address, is refused; a talebe may mark nobody, themselves
+      included, and reads no board.
+    evidence:
+      - state: forbidden
+      - node: menuEvaluation
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:68
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
+      - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:33
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "a ders nazırı without session.manage has no Değerlendirme and is refused the page and the API"
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the talebe marks nobody, themselves included, reads no board and hands no file in on a recited homework"
+
+  - id: the-talebe-is-told-of-a-mark
+    need: >-
+      A talebe is told when the hoca has marked their recital, as they are told of a review of their hand-in or of released exam
+      results: a notification that leads to the celse, and the open celse page reads the mark again (decision D4;
+      tedris.learn.homeworkMemorize's D1).
+    missing: >-
+      no Linear issue; saveEvaluation writes an audit row and no notification (domain: "No notification"); no notification type
+      exists for a mark
+    note: >-
+      Drawn on the state marking, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-save-that-cannot-pass-says-why
+    need: >-
+      A save the API will never take (the homework is no longer recited, the talebe is no longer seated, the permission is gone)
+      says so in words, and the screen stops offering the press or reads the board again, instead of "Kaydedilemedi" and a name on
+      every press (MARK-1, decision D2).
+    missing: no Linear issue; MARK-1
+    note: >-
+      Drawn on the state marking and on the node toastSaveFailed, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: keys-and-focus-stay-with-the-person
+    need: >-
+      The focus is never lost to the document: opening a homework, going back and writing a note leave it on a place the keyboard
+      can use, and the keys 1, 2, 3 and the arrows keep working after a note; the list that takes the keys says so to a screen
+      reader and is described by its hint (F-D1-12, F-D1-27, MARK-2, decision D3).
+    missing: no Linear issue; F-D1-12, F-D1-27, MARK-2
+    note: >-
+      Drawn on the states column and noting and on the nodes talebeList and keysHint, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-mark-is-heard-by-a-screen-reader
+    need: >-
+      A mark made with a key, or one that changes no count ("Eksik" for "Vermedi"), is said aloud with the talebe's name and the
+      mark, not only the change in the number of "Tam" (MARK-4).
+    missing: no Linear issue; MARK-4
+    note: >-
+      Drawn on the nodes count and chipFullOn, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-note-limit-is-told
+    need: >-
+      The note's limit of 280 characters is told before the person meets it, and the box says what its placeholder "Not" is for
+      (MARK-3).
+    missing: no Linear issue; MARK-3
+    note: >-
+      Drawn on the node noteInput, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-cell-has-a-row-header
+    need: "A screen-reader user who reads a cell of the table hears whose it is: the talebe's name is the row's header (F-D1-22)."
+    missing: no Linear issue; F-D1-22
+    note: >-
+      Drawn on the node boardTable, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-board-can-be-downloaded
+    need: >-
+      "Excel indir" gives the board as a spreadsheet, a row for each talebe and a column for each recited homework and exam, in
+      the language of the viewer; there is a test that downloads it. Today the link always fails (evaluation-export-invalid-path).
+    missing: >-
+      no Linear issue; the route and tedrisat's exportEvaluationBoard exist; the route's path has a query the proxy refuses, so no
+      call reaches tedrisat
+    note: >-
+      Drawn on the state exporting and on the node downloadLink, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refused-download-is-worded
+    need: >-
+      A refused download says why on the page it came from, in a toast that stays until it is closed, and the address does not
+      keep the parameter (F-D1-13). Müfredat and Ödevler do it; Değerlendirme does not mount the notice.
+    missing: no Linear issue; F-D1-13
+    note: >-
+      Drawn on the states exporting and overview, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

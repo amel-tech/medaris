@@ -1,0 +1,392 @@
+# The course page of tedris-web (/courses/<id>), as the people who hold a relation to the course meet it: its programme (the tab
+# Müfredat), the card beside it, the resources and the tab Hocalar. Read from the code of the branch (captured) and walked on the
+# local stack on 15 Nov 2026; nothing here is a plan. What the page shares with other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   PROG-1   (new, proposed id) the tab is not in the address: `?tab=` is read once, a click never changes it, so a reload, or the
+#            way back, lands on another tab than the one being read, and after `?tab=muderrisler` a click on Müfredat leaves the
+#            address naming Hocalar. Walked: the main story reloads on Hocalar and meets Müfredat.
+#   PROG-2   (new, proposed id) the talebe of a passive scope is enrolled and shut out: the page says "Devam ediyor" and links the
+#            celses, and every mark, the resource links and two tabs are gone, with no word on why. The same case as MDRS-265, which
+#            is the celse page's half. Walked on the stack by passivating the course's scope.
+#   PROG-3   (new, proposed id) a week whose title is the default "Hafta N" says its number twice, on screen and in the button's
+#            name; the recordings tab hides such a title (MDRS-280, `isPlainWeekTitle`) and the programme does not.
+#   MDRS-265 an enrolled talebe of a passive course is told to apply on the celse page (tedris.celse.locked); here only PROG-2.
+#   CRS-08   the loading state is a bare aria-busy block, announced as nothing (loading.tsx:10-12); no screen of this flow.
+#   CRS-12   words that are not in the catalog: the breadcrumb's "Sayfa yolu", the row's ", tamamlandı".
+#   CRS-14   an enrolled card with no next celse, on a course with no resources, leaves no h2: the weeks' h3 follow the h1.
+#   CRS-15   in a draft's preview the sample row links to a section that is not drawn (tedris.course.draftPreview); not drawn here.
+#   CRS-17   the cover's Arabic word is read before the h1 when the course has a `coverLabel`; the walk's course has none.
+#   PROGRESS-2 (carried from tedris.course.updateProgress) at 100 the bar reads "%100 tamamlandı" while the badge says "Devam ediyor".
+#   PROGRESS-4 (new, provisional id) the bar's number is worked out only when a celse is completed, so a programme the team changes
+#            later, or a number typed before the counter, stays on the card until the talebe's next completed celse.
+# The card's progress and the programme's watch marks (MDRS-248, the "sayaç") are drawn here since 23 Nov 2026, when
+# tedris.course.updateProgress was retired with the window "İlerlemeni güncelle" it drew: the talebe no longer types a number, the
+# API counts it from the celses they watched (PUT /lessons/:id/view, sent by the watch page: tedris.celse.watchRecording), and this
+# page reads the records once, when it is drawn (GET /courses/:id/lesson-views). That flow's needs record-own-progress and
+# completion-is-the-teams are in this flow's needs.yaml; where its two other needs went, that file says at its top.
+# E2E carried: course#6 (the enrolled card, the weeks that open later, "İptal edildi", the deck tab), course#8 ("Derse devam et"),
+# course#9 (access withdrawn), exam#1 (the exam badge). Not carried: the assertions that the page HTML holds no meeting URL and no
+# closed source (course#9 a5, a6): the replay reads the page as a person does.
+schema: delurio-graph/0
+kind: flow
+id: tedris.course.readProgramme
+status: captured
+domain: medaris.api
+ui: tedris.course.readProgramme
+title: Read a course's programme, as the person who holds a seat, waits, or has lost it
+summary: >-
+  A signed-in talebe opens a course. The page reads the course once, with their token, and draws it for what the API lets them
+  read: the programme is public, its content is not. A talebe who holds a seat (enrolled or completed) sees the card with the
+  next celse, "Derse devam et" and their progress, counted from the celses they watched; every week that has begun opens its
+  celses as links, the celses of a week that has not begun carry a lock and say when it opens, and the rows carry how far the talebe
+  watched the celse ("İzlendi", "%63 izlendi" or "Kaldığın yer 0:12") and what the hoca set: "İptal edildi" with its note, "Sınav"
+  with the days left, "Ödev" and "Ödev teslim edilmedi". Someone whose application waits, or whose seat was taken away, sees the same
+  programme with every week locked except the sample celse, the names of the resources with no address, and a card that says why.
+  The tabs sit under the card; Müfredat and Hocalar are this flow's, the other four are other flows' and are reached by their
+  buttons. The tab chosen is not kept in the address (PROG-1).
+
+scope:
+  shows: the course page's header, its card for each relation to the course, the resources card, the tab list, and the tabs Müfredat and Hocalar with the sample celse
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the visitor's card (\"Başvurmak için giriş yap\") and the programme as a visitor reads it: tedris.discover.visitorPath; the card of a signed-in person with no enrolment (\"Kayıt ol\", the window after it, the pending card's withdrawal): tedris.course.apply. They draw the same locked programme as a waiting talebe does"
+    - "the tabs \"Ders kayıtları\", \"Ders destesi\", \"Sorularım\" and \"Notlarım\": their buttons are drawn here and lead to tedris.course.recordings, .deckTab, tedris.learn.questions and tedris.course.grades; the count in a tab's name (recordings, decks) is not drawn"
+    - "the menu \"Diğer işlemler\" with its leave window and the menu \"Takvime ekle\": drawn as buttons, owned by tedris.course.leave and tedris.learning.addToCalendar"
+    - "how the watching is counted: the watch page reports where the player is (tedris.celse.watchRecording) and the API works the progress out; this page reads the records once, when it is drawn, so a celse watched in another tab shows at the next read"
+    - "the draft's preview (a banner, a card and no apply button) and the not-found page for a draft: tedris.course.draftPreview, tedris.shell.systemPages"
+    - "the celse that is on air now (\"Sıradaki · Şu an canlı\", the badge \"Şu an canlı\", no calendar button) and the lines under a celse's time that say it is in person or streamed (tedris.celse.attend); `ahead` draws only the line for a celse with no link"
+    - "the facts list of the pending card (the span of weeks, the weekly rhythm) and the course's description, its cover and its hoca's name: course data"
+    - "a course of a medrese, which also links the medrese (tedris.discover.readMadrasah); the walk's course is a köşk's own"
+    - "a köşk read that fails (no breadcrumb, and the apply card falls back to the course's own approval setting): the page's other read, `GET /kosks/:id`, is not drawn"
+    - "the file resources of a course (a download through /api/files, tedris.files.download) and the toast that a refused download leaves (`?fileError=`)"
+    - "the phone layout, where the cards come between the header and the tabs, and the pager of the long week list"
+
+decisions:
+  D1:
+    question: >-
+      Should the tab being read be in the address, so that a reload, a shared link and the way back land on it (PROG-1)?
+    recommend: >-
+      Yes: write `?tab=` with history.replaceState when a tab is chosen (and drop it for Müfredat). The value is already read, once,
+      from the address (page.tsx:105, course-page.tsx:202-206), so nothing else changes.
+    affects: [teachers, curriculum]
+  D2:
+    question: >-
+      What should the page tell an enrolled talebe of a passive scope, whose content is closed (PROG-2, MDRS-265)?
+    recommend: >-
+      Say it on the card: "Devam ediyor" is wrong while the content is shut. A line under the badge ("Bu dersin içeriği şu an
+      kapalı") and no "Derse devam et", since the celse page it opens offers an application that changes nothing.
+    affects: [curriculum]
+
+context:
+  read:
+    values: [ok, gone, failed]
+    initial: any
+    say:
+      ok: "the API answers with the course"
+      gone: "the API says there is no such course for this caller (404, 403, or a malformed id: 400)"
+      failed: "the API does not answer, or answers 5xx"
+  who:
+    values: [enrolled, enrolledPassive, completed, pending, revoked]
+    initial: any
+    say:
+      enrolled: "they hold a seat and the content is open to them"
+      enrolledPassive: "they hold a seat, and the course's scope is passive, so the API keeps its content from them as it does from a stranger"
+      completed: "the course team marked their seat completed; the content stays open while the course runs"
+      pending: "their application waits for the course team"
+      revoked: "the course team took their seat away"
+  ahead:
+    values: [none, noLink, linked]
+    initial: any
+    say:
+      none: "no celse is left ahead that was not cancelled"
+      noLink: "the next celse is a live one with no meeting link, which the card says in a line"
+      linked: "the next celse has its link, so the card says nothing under its time"
+  course:
+    values: [plain, rich]
+    initial: any
+    say:
+      plain: "the course has no resource, no sample celse, and none of the marks below"
+      rich: "the course lists a resource, has a sample celse, and has a cancelled celse with a note, an exam still ahead, homework to hand in and homework to recite"
+  tabParam:
+    values: [none, teachers]
+    initial: any
+    say:
+      none: "the address has no `?tab=`, or one that names no tab the person has"
+      teachers: "the address is `?tab=muderrisler`"
+  views:
+    values: [none, timed, untimed]
+    initial: any
+    say:
+      none: "the talebe has played no celse of the course past its first seconds, or the read of their watch records failed or was refused (a passive scope: LESSON_VIEW_FORBIDDEN); the rows carry no watch mark"
+      timed: "the talebe watched one celse to its end (or nine tenths of it) and stopped part way in another whose length the player reported: \"İzlendi\" on the first, \"%63 izlendi\" on the second"
+      untimed: "as timed, but the player never reported the second one's length: that row says where they stopped, \"Kaldığın yer 0:12\""
+  shut:
+    values: [closed, opened]
+    initial: closed
+    say:
+      closed: "the weeks are as the page opened them"
+      opened: "the person opened a week that is shut, and its celses show"
+
+guards:
+  seat: "who in ['enrolled', 'enrolledPassive', 'completed']"
+  contentOpen: "who in ['enrolled', 'completed']"
+  enrolledCard: "who in ['enrolled', 'enrolledPassive']"
+  completedCard: "who == 'completed'"
+  pendingCard: "who == 'pending'"
+  revokedCard: "who == 'revoked'"
+  celseAhead: "ahead != 'none'"
+  noLinkAhead: "ahead == 'noLink'"
+  rich: "course == 'rich'"
+  opensOnTeachers: "tabParam == 'teachers'"
+  weekShut: "shut == 'closed'"
+  weekOpened: "shut == 'opened'"
+  canContinue: "seat and celseAhead"
+  canContinueOpen: "contentOpen and celseAhead"
+  canContinuePassive: "who == 'enrolledPassive' and celseAhead"
+  canCalendar: "enrolledCard and celseAhead"
+  showsResource: "rich and contentOpen"
+  watchMarks: "contentOpen and views != 'none'"
+
+effects:
+  openWeek: { set: { shut: opened } }
+  closeWeek: { set: { shut: closed } }
+
+failures:
+  reading:
+    from: getCourse
+    gone: [COURSE_NOT_FOUND, HTTP_400]
+    unreadable: []
+# `unreadable` stands for any answer but the three the page maps to "no such course" (400, 403, 404): the domain lists no code for a
+# 5xx or a network error, and `getCourse` rethrows them (features/courses/actions/index.ts:78-84).
+
+# The main story: an enrolled talebe opens the course, opens a week that has not begun, reads Hocalar, reloads and finds Müfredat
+# again, and follows "Derse devam et" to the celse.
+main:
+  given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: none, views: none }
+  events: [DONE, OPEN_WEEK, OPEN_TEACHERS, RELOAD, DONE, CONTINUE]
+
+initial: reading
+states:
+  reading:
+    title: Read the course
+    description: >-
+      The layout reads GET /courses/:id with the caller's token before anything streams (a 404 is a real 404), and the page shares
+      that one read (`loadCourse` is a `cache`). The page also reads the köşk (breadcrumb, approval), the recordings, the homework
+      hand-ins (only for someone who may hand in on a course that has homework) and, for a seat holder, the decks, the grades and
+      their own watch records (GET /courses/:id/lesson-views, which a passive scope refuses; a failed read draws no watch mark);
+      none of those is drawn as a step. While they run `loading.tsx` shows a block of skeletons marked aria-busy and nothing else
+      (CRS-08). The API decides what the caller may read: for a talebe with no seat, and for one in a passive scope, it removes the
+      content keys and says `contentLocked`; the page draws what is left. No screen of its own.
+    source: apps/tedris/app/courses/[courseId]/layout.tsx:26
+    invoke: { action: getCourse }
+    on:
+      DONE: { guard: "read == 'ok'", target: arriving }
+      FAIL.gone: { guard: "read == 'gone'", target: not_found_page, starts: { flow: tedris.shell.systemPages, given: { arrival: "'missingCourse'", person: "'member'" } }, say: "the layout answers the not-found page before the page streams", source: apps/tedris/features/courses/load-course.ts:33 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: error_page, starts: { flow: tedris.shell.systemPages, given: { arrival: "'pageThrows'", person: "'member'" } }, say: "the read throws in the layout, so the root's error boundary draws", source: apps/tedris/app/error.tsx:12 }
+
+  arriving:
+    title: Choose the tab the page opens on
+    description: >-
+      `?tab=` is read once, from the address, when the page is drawn (course-page.tsx:202-206): a value that names a tab the person
+      has opens it, any other value opens Müfredat. Only `muderrisler` is this flow's; `kayitlar`, `deste`, `sorularim` and
+      `notlarim` open the tabs of other flows at their own address. A classification, with no screen.
+    source: apps/tedris/features/courses/components/course-page.tsx:202
+    always:
+      - { guard: opensOnTeachers, target: teachers, say: "the address says muderrisler" }
+      - { target: curriculum, say: "no `?tab=`, or one that opens nothing" }
+
+  curriculum:
+    title: Read the programme
+    by: human
+    goal: true
+    description: >-
+      The page with the tab Müfredat selected. Header: the breadcrumb, the title, the line with the köşk, "4 hafta · 7 celse · 6
+      saat" (a cancelled celse is not counted). The card on the right is the person's: for a seat holder "Devam ediyor" (or
+      "Tamamlandı"), the next celse, "Derse devam et" (or "Celse sayfasını aç"), "Takvime ekle", and on the enrolled card the
+      progress bar "Ders ilerlemen" with its percent, the share of the course's celses the talebe watched as the API last worked it
+      out (PROGRESS-4), and the note that it is counted from the celses watched and that the course team confirms the completion; for a waiting application "Onay bekliyor" and a second card with the next celse and the sentence that the content
+      opens on enrolment; for a taken-away seat the lock card and "Derslerime dön". Under it the resources card, then the tab list:
+      six tabs for a seat holder, three (Müfredat, Ders kayıtları, Hocalar) for anyone else, four for a passive seat (no Sorularım,
+      no Notlarım, PROG-2). The programme: a caption, a count of homework not handed in (a seat holder with open content only), and one
+      accordion item per week. The weeks open at first as the page decides: for a seat holder the active week, for anyone else
+      the sample celse's week and the week of the next celse. A seat holder's rows of a week that has begun are links with "Sıradaki"
+      on the next one, and each celse they played past its first ten seconds says how far, before its other mark: "İzlendi" once the
+      API counted it watched, else the share played ("%63 izlendi") while its length is known, else where they stopped ("Kaldığın yer
+      0:12"); a week that has not begun says "<date> tarihinde açılır" and its rows carry a lock and no link; for anyone
+      else every week but the sample's is locked, "kilitli" is in its name, and every row but the sample's carries a lock. A cancelled
+      celse keeps its title with "İptal edildi" for everyone, and the hoca's note only for open content. The exam, homework and
+      source of a celse are content: they are not sent to a person with no open content, so the marks are not drawn for them. Under
+      the tabs, for someone who holds no seat and when the course has one, the block "Örnek celse" with its agenda and source. The page
+      sets no initial focus: it stays on the document (`focus-not-set`). A week's number is said twice where its title is "Hafta N"
+      (PROG-3). The address keeps the tab it opened on (PROG-1).
+    includes:
+      - "the breadcrumb and the header"
+      - "the card for each of the five relations to the course"
+      - "the resources card and its locked sentence"
+      - "the weeks, the rows and their marks"
+      - "the sample celse"
+    source: apps/tedris/features/courses/components/course-page.tsx:408
+    on:
+      OPEN_WEEK: { guard: weekShut, target: curriculum, effect: [openWeek], say: "they open a week that is shut: its rows show, locked", source: libs/ui/src/mds/week-accordion.tsx:115 }
+      CLOSE_WEEK: { guard: weekOpened, target: curriculum, effect: [closeWeek], say: "they close it again", source: libs/ui/src/mds/week-accordion.tsx:115 }
+      OPEN_CURRICULUM: { target: curriculum, say: "the tab already shown: Base UI ignores a press on the selected tab, and the weeks stay as they are", source: libs/ui/src/mds/tabs.tsx:110 }
+      OPEN_TEACHERS: { target: teachers, effect: [closeWeek], say: "the tab Hocalar: the panel of Müfredat is taken out of the page, and the weeks it had opened are forgotten", source: libs/ui/src/mds/tabs.tsx:110 }
+      CONTINUE:
+        - { guard: canContinueOpen, target: celse_opened, starts: { flow: tedris.celse.attend }, say: "\"Derse devam et\" (\"Celse sayfasını aç\" when the seat is completed) goes to the next celse's page", source: apps/tedris/features/courses/components/course-aside.tsx:288 }
+        - { guard: canContinuePassive, target: celse_locked_opened, starts: { flow: tedris.celse.locked }, say: "the same link, for a talebe of a passive scope: the celse page offers them an application (MDRS-265)", source: apps/tedris/features/courses/components/course-aside.tsx:288 }
+      OPEN_ROW:
+        - { guard: contentOpen, target: celse_opened, starts: { flow: tedris.celse.attend }, say: "a row of a week that has begun is a link to its celse", source: apps/tedris/features/courses/components/course-programme.tsx:148 }
+        - { guard: "who == 'enrolledPassive'", target: celse_locked_opened, starts: { flow: tedris.celse.locked }, say: "the same row, for a talebe of a passive scope (MDRS-265)", source: apps/tedris/features/courses/components/course-programme.tsx:148 }
+      OPEN_RECORDINGS: { target: recordings_tab_opened, starts: { flow: tedris.course.recordings }, say: "the tab Ders kayıtları, in place", source: apps/tedris/features/courses/components/course-page.tsx:437 }
+      OPEN_DECK: { guard: seat, target: deck_tab_opened, starts: { flow: tedris.course.deckTab }, say: "the tab Ders destesi, in place", source: apps/tedris/features/courses/components/course-page.tsx:459 }
+      OPEN_QUESTIONS: { guard: contentOpen, target: questions_tab_opened, starts: { flow: tedris.learn.questions }, say: "the tab Sorularım, in place", source: apps/tedris/features/courses/components/course-page.tsx:468 }
+      OPEN_GRADES: { guard: contentOpen, target: grades_tab_opened, starts: { flow: tedris.course.grades }, say: "the tab Notlarım, in place, when the grades were read", source: apps/tedris/features/courses/components/course-page.tsx:478 }
+      OPEN_LEAVE_MENU: { guard: enrolledCard, target: leave_menu_opened, starts: { flow: tedris.course.leave }, say: "\"Diğer işlemler\" opens the menu with \"Dersten ayrıl\"", source: apps/tedris/features/courses/components/course-aside.tsx:277 }
+      OPEN_CALENDAR_MENU: { guard: canCalendar, target: calendar_menu_opened, starts: { flow: tedris.learning.addToCalendar }, say: "\"Takvime ekle\" opens its menu", source: apps/tedris/features/courses/components/course-aside.tsx:295 }
+      BACK_TO_COURSES: { guard: revokedCard, target: my_courses_opened, starts: { flow: tedris.learning.myCourses }, say: "\"Derslerime dön\" goes to Derslerim", source: apps/tedris/features/courses/components/course-aside.tsx:212 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the köşk's name, in the breadcrumb or in the line under the title, goes to its page", source: apps/tedris/features/courses/components/course-page.tsx:223 }
+      OPEN_RESOURCE: { guard: showsResource, target: curriculum, say: "a resource with an address opens it in a new tab; this tab stays", source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+      RELOAD: { target: reading, effect: [closeWeek], say: "the page is read again and chooses its tab from the address once more (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:202 }
+      NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
+
+  teachers:
+    title: Read the hocas
+    by: human
+    description: >-
+      The tab Hocalar: one compact card per müderris with their name (with the unvan of this course) and their bio. No heading, no
+      control. The header, the card, the resources card and the tab list are the page's and stay as they were; the panel of Müfredat
+      is not in the page (a Base UI tab panel is unmounted while it is not selected), so the weeks come back as the page opens them
+      when Müfredat is chosen again. The address does not change when the tab does (PROG-1): after the tab opened by `?tab=muderrisler`
+      and a click on Müfredat the address still says muderrisler, and after a click on Hocalar it still says nothing, so a reload
+      lands on Müfredat. Focus stays on the tab button that was pressed.
+    source: apps/tedris/features/courses/components/course-page.tsx:483
+    on:
+      OPEN_TEACHERS: { target: teachers, say: "the tab already shown: Base UI ignores a press on the selected tab, and nothing changes", source: libs/ui/src/mds/tabs.tsx:110 }
+      OPEN_CURRICULUM: { target: curriculum, effect: [closeWeek], say: "the tab Müfredat, in place; the address is not touched", source: libs/ui/src/mds/tabs.tsx:110 }
+      CONTINUE:
+        - { guard: canContinueOpen, target: celse_opened, starts: { flow: tedris.celse.attend }, say: "\"Derse devam et\" is the card's, and the card stays", source: apps/tedris/features/courses/components/course-aside.tsx:288 }
+        - { guard: canContinuePassive, target: celse_locked_opened, starts: { flow: tedris.celse.locked }, say: "the same, for a talebe of a passive scope (MDRS-265)", source: apps/tedris/features/courses/components/course-aside.tsx:288 }
+      OPEN_RECORDINGS: { target: recordings_tab_opened, starts: { flow: tedris.course.recordings }, say: "the tab Ders kayıtları, in place", source: apps/tedris/features/courses/components/course-page.tsx:437 }
+      OPEN_DECK: { guard: seat, target: deck_tab_opened, starts: { flow: tedris.course.deckTab }, say: "the tab Ders destesi, in place", source: apps/tedris/features/courses/components/course-page.tsx:459 }
+      OPEN_QUESTIONS: { guard: contentOpen, target: questions_tab_opened, starts: { flow: tedris.learn.questions }, say: "the tab Sorularım, in place", source: apps/tedris/features/courses/components/course-page.tsx:468 }
+      OPEN_GRADES: { guard: contentOpen, target: grades_tab_opened, starts: { flow: tedris.course.grades }, say: "the tab Notlarım, in place, when the grades were read", source: apps/tedris/features/courses/components/course-page.tsx:478 }
+      OPEN_LEAVE_MENU: { guard: enrolledCard, target: leave_menu_opened, starts: { flow: tedris.course.leave }, say: "\"Diğer işlemler\" opens the menu with \"Dersten ayrıl\"", source: apps/tedris/features/courses/components/course-aside.tsx:277 }
+      OPEN_CALENDAR_MENU: { guard: canCalendar, target: calendar_menu_opened, starts: { flow: tedris.learning.addToCalendar }, say: "\"Takvime ekle\" opens its menu", source: apps/tedris/features/courses/components/course-aside.tsx:295 }
+      BACK_TO_COURSES: { guard: revokedCard, target: my_courses_opened, starts: { flow: tedris.learning.myCourses }, say: "\"Derslerime dön\" goes to Derslerim", source: apps/tedris/features/courses/components/course-aside.tsx:212 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the köşk's name goes to its page", source: apps/tedris/features/courses/components/course-page.tsx:223 }
+      OPEN_RESOURCE: { guard: showsResource, target: teachers, say: "a resource with an address opens it in a new tab; this tab stays", source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+      RELOAD: { target: reading, effect: [closeWeek], say: "the page is read again and opens on the tab its address names: Müfredat, unless the address says muderrisler (PROG-1)", source: apps/tedris/features/courses/components/course-page.tsx:202 }
+      NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
+
+  celse_opened:
+    title: The celse page opens
+    type: final
+    leavesPage: true
+    description: >-
+      The link goes to /courses/<id>/lessons/<celse>, a full page load (a plain `<a>`, not the router): tedris.celse.attend takes
+      over. For "Derse devam et" the celse is the next one that was not cancelled; for a row it is that row's.
+
+  celse_locked_opened:
+    title: The celse page opens, and tells an enrolled talebe to apply
+    type: final
+    leavesPage: true
+    description: >-
+      The same link, for a talebe whose scope is passive: the celse page is the locked one with the reason `apply`, an application
+      button that changes nothing (MDRS-265, PROG-2). tedris.celse.locked draws it. Walked: the page opened with the sentence "Ders
+      içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." over "Kayıt
+      başvurusu yap" for an enrolled talebe, and the address matched; what the page draws is that flow's.
+
+  recordings_tab_opened:
+    title: The tab Ders kayıtları is selected
+    type: final
+    description: The panel is the recordings tab of tedris.course.recordings. The address stays as it was (PROG-1).
+
+  deck_tab_opened:
+    title: The tab Ders destesi is selected
+    type: final
+    description: The panel is the deck tab of tedris.course.deckTab, for a seat holder only. The address stays as it was (PROG-1).
+
+  questions_tab_opened:
+    title: The tab Sorularım is selected
+    type: final
+    description: The panel is the question tab of tedris.learn.questions, for a talebe whose content is open. The address stays as it was (PROG-1).
+
+  grades_tab_opened:
+    title: The tab Notlarım is selected
+    type: final
+    description: The panel is the grades tab of tedris.course.grades, for a talebe whose content is open and whose grades were read. The address stays as it was (PROG-1).
+
+  leave_menu_opened:
+    title: The menu with "Dersten ayrıl" is open
+    type: final
+    description: tedris.course.leave takes over, on the same page.
+
+  calendar_menu_opened:
+    title: The menu "Takvime ekle" is open
+    type: final
+    description: tedris.learning.addToCalendar takes over, on the same page.
+
+  my_courses_opened:
+    title: Derslerim opens
+    type: final
+    leavesPage: true
+    description: tedris.learning.myCourses takes over. "Derslerime dön" is a link to /my-courses.
+
+  kosk_opened:
+    title: The köşk's page opens
+    type: final
+    leavesPage: true
+    description: tedris.discover.readKosk takes over.
+
+  not_found_page:
+    title: The not-found page
+    type: final
+    leavesPage: true
+    description: >-
+      A 400, 403 or 404 (no such course, a draft or a hidden course this person may not open) is `null`, and the layout
+      calls notFound(): a real 404 before any byte of the page (load-course.ts:33; this flow's person is signed in, and a visitor
+      would be sent to sign in instead, :31-32). tedris.shell.systemPages draws it.
+
+  error_page:
+    title: The error page
+    type: final
+    leavesPage: true
+    description: >-
+      Any other failure of the read throws in the layout, and the root's boundary draws "Bir şeyler ters gitti" under the old header
+      (SHL-06). tedris.shell.systemPages draws it.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-seat-holder-continues
+    never: "state in ['celse_opened', 'celse_locked_opened'] and not seat"
+    say: "A person with no seat never leaves for a celse from this page: a waiting application and a taken seat have no \"Derse devam et\" and no linked row"
+    source: apps/tedris/features/courses/components/course-programme.tsx:125
+  - id: passive-seat-meets-the-locked-celse
+    never: "state == 'celse_opened' and who == 'enrolledPassive'"
+    say: "An enrolled talebe of a passive scope reaches the celse page that offers them an application, never the open one (MDRS-265)"
+    source: apps/tedris/features/courses/components/course-aside.tsx:288
+  - id: only-the-revoked-go-back
+    never: "state == 'my_courses_opened' and who != 'revoked'"
+    say: "\"Derslerime dön\" is the taken-away seat's card alone"
+    source: apps/tedris/features/courses/components/course-aside.tsx:212
+  - id: only-an-enrolled-card-has-the-menu
+    never: "state == 'leave_menu_opened' and not enrolledCard"
+    say: "The leave menu is on the enrolled card only: the completed card has none, and nobody else has a card with it"
+    source: apps/tedris/features/courses/components/course-aside.tsx:270
+  - id: no-deck-tab-without-a-seat
+    never: "state == 'deck_tab_opened' and not seat"
+    say: "The tab Ders destesi is drawn for a seat holder alone"
+    source: apps/tedris/features/courses/components/course-page.tsx:186
+  - id: questions-and-grades-need-open-content
+    never: "state in ['questions_tab_opened', 'grades_tab_opened'] and not contentOpen"
+    say: "Sorularım and Notlarım are drawn only where the content is open: not for a waiting or taken-away talebe, and not for a passive seat"
+    source: apps/tedris/features/courses/components/course-page.tsx:174
+  - id: week-opened-only-while-reading-the-programme
+    never: "state == 'teachers' and shut == 'opened'"
+    say: "The weeks a person opened are gone once another tab is selected, because the panel is unmounted"
+    source: libs/ui/src/mds/tabs.tsx:129

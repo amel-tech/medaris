@@ -1,0 +1,37 @@
+# nizam.courses.open, the walk of "the celses are refused after the course was made": the schedule is 52 weeks of four days (Pzt, Sal, Çar,
+# Per), 208 celses, and a batch holds at most 200 (apps/tedrisat/src/course/domain/weekly-pattern.ts:16, 177), so tedrisat answers 400
+# INVALID_SESSION_PATTERN to the second call of the press. The course is made first and stays, with no celse; the page lands on the course's
+# Celse planla with the toast "Ders açıldı, celseler eklenemedi" (F-W4-open-2, F-W4-open-4).
+#   ... replay graphs/nizam/courses/open --bind graphs/nizam/courses/open/binding.sessionsFailed.yaml --cover transitions --out <dir>
+#
+# NOT RUN (see binding.yaml). It is a file of its own because the events that fill the schedule are different from the main story's:
+# `PICK_DAY` presses four chips here, and `SET_DATE` types 52 for the weeks. The data is binding.yaml's: a köşk of the walk's own, removed with
+# its course in `teardown`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.open
+
+events:
+  SET_DATE:
+    - fill: { label: Başlangıç tarihi, value: '{startDate}' }
+    - fill: { role: spinbutton, name: '/^Süre \(hafta\)/', value: '{weeks}' }
+  PICK_DAY:
+    - click: { role: button, name: Pzt }
+    - click: { role: button, name: Sal }
+    - click: { role: button, name: Çar }
+    - click: { role: button, name: Per }
+
+scenarios:
+  sessionsFailed:
+    given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: free, answer: sessionsFailed }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '52', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":0' }

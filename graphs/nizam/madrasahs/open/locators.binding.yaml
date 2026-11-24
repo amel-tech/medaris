@@ -1,0 +1,72 @@
+# What every binding of nizam.madrasahs.open shares: the events no node sends, where role and name cannot find a node, where the exits are, and
+# what a step leaves outside the screen. It names no scenario: binding.yaml and binding.medarisNazim.yaml each extend it and give their own,
+# because a scenario that takes no transition of its own (the same story by another person) is not walked by `--cover transitions`
+# and needs a run of its own (see binding.yaml).
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every locator is unverified until a walk, and every
+# behaviour of the page is from the code, read on 15 Nov 2026. What was seen by a read-only look: the SQL of `effects` (the same selects were
+# run against the seed's own medrese and answer as `expect` says), and nothing of the page in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.madrasahs.open
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The last fill leaves Ad and Kısa ad, so that a
+  # message that waits for the field to be left (an empty name, one letter, a short name that is not allowed) is on screen
+  FILL_IN:
+    - fill: { role: textbox, name: Ad, value: '{madrasahName}' }
+    - fill: { role: textbox, name: Kısa ad, value: '{madrasahHandle}' }
+    - fill: { role: textbox, name: Açıklama, value: '{madrasahDescription}' }
+  # the address is searched on Enter (it is also searched when the field is left, and only once for an address)
+  SEARCH:
+    - fill: { role: textbox, name: Başmüderris, value: '{headEmail}' }
+    - key: Enter
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  ESCAPE:
+    - key: Escape
+  # NAVIGATE goes to the home page, where the başnazım and a Medaris nazımı land
+  NAVIGATE:
+    - goto: '{nizam}/'
+
+nodes:
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the new row: its first cell holds the name and "@short name" in two <bdi>, so each is found by what it contains, in the row of the walk's own medrese
+  newRow: { role: rowheader, hasText: '{madrasahName}' }
+  newRowHandle: { role: rowheader, hasText: '@{rowHandle}' }
+  newRowHead: { role: cell, hasText: '{headName}', within: { role: row, hasText: '{madrasahName}' } }
+  newRowStatus: { role: cell, hasText: Etkin, within: { role: row, hasText: '{madrasahName}' } }
+  # sonner's toasts: found by their own hook and what they say
+  savedTitle: { css: '[data-sonner-toast]', hasText: Medrese açıldı }
+  failedTitle: { css: '[data-sonner-toast]', hasText: Medrese açılamadı }
+  failedSelfNamed: { css: '[data-sonner-toast]', hasText: Size verilmiş bir rolü ya da izni devralamazsınız }
+  failedForbidden: { css: '[data-sonner-toast]', hasText: Bunu yapma izniniz yok }
+  failedGeneric: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti }
+
+states:
+  # the exits are checked by their address; `call` is on none of the steps: the lookup and the creation are Next server actions, which
+  # answer 200 on the page's own address whatever they say, so the walk could not compare a refusal's status (and the busy screens are
+  # checked as they are when the walk gets there)
+  opened: { url: '{nizam}/medreseler**' }
+  left: { url: '{nizam}/' }
+
+# What a step leaves outside the screen. Read straight from tedrisat's database through helpers/sql.mjs, which these selects only read.
+effects:
+  # the search is written to the audit log, found or not (madrasahs.e2e.ts#7 counts it): the newest user.lookup of the address says which
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select details->>'found' as found from audit_log where action = 'user.lookup' and details->>'email' = lower('{headEmail}') order by seq desc limit 1"]
+      expect: '"found":"{lookupFound}"'
+  # the medrese exists once, its başmüderris is the chosen account and the audit row madrasah.create is its own (madrasahs.e2e.ts#7)
+  createMadrasah:
+    - run: [node, helpers/sql.mjs, "select count(*) as made, bool_and(ra.user_id::text = '{headSub}') as head, bool_and(exists (select 1 from audit_log a where a.action = 'madrasah.create' and a.entity_id::text = m.id::text)) as audited from madrasahs m join role_assignments ra on ra.scope_id = m.id and ra.role = 'MEDRESE_BASMUDERRIS' and ra.revoked_at is null where m.name = '{madrasahName}'"]
+      expect: '"made":1,"head":true,"audited":true'
+  # a refused short name writes nothing: the one medrese that holds it is still the only one (madrasahs.e2e.ts#7)
+  handleRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from madrasahs where handle = '{madrasahHandle}'"]
+      expect: '"n":1'
+  # a refused self-naming writes no medrese
+  selfNamedToast:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from madrasahs where name = '{madrasahName}'"]
+      expect: '"n":0'

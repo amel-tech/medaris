@@ -1,0 +1,328 @@
+# Appointing a medrese nazırı, from "Medrese nazırları" in nazar-web (/medrese/<id>/nazirlar), read from the code of PR #394 on
+# 15 Nov 2026 (apps/nazar/features/nazirs/components/{nazirs-page,nazirs-table,appoint-nazir}.tsx, nazirs.ts, actions.ts; the
+# API's GET /users/lookup, GET /madrasahs/:id/nazirs and POST /madrasahs/:id/nazirs/:userId). Nothing here was walked in a
+# browser: every behaviour is "from the code" until the walk phase, and the unit tests named in needs.yaml are the only runs.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - The başmüderris finds the person by their exact e-mail address in the realm's directory, which holds people who never opened
+#     the app too. The person is appointed holding nothing; the band "<name> henüz izin almadı" appears or counts one more.
+#   - The address is searched on Enter and also when the field is left, and tedrisat audits every search, found or not
+#     (APPOINT-3). Text that cannot be an address is never searched and nothing says so (APPOINT-4).
+#   - "Ata" is natively disabled until a person is found and nothing says why (APPOINT-2). While the appointment is on its way
+#     "Vazgeç", the close icon and Esc do nothing and are not marked (APPOINT-1).
+#   - The field is disabled while it searches, so it loses the focus; the answer "no account" or "not available" is a field error
+#     with no live region; a found person replaces the field and nothing says so or moves the focus (F-B-7, F-B-8, F-B-16,
+#     APPOINT-5).
+#   - The başmüderris can pick herself; only the server's refusal, after "Ata", says no (APPOINT-6).
+#   - A person who is barred from the medrese or one of its courses is found and shown like anyone; the refusal comes only with
+#     "Ata", in a toast, and the dialog stays open.
+#   - The "already a nazır" notice reads the roster the page was drawn with, so it knows nothing newer than the last refresh.
+# The stack's roster is one nazır who holds nothing (Seher Medrese Nazırı, appointed by Nuri Başmüderris when the stack was seeded;
+# read through GET /madrasahs/:id/nazirs on 15 Nov 2026), so the band already names her before anyone is appointed and counts two
+# after. The e2e's seeded roster has Abdullah in her place (nazirs-seed.ts), who also holds nothing, so nazirs#4 meets the same
+# numbers: "İzin yok" once, then twice, and "2 nazır henüz izin almadı".
+schema: delurio-graph/0
+kind: flow
+id: nazar.nazirs.appoint
+status: captured
+domain: medaris.api
+ui: nazar.nazirs.appoint
+title: Appoint a medrese nazırı
+summary: >-
+  The başmüderris opens "Medrese nazırları" and presses "Medrese nazırı ata". A dialog asks for the exact e-mail address of the
+  person; Enter (or leaving the field) searches the realm's directory, and the person found is shown under "Seçilen kişi" with
+  their name and address. "Ata" appoints them holding nothing: a toast says "Nazır atandı", the dialog closes, the roster has a
+  new row marked "İzin yok" and the band above the table names the one nazır who holds nothing, or counts "2 nazır henüz izin
+  almadı". An address no account has is said under the field and nobody is chosen. A person who is a nazır already is shown with
+  a warning and "Ata" stays off. A person who is barred from the medrese, or the başmüderris herself, is chosen like anyone, and
+  "Ata" is refused in a toast with the dialog still open. The new row's "İzin ver" button starts nazar.nazirs.permissions.
+
+scope:
+  shows: >-
+    the roster page with its band and table, the "Medrese nazırı ata" dialog, the e-mail search and its answers, the chosen
+    person, the appointment and the refusals the page words, and the toast that follows
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a medrese nazırı who holds nothing, or a person with no seat, meets the notice 'Bu sayfaya izniniz yok' or the 404 page: nazar.access.medreseNazirRefused, nazar.shell.errorStates (the refusal and the not-found of the roster read are exits here)"
+    - "a nazır given madrasah.nazir_appoint appoints through the same dialog (it is drawn to them as well); they get no 'İzin ver' and no group buttons: nazar.access.medreseNazirRefused draws their roster"
+    - "the permissions given to the new nazır: nazar.nazirs.permissions starts from 'İzin ver'; taking them out again: nazar.nazirs.dismiss ('Görevden al' is on every row); the groups under the table: nazar.nazirs.groups"
+    - "the roster's other rows and columns (groups held, 'Ayrıca N izin', 'Bitiş', 'Veren', 'Ders izinleri yalnız şu derslerde'): the seeded roster has none that hold anything, so only the rows of people who hold nothing are drawn"
+    - "a session that has ended: both server calls send the person to sign in (realm.auth.signIn) instead of drawing a message"
+    - "a roster read that fails for another reason ('Medrese nazırları okunamadı' with 'Yeniden dene') and a groups read that fails ('İzin grupları şu an okunamadı.'): the retry state of nazar.shell.errorStates"
+    - "the sidebar, the scope picker and the phone bar around the page (nazar.shell.scopeAndMenu)"
+    - "a nazır appointed in another medrese or in a course: nazar.courseNazirs.appoint appoints a ders nazırı; this flow seats a medrese nazırı only"
+
+decisions:
+  D1:
+    question: >-
+      Should the address be searched only on Enter or on an explicit "Ara" button, not also when the field is left? Every search
+      is written to the audit log (the help line says so), and tabbing through the field, or pressing "Vazgeç" with an address
+      typed, makes audited searches nobody meant (APPOINT-3).
+    recommend: >-
+      Search on Enter or on a button only, as the code's own comment says it does ("searched on Enter, not on every key").
+    affects: [asking, searching]
+  D2:
+    question: >-
+      Should the dialog refuse to choose the person who is signed in, and say so when the search finds them? The server always
+      refuses it (SELF_GRANT_REFUSED) and the page has the viewer's id, but the person is chosen and "Ata" is on until the
+      refusal comes back (APPOINT-6).
+    recommend: >-
+      Yes: treat the viewer like a person who is a nazır already, with a line of their own, and keep "Ata" off.
+    affects: [picked]
+
+context:
+  person:
+    values: [fresh, member, herself, barred, vanished, refused, unwell, nobody, down, notAddress]
+    initial: any
+    say:
+      fresh: "they type the address of an account that is not a nazır of this medrese and may be appointed"
+      member: "they type the address of a person who is a nazır of this medrese already"
+      herself: "they type their own address"
+      barred: "they type the address of a person barred from the medrese or one of its courses"
+      vanished: "they type the address of an account that is gone by the time they press Ata (the directory found it, the appointment cannot)"
+      refused: "they type the address of a person who is found, and the server refuses the appointment for lack of permission"
+      unwell: "they type the address of a person who is found, and the appointment fails for another reason (the directory, a 400, a 404)"
+      nobody: "they type an address no account has"
+      down: "they type an address and the directory does not answer"
+      notAddress: "they type text that cannot be an address (no @, no dot): nothing is searched"
+  before:
+    values: [none, one]
+    initial: any
+    say:
+      none: "every nazır of the medrese holds something: there is no band"
+      one: "one nazır holds nothing yet (the seeded one): the band names her"
+  note:
+    values: [none, nobody, down]
+    initial: none
+    say:
+      none: "nothing is said under the e-mail field but its help"
+      nobody: "the field says no account has this address"
+      down: "the field says the search cannot be made now"
+  toast:
+    values: [none, appointed, barred, self, unknownAccount, forbidden, failed]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      appointed: "'Nazır atandı' is up (6 seconds)"
+      barred: "an error toast says the person is barred from the medrese or its courses"
+      self: "an error toast says nobody gives themselves a role"
+      unknownAccount: "an error toast says the account was not found"
+      forbidden: "an error toast says they may not do this"
+      failed: "an error toast says something went wrong"
+  band:
+    values: [none, one, many]
+    initial: none
+    say:
+      none: "no band above the table: everyone holds something"
+      one: "the band names the one nazır who holds nothing yet"
+      many: "the band counts the nazırs who hold nothing yet: '2 nazır henüz izin almadı'"
+
+guards:
+  # `held` of appoint-nazir.tsx:92: the roster the page was drawn with has the picked person
+  alreadyHeld: "person == 'member'"
+
+effects:
+  bandNone: { set: { band: none } }
+  bandOne: { set: { band: one } }
+  reset: { set: { note: none, toast: none } } # the dialog's reset(): the field, the search and the person are forgotten; a toast of a refusal is cleared here, not by the page
+  clearNote: { set: { note: none } }
+  clearToast: { set: { toast: none } }
+  nobodyFound: { set: { note: nobody } }
+  directoryDown: { set: { note: down } }
+  appointedFirst: { set: { toast: appointed, band: one } } # nobody waited before: the new nazır is the one
+  appointedMore: { set: { toast: appointed, band: many } } # someone waited already: the band counts
+  barredToast: { set: { toast: barred } }
+  selfToast: { set: { toast: self } }
+  unknownToast: { set: { toast: unknownAccount } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: listMadrasahNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  searching:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN, VALIDATION_ERROR]
+  appointing:
+    from: addMadrasahNazir
+    barred: [MADRASAH_NAZIR_BARRED]
+    self: [SELF_GRANT_REFUSED]
+    unknownAccount: [MADRASAH_NAZIR_UNKNOWN_ACCOUNT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [HTTP_400, MADRASAH_NOT_FOUND, KEYCLOAK_ADMIN_UNAVAILABLE]
+
+# The story the page tells first: the başmüderris appoints a person who is not a nazır yet, with one nazır already waiting for
+# a permission, so the band counts two afterwards.
+main:
+  given: { person: fresh, before: one }
+  events: [DONE, OPEN_APPOINT, SEARCH, DONE, APPOINT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The roster is read
+    description: >-
+      The page reads GET /madrasahs/:id/nazirs and GET /madrasahs/:id/permission-groups on the server, with the viewer and the
+      scope, behind a loading skeleton (loading.tsx). Both are asked for madrasah.nazir_appoint or platform.madrasah_nazir_grant:
+      the başmüderris and the başnazım hold it, and so does a nazır given it. A nazır with nothing is refused with a 403: the
+      page draws its title and an alert in place of the table and leaves "Medrese nazırı ata" out (exit `refused`,
+      nazar.access.medreseNazirRefused); a 404 is Next's not-found page (exit `not_found`); any other failure is the retry state
+      (not drawn here: it is not a refusal of the API's).
+    invoke: { action: listMadrasahNazirs }
+    on:
+      DONE:
+        - { guard: "before == 'none'", target: listed, effect: [bandNone], source: apps/nazar/features/nazirs/nazirs.ts:199, say: "everyone holds something: no band" }
+        - { target: listed, effect: [bandOne], source: apps/nazar/features/nazirs/nazirs.ts:199, say: "one nazır holds nothing: the band names her" }
+      FAIL.forbidden: refused
+      FAIL.missing: not_found
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:32
+
+  listed:
+    title: The roster is on the page
+    description: >-
+      The page: the title "Medrese nazırları" (h1) and its line, the button "Medrese nazırı ata", the band (an Alert, role status)
+      that names the nazır who holds nothing yet and who appointed them and when, or counts them, the table of nazırs (each who
+      holds nothing has "İzin yok" and "Atayan: name · date", and every row has "İzin ver: name" or "İzinleri düzenle: name" and
+      "Görevden al: name"), and under it the permission groups (nazar.nazirs.groups; not drawn). The page sets no focus of its
+      own. After an appointment a toast of 6 seconds says "Nazır atandı" and the roster has the new row, whose "İzin ver" button
+      starts nazar.nazirs.permissions. F-B-9 (focus lost when a row action removes its own opener) does not touch this flow:
+      the opener here is the header button, which stays.
+    by: human
+    goal: true
+    on:
+      OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:130, say: "they press 'Medrese nazırı ata'" }
+      GIVE_PERMISSIONS: { guard: "band != 'none'", target: handed_over.permissions, starts: { flow: nazar.nazirs.permissions }, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:157, say: "they press 'İzin ver: name' on a row that holds nothing" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:53
+
+  asking:
+    title: The dialog asks for an e-mail address
+    description: >-
+      A modal "Medrese nazırı ata" over the page, with the medrese's name above its title, a line ("Atadığınız kişi izinsiz
+      başlar; siz izin verene kadar hiçbir işlem yapamaz.") and one field, "Nazırın e-posta adresi", with its help. The scrim
+      does not close it. The focus starts in the field (initialFocus; not verified in a browser). "Ata" is natively disabled and
+      nothing says why (APPOINT-2). The field's "*" is aria-hidden and the input has no `required`, so a reader of the screen is
+      never told it is required (F-B-7). Enter searches (and keeps the form from being sent); leaving the field searches too
+      (APPOINT-3). Text that cannot be an address (no @ and a dot after it) is not searched and nothing is said (APPOINT-4). After
+      "no account" the same address is not searched twice; editing it clears the line.
+    by: human
+    on:
+      SEARCH:
+        - { guard: "person == 'notAddress'", target: asking, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:66, say: "they type text that cannot be an address and press Enter: nothing happens and nothing is said" }
+        - { target: searching, effect: [clearNote], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:64, say: "they type an address and press Enter, or leave the field" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "Vazgeç, the close icon or Escape: the dialog closes, what was typed is forgotten, the focus goes back to 'Medrese nazırı ata'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:134
+
+  searching:
+    title: The directory is searched
+    description: >-
+      lookupPerson calls GET /users/lookup?email=: Keycloak is searched for the exact address (the first enabled account), so a
+      person who never opened the app is found too, and tedrisat writes the search to the audit log whatever it finds. The input
+      is disabled and aria-busy while it runs, so the focus it had is dropped (F-B-8, APPOINT-5), and a hidden <output> says
+      "Aranıyor". Closing the dialog meanwhile is allowed; the answer is then dropped. Every failure but an ended session is "Arama
+      şu an yapılamıyor. Biraz sonra yeniden deneyin.".
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "person == 'nobody'", target: asking, effect: [nobodyFound], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:77, say: "no account has the address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
+        - { guard: alreadyHeld, target: pickedMember, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:92, say: "the person is found and is a nazır already: the notice is drawn beside them" }
+        - { guard: "person not in ['nobody', 'member', 'down', 'notAddress']", target: picked, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:72, say: "the person is found: the field is replaced by 'Seçilen kişi' and the field is cleared" }
+      FAIL.unavailable: { guard: "person == 'down'", target: asking, effect: [directoryDown], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:79, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "they close the dialog while the search runs; its answer is dropped" }
+    source: apps/nazar/features/nazirs/actions.ts:43
+
+  picked:
+    title: A person is chosen
+    description: >-
+      The field is replaced by a section "Seçilen kişi": the person's avatar, name and address and an icon button "Seçimi
+      kaldır: name". "Ata" is on. Nothing moves the focus when the input unmounts (F-B-8) and nothing announces the person: the
+      sentence "{name} seçildi" is in the catalog and never rendered (F-B-16). The person may be the başmüderris herself or
+      someone barred: the page knows neither until "Ata" is refused (APPOINT-6). An error toast of a refusal stays up beside the
+      dialog until it is closed.
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:187, say: "they press 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved" }
+      APPOINT: { target: appointing, effect: [clearToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:94, say: "they press 'Ata'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "Vazgeç, the close icon or Escape: nothing is written" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:161
+
+  pickedMember:
+    title: The person chosen is a nazır already
+    description: >-
+      As `picked`, with a warning under the person (an Alert, role status): "Bu kişi zaten bu medresenin nazırı." "Ata" is off.
+      The check compares the person's id with the ids of the roster the page was drawn with (`held`, lower-cased), so it knows
+      nothing newer than the last refresh. Nobody is appointed twice anyway: the API answers the same row again.
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:187, say: "they press 'Seçimi kaldır'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:136, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:192
+
+  appointing:
+    title: The appointment is on its way
+    description: >-
+      appointNazir calls POST /madrasahs/:id/nazirs/:userId (no body; 201 with the roster row, the same row again for a person
+      who is a nazır already). The API refuses the caller herself first (SELF_GRANT_REFUSED, audited), then checks that the medrese
+      exists, that the account exists (the app's users or the realm) and that the person is not barred from the medrese or one of
+      its courses; then, in one transaction with the medrese row locked, it writes the MEDRESE_NAZIR role with no permission,
+      drops what the person was given under an earlier seat that no role of theirs still covers, and writes the audit row
+      madrasah_nazir.appoint (once, not on a repeat). "Ata" is busy (aria-disabled and aria-busy; the hidden status says "Yükleniyor" from the button's
+      hard-coded default, F-B-2). "Seçimi kaldır" is natively disabled until the answer, so the person shown is the one the
+      appointment is for. "Vazgeç", the close icon and Esc do nothing meanwhile and are not marked (APPOINT-1).
+    invoke: { action: addMadrasahNazir }
+    on:
+      DONE:
+        - { guard: "person == 'fresh' and band == 'none'", target: listed, effect: [appointedFirst], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:100, say: "a toast says 'Nazır atandı', the dialog closes, the roster has a new row and the band names the one who holds nothing" }
+        - { guard: "person == 'fresh'", target: listed, effect: [appointedMore], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:100, say: "a toast says 'Nazır atandı', the dialog closes, the roster has a new row and the band counts them with the nazırs who waited already" }
+      FAIL.barred: { guard: "person == 'barred'", target: picked, effect: [barredToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "MADRASAH_NAZIR_BARRED: an error toast 'Nazır atanamadı' says the person is barred; the dialog stays open and the person stays chosen" }
+      FAIL.self: { guard: "person == 'herself'", target: picked, effect: [selfToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "SELF_GRANT_REFUSED: an error toast says nobody gives themselves a role" }
+      FAIL.unknownAccount: { guard: "person == 'vanished'", target: picked, effect: [unknownToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "MADRASAH_NAZIR_UNKNOWN_ACCOUNT: an error toast says the account was not found" }
+      FAIL.forbidden: { guard: "person == 'refused'", target: picked, effect: [forbiddenToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "AUTHZ_FORBIDDEN: an error toast says they may not do this" }
+      FAIL.failed: { guard: "person == 'unwell'", target: picked, effect: [failedToast], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109, say: "anything else: an error toast says something went wrong" }
+      CANCEL: { target: appointing, source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:137, say: "Vazgeç, the close icon or Esc: nothing happens, the appointment goes on (APPOINT-1)" }
+    source: apps/nazar/features/nazirs/actions.ts:63
+
+  refused:
+    title: The roster is refused
+    description: >-
+      The read answered 403: the page keeps its title and line and draws "Bu sayfaya izniniz yok" in place of the table and the
+      button (nazar.access.medreseNazirRefused draws it; F-B-13).
+    type: final
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the roster read is Next's not-found page (nazar.shell.errorStates)."
+    type: final
+    leavesPage: true
+
+  handed_over.permissions:
+    title: They go on to give permissions
+    description: >-
+      "İzin ver: name" opens the editor "İzinleri düzenle" over the same page, for the nazır of that row; nazar.nazirs.permissions
+      draws it.
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: ata-sends-only-a-found-nazir-to-be
+    never: "state == 'appointing' and person in ['member', 'nobody', 'down', 'notAddress']"
+    say: "Ata sends only a person the search found and who is not a nazır of the medrese yet."
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:96
+  - id: an-appointment-leaves-someone-waiting
+    never: "state == 'listed' and toast == 'appointed' and band == 'none'"
+    say: "After 'Nazır atandı' the band is on: the person was appointed holding nothing, so someone waits for a permission."
+    source: apps/nazar/features/nazirs/nazirs.ts:45
+  - id: a-refusal-keeps-the-dialog
+    never: "state == 'listed' and toast in ['barred', 'self', 'unknownAccount', 'forbidden', 'failed']"
+    say: "A refused appointment leaves the dialog open with the person chosen; the roster page shows no refusal toast of this flow."
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109

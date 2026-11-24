@@ -88,6 +88,39 @@ describe("describeNotification (tedris/36 sentences)", () => {
     );
   });
 
+  it.each([
+    ["tr", "Hocanın notu: Bu hafta ders yapılmayacak."],
+    ["en", "Note from your teacher: Bu hafta ders yapılmayacak."],
+    ["ar", "ملاحظة الأستاذ: Bu hafta ders yapılmayacak."],
+  ] as const)("adds the müderris's note to a cancelled session in %s (MDRS-248)", (locale, tail) => {
+    const plain = describeAs(
+      notification({
+        type: "SESSION_CANCELLED",
+        params: {
+          courseTitle: "Siyer okumaları",
+          sessionAt: "2026-10-08T18:00:00Z",
+          reason: "Bu hafta ders yapılmayacak.",
+        },
+      }),
+      locale
+    );
+    expect(plain.body.endsWith(tail)).toBe(true);
+    const madeUp = describeAs(
+      notification({
+        type: "SESSION_CANCELLED",
+        params: {
+          courseTitle: "Siyer okumaları",
+          sessionAt: "2026-10-08T18:00:00Z",
+          makeupAt: "2026-10-15T18:00:00Z",
+          reason: "Bu hafta ders yapılmayacak.",
+        },
+      }),
+      locale
+    );
+    expect(madeUp.body.endsWith(tail)).toBe(true);
+    expect(madeUp.body.length).toBeGreaterThan(plain.body.length);
+  });
+
   it("words a recording that became ready, naming its session by its start (MDRS-283)", () => {
     const n = notification({
       type: "RECORDING_ADDED",
@@ -215,7 +248,7 @@ describe("describeNotification (tedris/36 sentences)", () => {
 
   it("has a sentence for every type in every language", () => {
     const types = Object.keys(resources.tr.tedris.NotificationsPage.types);
-    expect(types).toHaveLength(11);
+    expect(types).toHaveLength(14);
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const type of types) {
         const text = describeAs(

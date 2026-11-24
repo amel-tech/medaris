@@ -1,0 +1,444 @@
+# A talebe takes an online multiple-choice exam in tedris-web: the briefing ("Bilmen gerekenler") with the zeroth question, the questions,
+# the countdown, the question list, skipping, finishing, and what a lost connection, a switch to another tab or window and a new version of
+# Medaris do. BUILT (MDRS-299, PR #416 and its follow-ups #418, #421, #425, #429): the page is
+# apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx with features/online-exams/components/exam-take.tsx, and its
+# server steps are the actions of domain/online-exams.yaml. Written graph-first on 21 November 2026 and brought to the code on 22 November;
+# the flow keeps `status: proposed` (written before the code, not captured from it), so its states name no `source`.
+#
+# The server steps: the page reads the exam (getExamBriefing), saves the zeroth answer (answerZerothQuestion), starts the attempt
+# (startExamAttempt) or takes it over where it stopped (resumeExamAttempt), saves every answer (saveExamAnswer), counts a switch
+# (recordTabSwitch) and ends it (finishExamAttempt). The clock is the server's: the page calls tickExamClock every 10 s while it holds the
+# attempt, and its answers are the events FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE. Önceki, Sonraki, Soruyu atla and a pick in the
+# list move on the page only; a choice and a skip are saved.
+#
+# The owner's words this flow carries:
+#   - 21 Nov: "çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için"; "sınav sırasında talebe koparsa kaldığı yerden devam
+#     edecek"; "sınav ekranında geri sayım olacak, son 5 dk kala geri sayım mesela kırmızı olacak"; "her soruda cevap seçildiğinde ilerle
+#     geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek"; "sınava girerken talebeye 'bilmeniz gerekenler'
+#     ekranı gösterilecek"; "soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir"; "soruyu atla
+#     seçeneği olacak, son soruya gelindiğinde atlanan sorulara dönülecek"; "en son sınavı bitir butonuyla sınav bitecek"; the zeroth
+#     question, "'bizi aldatan bizden değildir' hadisi hakkında soru olacak … doğru yanlış cevabı olan bi soru değil".
+#   - The clock stops while the connection is lost: "talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
+#   - A switch is only counted (22 Nov, relayed from those who asked for exams; D1, answered): "tab değiştirme meselesinde sıfırlanıp
+#     baştan başlamayacak, sadece tab değişikliğini sayacağız". The first draft started the exam again; that is gone. Another window
+#     taking the focus counts too, once the page has been away two seconds (his report "başka ekranlara geçtim sekme değiştirmedim ama
+#     saymamış" led to it, #425; the two seconds are my choice).
+#   - The indicators: "cevaplanmamışsa sarı olsun, atlanmışsa turuncu olsun, cevaplanmışsa beyaz/dark olsun" (22 Nov). The design
+#     system has no orange; skipped uses the warning's bold fill (my choice, #418).
+#   - Arabic and the text size: "arapça font boyutu küçük kalıyor … 1 rem yapalım. bir de sınav sırasında soruların bi yerine yazı boyutu
+#     büyütme küçültme butonu ekleyelim. sınav öncesi bilmeniz gerekenler listesinde bu yazsın butonların neye benzediğini de göstersin"
+#     (22 Nov): A− and A+ in the question's header, four steps (100, 115, 130, 150 %, my choice), kept in the tab; the briefing draws them.
+#   - The hadith: "Böyle kalsın", with no source line (22 Nov).
+#
+# Choices made in the code that are not his: the zeroth answer cannot change after the start (ZEROTH_ANSWER_LOCKED); "Sınavı bitir" on
+# an attempt that has already ended answers how it ended; an attempt whose page never comes back stays in progress until the team closes
+# the exam early (the clock runs only while the page calls); a new version of Medaris during the exam says "Medaris güncellendi" and keeps
+# the unsent choices in the tab, sent after the reload (#429).
+schema: delurio-graph/0
+kind: flow
+id: tedris.exams.take
+status: proposed
+domain: medaris.api
+ui: tedris.exams.take
+title: Take an online exam
+summary: >-
+  A talebe who holds a seat in the exam's course opens an exam between its earliest and its latest start. "Bilmeniz gerekenler"
+  says how long it lasts, how many questions it has, that every answer is saved when it is chosen, that a lost connection resumes
+  where it stopped with the clock stopped meanwhile, and that a switch to another tab or window is counted for the team. Under it
+  stands the zeroth question, about the hadith "Bizi aldatan bizden değildir", which has to be answered before "Sınava başla" starts
+  the clock. The talebe gets the questions, and each question's options, in an order of their own. A countdown is always on the
+  screen and turns red, and says so, in the last five minutes. A list of the questions beside the question (behind a button on a
+  phone) takes the talebe to any of them. "Soruyu atla" leaves a question for later, and after the last question the skipped ones
+  come back. Every choice is saved at once; there is no "send". "Sınavı bitir" asks once and ends the exam; the time running out ends
+  it as well, with the answers saved so far.
+scope:
+  shows: the exam's own page in tedris-web, from the briefing to the end screen
+  world: open
+  outOfView: [the list it is entered from (tedris.exams.mine), the result (tedris.exams.result)]
+context:
+  window:
+    values: [before, open, closed]
+    initial: any
+    say:
+      before: the earliest start has not come yet
+      open: it is between the earliest and the latest start
+      closed: the latest start has passed
+  attempt:
+    values: [none, inProgress, finished]
+    initial: any
+    say:
+      none: the talebe has not started the exam
+      inProgress: the talebe started the exam and has not finished it
+      finished: the talebe finished the exam, or its time ran out
+  zeroth:
+    values: [unanswered, answered]
+    initial: unanswered
+    say:
+      unanswered: the zeroth question is not answered
+      answered: the zeroth question is answered
+  instructions:
+    values: [none, some]
+    initial: any
+    say:
+      none: the team wrote no instructions of its own
+      some: the team wrote instructions, read in the briefing
+  mode:
+    values: [single, multiple]
+    initial: any
+    say:
+      single: the question shown is answered with radio buttons (one choice)
+      multiple: the question shown is answered with check boxes (any number of marks)
+  position:
+    values: [inside, last]
+    initial: inside
+    say:
+      inside: the question shown is not the last one of the talebe's order
+      last: the question shown is the last one of the talebe's order
+  skipped:
+    values: [none, some]
+    initial: none
+    say:
+      none: no question is skipped
+      some: at least one question is skipped and still unanswered
+  clock:
+    values: [running, lastFive]
+    initial: running
+    say:
+      running: more than five minutes are left
+      lastFive: five minutes or less are left
+  notice:
+    values: [none, resumed, saved, skippedFollow, notSaved, startFailed, switched]
+    initial: none
+    say:
+      none: the page shows no notice
+      resumed: the page says the exam goes on where it stopped
+      saved: the question says its answer is saved
+      skippedFollow: the page says the skipped questions follow, and how many
+      notSaved: the page says the answer, or the zeroth answer, could not be saved
+      switched: the page says the switch to another tab or window was counted
+      startFailed: the briefing says the exam could not be started
+  endedBy:
+    values: [talebe, time, team, unknown]
+    initial: talebe
+    say:
+      talebe: the talebe ended the exam with Bitir
+      time: the time ran out
+      team: the team closed the exam early (nazar.exams.publish)
+      unknown: the attempt has ended and the page could not read how
+  pending:
+    values: [none, choice]
+    initial: none
+    say:
+      none: every choice made on this page has reached the server, or was refused
+      choice: a choice was made while the connection was gone; the page keeps it and sends it when the connection is back
+guards:
+  notYetOpen: "window == 'before'"
+  isClosed: "window == 'closed' and attempt != 'inProgress'"
+  isFinished: "attempt == 'finished'"
+  inProgress: "attempt == 'inProgress'"
+  zerothGiven: "zeroth == 'answered'"
+  atLast: "position == 'last'"
+  lastWithSkipped: "position == 'last' and skipped == 'some'"
+  notLastFive: "clock == 'running'"
+  hasInstructions: "instructions == 'some'"
+  hasPending: "pending == 'choice'"
+effects:
+  zerothAnswered: { set: { zeroth: answered, notice: none } }
+  moveOn: { havoc: [position, mode], set: { notice: none } }
+  markSkipped: { set: { skipped: some } }
+  toFirstSkipped: { set: { position: inside, notice: skippedFollow } }
+  lastFiveMinutes: { set: { clock: lastFive } }
+  startOver: { set: { skipped: none, position: inside, clock: running, notice: none, pending: none } }
+  resumedNotice: { set: { notice: resumed } }
+  savedNotice: { set: { notice: saved } }
+  switchedNotice: { set: { notice: switched } }
+  notSavedNotice: { set: { notice: notSaved } }
+  startFailedNotice: { set: { notice: startFailed } }
+  endedRead: { havoc: [endedBy] }
+  endedUnknown: { set: { endedBy: unknown } }
+  keepChoice: { set: { pending: choice } }
+  choiceSent: { set: { pending: none } }
+failures:
+  reading:
+    from: getExamBriefing
+    gone: [EXAM_NOT_FOUND]
+    other: [AUTHZ_FORBIDDEN, HTTP_401, network, timeout, 5xx]
+  savingZeroth:
+    from: answerZerothQuestion
+    closed: [EXAM_NOT_OPEN]
+    other: [ZEROTH_ANSWER_LOCKED, ZEROTH_OPTION_NOT_FOUND, EXAM_NOT_FOUND, VALIDATION_ERROR, HTTP_401, network, timeout, 5xx]
+  starting:
+    from: startExamAttempt
+    closed: [EXAM_NOT_OPEN]
+    taken: [EXAM_ALREADY_TAKEN]
+    zeroth: [ZEROTH_UNANSWERED]
+    other: [EXAM_NOT_FOUND, VALIDATION_ERROR, HTTP_401, network, timeout, 5xx]
+  resuming:
+    from: resumeExamAttempt
+    ended: [ATTEMPT_NOT_FOUND, ATTEMPT_ENDED]
+    gone: [EXAM_NOT_FOUND]
+    offline: [network, timeout, 5xx]
+    other: [HTTP_401]
+  saving:
+    from: saveExamAnswer
+    elsewhere: [ATTEMPT_HELD_ELSEWHERE]
+    ended: [ATTEMPT_ENDED, ATTEMPT_NOT_FOUND]
+    offline: [network, timeout, 5xx]
+    other: [ANSWER_INVALID, QUESTION_NOT_FOUND, VALIDATION_ERROR, HTTP_401]
+  notingSwitch:
+    from: recordTabSwitch
+    elsewhere: [ATTEMPT_HELD_ELSEWHERE]
+    ended: [ATTEMPT_NOT_FOUND, ATTEMPT_ENDED]
+    offline: [network, timeout, 5xx]
+    other: [HTTP_401, VALIDATION_ERROR]
+  finishing:
+    from: finishExamAttempt
+    elsewhere: [ATTEMPT_HELD_ELSEWHERE]
+    ended: [ATTEMPT_NOT_FOUND]
+    offline: [network, timeout, 5xx]
+    other: [HTTP_401, VALIDATION_ERROR]
+  timeUp:
+    from: getExamBriefing
+    other: [EXAM_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_401, network, timeout, 5xx]
+# The main story: a talebe opens an open exam, answers the zeroth question, starts, answers a question, goes on, and finishes.
+main:
+  given: { window: open, attempt: none, mode: single }
+  events: [DONE, ANSWER_ZEROTH, DONE, START, DONE, CHOOSE, DONE, NEXT, FINISH, CONFIRM, DONE]
+initial: reading
+states:
+  reading:
+    title: The exam is read
+    description: >-
+      The action getExamBriefing, GET /lessons/{id}/online-exam: the exam's title and course, its length, its question count, the
+      earliest and the latest start, the team's instructions, the zeroth question with its options and the talebe's answer to it, and
+      the talebe's attempt if there is one. No question and no option of the exam is sent here. Only a talebe who holds an ENROLLED
+      seat in the course, with no bar, gets an answer; to anyone else there is no such exam.
+    invoke: { action: getExamBriefing }
+    on:
+      DONE: opening
+      FAIL.gone: notFound
+      FAIL.other: readFailed
+  opening:
+    title: The exam's page is opened
+    description: >-
+      A step with no screen of its own: the page goes where the read says. Opened while it is open in another tab or on another device,
+      the exam moves here (resumeExamAttempt), and the other place says it is open elsewhere.
+    always:
+      - { guard: isFinished, target: already_finished, say: "the talebe finished it already" }
+      - { guard: inProgress, target: resuming, say: "an attempt is in progress: it goes on where it stopped" }
+      - { guard: notYetOpen, target: notOpen, say: "the earliest start has not come" }
+      - { guard: isClosed, target: closed, say: "the latest start has passed" }
+      - { target: briefing, say: "the exam can be started" }
+  notFound:
+    title: There is no such exam
+    description: >-
+      The read was refused with EXAM_NOT_FOUND: the celse is no multiple-choice exam, it is a draft, or the person
+      holds no ENROLLED seat in its course. The page says there is no such exam, and nothing of it is shown.
+    by: human
+    on:
+      NAVIGATE: left
+  readFailed:
+    title: The exam could not be read
+    description: The read failed for another reason (the network, the server, an ended session). The page says so and offers to try again.
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene" }
+      NAVIGATE: left
+  notOpen:
+    title: The exam cannot be started yet
+    description: The page says from when and until when the exam can be started, in the talebe's own time zone, and offers no start.
+    by: human
+    on:
+      OPENS: { target: briefing, say: "the earliest start comes while the page is open" }
+      NAVIGATE: left
+  closed:
+    title: The time to start has passed
+    description: The page says the exam could be started until its latest start, and that the talebe did not take it.
+    by: human
+    on:
+      NAVIGATE: left
+  briefing:
+    title: Bilmeniz gerekenler
+    description: >-
+      Before anything starts: the exam's title and course, how long it lasts and that the full length is given whenever it is started,
+      how many questions it has and how the points are given, that every answer is saved the moment it is chosen and there is no
+      "send", that a lost connection or a closed page resumes where it stopped and the clock stops meanwhile, that a switch to another
+      tab or window is counted and the team sees it, how skipping and the question list work, that "Sınavı bitir" ends it, and the team's own
+      instructions. Under it the zeroth question: the hadith in Arabic and its meaning, the preparer's question about it and its
+      options. "Sınava başla" is off until the zeroth question is answered, and starts the clock.
+    by: human
+    on:
+      ANSWER_ZEROTH: { target: savingZeroth, say: "they choose an option of the zeroth question" }
+      START: { guard: zerothGiven, target: starting, say: "they press Sınava başla" }
+      NAVIGATE: left
+  savingZeroth:
+    title: Save the zeroth answer
+    description: >-
+      The action answerZerothQuestion, PUT /lessons/{id}/online-exam/zeroth-answer, with the option chosen; a second choice replaces it
+      until the attempt starts. The options stay where they are while the call runs.
+    invoke: { action: answerZerothQuestion }
+    on:
+      ANSWER_ZEROTH: { target: savingZeroth, say: "they choose another option before the answer comes: the new choice is sent, and the last call wins" }
+      DONE: { target: briefing, effect: [zerothAnswered], say: "the answer is saved and Sınava başla turns on" }
+      FAIL.closed: { target: closed, say: "the latest start passed meanwhile" }
+      FAIL.other: { target: briefing, effect: [notSavedNotice], say: "the answer could not be saved; the page says so and keeps the start off" }
+  starting:
+    title: Start the attempt
+    description: >-
+      The action startExamAttempt, POST /lessons/{id}/online-exam/attempt, with an id the page draws for itself. The server puts the
+      questions, and each question's options, in an order of this talebe's own and starts the clock; the answer is everything the page
+      needs to run, and never which options are correct. The button is busy while the call runs.
+    invoke: { action: startExamAttempt }
+    on:
+      DONE: { target: question, effect: [startOver], say: "the first question of the talebe's own order is shown and the clock runs" }
+      FAIL.closed: { target: closed, say: "the latest start passed meanwhile" }
+      FAIL.taken: { target: already_finished, say: "the exam was finished in another place meanwhile" }
+      FAIL.zeroth: { target: briefing, effect: [startFailedNotice], say: "the zeroth answer is not on the server" }
+      FAIL.other: { target: briefing, effect: [startFailedNotice], say: "the exam could not be started; the briefing says so" }
+  resuming:
+    title: The attempt goes on where it stopped
+    description: >-
+      The action resumeExamAttempt, POST /lessons/{id}/online-exam/attempt/resume: the same order of questions and options, every
+      answer that was saved, the question the talebe was on, and the time that was left when the connection was lost. This page holds
+      the attempt from now on, and the place that held it before is told on its next call. The page says the exam was resumed. The
+      resume writes no answer: a choice the page kept while the connection was gone is sent next, with saveExamAnswer, and is shown
+      as saved only when the server has it.
+    invoke: { action: resumeExamAttempt }
+    on:
+      DONE:
+        - { guard: hasPending, target: saving, effect: [resumedNotice], say: "the choice kept while the connection was gone is sent now" }
+        - { target: question, effect: [resumedNotice], say: "the question they were on is shown, with the time left" }
+      FAIL.ended: { target: timeUp, say: "the attempt ended meanwhile, by the time or by an early close" }
+      FAIL.gone: notFound
+      FAIL.offline: { target: offline, say: "the connection is still gone" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the page says it could not go on" }
+  question:
+    title: A question of the exam
+    description: >-
+      One question with its options, as radio buttons or as check boxes as the preparer chose, its number and the count ("12/50"),
+      the points it carries, the countdown, "Önceki", "Sonraki", "Soruyu atla" and "Sınavı bitir", and the list of questions with each
+      one's state (answered, skipped, not seen yet). Nothing says whether several options are correct.
+    by: human
+    goal: true
+    on:
+      CHOOSE: { target: saving, say: "they choose an option, or mark one" }
+      NEXT:
+        - { guard: lastWithSkipped, target: skippedTurn, say: "they press Sonraki on the last question, with questions skipped" }
+        - { target: question, effect: [moveOn], say: "they press Sonraki: the answer is saved and the next question shows" }
+      PREVIOUS: { target: question, effect: [moveOn], say: "they press Önceki" }
+      SKIP:
+        - { guard: atLast, target: skippedTurn, effect: [markSkipped], say: "they skip the last question" }
+        - { target: question, effect: [markSkipped, moveOn], say: "they press Soruyu atla" }
+      JUMP: { target: question, effect: [moveOn], say: "they pick a question in the list" }
+      FIVE_MINUTES_LEFT: { guard: notLastFive, target: question, effect: [lastFiveMinutes], say: "five minutes are left: the countdown turns red and says so" }
+      TIME_UP: { target: timeUp, say: "the time runs out" }
+      FINISH: { target: confirmFinish, say: "they press Sınavı bitir" }
+      CONNECTION_LOST: { target: offline, say: "the connection is lost" }
+      SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back" }
+      TEXT_SIZE: { target: question, say: "they press A− or A+: the question and its options grow or shrink a step" }
+      MOVED_ELSEWHERE: { target: elsewhere, say: "the clock's call says another tab or device has opened the exam" }
+      NAVIGATE: { target: left, say: "they close the page or leave it: the attempt stays in progress and its clock stops" }
+  saving:
+    title: Save the answer
+    description: >-
+      The action saveExamAnswer, PUT /lessons/{id}/online-exam/attempt/answers/{questionId}, with the options chosen and the question
+      shown, and the page's own count of its calls (seq); the last call wins by that count, so a late answer to an earlier call never
+      replaces a later choice. The question stays on the screen and the talebe can go on choosing: another choice is sent at once, and
+      only the answer to the page's latest call says it is saved.
+      Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir wait for the answer (disabled while it runs), so the exam never moves on
+      or ends before the last choice is saved. Nothing is shown as saved before the server answers.
+    invoke: { action: saveExamAnswer }
+    on:
+      CHOOSE: { target: saving, say: "they choose again before the answer comes: the new choice is sent, and the last call wins" }
+      TEXT_SIZE: { target: saving, say: "they press A− or A+ while the answer is on its way" }
+      DONE: { target: question, effect: [savedNotice, choiceSent], say: "the answer to the latest call comes: the question says its answer is saved" }
+      FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
+      FAIL.ended: { target: timeUp, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }
+      FAIL.offline: { target: offline, effect: [keepChoice], say: "the connection is gone: the choice is kept and sent when it is back" }
+      FAIL.other: { target: question, effect: [notSavedNotice, choiceSent], say: "the answer was refused; the question says it is not saved" }
+  skippedTurn:
+    title: The skipped questions come back
+    description: >-
+      After the last question, the first skipped question is shown, and the page says that the skipped ones follow and how many
+      there are.
+    always:
+      - { target: question, effect: [toFirstSkipped], say: "the first skipped question is shown" }
+  offline:
+    title: The connection is lost
+    description: >-
+      The page says the connection is lost and that the clock has stopped, keeps the choice the talebe made, and sends it when the
+      connection is back; nothing is shown as saved that the server does not hold.
+    by: human
+    on:
+      RECONNECTED: { target: resuming, say: "the connection is back: the attempt is taken up again and the clock goes on" }
+      NAVIGATE: left
+  elsewhere:
+    title: The exam is open in another place
+    description: >-
+      Another tab or device opened the exam, and the attempt moved there (not a switch: nothing is erased). This page takes no more
+      answers and says so; it offers to take the exam back here.
+    by: human
+    on:
+      OPEN_HERE: { target: reading, say: "they press Burada aç: the exam is read again and moves back here" }
+      NAVIGATE: left
+  notingSwitch:
+    title: Count the switch
+    description: >-
+      The action recordTabSwitch, POST /lessons/{id}/online-exam/attempt/switch, called when the talebe comes back from another tab
+      or window: the switch is kept with its time for the team (nazar.exams.results). Nothing is erased and the exam goes on where it
+      was; the page says the switch was counted (D1, decided on 22 Nov 2026).
+    invoke: { action: recordTabSwitch }
+    on:
+      DONE: { target: question, effect: [switchedNotice], say: "the switch is counted and the question is shown again with a line that says so" }
+      FAIL.elsewhere: { target: elsewhere, say: "the switch was to another tab of the exam, which now holds it" }
+      FAIL.ended: { target: timeUp, say: "the attempt had ended meanwhile" }
+      FAIL.offline: { target: offline, say: "the connection is gone" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the page says it could not go on" }
+  confirmFinish:
+    title: Sınavı bitir?
+    description: >-
+      One question before the end: how many questions are unanswered or skipped, and how much time is left. "Bitir" ends the exam;
+      "Sınava dön" goes back to the question.
+    by: human
+    on:
+      CONFIRM: { target: finishing, say: "they press Bitir" }
+      CANCEL: { target: question, say: "they press Sınava dön" }
+      TIME_UP: { target: timeUp, say: "the time runs out while they decide" }
+  finishing:
+    title: End the attempt
+    description: >-
+      The action finishExamAttempt, POST /lessons/{id}/online-exam/attempt/finish, with this page's holderId: the attempt ends with the
+      answers saved so far and the server scores it; no talebe reads the score before the team releases the results. A page the
+      attempt has moved away from cannot end it. The button is busy while the call runs.
+    invoke: { action: finishExamAttempt }
+    on:
+      DONE: { target: finished, say: "the exam is handed in" }
+      FAIL.elsewhere: { target: elsewhere, say: "another tab or device has opened the exam since: nothing ends from this page" }
+      FAIL.ended: { target: timeUp, say: "it had ended meanwhile, by the time or by an early close" }
+      FAIL.offline: { target: offline, say: "the connection is gone: the attempt is still in progress, and Bitir can be pressed again" }
+      FAIL.other: { target: readFailed, say: "the session has ended: the attempt is still in progress, and the page says it could not end it" }
+  timeUp:
+    title: The attempt has ended
+    description: >-
+      The attempt ended with no answer to this page's Bitir: tickExamClock answers FINISHED, an answer is refused because the attempt
+      has ended, or the attempt is gone when the page comes back (the time ran out, the team closed the exam early, or a Bitir whose
+      answer was lost on the way). The page reads the exam again, getExamBriefing, whose attempt says how it ended (finishedBy), and
+      the talebe is told that, with the answers saved so far.
+    invoke: { action: getExamBriefing }
+    on:
+      DONE: { target: finished, effect: [endedRead], say: "the read says how it ended: by Bitir, by the time or by the team" }
+      FAIL.other: { target: finished, effect: [endedUnknown], say: "the read fails: the page says the exam has ended, with the answers saved so far" }
+  finished:
+    title: Sınav bitti
+    description: >-
+      The exam is handed in and nothing can be changed: the page says when it was handed in, whether by "Bitir" or by the time, and
+      when and where the result can be read (Sınavlarım).
+    type: final
+  already_finished:
+    title: The exam was finished before
+    description: "The talebe took it already: an exam is taken once, and the page leads to its result."
+    type: final
+  left:
+    title: The talebe left the page
+    type: final
+    leavesPage: true

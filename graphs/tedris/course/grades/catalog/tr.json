@@ -1,0 +1,20 @@
+{
+  "CoursePage.gradesAbsent": "Girmedi",
+  "CoursePage.gradesClosed": "Sonuç henüz açıklanmadı",
+  "CoursePage.gradesEmpty": "Henüz sınav ya da ezber yok.",
+  "CoursePage.gradesExams": "Sınavlar",
+  "CoursePage.gradesFull": "Tam",
+  "CoursePage.gradesIncomplete": "Eksik",
+  "CoursePage.gradesMemorizations": "Ezberler",
+  "CoursePage.gradesNotEntered": "Girilmedi",
+  "CoursePage.gradesNotRecited": "Vermedi",
+  "CoursePage.gradesPending": "Bekliyor",
+  "CoursePage.gradesScore": "{score}/{max}",
+  "CoursePage.gradesWeek": "{week}. hafta",
+  "CoursePage.tabCurriculum": "Müfredat",
+  "CoursePage.tabGrades": "Notlarım",
+  "CoursePage.tabsLabel": "Ders bölümleri",
+  "composed.Grades.course": "{course}",
+  "composed.Grades.exam": "{exam}",
+  "composed.Grades.mark": "{mark}"
+}

@@ -3,6 +3,7 @@
 import type {
   CourseDetailResponse,
   LessonResponse,
+  LessonViewResponse,
   WeekResponse,
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -10,6 +11,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { LessonRow, type LessonType } from "@medaris/ui/mds/lesson-row";
 import { WeekAccordion, Weeks } from "@medaris/ui/mds/week-accordion";
 import { useLocale, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { type AssignmentViewer, assignmentMark } from "../assignment-marks";
 import {
   type CourseViewState,
@@ -23,6 +25,20 @@ import {
   weekOpensAt,
   weekState,
 } from "../course-view";
+import { formatOffset } from "../lesson-note-model";
+import { viewsByLesson, watchMarkOf } from "../watch-progress-model";
+import { ExamBadge } from "./exam-grades";
+
+/** A row's trailing marks: the watch mark first, then the row's own. */
+const withWatch = (watch: ReactNode, own: ReactNode): ReactNode =>
+  watch && own ? (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {watch}
+      {own}
+    </span>
+  ) : (
+    (watch ?? own)
+  );
 
 /** Where the sample session's block sits on the page, for the row that points to it. */
 export const SAMPLE_ANCHOR = "ornek-celse";
@@ -42,6 +58,10 @@ const KIT_TYPES: Record<string, LessonType> = {
  *
  * A celse with homework carries an "Ödev" mark, and for a talebe who has not
  * handed it in the warning "Ödev teslim edilmedi" (`assignmentMark`).
+ *
+ * For a seat holder each celse they have played says how far (MDRS-248, the
+ * "sayaç"): "İzlendi" once watched, else the share played or where they
+ * stopped (`watchMarkOf`), beside whatever other mark the row carries.
  */
 export const CourseProgramme = ({
   course,
@@ -49,6 +69,7 @@ export const CourseProgramme = ({
   now,
   openWeeks,
   homework = { mayHandIn: false, handedIn: null },
+  views = null,
 }: {
   course: CourseDetailResponse;
   state: CourseViewState;
@@ -57,6 +78,8 @@ export const CourseProgramme = ({
   openWeeks?: number[];
   /** Who looks at the homework marks, and where they handed in. */
   homework?: AssignmentViewer;
+  /** The seat holder's watch records (`GET /courses/:id/lesson-views`); null draws no marks. */
+  views?: readonly LessonViewResponse[] | null;
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
@@ -70,6 +93,27 @@ export const CourseProgramme = ({
         .find((lesson) => isRunning(lesson, now)) ?? null)
     : null;
   const markedId = running?.id ?? next?.lesson.id;
+  const watched = seat ? viewsByLesson(views) : new Map();
+
+  const watchBadge = (lesson: LessonResponse) => {
+    const mark = watchMarkOf(watched.get(lesson.id));
+    if (!mark) return null;
+    return (
+      <Badge
+        variant={mark.kind === "watched" ? "success" : "info"}
+        icon={
+          <Icon name={mark.kind === "watched" ? "check" : "play"} size="sm" />
+        }
+        data-testid="watch-mark"
+      >
+        {mark.kind === "watched"
+          ? t("watchedBadge")
+          : mark.kind === "percent"
+            ? t("watchedPercent", { percent: mark.percent })
+            : t("watchedUntil", { time: formatOffset(mark.positionSeconds) })}
+      </Badge>
+    );
+  };
   const typeLabels: Record<string, string> = {
     LIVE: t("typeLive"),
     VIDEO: t("typeVideo"),
@@ -124,9 +168,24 @@ export const CourseProgramme = ({
         }
         lockedLabel={t("lessonLocked")}
         minuteUnit={t("minuteUnit")}
-        trailing={
+        // MDRS-248: a cancelled session keeps its title as it was, beside
+        // the "İptal" badge, with the müderris's note on one line and a
+        // button that opens the whole of a note the line cuts.
+        note={(cancelled && lesson.cancelReason?.trim()) || undefined}
+        noteMoreLabel={t("cancelNoteMore")}
+        noteLessLabel={t("cancelNoteLess")}
+        trailing={withWatch(
+          watchBadge(lesson),
           cancelled ? (
             <Badge variant="outline">{t("cancelledBadge")}</Badge>
+          ) : lesson.exam ? (
+            // An exam (MDRS-248) says so, with the days left while ahead.
+            <ExamBadge
+              isRetake={lesson.exam.isRetake}
+              startsAt={lesson.scheduledAt}
+              now={now}
+              timeZone={course.timeZone}
+            />
           ) : mark === "pending" ? (
             <Badge
               variant="warning"
@@ -144,7 +203,7 @@ export const CourseProgramme = ({
               {t("assignmentBadge")}
             </Badge>
           ) : undefined
-        }
+        )}
       />
     );
   };

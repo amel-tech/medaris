@@ -1,0 +1,28 @@
+# nizam.kosks.nazims, read by a nazım of the köşk: APPLICANT_E ("Betül Başvuran"), the one nazım of the walk's own köşk, signs in at nizam-web
+# and opens the köşk's settings, then the tab "Köşk nazımları" (kosks.e2e.ts#10 and #14: the köşk of the e2e's seed is the walk's own here).
+# He reads one row, his own: "Siz", "Medaris başnazımı", the day of the post and "Süresiz"; the note says the Medaris yönetimi appoints;
+# there is no "Köşk nazımı ekle" and no remove button (`--absent` checks that).
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/nazims \
+#     --bind graphs/nizam/kosks/nazims/binding.nazim.yaml --cover transitions --absent --out <dir>
+# NOT RUN (see binding.yaml). A file of its own because the nazım adds no transition the başnazım's file does not walk: the cover takes the
+# shortest scenario per transition, and `viewer` is only a case of the same reading.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.nazims
+
+scenarios:
+  nazim:
+    given: { viewer: nazim, read: ok, lookup: found, answer: added }
+    as: applicantE
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskSettings->koskNazims' }
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.more.email}'

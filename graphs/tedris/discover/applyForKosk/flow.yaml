@@ -1,0 +1,297 @@
+# A signed-in talebe asks Medaris to open a köşk: from the end of Keşfet to the form (/kosk-applications/new) and to the
+# card "Başvurun alındı". Written from the code of the branch (captured); nothing here is a plan. What it leaves to other
+# flows is in scope.outOfView. Where the page was looked at in a browser (a probe, not a replay) the description says so.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DSC-05      a send with empty fields shows the errors as plain text: no role, no live region, the focus stays on the
+#               button (measured in a browser: the focus is on "Başvuruyu gönder" after the try)
+#   DSC-06 = SHL-16  two <main> landmarks on the form page (measured: getByRole("main") finds two)
+#   DSC-07      after the send the form is replaced by the card and the button that had the focus is gone
+#   DSC-08      every refusal of the API gives the same toast; the API's code and message are dropped
+#   DSC-15      the privacy link opens a new tab and does not say so
+#   APPLYKOSK-1 (new, provisional id) the page's e-mail check lets "ad@alan.c" through, the API refuses it, and the toast
+#               says nothing of the address (measured: the API answers 400 VALIDATION_ERROR for it)
+#   F-3         the approval of an application names no köşk link: the applicant is told the köşk opened and is not led
+#               to it, and nothing ties the köşk to the application (drawn by nizam.applications.decide; noted at the
+#               state that starts it)
+# E2E carried: profile#5 (the way in from Keşfet, the e-mail filled, an empty send, the eleven fields, the sent card and
+# its PENDING row; its "Vazgeç writes nothing" is the effect `dropForm`, walked by `--to discover_opened`), discover#12 (the sentence and
+# the link at the end of Keşfet: state `discover`). Not carried: anonymous#4 (a visitor is offered no link: the visitor's page,
+# tedris.discover.visitorPath).
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.applyForKosk
+status: captured
+domain: medaris.api
+ui: tedris.discover.applyForKosk
+title: Ask Medaris to open a köşk
+summary: >-
+  A signed-in talebe reads the end of Keşfet, which says that a köşk can be asked for, and opens "Köşk açma başvurusu". The
+  form asks for the köşk's name, its field (one of eleven), a short description, why, and an e-mail address that starts as the
+  account's own; a telephone number is optional. Pressing "Başvuruyu gönder" first checks the form in the browser and, where a
+  required field is empty or the address or number is wrong, says so under the field and sends nothing. A complete form is
+  sent: the API files it as PENDING, the form is replaced by the card "Başvurun alındı", and the application waits on nizam's
+  page of köşk applications, where the başnazım or a Medaris nazımı decides it (the flow this one starts). "Vazgeç" goes back to
+  Keşfet and writes nothing. The page never says more than that the application reached Medaris: the person has no page for
+  it and no way to take it back, and is told the outcome by a notification.
+
+scope:
+  shows: the way in from Keşfet, the form and its checks, the list of the eleven fields, the busy send, the refusal toast and the sent card
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the visitor's Keşfet, which offers no link but an invitation to sign in or register: tedris.discover.visitorPath"
+    - "the rest of Keşfet (the cards, the search, the filters): tedris.discover.browse"
+    - "what Medaris management does with the application, and the köşk it opens from it: nizam.applications.decide, nizam.kosks.open"
+    - "the applicant's notification of the result (KOSK_APPLICATION_RESULT) on the notification page: tedris.account.notifications"
+    - "the privacy notice the link opens in a new tab: landing.site.readLegal"
+    - "an ended session: the send gives the sign-in page and back (realm.auth.signIn); the API answers 401 and the page calls sendToSignIn (kosk-application-page.tsx:68)"
+    - "a request that never reaches the server: the page's own words for it are not verified"
+    - "more than one application: nothing limits how many a person files (kosk-application.service.ts:10), so a second send makes a second row"
+
+context:
+  contact:
+    values: [valid, badEmail, badPhone, serverRefuses]
+    initial: any
+    say:
+      valid: "the e-mail is the account's own and the telephone is empty: the page accepts it and the API files it"
+      badEmail: "the address has no part after the @ and a dot (\"kimse@\"): the page says so under the field and sends nothing"
+      badPhone: "the telephone is not digits with the usual separators (\"abc\"): the page says so under the field and sends nothing"
+      serverRefuses: "an address the page accepts and the API does not (\"ad@alan.c\", whose last part has one letter): the page sends it and the API answers 400 (APPLYKOSK-1)"
+  typed:
+    values: [true, false]
+    initial: false
+    say: { "true": "the name, the short description and the reason hold text", "false": "they are empty" }
+  picked:
+    values: [true, false]
+    initial: false
+    say: { "true": "a field is chosen from the list", "false": "the list still says \"Alan seç\"" }
+  textSaid:
+    values: [true, false]
+    initial: false
+    say: { "true": "the three text fields each say what is missing under themselves", "false": "none of them says anything but its help" }
+  fieldSaid:
+    values: [true, false]
+    initial: false
+    say: { "true": "\"Bir alan seç.\" stands under the list", "false": "the list shows its help" }
+  emailSaid:
+    values: [true, false]
+    initial: false
+    say: { "true": "\"Geçerli bir e-posta adresi yaz.\" stands under the address", "false": "the address shows its help" }
+  phoneSaid:
+    values: [true, false]
+    initial: false
+    say: { "true": "\"Telefon numarasını rakamlarla yaz.\" stands under the number", "false": "the number shows its help" }
+  toast:
+    values: [none, refused]
+    initial: none
+    say: { none: "no toast", refused: "a toast says the application could not be sent; it stays until it is closed" }
+
+guards:
+  nothingYet: "not typed and not picked"
+  noText: "not typed and picked"
+  noField: "typed and not picked"
+
+effects:
+  typedIn: { set: { typed: true, textSaid: false, emailSaid: false, phoneSaid: false } }
+  picked: { set: { picked: true, fieldSaid: false } }
+  saidTextAndField: { set: { textSaid: true, fieldSaid: true, emailSaid: false, phoneSaid: false } }
+  saidText: { set: { textSaid: true, fieldSaid: false, emailSaid: false, phoneSaid: false } }
+  saidFieldAndEmail: { set: { textSaid: false, fieldSaid: true, emailSaid: true, phoneSaid: false } }
+  saidFieldAndPhone: { set: { textSaid: false, fieldSaid: true, emailSaid: false, phoneSaid: true } }
+  saidField: { set: { textSaid: false, fieldSaid: true, emailSaid: false, phoneSaid: false } }
+  saidEmail: { set: { textSaid: false, fieldSaid: false, emailSaid: true, phoneSaid: false } }
+  saidPhone: { set: { textSaid: false, fieldSaid: false, emailSaid: false, phoneSaid: true } }
+  clearSaid: { set: { textSaid: false, fieldSaid: false, emailSaid: false, phoneSaid: false } }
+  toastRefused: { set: { toast: refused } }
+  # "Vazgeç": the page is left and what was typed is gone; the binding checks that no row was written (profile#5)
+  dropForm: { set: { typed: false, picked: false, textSaid: false, fieldSaid: false, emailSaid: false, phoneSaid: false, toast: none } }
+
+failures:
+  sending:
+    from: createKoskApplication
+    signedOut: [HTTP_401]
+    refused: [VALIDATION_ERROR]
+
+# The main story: from Keşfet to the form, a send with nothing in it (the errors), the list of fields, the fields filled in, and the send.
+main:
+  given: { contact: valid }
+  events: [OPEN_FORM, SUBMIT, OPEN_FIELD, CHOOSE_FIELD, FILL_IN, SUBMIT, DONE]
+
+initial: discover
+states:
+  discover:
+    title: The end of Keşfet
+    by: human
+    source: apps/tedris/features/discover/components/discover-page.tsx:203
+    description: >-
+      Keşfet of a signed-in talebe ends with a card: the sentence "Bir ilim için köşk açılmasını istiyorsan başvurabilirsin;
+      başvurunu Medaris yönetimi değerlendirir." and the link-button "Köşk açma başvurusu" to /kosk-applications/new (e2e
+      discover#12; a visitor is given an invitation to sign in instead, anonymous#4, which is another flow's). The page is
+      the one tedris.discover.browse draws; only its h1 and this card are drawn here. The page sets no initial focus
+      (the focus is on the document after a load, measured).
+    on:
+      OPEN_FORM: { target: form, say: "they press \"Köşk açma başvurusu\": a full page load, the form page opens with the focus on the document" }
+      NAVIGATE: left
+
+  form:
+    title: The form
+    by: human
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:99
+    description: >-
+      The page "Köşk açma başvurusu": a breadcrumb, the h1 and one sentence, a card "Köşk" (name, field, short description,
+      why), a card "İletişim" (e-mail, telephone, the privacy sentence), "Vazgeç" and "Başvuruyu gönder", and the aside
+      "Başvurundan sonra" with its three steps. The form has native validation off; the page's own check runs when the
+      button is pressed (the button is never disabled, so nothing waits for a valid form). The e-mail starts as the
+      account's own address and may be changed; every other field starts empty. A field's error replaces its help line;
+      it is a plain <div> with no role and no live region, the focus stays on the button, and so a screen-reader user
+      hears nothing after the try (DSC-05, measured: the focus is on "Başvuruyu gönder" after an empty send). The page
+      draws its own <main> inside the shell's <main data-legacy-main>, so the page has two main landmarks (DSC-06 = SHL-16,
+      measured). The privacy link opens a new tab and does not say so (DSC-15). Typing in a field clears that field's error
+      only. "Vazgeç" is a plain link to /discover and writes nothing.
+      Pressing "Başvuruyu gönder" runs validateApplication (model.ts:40), which gives every error at once, and the press
+      goes one of three ways: the errors are drawn and nothing is sent; or, when nothing is wrong, the form is sent. The
+      name, the field, the short description and the reason are required (an empty text, or no field chosen); the address is
+      required and must look like x@y.z, the telephone, when given, must be digits with the usual separators (the same
+      pattern as the API). A form with an error never reaches the API (profile#5). The three text fields are modelled
+      together: the walk fills them in one step, so they are all empty or all filled.
+    on:
+      FILL_IN: { target: form, effect: [typedIn], say: "they type the name, the short description and the reason (and, where the case says so, a wrong address or number); the field is chosen by OPEN_FIELD and CHOOSE_FIELD" }
+      OPEN_FIELD: { target: choosingField, say: "they open the list of fields" }
+      SUBMIT:
+        - { guard: nothingYet, target: form, effect: [saidTextAndField], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "nothing is filled in: \"Köşk adını yaz.\", \"Bir alan seç.\", \"Kısa bir açıklama yaz.\", \"Bu köşkü neden istediğini yaz.\"; nothing is sent" }
+        - { guard: noText, target: form, effect: [saidText], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "a field is chosen and the texts are empty: the three text errors" }
+        - { guard: "noField and contact == 'badEmail'", target: form, effect: [saidFieldAndEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled, no field is chosen, the address is wrong: both errors" }
+        - { guard: "noField and contact == 'badPhone'", target: form, effect: [saidFieldAndPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled, no field is chosen, the number is wrong: both errors" }
+        - { guard: noField, target: form, effect: [saidField], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled and no field is chosen: \"Bir alan seç.\"" }
+        - { guard: "contact == 'badEmail'", target: form, effect: [saidEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the address is wrong: \"Geçerli bir e-posta adresi yaz.\"" }
+        - { guard: "contact == 'badPhone'", target: form, effect: [saidPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the number is wrong: \"Telefon numarasını rakamlarla yaz.\"" }
+        - { target: sending, effect: [clearSaid], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66, say: "the form passes the page's check: the errors are gone and it is sent" }
+      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
+      NAVIGATE: left
+
+  choosingField:
+    title: The list of fields is open
+    by: human
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:131
+    description: >-
+      The kit's Select (Base UI) opened on "Alan": a listbox with the eleven fields, in the design's order, from "Arapça dil
+      ilimleri" to "Diğer" (e2e profile#5 counts eleven; measured). The page behind is not inert (measured: the main is
+      neither inert nor aria-hidden), so it stays drawn. Choosing a field closes the list, writes it in the box and clears
+      the field's error; Esc closes it and changes nothing. Either way the focus is on the box again (measured). The kit's
+      Select is modal (Base UI's default): while the list is open a transparent backdrop covers the page but the box, so a
+      pointer press anywhere else only closes the list (from the code, not seen).
+    on:
+      CHOOSE_FIELD: { target: form, effect: [picked], source: apps/tedris/features/kosk-application/model.ts:45, say: "they choose a field: the list closes, the box says it, \"Bir alan seç.\" goes" }
+      DISMISS: { target: form, say: "Esc: the list closes and nothing is chosen" }
+      OPEN_FIELD: { target: form, source: libs/ui/src/mds/select.tsx:61, say: "they press the box again: the list closes and nothing is chosen" }
+      # a screen reader's own click reaches the button through the backdrop and would run the check instead (not drawn, not seen)
+      SUBMIT: { target: form, source: libs/ui/src/mds/select.tsx:51, say: "a press on \"Başvuruyu gönder\" lands on the open list's backdrop: the list closes, and nothing is checked or sent" }
+      NAVIGATE: left
+
+  sending:
+    title: Send the application
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66
+    description: >-
+      The server action submitKoskApplication, POST /kosk-applications with the name, field, short description, reason and
+      e-mail trimmed and the telephone trimmed or null (actions.ts:14-28). "Başvuruyu gönder" is busy ("Gönderiliyor"
+      through a hidden status) and aria-disabled, and keeps the focus. The text fields are read-only and "Vazgeç" is disabled
+      (no href, aria-disabled; kosk-application-page.tsx:121, 239), as what is typed now would not be sent and leaving would not
+      stop the application. The API files a
+      KoskApplication as PENDING for the caller; it sends nobody a message (the nazım sees it in the counts of nizam's
+      dashboard). A 401 sends the person to sign in. Every other refusal gives one toast (DSC-08): a 400 for what the page's
+      check let through, such as an address with a one-letter last part (APPLYKOSK-1). The list of fields is disabled while
+      the application is sent (the Select's `disabled`, kosk-application-page.tsx:142), as a field chosen now would not be the
+      one sent. The bar of the app and the browser's own ways out are not held.
+    invoke: { action: createKoskApplication }
+    on:
+      DONE: { guard: "contact == 'valid'", target: reachesNizam, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69, say: "the API answers 201 and PENDING" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: "contact == 'serverRefuses'", target: refused, effect: [toastRefused], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:72, say: "the API answers 400: the toast, and what was typed is kept" }
+
+  reachesNizam:
+    title: The application is on nizam's page of köşk applications
+    source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:25
+    description: >-
+      The PENDING row is the oldest-first list of "Köşk başvuruları" in nizam (listKoskApplications), where the başnazım, or
+      a Medaris nazımı holding platform.kosk_application_decide, opens it with the applicant's e-mail and telephone and
+      opens the köşk from it or refuses it with a reason. Nothing is sent when it is made. Finding F-3, which that flow
+      draws and this one only names: an approval records the köşk's id on the row without checking that the köşk was
+      opened from it (kosk-application-review.service.ts:156-181) and tells the applicant, by a notification that carries
+      the köşk's name and no target, that it opened; the notification page can lead to /kosks/<id> when a target is set
+      (notification-view.ts:71), so the applicant is told and not led. A step with no screen of its own.
+    always:
+      - { target: sent, starts: { flow: nizam.applications.decide }, say: "the application waits for Medaris management" }
+
+  refused:
+    title: The form, with a toast that says it was not sent
+    by: human
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:71
+    description: >-
+      The toast "Başvurun gönderilemedi. Biraz sonra yeniden dene." with "Sunucu isteği tamamlayamadı." (tone error: it
+      stays until it is closed and is announced with priority high). The form is as it was: what was typed is kept. The
+      toast does not say which field the API refused and the API's own message and code are thrown away (DSC-08); for an
+      address such as "ad@alan.c" the page's check passed and the API answered 400 for the address (APPLYKOSK-1).
+    on:
+      FILL_IN: { target: form, effect: [typedIn], say: "they change what they typed; the toast stays" }
+      OPEN_FIELD: { target: choosingField, say: "they open the list of fields; the toast stays" }
+      SUBMIT: # they press "Başvuruyu gönder" again; a second toast is added if it is refused again
+        - { guard: nothingYet, target: form, effect: [saidTextAndField], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "nothing is filled in: \"Köşk adını yaz.\", \"Bir alan seç.\", \"Kısa bir açıklama yaz.\", \"Bu köşkü neden istediğini yaz.\"; nothing is sent" }
+        - { guard: noText, target: form, effect: [saidText], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "a field is chosen and the texts are empty: the three text errors" }
+        - { guard: "noField and contact == 'badEmail'", target: form, effect: [saidFieldAndEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled, no field is chosen, the address is wrong: both errors" }
+        - { guard: "noField and contact == 'badPhone'", target: form, effect: [saidFieldAndPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled, no field is chosen, the number is wrong: both errors" }
+        - { guard: noField, target: form, effect: [saidField], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "the texts are filled and no field is chosen: \"Bir alan seç.\"" }
+        - { guard: "contact == 'badEmail'", target: form, effect: [saidEmail], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the address is wrong: \"Geçerli bir e-posta adresi yaz.\"" }
+        - { guard: "contact == 'badPhone'", target: form, effect: [saidPhone], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:62, say: "everything else is right and the number is wrong: \"Telefon numarasını rakamlarla yaz.\"" }
+        - { target: sending, effect: [clearSaid], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66, say: "the form passes the page's check: the errors are gone and it is sent" }
+      CANCEL: { target: discover_opened, effect: [dropForm], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235, say: "\"Vazgeç\": back to Keşfet, nothing is saved" }
+      NAVIGATE: left
+
+  sent:
+    title: The card "Başvurun alındı"
+    by: human
+    goal: true
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:83
+    description: >-
+      The form and the aside are replaced by one card: "Başvurun alındı", a success alert "Başvurun Medaris yönetimine
+      ulaştı ve incelenmeyi bekliyor. Gerekirse yazdığın adresten sana ulaşılır." and the link-button "Keşfet’e dön" (e2e
+      profile#5 reads data-testid="application-sent"). The button that had the focus is gone and nothing moves the focus
+      (DSC-07); the alert comes in with the card, which many screen readers do not announce. The row is PENDING; the person
+      has no page that lists it and no way to take it back; the outcome comes as a notification. The breadcrumb, the h1 and
+      the sentence stay.
+    on:
+      BACK_TO_DISCOVER: { target: discover_opened, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91, say: "\"Keşfet’e dön\": a plain link to /discover" }
+      NAVIGATE: left
+
+  discover_opened:
+    title: Keşfet opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Vazgeç", "Keşfet’e dön" and the breadcrumb all go to /discover (a plain link, a full page load).
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to
+      this form, and draws no toast. What was typed is lost. realm.auth.signIn takes over.
+
+assertions:
+  - id: an-incomplete-form-is-never-sent
+    never: "state == 'sending' and (not typed or not picked)"
+    say: "A form with an empty required field is never sent: the page's own check stops it"
+    source: apps/tedris/features/kosk-application/model.ts:44
+  - id: a-wrong-address-or-number-is-never-sent
+    never: "state == 'sending' and contact in ['badEmail', 'badPhone']"
+    say: "An address or a number the page's check refuses is never sent"
+    source: apps/tedris/features/kosk-application/model.ts:52
+  - id: the-card-comes-only-after-the-api-accepted
+    never: "state == 'sent' and contact != 'valid'"
+    say: "\"Başvurun alındı\" shows only after the API answered that it filed the application"
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69

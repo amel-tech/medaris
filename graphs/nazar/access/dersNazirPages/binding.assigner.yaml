@@ -1,0 +1,58 @@
+# nazar.access.dersNazirPages, the ders nazırı given course_nazir.assign and nothing else (e2e course-nazirs#13): Ders nazırları opens with the line “Ders nazırı
+# atayabilirsiniz.” (a3, a4), “Ders nazırı ata” with no box, her own row with “(siz)” and no button (a5, a6), the row of the person she appointed with “İzin yok”, no
+# “İzinleri düzenle” and a “Görevden al” that works (a11-a13), and no “Görevden al” on the row the hoca gave to a third person. The dialog is nazar.courseNazirs.appoint's
+# and the dismissal nazar.courseNazirs.dismiss's; here the page is read.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.assigner.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+#
+# What the setup makes besides the course and the post: `other` (a person with no Medaris role) is appointed by the nazır herself, through the API, with no permission
+# (the e2e's TALEBE, a4 and a10 of #13), and `applicantF` by the hoca, so that the table has a row the nazır did not appoint. Both go with the course.
+# What the effects check through the API (dnp.mjs try; the refusals are the answer wanted), on the way into the page:
+#   a14 the appointee holds no permission; a15 the nazır gives a code and is refused 403 PERMISSION_NOT_GIVABLE (she holds course_nazir.assign by a grant, not
+#   permission.grant through a role); a16 no post was written for it; a17 she is refused 403 SELF_GRANT_REFUSED on her own post; a18 on appointing herself; a19 her grants
+#   are the one she was given; and the third person's post, which she did not appoint, is refused her 403 NAZIR_NOT_APPOINTED_BY_YOU.
+#   Not carried here: a1, a2, a20-a23 (the hoca's page and the stale dismissal: nazar.courseNazirs.dismiss), a7-a10 and a24-a26 (the dialog and the dismissal she does).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+effects:
+  atNazirs:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from permission_grants where user_id = '{secret.E2E_OTHER_SUB}' and scope_id = '{dnp.course}' and revoked_at is null"]
+      expect: '"n":0'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_MUDERRIS_SUB}","permissions":["recording.manage"]}']
+      expect: '403 PERMISSION_NOT_GIVABLE'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments where role = 'DERS_NAZIR' and scope_id = '{dnp.course}' and user_id = '{secret.E2E_MUDERRIS_SUB}' and revoked_at is null"]
+      expect: '"n":0'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, PATCH, '/courses/{dnp.course}/nazirs/@post:applicantD', '{"permissions":["course_nazir.assign","week.hide"],"endsAt":null}']
+      expect: '403 SELF_GRANT_REFUSED'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_D_SUB}","permissions":[]}']
+      expect: '403 SELF_GRANT_REFUSED'
+    - run: [node, helpers/sql.mjs, "select permission from permission_grants where user_id = '{secret.E2E_APPLICANT_D_SUB}' and scope_id = '{dnp.course}' and revoked_at is null"]
+      expect: '"permission":"course_nazir.assign"'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, DELETE, '/courses/{dnp.course}/nazirs/@post:applicantF']
+      expect: '403 NAZIR_NOT_APPOINTED_BY_YOU'
+
+scenarios:
+  assigner:
+    given: { held: assigner }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'course_nazir.assign']
+        expect: 'course-nazir-grants APPLICANT_D'
+      - run: [node, helpers/api.mjs, applicantD, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_OTHER_SUB}","permissions":[]}']
+        expect: 'appointedBy'
+      - run: [node, helpers/api.mjs, muderris, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_F_SUB}","permissions":[]}']
+        expect: 'appointedBy'
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

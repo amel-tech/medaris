@@ -1,0 +1,398 @@
+# Opening the Arşiv of a köşk (or of the whole platform) in nizam-web, narrowing it by type or by a search, bringing an item back with "Geri al" and seeing it
+# leave the list, as the köşk's nazımı and the başnazım meet it. Read from the code of the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/
+# {arsiv,kosks/[id]/arsiv}/page.tsx and loading.tsx, features/archive/{components/archive-view.tsx, present.ts, hide-level.ts, reads.ts, actions.ts}, the shared
+# Table, Select, Button, Alert and sonner toast of libs/ui, and the routes the page calls (apps/tedrisat/src/archive/{archive.controller,archive.service,
+# archive.repository,restore-course,hide-level}.ts, madrasah/madrasah.repository.ts:650). It says what the code does today. Nothing here was seen in a browser by
+# its writer: every behaviour is "from the code" unless a line says it was measured. The graph was written without a replay (the owner's word: replays and runs
+# happen once, at the end), so nothing in it has been walked.
+#
+# What is drawn:
+#   - the köşk's Arşiv (/kosks/<id>/arsiv) and the platform's (/arsiv): the title, the intro, the search box, the "Tür süzgeci" select (and on the platform the
+#     "Kapsam süzgeci"), the live count "N gizli öğe", the table of what is hidden, newest first, with its kind, where it sat, who hid it and when;
+#   - narrowing the list: choosing a type or typing in the search box, which asks the API again after a pause of 300 ms; the sentences of an empty list and of a
+#     list the filters emptied;
+#   - "Geri al" on a row: it asks nothing first, brings the item back, the row leaves the list and the count follows, a toast says so; where a higher kademe hid it
+#     the row has a sentence and no button;
+#   - the refusals of a restore, each with the words the page says: the item is not in the Arşiv any more (ARCHIVE_ITEM_NOT_FOUND), a higher kademe hid it
+#     meanwhile (ARCHIVE_RESTORE_LEVEL), the medrese it belongs to is still hidden (ARCHIVE_PARENT_HIDDEN), and the others;
+#   - the press of "Kalıcı olarak sil" on the platform's list, which is where nizam.moderation.deleteArchived begins.
+#
+# What the story depends on and the graph says plainly:
+#   - A hidden thing is never deleted. A hide records the kademe its hider acted at (course < medrese < köşk < platform), and only that kademe or one above brings
+#     it back (ArchiveService.restore, hide-level.ts). The köşk's nazımı hides at the köşk's kademe and the başnazım at the platform's, so a course the başnazım hid has
+#     no button for the nazım, only a sentence (HideLevel.locked). The başnazım acts at the platform's kademe, above every other, so no row of the platform's list is
+#     ever locked for him. A medrese's başmüderris hides at the medrese's kademe, which the köşk's nazımı is above: a course of a hidden medrese is listed in the köşk's
+#     Arşiv with a "Geri al", and pressing it is refused while the medrese is still hidden (ARCHIVE_PARENT_HIDDEN).
+#   - A week is listed only while its course is shown, and a session only while its week and its course are (archive.repository.ts:85). So the one way a week or a
+#     session meets ARCHIVE_PARENT_HIDDEN from this page is a hide that lands between the read and the press; the course of a hidden medrese is the way a person meets it.
+#   - Four facts of the world decide what the page draws and do not change inside a walk: `view` (the köşk's Arşiv with nothing locked, with a row the başnazım hid, or
+#     the platform's), `held` (which kinds of rows can be restored) and, told by the steps, `type`, `search`, `toast` and `stale`. After the first read the list is the
+#     page's own state, not the server's: a restore takes the row out of it by hand and a filter reads the list again, so what another person hid or restored
+#     meanwhile is not shown until a filter is changed (the stale rows are what the refusals are for).
+#   - Findings it carries (ui.yaml `rules` has the same ids): F-W5-5 and F-X-7 (the focus is lost where the pressed button leaves with its row), F-X-5 (sonner's toast
+#     host), F-UI-W1-3 (the busy label is the kit's), F-X-10 (the loading page is silent; not drawn) and five of its own: RESTORE-1 (the köşk's list stops at 50 rows
+#     and has no "Daha fazla göster"), RESTORE-2 (a row that flips to locked says the köşk's nazımı hid it, to the köşk's nazımı), RESTORE-3 (the "Tür" select offers
+#     kinds that can never list anything), RESTORE-4 (a refusal with no message of its own shows the API's English text) and RESTORE-5 (ARCHIVE_PARENT_HIDDEN tells a
+#     köşk's nazımı to bring back what only the medrese's own people can, and the row keeps its button).
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.restoreArchived
+status: captured
+domain: medaris.api
+ui: nizam.moderation.restoreArchived
+title: Restore something from the archive
+summary: >-
+  The köşk's nazımı opens Arşiv from the menu (or the başnazım opens the platform's from his): a table of what was hidden, newest first, each row with its kind
+  (course, week, session), where it sat, who hid it with their role, and when, under a search box, a "Tür süzgeci" select and a count that reads "N gizli öğe". Choosing a
+  type or typing in the search box narrows the list from the API again; a list with nothing to show says "Gizlenen öğe yok", or "Bu süzgece uyan gizli öğe yok" while a
+  filter is on. "Geri al" brings an item back where it was, at once and with no question: the row leaves, the count follows and a toast says "Geri alındı". A row a higher
+  kademe hid, the başnazım's for the köşk's nazımı, has a sentence in the button's place and no button. When the call is refused the toast says why: the item is no longer
+  in the Arşiv, a higher kademe hid it meanwhile (and the row turns to a sentence), or the medrese it belongs to is still hidden. The focus is lost where the pressed button
+  leaves with its row (F-W5-5), the toast is the only word that it worked, and the köşk's list stops at 50 rows.
+source: apps/nizam/features/archive/components/archive-view.tsx:85
+
+scope:
+  shows: >-
+    the köşk's Arşiv and the platform's, with their filters, count, table, "Geri al", the sentences of a higher kademe, the toasts of a restore and the refusals of
+    its call, and the press of "Kalıcı olarak sil" as the exit into the flow that owns it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the confirmation window of 'Kalıcı olarak sil', the impact counts it reads, its 'already gone' branch, the platform's scope filter in use and 'Daha fazla göster' (ten rows a page, archive#7 and #8): nizam.moderation.deleteArchived. The button's press is drawn here as its exit"
+    - "how a row came to be hidden: a course from Dersler (nizam.courses.list), a week or a session from the curriculum (nizam.courses.curriculum), a deck (nizam.decks.koskDecks), a köşk (nizam.kosks.editAndHide), a medrese (nazar.archive.hideMedrese), and the same restore of a course from the Dersler list and from nazar's Arşiv (nizam.courses.list, nazar.archive.hideAndRestoreCourse)"
+    - "the kinds of rows the stack's walks do not make: a deck, a köşk and (on the platform) a medrese row; a course or week or session of a medrese the köşk hosts is drawn only as the course of a hidden medrese. The 'Tür' select offers Deste, and on the platform Köşk and Medrese, which the model does not choose"
+    - "a başnazım opening a köşk's own Arşiv (it is open to him, and he sees no locked row), a Medaris nazımı holding platform.kosk_edit (no menu entry: only the address or the köşk page leads there), and a köşk's nazım who is also the başnazım"
+    - "a köşk's list of more than 50 rows (the 51st is not reachable: RESTORE-1), and a list read again after a restore by hand, which the page never does (it filters the list in place), so a row hidden or brought back by someone else meanwhile is told only by the next refusal"
+    - "the table's column headers (Gizlenen, Tür, Kapsam, Gizleyen, Gizlendiği tarih), the cover pattern of a row, the kind icon and a deck's row; and a row with no recorded hider, which says 'Bilinmiyor' and has no role line"
+    - "the loading page (apps/nizam/app/**/arsiv/loading.tsx: an aria-busy div with aria-hidden skeletons, nothing is said: F-X-10), the skeleton drawn while a filter reads an empty list, a session that has ended (a server action then sends the person to sign in: realm.auth.sessionEnded), a restore that fails outright (the action turns every error into a message, so the toast shows it: RESTORE-4)"
+    - "a person with no right to the page: another köşk's id, or the platform's Arşiv for a köşk's nazımı, gets 'Bu bölüm için izniniz yok' (archive#6, carried by nizam.shell.noAccessAndNotFound); drawn here only as the exit `refused`"
+    - "the Medaris nazımı's own Arşiv (there is none: /arsiv is the başnazım's alone) and the köşk menu's scope picker"
+
+decisions:
+  D1:
+    question: >-
+      Should the "Tür süzgeci" offer only the kinds the API can list? "Ders kaydı" (and on the platform "Medrese") are in the select, but nothing is stored for them:
+      choosing one always ends in "Bu süzgece uyan gizli öğe yok" (RESTORE-3).
+    recommend: >-
+      Leave them out until a recording or a medrese can be hidden into this list (a medrese is brought back from its own page, a recording has no storage yet).
+    affects: [listEmpty]
+  D2:
+    question: >-
+      When ARCHIVE_PARENT_HIDDEN refuses a restore, should the page say which parent is hidden and who may bring it back, and take the button away? Today it says "Bağlı
+      olduğu öğe hâlâ gizli; önce onu geri alın." and leaves "Geri al" on the row (RESTORE-5); the köşk's nazımı cannot bring a medrese back.
+    recommend: >-
+      Name the medrese or köşk and the kademe that restores it (nazar's Arşiv already does), and mark the row as waiting for it.
+    affects: [restoring, listed]
+  D3:
+    question: >-
+      Should the köşk's list page like the platform's? It asks for 50 rows and draws no "Daha fazla göster" (RESTORE-1).
+    recommend: >-
+      Draw the same footer and button in both modes, or page by 10 as the platform does.
+    affects: [listed]
+
+context:
+  view:
+    values: [kosk, koskLocked, platform]
+    initial: any
+    say:
+      kosk: "the köşk's nazımı opens the köşk's Arşiv (/kosks/<id>/arsiv) and every row in it is one he may bring back"
+      koskLocked: "the same page, and the list holds a course the başnazım hid: that row has a sentence and no button for the nazım"
+      platform: "the başnazım opens the platform's Arşiv (/arsiv): every köşk's and medrese's hidden things, a scope filter, and no row is locked for him"
+  held:
+    values: [none, courses, parts, both]
+    initial: any
+    say:
+      none: "nothing is hidden"
+      courses: "hidden courses only"
+      parts: "hidden weeks or sessions only"
+      both: "hidden courses and hidden weeks or sessions"
+  type:
+    values: [all, course, week, session, recording]
+    initial: all
+    say:
+      all: "Tür: tümü"
+      course: "Ders"
+      week: "Hafta"
+      session: "Celse"
+      recording: "Ders kaydı, which can never list anything (RESTORE-3)"
+  search:
+    values: [none, match, nothing]
+    initial: none
+    say:
+      none: "the search box is empty"
+      match: "the box holds a fragment of one course's title: that course is the one row the search finds"
+      nothing: "the box holds text no title has"
+  stale:
+    values: [fresh, flipped]
+    initial: fresh
+    say:
+      fresh: "every row is as the last read said"
+      flipped: "a restore was refused with ARCHIVE_RESTORE_LEVEL: the row turned to a sentence by hand, with the level it had when the list was read (RESTORE-2)"
+  toast:
+    values: [none, restored, restoreGone, restoreLevel, parentHidden, restoreFailed, loadFailed]
+    initial: none
+    say:
+      none: "no answer is on the screen, or its toast is gone"
+      restored: "an item was just brought back"
+      restoreGone: "the item was no longer in the Arşiv"
+      restoreLevel: "a higher kademe hid it (ARCHIVE_RESTORE_LEVEL), or the caller acts at no level there (ARCHIVE_FORBIDDEN): the same words"
+      parentHidden: "the medrese it belongs to is still hidden"
+      restoreFailed: "any other refusal: the API's own message"
+      loadFailed: "a filter or a retry could not read the Arşiv"
+
+guards:
+  # whether the list holds a course (a locked one stays however many are restored), a week or a session, or anything at all
+  courseRows: "held in ['courses', 'both'] or view == 'koskLocked'"
+  partRows: "held in ['parts', 'both']"
+  anyRows: "courseRows or partRows"
+  # whether the filters leave something to list: a type shows its own kind, a search finds the one course it was made from, and a search of text no title has finds nothing
+  holdsHere: "(search == 'none' and ((type == 'all' and anyRows) or (type == 'course' and courseRows) or (type in ['week', 'session'] and partRows))) or (search == 'match' and type in ['all', 'course'] and courseRows)"
+  filtered: "type != 'all' or search != 'none'"
+
+effects:
+  clearNote: { set: { toast: none } }
+  typeAll: { set: { type: all, toast: none, stale: fresh } } # a filter reads the list again, so a flipped row is the API's own again
+  typeCourse: { set: { type: course, toast: none, stale: fresh } }
+  typeWeek: { set: { type: week, toast: none, stale: fresh } }
+  typeSession: { set: { type: session, toast: none, stale: fresh } }
+  typeRecording: { set: { type: recording, toast: none, stale: fresh } }
+  searchMatch: { set: { search: match, toast: none, stale: fresh } }
+  searchNothing: { set: { search: nothing, toast: none, stale: fresh } }
+  searchClear: { set: { search: none, toast: none, stale: fresh } }
+  restored: { set: { toast: restored }, havoc: [held] } # the row leaves the list by hand, so the list may have emptied
+  restoreGone: { set: { toast: restoreGone }, havoc: [held] } # the row leaves the list by hand
+  restoreLevel: { set: { toast: restoreLevel, stale: flipped } } # the row stays and turns to a sentence (RESTORE-2)
+  restoreForbidden: { set: { toast: restoreLevel } } # the same words, and the row keeps its button
+  parentHidden: { set: { toast: parentHidden } } # the row keeps its button (RESTORE-5)
+  restoreFailed: { set: { toast: restoreFailed } }
+  readFailed: { set: { toast: loadFailed } }
+
+failures:
+  readingKosk:
+    from: listKoskArchive
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    other: []
+  readingPlatform:
+    from: listPlatformArchive
+    forbidden: [ARCHIVE_FORBIDDEN]
+    other: []
+  filteringKosk:
+    from: listKoskArchive
+    other: [AUTHZ_FORBIDDEN, KOSK_NOT_FOUND, HTTP_400]
+  filteringPlatform:
+    from: listPlatformArchive
+    other: [ARCHIVE_FORBIDDEN, HTTP_400]
+  restoring:
+    from: restoreArchiveItem
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+    level: [ARCHIVE_RESTORE_LEVEL]
+    forbidden: [ARCHIVE_FORBIDDEN]
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+    other: [COURSE_NOT_FOUND, HTTP_400]
+
+# The story the page tells first: the köşk's nazımı opens the Arşiv, whose list holds a course the başnazım hid; he narrows it to the courses, searches for text no title has
+# (the list empties and says so), clears it, goes back to every type and brings his own course back.
+main:
+  given: { view: koskLocked, held: both }
+  events: [DONE, CHOOSE_TYPE_COURSE, DONE, SEARCH_NOTHING, DONE, CLEAR_SEARCH, DONE, CHOOSE_TYPE_ALL, DONE, RESTORE, DONE]
+
+initial: begin
+
+states:
+  begin:
+    title: The person opens one of the two pages
+    description: >-
+      A step with no screen: the person is on the köşk's Arşiv (`view` kosk or koskLocked), which the köşk menu's "Arşiv", the "Arşiv" link of Dersler or an address opens,
+      or on the platform's (`view` platform), which the başnazım's menu or the "Arşiv" link of the directories opens. Nothing is drawn here.
+    always:
+      - { guard: "view == 'platform'", target: readingPlatform }
+      - { target: readingKosk }
+    source: apps/nizam/app/kosks/[id]/arsiv/page.tsx:25
+
+  readingKosk:
+    title: The köşk's Arşiv is read
+    description: >-
+      The page reads the köşk and its archive on the server, together (GET /kosks/:id/archive?limit=50, behind loading.tsx's skeleton). Newest hidden first, each item with
+      its `canRestore` (false where it was hidden at a kademe above the caller's) and who hid it. Courses, weeks, sessions and decks of the köşk, and the same of the medrese
+      courses it hosts; never the köşk itself. A 403 (the person is not one of the köşk's nazımları) and a 404 (no such köşk) both end in "Bu bölüm için izniniz yok"
+      (refused; archive#6). Any other failure draws the page's in-place error (loadFailed).
+    invoke: { action: listKoskArchive }
+    on:
+      DONE: settled
+      FAIL.forbidden: refused
+      FAIL.missing: refused
+      FAIL.other: loadFailed
+    source: apps/nizam/app/kosks/[id]/arsiv/page.tsx:31
+
+  readingPlatform:
+    title: The platform's Arşiv is read
+    description: >-
+      The page reads GET /archive?limit=10 and then the scopes (GET /archive/scopes) that fill the "Kapsam süzgeci", on the server. Only the başnazım is let in (the service asks
+      for SYSTEM_ADMIN alone): a 403 ends in "Bu bölüm için izniniz yok" (refused; archive#6). The list is every köşk's and medrese's hidden things, newest first, ten rows and a
+      "Daha fazla göster". Any other failure draws the in-place error (loadFailed); a read of the scopes that fails leaves the select with its first option only.
+    invoke: { action: listPlatformArchive }
+    on:
+      DONE: settled
+      FAIL.forbidden: refused
+      FAIL.other: loadFailed
+    source: apps/nizam/app/arsiv/page.tsx:25
+
+  settled:
+    title: The list is what the answer and the filters leave
+    description: >-
+      The table is what the API listed (after a read or a filter) or what the page's own state holds after a restore took a row out by hand: its rows, or the sentence of an
+      empty list.
+    always:
+      - { guard: holdsHere, target: listed }
+      - { target: listEmpty }
+    source: apps/nizam/features/archive/components/archive-view.tsx:174
+
+  listed:
+    title: Arşiv lists what is hidden
+    description: >-
+      The page: the title, the intro, a named section (its heading "Gizlenenler" is visually hidden) with the search box "Gizlenenlerde ara", the select "Tür süzgeci" (and on the
+      platform "Kapsam süzgeci"), the count "N gizli öğe" (a polite live region), and the table "{köşk} içinde gizlenenler" or "Platformda gizlenenler". A row has its title with a
+      grey line under it (a course's weeks and talebe; a session's week, course and time; a week's number and course), its kind (a badge in the köşk's list; the first word of the grey
+      line on the platform, with the köşk and the medrese in a column of their own), who hid it with their role, when ("Bugün 14:05", "Dün 10:40", "29 Eyl 10:40"), and "Geri al: <title>
+      …" or, where the caller's kademe is below the one that hid it, "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." / "Bunu Medaris yönetimi gizledi; …" and no
+      button. On the platform each row also has "Kalıcı olarak sil: <title> …" and the line "Toplam N öğe, 10 tanesi gösteriliyor". The köşk's list ends with a paragraph on where each kind
+      comes back to. The page sets no focus (focus-not-set). The köşk's list holds at most 50 rows and has no "Daha fazla göster" (RESTORE-1). A toast of the last restore may still be up;
+      a refused restore ends here with its error toast: a row that turned to a sentence by hand (ARCHIVE_RESTORE_LEVEL: it reads "Bunu köşk nazımı gizledi" to the köşk's nazımı himself,
+      RESTORE-2), a row that kept its button (ARCHIVE_PARENT_HIDDEN, ARCHIVE_FORBIDDEN and any other refusal).
+    by: human
+    goal: true
+    on:
+      RESTORE: { target: restoring, effect: [clearNote], say: "they press Geri al on a row: nothing is asked first", source: apps/nizam/features/archive/components/archive-view.tsx:355 }
+      CHOOSE_TYPE_ALL: { target: filtering, effect: [typeAll], say: "they open the select 'Tür süzgeci' and choose 'Tür: tümü'" }
+      CHOOSE_TYPE_COURSE: { target: filtering, effect: [typeCourse], say: "they choose Ders" }
+      CHOOSE_TYPE_WEEK: { target: filtering, effect: [typeWeek], say: "they choose Hafta" }
+      CHOOSE_TYPE_SESSION: { target: filtering, effect: [typeSession], say: "they choose Celse" }
+      CHOOSE_TYPE_RECORDING: { target: filtering, effect: [typeRecording], say: "they choose Ders kaydı: nothing is ever stored for it (RESTORE-3)" }
+      SEARCH_MATCH: { target: filtering, effect: [searchMatch], say: "they type a fragment of one course's title in the search box: the list is read again 300 ms after the last key" }
+      SEARCH_NOTHING: { target: filtering, effect: [searchNothing], say: "they type text no title has" }
+      CLEAR_SEARCH: { target: filtering, effect: [searchClear], say: "they empty the search box" }
+      ASK_DELETE: { guard: "view == 'platform'", target: delete_asked, say: "on the platform they press 'Kalıcı olarak sil' on a row: nizam.moderation.deleteArchived's window", source: apps/nizam/features/archive/components/archive-view.tsx:367 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:475
+
+  listEmpty:
+    title: The list has nothing to show
+    description: >-
+      The table keeps its caption and its headers and its one cell says "Gizlenen öğe yok" while no filter is on, or "Bu süzgece uyan gizli öğe yok" while a type is chosen or the box holds
+      text (the köşk's list, or the platform's, with nothing hidden or nothing that fits). The count reads "0 gizli öğe". "Ders kaydı" always lands here (RESTORE-3). The filters are still there,
+      so the person goes back; the platform's footer line is not drawn.
+    by: human
+    on:
+      CHOOSE_TYPE_ALL: { target: filtering, effect: [typeAll], say: "they choose 'Tür: tümü'" }
+      CHOOSE_TYPE_COURSE: { target: filtering, effect: [typeCourse], say: "they choose Ders" }
+      CHOOSE_TYPE_WEEK: { target: filtering, effect: [typeWeek], say: "they choose Hafta" }
+      CHOOSE_TYPE_SESSION: { target: filtering, effect: [typeSession], say: "they choose Celse" }
+      CHOOSE_TYPE_RECORDING: { target: filtering, effect: [typeRecording], say: "they choose Ders kaydı" }
+      SEARCH_MATCH: { target: filtering, effect: [searchMatch], say: "they type a fragment of one course's title" }
+      SEARCH_NOTHING: { target: filtering, effect: [searchNothing], say: "they type text no title has" }
+      CLEAR_SEARCH: { target: filtering, effect: [searchClear], say: "they empty the search box" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:392
+
+  filtering:
+    title: A filter is asked for
+    description: >-
+      A step with no screen: a type chosen or a search typed reads the list again, from page one, from the köşk's archive or from the platform's.
+    always:
+      - { guard: "view == 'platform'", target: filteringPlatform }
+      - { target: filteringKosk }
+    source: apps/nizam/features/archive/components/archive-view.tsx:154
+
+  filteringKosk:
+    title: The köşk's list is read again
+    description: >-
+      The server action loadArchive calls GET /kosks/:id/archive with the type, the search text (trimmed) and `limit` 50, 300 ms after the last change; a newer ask supersedes this one.
+      While it runs the table keeps the rows it had (the skeleton is drawn only for a list that was empty), and nothing says it is working. The count follows when it answers. A failure
+      draws the in-place error and an error toast "Arşiv yüklenemedi" that stays (loadFailed).
+    invoke: { action: listKoskArchive }
+    on:
+      DONE: settled
+      FAIL.other: { target: loadFailed, effect: [readFailed], source: apps/nizam/features/archive/components/archive-view.tsx:135 }
+    source: apps/nizam/features/archive/actions.ts:28
+
+  filteringPlatform:
+    title: The platform's list is read again
+    description: >-
+      The same through GET /archive with the type, the search text and the scope (koskId or madrasahId), ten rows. A failure draws the in-place error and the sticky toast.
+    invoke: { action: listPlatformArchive }
+    on:
+      DONE: settled
+      FAIL.other: { target: loadFailed, effect: [readFailed], source: apps/nizam/features/archive/components/archive-view.tsx:135 }
+    source: apps/nizam/features/archive/actions.ts:28
+
+  restoring:
+    title: The item is being brought back
+    description: >-
+      The server action restoreArchiveItem calls POST /archive/:type/:id/restore (no body; the API decides by kademe: the level the caller acts at on the item must reach the level
+      that hid it, read again under the row's lock, and a course whose medrese or köşk is still hidden stays where it is). The row's "Geri al" is busy (aria-disabled, hidden status
+      "Yükleniyor": F-UI-W1-3) and the other rows' buttons stay live. Success: the row is taken out of the list by hand, the count drops by one and the toast "Geri alındı" says
+      "<title> eski yerine döndü."; a week comes back with the sessions hidden at its own instant, a course with its weeks, and the item is written to the audit log as `<type>.restore`.
+      The pressed button leaves with its row, so the focus is lost (F-W5-5, F-X-7). ARCHIVE_ITEM_NOT_FOUND (someone brought it back first): the row leaves the list and the toast says
+      "Bu öğe artık arşivde değil.". ARCHIVE_RESTORE_LEVEL (a higher kademe hid it again since the list was read): the row turns to a sentence and the toast says "Bunu geri alamazsınız: daha
+      üst bir kademe gizledi; …". ARCHIVE_FORBIDDEN says the same words and the row keeps its button. ARCHIVE_PARENT_HIDDEN (the medrese is still hidden): "Bağlı olduğu öğe hâlâ gizli; önce onu
+      geri alın." and the row keeps its button (RESTORE-5). Every other refusal shows the API's own message (RESTORE-4). A failure is a sticky toast; the call is wrapped, so a thrown error
+      is turned into its message too.
+    invoke: { action: restoreArchiveItem }
+    on:
+      DONE: { target: settled, effect: [restored], source: apps/nizam/features/archive/components/archive-view.tsx:174 }
+      FAIL.gone: { target: settled, effect: [restoreGone], source: apps/nizam/features/archive/components/archive-view.tsx:183 }
+      FAIL.level: { guard: "view != 'platform'", target: listed, effect: [restoreLevel], source: apps/nizam/features/archive/components/archive-view.tsx:187 }
+      FAIL.forbidden: { target: listed, effect: [restoreForbidden], source: apps/nizam/features/archive/components/archive-view.tsx:193 }
+      FAIL.parentHidden: { target: listed, effect: [parentHidden], source: apps/nizam/features/archive/components/archive-view.tsx:193 }
+      FAIL.other: { target: listed, effect: [restoreFailed], source: apps/nizam/features/archive/components/archive-view.tsx:193 }
+    source: apps/nizam/features/archive/components/archive-view.tsx:166
+
+  loadFailed:
+    title: The Arşiv could not be read
+    description: >-
+      The page's own error, where the table would be: an alert "Arşiv yüklenemedi" / "Arşiv şu an okunamıyor. Biraz sonra yeniden deneyin." with "Yeniden dene", under the filters, which
+      still work. The first read that fails draws only this; a filter or a retry that fails also raises the sticky toast. "Yeniden dene" asks for page one again with the filters as they are.
+      The stack cannot make a read fail.
+    by: human
+    on:
+      RETRY: { target: filtering, effect: [clearNote], say: "they press Yeniden dene", source: apps/nizam/features/archive/components/archive-view.tsx:462 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:456
+
+  refused:
+    title: The page says "Bu bölüm için izniniz yok"
+    type: final
+    leavesPage: true
+    description: >-
+      A 403 or a 404 of the page's own read (a köşk's nazımı at /arsiv or at another köşk's Arşiv, a person with no role, a köşk that is not there): the same screen for both, with its
+      own "Ana sayfaya dön" button (app/forbidden.tsx, app/not-found.tsx). Its whole story is nizam.shell.noAccessAndNotFound's (archive#6).
+
+  delete_asked:
+    title: The window of "Kalıcı olarak sil" opens
+    type: final
+    description: >-
+      On the platform's list the press of "Kalıcı olarak sil: <title> …" reads what deleting would take along (GET /archive/:type/:id/impact) and opens an alertdialog over the same page. That
+      window, its confirmation and its "already gone" branch are nizam.moderation.deleteArchived's; nothing is deleted by this press.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-list-is-drawn-only-while-the-filters-leave-something
+    never: "state == 'listed' and not holdsHere"
+    say: A table of rows is drawn only while the type and the search leave something to list.
+    source: apps/nizam/features/archive/components/archive-view.tsx:475
+  - id: an-empty-list-says-so-only-when-nothing-fits
+    never: "state == 'listEmpty' and holdsHere"
+    say: The sentence of an empty list shows only when the filters leave nothing.
+    source: apps/nizam/features/archive/components/archive-view.tsx:392
+  - id: the-platform-never-locks-the-basnazim
+    never: "view == 'platform' and stale == 'flipped'"
+    say: The başnazım acts at the platform's kademe, above every other, so no row of the platform's list is locked for him or turns to a sentence.
+    source: apps/tedrisat/src/archive/archive.service.ts:467
+  - id: no-recording-is-ever-listed
+    never: "state == 'listed' and type == 'recording'"
+    say: The type "Ders kaydı" never lists a row, whatever the köşk holds.
+    source: apps/tedrisat/src/archive/archive-types.ts:8

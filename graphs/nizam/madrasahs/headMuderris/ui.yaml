@@ -1,0 +1,244 @@
+# The screens of nizam.madrasahs.headMuderris: the Medreseler page (/medreseler) with the row of one medrese, and the "Başmüderris ata" / "Başmüderrisi değiştir"
+# dialog over it. Read from apps/nizam/features/madrasahs/components/{madrasahs-view,assign-head-dialog,head-picker}.tsx on 15 Nov 2026; the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespaces MadrasahsPage, AssignHeadDialog, HeadPicker). Nothing was seen in a browser.
+#
+#   - changes: the app's own message after the change, AssignHeadDialog.changedBody ("{name} için başmüderris {head} oldu."). It says who heads the medrese; it does not
+#     say that the old head's seat ends, that each answer is applied, or that a passive medrese opens again. No message is authored.
+#   - composed.* keys are text the code builds from data and pieces of messages: composed.MadrasahsPage.oldHeadCell and .headCell (the Başmüderris cell, a <bdi> with the
+#     head's name, madrasahs-view.tsx:172), composed.AssignHeadDialog.eyebrow (the medrese's name above the title, assign-head-dialog.tsx:255), .introChange and
+#     .handedOnHeading (a <strong> with the old head's name followed by the messages of those names, :269-272 and :336-337), .person and .personEmail (the <bdi> lines of a person, :352-359),
+#     .handOnLine (heading(group), :194-210, which joins the role's name, the place, "süresiz" or "{date} tarihine dek" and "verildi {date}" with " · ").
+#   - the two meanings of {name}: the medrese's (the row buttons, the intro, the toasts) and, in HeadPicker.chosen and HeadPicker.remove, the chosen person's. The samples give the
+#     medrese's, so the two picker nodes read wrongly on the wireframe; the binding finds them by their frame (a regular expression).
+#   - the permission names of a hand-on line are the codes themselves (HEAD-2): the sample of {names} is what the page prints for the two permissions the walk's data gives.
+#   - the dialog is modal, so the page behind it is inert and its nodes are listed only where the dialog is closed.
+schema: delurio-graph/0
+kind: ui
+id: nizam.madrasahs.headMuderris
+flow: nizam.madrasahs.headMuderris
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: AssignHeadDialog.changedBody }
+samples:
+  name: Başmüderris Deneme Medresesi # the medrese; also the sample of {place} below
+  head: Dilek Başvuran # the new başmüderris
+  oldHead: Tahsin Başvuran # the sitting başmüderris
+  person: Salih Başvuran # a person the old head gave something to
+  email: salih.basvuran@example.test
+  role: Medrese nâzırı
+  place: Başmüderris Deneme Medresesi
+  until: süresiz
+  given: verildi 15 Kasım 2026
+  count: "2"
+  names: madrasah.nazir_appoint · course_nazir.assign
+
+# The page keeps no focus of its own (nothing in madrasahs-view.tsx moves it), so it has no `initialFocus`. The dialog is opened with no `initialFocus` either, so Base UI
+# gives the focus to the first focusable element, the close icon of the header (F-W2-12).
+nodes:
+  # ---- Medreseler, the dialog closed ----
+  listPage: { type: page, component: Page, role: main, in: [listed, closed, assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:326 } # the shell's one <main id="main">; it has no name
+  listTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.title }, in: [listed, closed, assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:332 } # h1
+  listIntro: { type: text, component: Text, text: { key: MadrasahsPage.intro }, in: [listed, closed, assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:333 }
+  listTable: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ALL }, in: [listed, closed, assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 } # the caption of the Tümü tab, which is where /medreseler and /medreseler?q= open
+  rowHeadNone: { type: text, component: Text, text: { key: MadrasahsPage.unassigned }, in: [listed, closed], when: "medrese == 'passive'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:175 } # "Atanmamış", with the date its term ended under it (not drawn)
+  rowHeadOld: { type: text, component: Text, text: { key: composed.MadrasahsPage.oldHeadCell, params: { oldHead: head.old } }, in: [listed, closed], when: "medrese == 'active'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:172 }
+  rowHeadNew: { type: text, component: Text, text: { key: composed.MadrasahsPage.headCell, params: { head: head.new } }, in: [assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:172 } # the table is read again after the success
+  rowStatusPassive: { type: text, component: Text, text: { key: MadrasahsPage.status.PASSIVE }, in: [listed, closed], when: "medrese == 'passive'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:210 } # a warning badge with a lock, and "{date} beri" under it
+  rowStatusActive: { type: text, component: Text, text: { key: MadrasahsPage.status.ACTIVE }, in: [listed, closed], when: "medrese == 'active'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:210 }
+  rowStatusNow: { type: text, component: Text, text: { key: MadrasahsPage.status.ACTIVE }, in: [assigned, changed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:210 } # a passive medrese is active again; an active one still is
+  assignButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.assignLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.assign }, in: [listed, closed], when: "medrese == 'passive'", emits: OPEN_ASSIGN, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:258 } # drawn to a viewer whose `can.assign` is on; named with the medrese ("Başmüderris ata: {name}")
+  changeButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.changeLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.change }, in: [listed, closed, changed], when: "medrese == 'active'", emits: OPEN_CHANGE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:283 } # only on an active row that has a head; the same button after a change, so the focus can go back to it
+  changeButtonNow: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.changeLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.change }, in: [assigned], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:283 } # the passive row's button was replaced by this one: the focus has nothing to return to (F-W2-10)
+
+  # ---- the success toasts (a sonner toast: a status, no role of its own) ----
+  savedTitle: { type: status, component: Status, text: { key: AssignHeadDialog.saved }, in: [assigned], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:158 }
+  savedBody: { type: status, component: Status, text: { key: AssignHeadDialog.savedBody, params: { name: madrasah.name, head: head.new } }, in: [assigned], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:159 }
+  changedTitle: { type: status, component: Status, text: { key: AssignHeadDialog.changed }, in: [changed], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:158 }
+  changedBody: { type: status, component: Status, text: { key: AssignHeadDialog.changedBody, params: { name: madrasah.name, head: head.new } }, in: [changed], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:159 }
+
+  # ---- the dialog: its frame ----
+  dialogAssign: { type: page, component: Page, role: dialog, name: { labelledBy: titleAssign }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'assign'", initialFocus: closeIcon, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:246 } # a form dialog; the scrim does not close it; no initialFocus is given, so the first focusable (the close icon) has it (F-W2-12)
+  dialogChange: { type: page, component: Page, role: dialog, name: { labelledBy: titleChange }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", initialFocus: closeIcon, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:246 }
+  titleAssign: { type: text, component: Heading, role: heading, text: { key: AssignHeadDialog.title }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'assign'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:256 } # h2
+  titleChange: { type: text, component: Heading, role: heading, text: { key: AssignHeadDialog.titleChange }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:256 }
+  eyebrow: { type: text, component: Text, text: { key: composed.AssignHeadDialog.eyebrow, params: { name: madrasah.name } }, in: [reading, listFailed, form, formReady, looking, saving], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:255 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: AssignHeadDialog.close }, in: [reading, listFailed, form, formReady, looking, saving], emits: CANCEL, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label; ignored while the call is in flight (HEAD-6, `if (!saving)`); it is not disabled in the DOM
+  introAssign: { type: text, component: Text, text: { key: AssignHeadDialog.intro, params: { name: madrasah.name } }, in: [form, formReady, looking, saving], when: "mode == 'assign'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:274 }
+  introChange: { type: text, component: Text, text: { key: composed.AssignHeadDialog.introChange, params: { oldHead: head.old } }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:269 }
+  requiredNote: { type: text, component: Text, text: { key: AssignHeadDialog.requiredNote }, in: [reading, listFailed, form, formReady, looking, saving], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:276 } # drawn as "* zorunlu alan"
+
+  # ---- the person: the e-mail search of the new head ----
+  headFieldAssign: { type: field, component: TextField, role: textbox, text: { key: HeadPicker.label }, value: { literal: "" }, in: [form, formReady, looking, saving], when: "mode == 'assign'", disabledIn: [looking, saving], source: apps/nizam/features/madrasahs/components/head-picker.tsx:103 } # type=email; disabled while it searches, so it loses the focus (F-W2-3)
+  headFieldChange: { type: field, component: TextField, role: textbox, text: { key: AssignHeadDialog.newHeadLabel }, value: { literal: "" }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change'", disabledIn: [looking, saving], source: apps/nizam/features/madrasahs/components/head-picker.tsx:103 }
+  headHelp: { type: text, component: Text, text: { key: HeadPicker.help }, in: [reading, listFailed, form, formReady, looking, saving], when: "not pickerError", source: apps/nizam/features/madrasahs/components/head-picker.tsx:100 } # says that every search is written to the audit log
+  headNotFound: { type: text, component: Text, text: { key: HeadPicker.notFound }, in: [form, formReady, looking, saving], when: "chosen == 'none' and note == 'notFound'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:90 } # the field's own error, replacing the help; not a live region, and hidden as soon as somebody is chosen (HEAD-3)
+  headDown: { type: text, component: Text, text: { key: HeadPicker.failed }, in: [form, formReady, looking, saving], when: "chosen == 'none' and note == 'down'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:92 }
+  searching: { type: status, component: Status, role: status, text: { key: HeadPicker.searching }, in: [looking], source: apps/nizam/features/madrasahs/components/head-picker.tsx:124 } # the hidden <output>
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: HeadPicker.chosenTitle }, in: [reading, listFailed, form, formReady, looking, saving], when: "chosen != 'none'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:134 } # h3
+  chosenAnnounce: { type: status, component: Status, role: status, text: { key: HeadPicker.chosen, params: { name: person.name } }, in: [reading, listFailed, form, formReady, looking, saving], when: "chosen != 'none'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:148 } # the hidden <output> beside the name; its {name} is the person's, not the medrese's
+  removeHead: { type: action, component: Button, role: button, intent: secondary, name: { key: HeadPicker.remove, params: { name: person.name } }, in: [reading, listFailed, form, formReady, looking, saving], disabledIn: [saving], when: "chosen != 'none'", emits: REMOVE_HEAD, duringStep: true, source: apps/nizam/features/madrasahs/components/head-picker.tsx:152 } # an icon button; no confirmation, and the focus is not moved. Off only while the head is saved: live while the list is read again (`duringStep`), and while a search runs, which it stops (flow: looking)
+  chosenNoteAssign: { type: text, component: Text, text: { key: AssignHeadDialog.chosenNote }, in: [form, formReady, looking, saving], when: "mode == 'assign' and chosen != 'none'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:162 }
+  chosenNoteChange: { type: text, component: Text, text: { key: AssignHeadDialog.chosenNoteChange }, in: [reading, listFailed, form, formReady, looking, saving], when: "mode == 'change' and chosen != 'none'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:162 }
+
+  # ---- the end ----
+  endField: { type: field, native: datetime-local, component: TextField, text: { key: AssignHeadDialog.endLabel }, in: [reading, listFailed, form, formReady, looking, saving], disabledIn: [saving], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:294 } # <input type=datetime-local name=end>: it has no role in the accessibility tree, so it is found by its label; its value is not a graph check
+  endHelp: { type: text, component: Text, text: { key: AssignHeadDialog.endHelp }, in: [reading, listFailed, form, formReady, looking, saving], when: "end != 'past' and end != 'unfinished'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:287 }
+  endPast: { type: text, component: Text, text: { key: AssignHeadDialog.endPast }, in: [reading, listFailed, form, formReady, looking, saving], when: "end == 'past'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:290 } # under the field, as soon as it is typed; not a live region
+  endUnfinished: { type: text, component: Text, text: { key: AssignHeadDialog.endUnfinished }, in: [reading, listFailed, form, formReady, looking, saving], when: "end == 'unfinished'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:290 }
+
+  # ---- what the old head handed on (the change dialog only) ----
+  handedOnRegion: { type: text, component: Text, role: region, name: { labelledBy: handedOnTitle }, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:308 } # <section aria-labelledby=delegations-heading data-testid=delegations>
+  handedOnTitle: { type: text, component: Heading, role: heading, text: { key: composed.AssignHeadDialog.handedOnHeading, params: { oldHead: head.old } }, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:335 } # h3
+  nothingNote: { type: text, component: Text, text: { key: AssignHeadDialog.nothingHandedOn }, in: [form, formReady, looking, saving], when: "mode == 'change' and rows == 'none'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:329 } # a <p> that the section is labelled by; nothing to answer, so the button is ready as soon as a person is chosen
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: AssignHeadDialog.loadFailedTitle }, in: [listFailed], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:319 }
+  loadFailedText: { type: text, component: Text, text: { key: AssignHeadDialog.loadFailed }, in: [listFailed], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:320 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: AssignHeadDialog.retry }, in: [listFailed], emits: RETRY, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:321 }
+  handedOnList: { type: list, component: List, role: list, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:339 } # <ul>, one <li data-testid=delegation> a PERSON
+  handedOnPerson: { type: list, component: ListItem, role: listitem, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:345 }
+  personName: { type: text, component: Text, text: { key: composed.AssignHeadDialog.person, params: { person: person.name } }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:352 } # a <bdi>
+  personEmail: { type: text, component: Text, text: { key: composed.AssignHeadDialog.personEmail, params: { email: person.email } }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:356 }
+  personLine: { type: text, component: Text, text: { key: composed.AssignHeadDialog.handOnLine, params: { role: person.role, place: person.place, until: person.until, given: person.given } }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:360 } # "Medrese nâzırı · {medrese} · süresiz · verildi {date}": the first role of the person, else the first item
+  personMore: { type: text, component: Text, text: { key: AssignHeadDialog.permissionsSummary, params: { count: person.permissionCount, names: person.permissionNames } }, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:362 } # a second line, only on a row that also holds permissions or groups, so it is not a `repeat` (the binding counts it); the names are the raw codes (HEAD-2)
+  answerGroup: { type: list, component: List, role: group, name: { key: AssignHeadDialog.personLegend, params: { person: person.name } }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: libs/ui/src/mds/choice-chips.tsx:70 } # a toggle group labelled by a hidden legend: the person's name is only there (F-W2-5)
+  takeOver: { type: action, component: Button, role: button, intent: secondary, text: { key: AssignHeadDialog.takeOver }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: libs/ui/src/mds/choice-chips.tsx:83 } # aria-pressed; none pressed at the start; every row's button has the same name. Pressed by the events ANSWER_SOME and ANSWER_REST, which the binding says (the node cannot say which row)
+  drop: { type: action, component: Button, role: button, intent: secondary, text: { key: AssignHeadDialog.drop }, in: [form, formReady, looking, saving], when: canAnswer, repeat: handed.people, source: libs/ui/src/mds/choice-chips.tsx:83 }
+  pressedChip: { type: action, component: Button, role: button, intent: secondary, in: [form, formReady, looking, saving], when: "canAnswer and answered != 'none'", emits: CLEAR_ANSWER, duringStep: true, source: libs/ui/src/mds/choice-chips.tsx:58 } # a chip that is pressed (aria-pressed=true); pressing it again takes the answer back (F-W2-5). The chips are never disabled, so they stay live while a search runs and while the head is saved (`duringStep`): the call already sent carries the answers as they were
+  answersNote: { type: text, component: Text, text: { key: AssignHeadDialog.answersNote }, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:385 }
+  answersNeeded: { type: text, component: Text, text: { key: AssignHeadDialog.answersNeeded }, in: [form, formReady, looking, saving], when: canAnswer, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:258 } # the footer's line, drawn only while the list has rows
+
+  # ---- the footer ----
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: AssignHeadDialog.cancel }, in: [reading, listFailed, form, formReady, looking, saving], emits: CANCEL, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:261 } # on while the call is in flight, and does nothing then (HEAD-6); it is not disabled in the DOM
+  assignSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: AssignHeadDialog.submit }, in: [form, formReady, saving], when: "mode == 'assign'", disabledIn: [form, saving], emits: SUBMIT, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:262 } # natively disabled in `form` (F-X-3); busy (aria-disabled) in `saving`; not drawn in `looking`, where it keeps the state it had
+  changeSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: AssignHeadDialog.submitChange }, in: [reading, listFailed, form, formReady, saving], when: "mode == 'change'", disabledIn: [reading, listFailed, form, saving], emits: SUBMIT, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:262 } # off while the list is read, when it cannot be read, and until every person has an answer
+
+  # ---- a refusal: a sticky toast over the dialog, which stays open ----
+  failedTitleAssign: { type: status, component: Status, text: { key: AssignHeadDialog.failed }, in: [reading, form, formReady], when: "toast != 'none' and mode == 'assign'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143 } # `duration: Infinity`: it stays until closed
+  failedTitleChange: { type: status, component: Status, text: { key: AssignHeadDialog.changeFailed }, in: [reading, form, formReady], when: "toast != 'none' and mode == 'change'", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143 }
+  toastStale: { type: status, component: Status, text: { key: MadrasahsPage.errors.delegationsChanged }, in: [reading, form, formReady], when: "toast == 'stale'", source: apps/nizam/features/madrasahs/present.ts:304 }
+  toastCascade: { type: status, component: Status, text: { key: MadrasahsPage.errors.delegationsCascade }, in: [form, formReady], when: "toast == 'cascade'", source: apps/nizam/features/madrasahs/present.ts:305 }
+  toastSeatless: { type: status, component: Status, text: { key: MadrasahsPage.errors.delegationsSeatless }, in: [form, formReady], when: "toast == 'seatless'", source: apps/nizam/features/madrasahs/present.ts:306 }
+  toastSelfGrant: { type: status, component: Status, text: { key: MadrasahsPage.errors.selfTakeOver }, in: [form, formReady], when: "toast == 'selfGrant'", source: apps/nizam/features/madrasahs/present.ts:307 }
+  toastExpiry: { type: status, component: Status, text: { key: MadrasahsPage.errors.expiryInvalid }, in: [form, formReady], when: "toast == 'expiry'", source: apps/nizam/features/madrasahs/present.ts:308 }
+  toastGone: { type: status, component: Status, text: { key: MadrasahsPage.errors.notFound }, in: [form, formReady], when: "toast == 'gone'", source: apps/nizam/features/madrasahs/present.ts:302 }
+  toastForbidden: { type: status, component: Status, text: { key: MadrasahsPage.errors.forbidden }, in: [form, formReady], when: "toast == 'forbidden'", source: apps/nizam/features/madrasahs/present.ts:309 }
+  toastFailed: { type: status, component: Status, text: { key: MadrasahsPage.errors.generic }, in: [form, formReady], when: "toast == 'failed'", source: apps/nizam/features/madrasahs/present.ts:320 }
+
+edges:
+  - { labelledBy: [dialogAssign, titleAssign] }
+  - { labelledBy: [dialogChange, titleChange] }
+  - { labelledBy: [handedOnRegion, handedOnTitle] }
+  - { triggers: [assignButton, form] }
+  - { triggers: [changeButton, reading] }
+  - { triggers: [assignSubmit, saving] }
+  - { triggers: [changeSubmit, saving] }
+  - { triggers: [retry, reading] }
+  - { returnsFocus: [dialogAssign, assignButton] } # Vazgeç, Esc or the close icon: the row's button is still there. After a success the passive row's button is gone (F-W2-10): the graph says nothing of the focus; not verified in a browser
+  - { returnsFocus: [dialogChange, changeButton] } # the active row keeps its button after a change; not verified in a browser
+
+rules:
+  - id: focus-not-set
+    rule: >-
+      Nothing in features/madrasahs moves the focus when the page loads, so the page has no initialFocus. The dialog is opened with no initialFocus
+      either (assign-head-dialog.tsx:246-266 passes none), so the focus is on the close icon of the header, not on the e-mail field; the same as F-W2-12.
+  - id: F-W2-12
+    rule: >-
+      The dialog opens on its first focusable element, the header's close icon, instead of the first field (assign-head-dialog.tsx:246, libs/ui/src/mds/dialog.tsx:145).
+      A keyboard or screen-reader user starts one stop before the field they came for. Fix: pass initialFocus = the picker's input.
+  - id: F-W2-3
+    rule: >-
+      The e-mail lookup has no button: it runs when the input loses focus or on Enter (head-picker.tsx:74-79, 121), the input is `disabled` while it searches, so the focused
+      field loses the focus (:112), and nothing says the search finished except a hidden <output> for a success; 'not found' and 'failed' are a Field error that is
+      not a live region. Fix: a visible 'Ara' button, keep the input enabled with aria-busy, announce the result with role=status.
+  - id: F-X-14
+    rule: >-
+      The family of F-W2-3: tabbing through the field makes an audited realm-directory search (tedrisat writes user.lookup for every one, found or not,
+      apps/tedrisat/src/assignment/user-directory.service.ts:45); the help text says so. Fix: search on Enter or a button only.
+  - id: F-W2-5
+    rule: >-
+      A required either/or answer is two toggle buttons, 'Devral' and 'Düşür', with aria-pressed (libs/ui/src/mds/choice-chips.tsx:46-90): they are announced as toggle
+      buttons, can be pressed again to take the answer back (the graph's CLEAR_ANSWER), the group is not announced as required, and every row's two buttons carry the same
+      names; the person is only in the group's hidden legend (assign-head-dialog.tsx:365-380), so a voice or button list cannot tell the rows apart and the e2e scopes by row.
+      Fix: a RadioGroup per person, or chips named 'Devral: {person}'.
+  - id: F-W2-10
+    rule: >-
+      After a success the table is read again. On a passive row the button that opened the dialog, 'Başmüderris ata: {name}', is replaced by the active row's buttons
+      (madrasahs-view.tsx:257-310), so Base UI's return focus has no element and it falls to the page; only the toast says what happened. On an active row
+      'Başmüderrisi değiştir: {name}' is still there and the focus goes back to it (not verified in a browser). Fix: move the focus to the row's new button or the table's caption.
+  - id: F-X-3
+    rule: >-
+      The submit button is natively disabled (assign-head-dialog.tsx:262) and says nothing about what is missing: the e-mail, an end that is not in the future (its
+      own message shows), or an answer for a person. Only the last has a line, 'Her satır için seçim yapılmadan başmüderris değiştirilemez.' (:258), and only while the list has
+      rows; when the list cannot be read the button is off for good and the alert's retry is the only cue. Fix: keep the button on and validate on submit, or tie the reason to the button.
+  - id: F-UI-W1-1
+    rule: >-
+      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so opening 'Başmüderrisi değiştir' makes a screen reader read the intro,
+      the fields and every row as the dialog's description (F-W2-13).
+  - id: HEAD-1
+    rule: >-
+      New. The message written for choosing the sitting başmüderris, 'Bu kişi zaten bu medresenin başmüderrisi.' (AssignHeadDialog.sameHead), is never shown. The dialog passes it
+      as the picker's `error` (assign-head-dialog.tsx:283), but HeadPicker hands the Field `error={value ? undefined : problem}` (head-picker.tsx:101): the person has just been
+      chosen, so `value` is set and the error is dropped. The person is shown as chosen, the button stays off, and nothing says why. The e2e does not try it. Fix: show the error
+      beside the chosen person, or refuse the choice in the picker.
+  - id: HEAD-2
+    rule: >-
+      New. The line under a person who was given permissions prints each permission as its raw code, 'madrasah.nazir_appoint · course_nazir.assign', not as a sentence. permissionName
+      (assign-head-dialog.tsx:168-174) looks the code up in nizam's PermissionCatalog, which holds the 19 platform codes only (libs/i18n/src/locales/tr/nizam.json,
+      PermissionCatalog.permissions), and falls back to the code. A başmüderris can give only medrese and course codes (the API's catalog is those two sections), so
+      every permission this dialog ever lists is printed raw; the e2e's seed gives a platform code (head-seed.ts, platform.madrasah_nazir_grant), which the catalog has, and so hides it.
+      Fix: nizam needs the medrese and course sentences nazar already has (nazar.json, madrasah_nazir_appoint ...).
+  - id: HEAD-3
+    rule: >-
+      New here, the same as nizam.madrasahs.open's F-W2-open-1 (one picker, head-picker.tsx). A second search that finds nobody, or fails, while a person is already chosen says nothing: the picker's message is the Field's `error`, dropped once `value`
+      is set (head-picker.tsx:101), and no alert takes its place (the köşk picker has one, nizam.kosks.open). The person stays chosen and the field keeps the typed address,
+      with no sign that the second search did anything. Fix: show it beside the field as a live region.
+  - id: HEAD-4
+    rule: >-
+      New here, the same as nizam.madrasahs.open's F-W2-open-2 (one map, present.ts:307). madrasahErrorKey maps SELF_GRANT_REFUSED to one sentence, 'Size verilmiş bir rolü ya da izni devralamazsınız; kendinize rol ya da izin vermek olur. Onu düşürün.'
+      (present.ts:307), but the API answers it for two different acts: taking over a row given to the caller, and naming oneself the new head (madrasah.controller.ts:455-470).
+      A Medaris nazımı who names themselves is told to 'drop' a row they never saw. Fix: a second sentence for naming oneself, on a code the API tells apart (the audit row has two routes).
+  - id: HEAD-5
+    rule: >-
+      New, for the owner (security; ledger/security.md has the köşk's route). The order of the server's checks on PUT /madrasahs/:id/head-muderris, read from the code and not run:
+      (1) AuthGuard, then AuthzGuard (madrasah.controller.ts:134): `byExistingMadrasah` answers 404 MADRASAH_NOT_FOUND for an unknown or malformed id before any
+      permission is read (:104-113), then platform.head_muderris_manage, 403 AUTHZ_FORBIDDEN (:449); (2) the id and body pipes, 400 VALIDATION_ERROR; (3) for anyone but SYSTEM_ADMIN, the
+      self-grant check on the new head, `always`: 403 SELF_GRANT_REFUSED and an audit row permission.self_grant_refused (:455-461, libs/common/src/authz/self-grant.guard.ts:67-95);
+      (4) the same check on the recipients of every row answered TAKE_OVER, read by the ids the body names (:464-470, madrasah.repository.ts:335-355), before anything compares the answers with the list;
+      (5) GRANT_EXPIRY_INVALID (madrasah.service.ts:231); (6) in the transaction: the medrese may be gone (madrasah.repository.ts:505-510), the answers must equal the list now,
+      DISMISS_DECISIONS_INCOMPLETE (:531-535), they are applied, and then DISMISS_TAKE_OVER_WITHOUT_SEAT (:609-612) and DISMISS_SEAT_HANDED_ON (:616) refuse and roll everything back.
+      Consequences: a caller who answers Devral for a row given to them is told SELF_GRANT_REFUSED even when the list is also stale; SYSTEM_ADMIN is exempt from (3) and (4) (self-grant.guard.ts:67),
+      so the başnazım may seat themselves and take over their own rows, and the refusal is a Medaris nazımı's alone. Unlike the köşk's nazım route (self-grant before permission, so anyone signed in
+      can write the audit row), the permission guard runs first here: a caller without platform.head_muderris_manage writes no audit row.
+  - id: HEAD-6
+    rule: >-
+      New here, the same as nizam.madrasahs.open's F-W2-open-5 and nizam.kosks.open's F-W3-open-2. Vazgeç, the close icon and Escape stay enabled while the call is in flight and do nothing (`if (!saving) onOpenChange(next)`,
+      assign-head-dialog.tsx:249-251); only 'Değiştir' is busy. Fix: disable them while saving.
+  - id: HEAD-7
+    rule: >-
+      New. The API's own summaries say 'What the başmüderris handed on (SYSTEM_ADMIN only)' and 'Make a user the medrese's başmüderris (SYSTEM_ADMIN only)'
+      (madrasah.controller.ts:419, 436), but both routes are `@Authz(platform.head_muderris_manage)` (:428, :449), which a Medaris
+      nazımı can hold, and the page gives that nazımı the buttons (present.ts:106). The summaries are stale; the walk (scenario selfGrant) is the Medaris nazımı's.
+  - id: F-W2-open-7
+    rule: >-
+      The same picker as nizam.madrasahs.open's finding of that id: an address that was not found is remembered as searched (head-picker.tsx:55-56, :66-67), so pressing Enter again does
+      nothing and, once the account has been made, typing the same address again gets no search and no word (not walked here).
+  - id: F-W2-open-8
+    rule: >-
+      The same picker as nizam.madrasahs.open's finding of that id: the e-mail field is drawn as required (head-picker.tsx:99) but its Input carries no `required`, so a screen reader never hears that a person is needed.
+  - id: one-answer-per-person
+    rule: >-
+      The list is by person, not by row: the page groups the API's items by the person they went to and posts that person's one answer for each of their items
+      (present.ts:368-415). The inventory's 'every row' is every person; a person given a seat and a permission cannot be answered differently for each, so the API's
+      DISMISS_TAKE_OVER_WITHOUT_SEAT is out of reach of this page (decision D1).
+  - id: stale-list-wipes-the-answers
+    rule: >-
+      A refusal with DISMISS_DECISIONS_INCOMPLETE clears every answer and reads the list again (assign-head-dialog.tsx:148-155); the toast says to read and answer again, but nothing marks
+      which person changed. Not a defect; drawn as the code has it.
+  - id: scrim-does-not-close
+    rule: >-
+      A click on the scrim does not close the dialog (a form dialog sets disablePointerDismissal, libs/ui/src/mds/dialog.tsx:74), so a stray click does not lose the answers; Esc and Vazgeç do close it (head-change#2). Holds.
+  - id: label-in-name
+    rule: >-
+      A button's visible text is contained in its accessible name: 'Başmüderris ata' in 'Başmüderris ata: {name}', 'Başmüderrisi değiştir' in 'Başmüderrisi değiştir: {name}' (WCAG 2.5.3). Holds.
+      The dialog's own submit is named by its text, 'Değiştir' or 'Başmüderris ata', which is also the dialog's title and the start of the row button's name, so the e2e scopes by dialog.

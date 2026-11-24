@@ -1,0 +1,161 @@
+# The screens of tedris.discover.visitorPath: Keşfet, a köşk page, a medrese page and a course's introduction (programme tab and
+# recordings tab) as a person with no session meets them. The bar around the page (tedris.shell.frame), the filters and the pager of
+# Keşfet (tedris.discover.browse) and everything a signed-in person adds are not drawn.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`: `DiscoverPage.*`,
+# `KoskPage.*`, `MadrasahPage.*`, `CoursePage.*`, `AnonymousInvite.*`) or from tedris-learn.json (`RecordingsTab.*`, read as
+# `tedrisLearn.RecordingsTab.<key>`), the key being the path inside that file. The `composed.VisitorPath.*` keys are NOT in any
+# i18n file: they are what the app builds in code from messages and data, written here with their placeholders so a replay can
+# match them (a placeholder with no sample matches any text):
+#   composed.VisitorPath.kosk            a köşk's name, a value the API gives                                         kosk-card.tsx:31, kosk-page.tsx:166
+#   composed.VisitorPath.madrasah        a medrese's name, a value the API gives                                      madrasah-card.tsx:32, madrasah-page.tsx:170
+#   composed.VisitorPath.course          a course's title, a value the API gives                                      kosk-page.tsx:76, course-page.tsx:283
+#   composed.VisitorPath.inviteSignIn    the text of the first link inside AnonymousInvite.*, a part of the message    anonymous-invite.tsx:41
+#   composed.VisitorPath.inviteRegister  the text of the second link inside it                                         anonymous-invite.tsx:46
+#   composed.VisitorPath.cardRegister    the text of the link inside CoursePage.noAccount                              course-aside.tsx:354
+#   composed.VisitorPath.sampleMark      CoursePage.sampleMark, " · " and CoursePage.typeLive: the row's type label    course-programme.tsx:137
+#   composed.VisitorPath.sampleRow       the sample row's link: the celse's title and the kit's hidden ", tamamlandı"  lesson-row.tsx:216 (default :189)
+#   composed.VisitorPath.agendaStep      the title of an agenda step, a value the API gives                           course-page.tsx:560
+#   composed.VisitorPath.sampleSource    a celse's `kaynak`, a value the API gives                                    course-page.tsx:571
+#   composed.VisitorPath.resource        the name of a course resource, a value the API gives                         course-resources.tsx:89
+#   composed.VisitorPath.recordingOpen   RecordingsTab.open and RecordingsTab.openLabel: the row link's aria-label    recordings-tab.tsx:297
+#   composed.VisitorPath.provider        a recording host's name (RECORDING_PROVIDER_NAMES)                           recordings-model.ts:133
+# Words the code does not take from the catalog and the graph keeps as `literal`: the breadcrumb's name "Sayfa yolu" is the kit's own
+# default (CRS-12) and is said only in the binding's locators, never as a node.
+# Samples are invented and neutral; the binding gives the seed's own titles where it needs the real ones.
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.visitorPath
+flow: tedris.discover.visitorPath
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Örnek Köşk
+  madrasah: Örnek Medrese
+  course: Örnek Ders
+  name: Örnek Nazım
+  title: Örnek celse
+  step: Örnek adım
+  source: Örnek kaynak
+  resource: Örnek kaynak adı
+  recording: Örnek kayıt
+  weeks: "6"
+  sessions: "12"
+  city: İstanbul
+
+nodes:
+  # ---- Keşfet ----
+  discoverPage: { type: page, component: Page, role: main, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:97, script: actions } # server-drawn: the lists read without JavaScript, the search box and the select need it. No name and no initial focus (rule focus-not-set)
+  discoverTitle: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.title }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:99 } # h1
+  discoverSubtitle: { type: text, component: Text, text: { key: DiscoverPage.subtitle }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:100 }
+  kosksSection: { type: page, component: Page, role: region, name: { labelledBy: kosksHeading }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:156 }
+  kosksHeading: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.kosks }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:160 } # h2
+  koskLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.kosk, params: { kosk: kosk } }, in: [discover], emits: OPEN_KOSK, source: apps/tedris/features/discover/components/kosk-card.tsx:27 } # the card is one link, in an h3; one köşk of the list, the one the walk opens. No follow button beside it
+  madrasahsSection: { type: page, component: Page, role: region, name: { labelledBy: madrasahsHeading }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:182 }
+  madrasahsHeading: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.madrasahs }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:186 } # h2; only the medreses that have a course (reads.ts:29)
+  madrasahLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.madrasah, params: { madrasah: madrasah } }, in: [discover], emits: OPEN_MADRASAH, source: apps/tedris/features/discover/components/madrasah-card.tsx:28 }
+  inviteDiscover: { type: text, component: Text, text: { key: AnonymousInvite.discover }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:212 } # the whole sentence, two rich-text links inside it (the binding finds it by its words, without the tags)
+  # a signed-in person has these two and a visitor does not: drawn behind `signedIn`, which the visitor's session never satisfies
+  discoverFollow: { type: action, component: Button, role: button, text: { key: DiscoverPage.follow }, in: [discover], when: signedIn, source: apps/tedris/features/discover/components/kosk-card.tsx:39 } # "Takip et: <köşk>" on each card; not drawn for a visitor
+  applyForKoskLink: { type: action, component: LinkButton, role: link, text: { key: DiscoverPage.applyLink }, in: [discover], when: signedIn, source: apps/tedris/features/discover/components/discover-page.tsx:206 } # the card the invitation replaces
+
+  # ---- a köşk ----
+  koskPage: { type: page, component: Page, role: main, in: [kosk], source: apps/tedris/features/courses/components/kosk-page.tsx:152, script: actions } # no name, no initial focus
+  breadcrumbDiscover: { type: action, component: LinkButton, role: link, text: { key: KoskPage.discover }, in: [kosk, madrasah], emits: BACK_TO_DISCOVER, source: apps/tedris/features/courses/components/kosk-page.tsx:156 } # the first item of the breadcrumb "Sayfa yolu" (the kit's own name, CRS-12); the medrese page draws the same with MadrasahPage.discover (madrasah-page.tsx:160)
+  koskTitle: { type: text, component: Heading, role: heading, text: { key: composed.VisitorPath.kosk, params: { kosk: kosk } }, in: [kosk], source: apps/tedris/features/courses/components/kosk-page.tsx:165 } # h1
+  koskManager: { type: text, component: Text, text: { key: KoskPage.manager, params: { name: name } }, in: [kosk], source: apps/tedris/features/courses/components/kosk-page.tsx:176 } # the manager's name; a visitor does not get who they are (anonymous#18)
+  coursesSection: { type: page, component: Page, role: region, name: { labelledBy: coursesHeading }, in: [kosk, madrasah], source: apps/tedris/features/courses/components/kosk-page.tsx:204 } # the same section on the medrese page (madrasah-page.tsx:203)
+  coursesHeading: { type: text, component: Heading, role: heading, text: { key: KoskPage.coursesTitle }, in: [kosk, madrasah], source: apps/tedris/features/courses/components/kosk-page.tsx:209 } # h2
+  koskHint: { type: text, component: Text, text: { key: KoskPage.coursesHint }, in: [kosk], source: apps/tedris/features/courses/components/kosk-page.tsx:212 }
+  courseLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.course, params: { course: course } }, in: [kosk, madrasah], emits: OPEN_COURSE, source: apps/tedris/features/courses/components/kosk-page.tsx:75 } # a course card's title, in an h3; madrasah-page.tsx:71 on the medrese page
+  koskMadrasahLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.madrasah, params: { madrasah: madrasah } }, in: [kosk], repeat: courses, emits: OPEN_MADRASAH, source: apps/tedris/features/courses/components/kosk-page.tsx:116 } # on each card of a course a medrese opened, followed by "dersi"
+  inviteApply: { type: text, component: Text, text: { key: AnonymousInvite.apply }, in: [kosk, madrasah], source: apps/tedris/features/courses/components/kosk-page.tsx:231 } # madrasah-page.tsx:235 draws the same; the links inside it are inviteSignIn and inviteRegister
+  koskFollow: { type: action, component: Button, role: button, text: { key: KoskPage.follow }, in: [kosk], when: signedIn, source: apps/tedris/features/courses/components/kosk-page.tsx:183 } # not drawn for a visitor
+  koskDecksHeading: { type: text, component: Heading, role: heading, text: { key: KoskPage.decksTitle }, in: [kosk], when: signedIn, source: apps/tedris/features/courses/components/kosk-page.tsx:246 } # h2 "Köşk desteleri": the decks are read only with a token (public-reads.ts:176)
+
+  # ---- a medrese ----
+  madrasahPage: { type: page, component: Page, role: main, in: [madrasah], source: apps/tedris/features/courses/components/madrasah-page.tsx:156, script: actions } # no name, no initial focus
+  madrasahTitle: { type: text, component: Heading, role: heading, text: { key: composed.VisitorPath.madrasah, params: { madrasah: madrasah } }, in: [madrasah], source: apps/tedris/features/courses/components/madrasah-page.tsx:169 } # h1
+  madrasahNotice: { type: text, component: Text, text: { key: MadrasahPage.approvalNotice }, in: [madrasah], source: apps/tedris/features/courses/components/madrasah-page.tsx:199 } # drawn for every medrese (VISIT-1)
+  madrasahHint: { type: text, component: Text, text: { key: MadrasahPage.coursesHintAnonymous }, in: [madrasah], source: apps/tedris/features/courses/components/madrasah-page.tsx:212 } # a signed-in person's hint is MadrasahPage.coursesHint
+  madrasahKoskLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.kosk, params: { kosk: kosk } }, in: [madrasah], repeat: courses, emits: OPEN_KOSK, source: apps/tedris/features/courses/components/madrasah-page.tsx:91 } # the köşk that hosts a course, in the card's footer
+
+  # ---- the invitation's two links, on Keşfet, the köşk page and the medrese page ----
+  inviteSignIn: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.inviteSignIn }, in: [discover, kosk, madrasah], emits: SIGN_IN, source: apps/tedris/components/anonymous-invite.tsx:41 } # /auth/signin?callbackUrl=<the page>
+  inviteRegister: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.inviteRegister }, in: [discover, kosk, madrasah], emits: REGISTER, source: apps/tedris/components/anonymous-invite.tsx:46 } # /auth/register
+
+  # ---- a course: the page around the tabs ----
+  coursePage: { type: page, component: Page, role: main, in: [course, recordings], source: apps/tedris/features/courses/components/course-page.tsx:237, script: actions } # the page is a client component that the server renders: its text reads without JavaScript, the tabs need it. No name, no initial focus
+  courseKoskLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.kosk, params: { kosk: kosk } }, in: [course, recordings], emits: OPEN_KOSK, source: apps/tedris/features/courses/components/course-page.tsx:256 } # the breadcrumb's first item; the line under the title carries the same link (:223)
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: composed.VisitorPath.course, params: { course: course } }, in: [course, recordings], source: apps/tedris/features/courses/components/course-page.tsx:282 } # h1
+  courseMadrasahLink: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.madrasah, params: { madrasah: madrasah } }, in: [course, recordings], emits: OPEN_MADRASAH, source: apps/tedris/features/courses/components/course-page.tsx:218 } # in the line under the title, with the köşk and the counts
+  registerCard: { type: text, component: Heading, role: heading, text: { key: CoursePage.registerCard }, in: [course, recordings], source: apps/tedris/features/courses/components/course-aside.tsx:322 } # h2 of the card
+  approvalFact: { type: text, component: Text, text: { key: CoursePage.approvalNotice }, in: [course, recordings], when: cardAsks, source: apps/tedris/features/courses/components/course-aside.tsx:126 }
+  openFact: { type: text, component: Text, text: { key: CoursePage.openEnrollNotice }, in: [course, recordings], when: "not cardAsks", source: apps/tedris/features/courses/components/course-aside.tsx:126 }
+  signInToApply: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: CoursePage.signInToApply }, in: [course, recordings], emits: SIGN_IN, source: apps/tedris/features/courses/components/course-aside.tsx:348 } # a link styled as the card's button: /auth/signin?callbackUrl=%2Fcourses%2F<id>
+  noAccount: { type: text, component: Text, text: { key: CoursePage.noAccount }, in: [course, recordings], source: apps/tedris/features/courses/components/course-aside.tsx:351 } # the sentence, with its link inside
+  cardRegister: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.cardRegister }, in: [course, recordings], emits: REGISTER, source: apps/tedris/features/courses/components/course-aside.tsx:354 } # /auth/register
+  nextCardTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.nextSession }, in: [course, recordings], source: apps/tedris/features/courses/components/course-aside.tsx:175 } # h2 of the second card, drawn when a celse is ahead (outOfView: a course with none)
+  lockedNotice: { type: text, component: Text, text: { key: CoursePage.lockedNotice }, in: [course, recordings], source: apps/tedris/features/courses/components/course-aside.tsx:194 }
+  resourcesTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.resourcesTitle }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-resources.tsx:201 } # h2 of the card, drawn when the course lists a resource
+  resourceName: { type: text, component: Text, text: { key: composed.VisitorPath.resource, params: { resource: resource } }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-resources.tsx:89 } # a plain row, not a link: the API leaves out the address of a locked course's resource
+  resourcesLocked: { type: text, component: Text, text: { key: CoursePage.resourcesLocked }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-resources.tsx:208 }
+  tabList: { type: list, component: List, role: tablist, name: { key: CoursePage.tabsLabel }, in: [course, recordings], source: apps/tedris/features/courses/components/course-page.tsx:402 }
+  tabCurriculum: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [course, recordings], emits: OPEN_PROGRAMME, source: apps/tedris/features/courses/components/course-page.tsx:178 }
+  tabRecordings: { type: action, component: Button, role: tab, text: { key: CoursePage.tabRecordings }, in: [course, recordings], emits: OPEN_RECORDINGS, source: apps/tedris/features/courses/components/course-page.tsx:180 } # with the count of the recordings in its name when there are some (course-page.tsx:182)
+  tabTeachers: { type: action, component: Button, role: tab, text: { key: CoursePage.tabTeachers }, in: [course, recordings], source: apps/tedris/features/courses/components/course-page.tsx:199 } # outOfView: its panel
+  # a talebe's tabs, which the visitor does not have
+  tabDeck: { type: action, component: Button, role: tab, text: { key: CoursePage.tabDeck }, in: [course, recordings], when: signedIn, source: apps/tedris/features/courses/components/course-page.tsx:186 } # `seat` only
+  tabQuestions: { type: action, component: Button, role: tab, text: { key: CoursePage.tabMyQuestions }, in: [course, recordings], when: signedIn, source: apps/tedris/features/courses/components/course-page.tsx:195 } # `asksQuestions` only
+
+  # ---- a course: the tab "Müfredat" ----
+  programmeSummary: { type: text, component: Text, text: { key: CoursePage.programmeSummary }, in: [course], source: apps/tedris/features/courses/components/course-page.tsx:410 } # "N hafta · N celse · saatler İstanbul saatiyle": the three values are the page's own
+  lockedWeek: { type: action, component: Button, role: button, text: { key: CoursePage.lockedMark }, in: [course], repeat: weeks, source: apps/tedris/features/courses/components/course-programme.tsx:243 } # each week's heading holds this button, with the kit's hidden ", kilitli" in its name (week-accordion.tsx:139); the sample week has none. A week's name repeats a plain title (VISIT-2)
+  lockedLesson: { type: text, component: Text, role: img, name: { key: CoursePage.lessonLocked }, in: [course], repeat: lessons, source: apps/tedris/features/courses/components/course-programme.tsx:147 } # the lock on a row of an open locked week (lesson-row.tsx:287), which is no link
+  sampleRow: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.sampleRow, params: { title: title } }, in: [course], when: fullIntro, source: apps/tedris/features/courses/components/course-programme.tsx:148 } # a link to #ornek-celse; over, it reads ", tamamlandı" (VISIT-3)
+  sampleMark: { type: text, component: Text, text: { key: composed.VisitorPath.sampleMark }, in: [course], when: fullIntro, source: apps/tedris/features/courses/components/course-programme.tsx:137 }
+
+  # ---- a course: the block "Örnek celse", under the tabs, for both tabs ----
+  sampleSection: { type: page, component: Page, role: region, name: { labelledBy: sampleHeading }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:507 }
+  sampleHeading: { type: text, component: Heading, role: heading, text: { key: CoursePage.sampleHeading }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:513 } # h2
+  sampleIntro: { type: text, component: Text, text: { key: CoursePage.sampleIntro }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:516 }
+  agendaHeading: { type: text, component: Heading, role: heading, text: { key: CoursePage.agendaHeading }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:549 } # h4
+  agendaStep: { type: text, component: Text, text: { key: composed.VisitorPath.agendaStep, params: { step: step } }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:560 }
+  sourceHeading: { type: text, component: Heading, role: heading, text: { key: CoursePage.sourceHeading }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:569 } # h4
+  sampleSource: { type: text, component: Text, text: { key: composed.VisitorPath.sampleSource, params: { source: source } }, in: [course, recordings], when: fullIntro, source: apps/tedris/features/courses/components/course-page.tsx:571 }
+
+  # ---- a course: the tab "Ders kayıtları" ----
+  recordingsHeading: { type: text, component: Heading, role: heading, text: { key: RecordingsTab.allTitle }, in: [recordings], when: fullIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:128 } # h2
+  recordingsHint: { type: text, component: Text, text: { key: RecordingsTab.allHint }, in: [recordings], when: fullIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:130 }
+  recordingRow: { type: action, component: LinkButton, role: link, text: { key: composed.VisitorPath.recordingOpen, params: { recording: recording } }, in: [recordings], when: fullIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:297 } # the host's address, target _blank; no watch page for a visitor
+  recordingPublic: { type: text, component: Text, text: { key: RecordingsTab.public }, in: [recordings], when: fullIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:257 }
+  recordingProvider: { type: text, component: Text, text: { key: composed.VisitorPath.provider }, in: [recordings], when: fullIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:265 }
+  recordingsEmpty: { type: text, component: Text, text: { key: RecordingsTab.empty }, in: [recordings], when: bareIntro, source: apps/tedris/features/courses/components/recordings-tab.tsx:102 }
+
+edges:
+  - { labelledBy: [kosksSection, kosksHeading] }
+  - { labelledBy: [madrasahsSection, madrasahsHeading] }
+  - { labelledBy: [coursesSection, coursesHeading] }
+  - { labelledBy: [sampleSection, sampleHeading] }
+  - { triggers: [koskLink, kosk] }
+  - { triggers: [madrasahLink, madrasah] }
+  - { triggers: [inviteSignIn, handed_over.sign_in] }
+  - { triggers: [inviteRegister, handed_over.register] }
+  - { triggers: [signInToApply, handed_over.sign_in] }
+  - { triggers: [cardRegister, handed_over.register] }
+  - { triggers: [tabRecordings, recordings] }
+
+rules:
+  - { id: focus-not-set, rule: "none of the four pages gives the focus to anything when it opens: no autoFocus and no .focus() in discover-page.tsx, kosk-page.tsx, madrasah-page.tsx or course-page.tsx's own code, and in a browser on the stack the focus is on the document after each load. The graph says nothing of the focus and gives no page an initialFocus" }
+  - { id: SHL-05, rule: "`/` takes a permanent redirect to /home from next.config.js:87 and /home sends a visitor on to /discover (app/home/page.tsx:26), so Keşfet is two hops from the front door and app/page.tsx:13's own choice is never reached; this flow starts at /discover and tedris.shell.home draws the hops" }
+  - { id: DSC-09, rule: "a köşk that fails to read is drawn as a box with no h1 and a breadcrumb of one item, which draws nothing (kosk-page.tsx:293, breadcrumb.tsx:22); not drawn here: tedris.discover.readKosk" }
+  - { id: DSC-12, rule: "a card's cover (size sm) is not hidden from assistive technology and prints the course's Arabic label as a paragraph before the title (kosk-page.tsx:77, madrasah-page.tsx:73; cover-pattern.tsx:75). The seeded courses have none, so nothing in the replay shows it; not verified here" }
+  - { id: DSC-19, rule: "each of the four pages has a loading.tsx of aria-hidden skeletons inside an aria-busy container with no text (app/discover/loading.tsx:7, app/kosks/[koskId]/loading.tsx:7, app/madrasahs/[madrasahId]/loading.tsx:7), and the course page's says the same (CRS-08, app/courses/[courseId]/loading.tsx:10): nothing says \"loading\" to a screen reader. The graph draws the loaded pages" }
+  - { id: CRS-12, rule: "words the code does not take from the catalog: the breadcrumb's name \"Sayfa yolu\" (breadcrumb.tsx:18), and the row's \", tamamlandı\" (lesson-row.tsx:189; course-programme.tsx passes no doneLabel). The graph names neither as a node" }
+  - { id: CRS-17, rule: "the cover of the course page is not hidden and prints the course's Arabic label before the h1 (course-page.tsx:267, cover-pattern.tsx:60). The seeded courses have none; not verified here" }
+  - { id: VISIT-1, rule: "new, provisional id: the medrese page says \"Medresenin derslerine kayıt onaylıdır\" for every medrese (MadrasahPage.approvalNotice, madrasah-page.tsx:199), but the API asks for approval for a medrese's course only where the medrese's own policy is on (policy_always_approval, default false: course.repository.ts:1931, course.service.ts:1568; madrasah.schema.ts:62). The seeded medrese says it above the card of a course whose own card says \"Kayıt onay gerektirmez\" and whose enrolment gives the seat at once. Measured on the stack with a visitor" }
+  - { id: VISIT-2, rule: "new, provisional id: the programme prints a week's label and its title side by side, so a week whose title is only \"Hafta N\" (the stack's seed, and the title a week starts with) reads \"Hafta 1 Hafta 1\" in its heading and its name. The recordings tab of the same page drops such a title (isPlainWeekTitle, recordings-tab.tsx:149, MDRS-280); the programme does not (course-programme.tsx:243, week-accordion.tsx:121,135). Measured on the stack" }
+  - { id: VISIT-3, rule: "new, provisional id: the sample celse's row is drawn done once the celse is over, whoever looks (`(seat || sample) && hasEnded`, course-programme.tsx:143), so a visitor hears \"Canlı ders , tamamlandı\" (completed) of a celse they never took, and the week is labelled \"Sona erdi\". The week's label is true; the row's tells the visitor they finished something. Measured on the stack" }
+  - { id: sign-in-names-the-page, rule: "\"giriş yap\" carries the page as callbackUrl (invite-hrefs.ts:10) and \"kayıt ol\" does not (invite-hrefs.ts:11): registering from a page ends on Ana sayfa (decision D1 of the flow)" }

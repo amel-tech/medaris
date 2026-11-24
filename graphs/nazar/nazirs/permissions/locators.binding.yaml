@@ -1,0 +1,140 @@
+# What the bindings of nazar.nazirs.permissions share: the data sources, the events no node sends (the group box, "Hangi derslerde" and the end
+# field are not things a node of the graph presses), the places each exit opens, where role and name cannot find a node, and what a step
+# leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml              the main story, and the nazır who already holds the profile (`gives`, `holds`)
+#   binding.readsFail.yaml    the nazır is dismissed after the page was drawn: the editor cannot read (`reads: failed`)
+#   binding.groupGone.yaml    the walk's group is deleted while the editor is open (`answer: groupGone`)
+#   binding.nazirGone.yaml    the nazır is dismissed while the editor is open (`answer: nazirGone`)
+#   binding.refused.yaml      the walk's course is deleted while the editor is open (`answer: refused`, NAZIR_COURSE_SCOPE_INVALID)
+# The four last each only change what happens before one button is pressed (a `before` on a node, which is the binding's and not a
+# scenario's) and so need a file of their own; two scenarios must not share a `given`, and `--cover transitions` walks the shortest scenario
+# per transition.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/nazirs, libs/ui/src/mds) and is unverified until a walk. Where the walk may need a fix, a comment says so.
+#
+# Data. Each scenario's `setup` makes the same things (the walk's own; no seeded course, group or nazır is changed):
+#   - the course "Deneme dersi nzperm" of the medrese (helpers/course.mjs make nzperm --madrasah ...: published, one week of one celse, MUDERRIS as
+#     hoca), whose id and title permissions-data.mjs copies into the file below ({perm.course}, {perm.courseTitle}; helpers/course.mjs
+#     removes its own file when the course goes, and the refused scenario removes the course in the middle of a walk), so that "Seçtiğim dersler" has a box to tick that no other flow touches;
+#   - applicantF ("Tahsin Başvuran", a spare talebe) as a nazır of the medrese holding nothing, the group "İzin grubu nzperm" (enrollment.decide and
+#     enrollment.complete, scope COURSE) and the dates of the end field, by ./permissions-data.mjs up: {perm.sub}, {perm.name}, {perm.email},
+#     {perm.groupId}, {perm.groupName}, {perm.future} (thirty days ahead, 23:59, as the field takes it), {perm.futureLabel} (as the row writes it),
+#     {perm.past} (thirty days ago). The seeded nazır, Seher Medrese Nazırı, is never touched: she is the other row of the roster, and the
+#     reason the band counts two while the walk's nazır holds nothing.
+# `teardown` dismisses the nazır (its permissions go with the seat), deletes the group, and removes the course. What it cannot undo: the audit
+# rows (madrasah_nazir.appoint, permission.grant, permission.revoke, permission_group.create and .delete), the revoked role and grant rows, and
+# the invitation mail of the course (course.mjs remove clears it).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.nazirs.permissions
+
+# the editor is a 640 px dialog and the menu is the sidebar's from 768 px: the size the e2e uses
+browser: { width: 1440, height: 900 }
+
+data:
+  perm: { json: ../.local/nazir-permissions.json }
+
+# Where the page has no one answer the replay matches any text: the nazırs' names and the dates of their appointment (`name`, `names`, `list`,
+# `appointer`, `date`, `dateLocative`) are left out on purpose, since the seeded nazır and the walk's both have them. What is given is what
+# the walk made or knows exactly.
+samples:
+  count: "1"
+  group: "2"
+  extra: "1"
+  email: '{perm.email}'
+  madrasah: '{seed.titles.madrasah}'
+  groupName: '{perm.groupName}'
+  courseTitle: '{perm.courseTitle}'
+  endDate: '{perm.futureLabel}'
+
+events:
+  # "Hazır izin grubu" and "Hangi derslerde" are Base UI selects: a click opens the list, a click on the option chooses it (the e2e's `choose`)
+  PICK_GROUP:
+    - click: { role: combobox, name: Hazır izin grubu }
+    - click: { role: option, name: '{perm.groupName}' }
+  PICK_NO_GROUP:
+    - click: { role: combobox, name: Hazır izin grubu }
+    - click: { role: option, name: Grup yok }
+  CHOOSE_CHOSEN:
+    - click: { role: combobox, name: Hangi derslerde }
+    - click: { role: option, name: Seçtiğim dersler }
+  CHOOSE_ALL:
+    - click: { role: combobox, name: Hangi derslerde }
+    - click: { role: option, name: Bütün medrese dersleri }
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`; "" empties it. It has no role, so it is found by its label (the e2e's getByLabel).
+  TYPE_FUTURE_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{perm.future}' } }]
+  TYPE_PAST_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{perm.past}' } }]
+  CLEAR_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '' } }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  listed: { url: '{nazar}/medrese/*/nazirlar' }
+  # server actions: a POST to the page's own address, held while the busy state is checked
+  opening: { call: '{nazar}/medrese/*/nazirlar' }
+  saving: { call: '{nazar}/medrese/*/nazirlar' }
+  # exits with no nodes of their own
+  opened_other: { url: '{nazar}/medrese/*/nazirlar' }
+  nazir_gone: { url: '{nazar}/medrese/*/nazirlar' }
+  not_found: { url: '{nazar}/medrese/*/nazirlar' }
+  left: { url: 'about:blank' }
+
+nodes:
+  # --- the page: found by what is in it, since a bare role main is the page a walk leaves for as well
+  page: { role: main, hasText: Medrese nazırları }
+  # the roster's caption is "{medrese} nazırları" and the {name} the graph gives it is a person's: read by its ending
+  rosterTable: { role: table, name: '/ nazırları$/' }
+  # the band: two nazırs hold nothing (the seeded one and the walk's) or only the seeded one
+  bandMany: { role: status, hasText: '/^2 nazır henüz izin almadı/' }
+  bandOne: { role: status, hasText: '/^Seher Medrese Nazırı henüz izin almadı/' }
+  # the walk's nazır is found by the name her row carries; the seeded nazır's row has "İzin yok" and "İzin ver" too
+  giveButton: { role: button, name: 'İzin ver: {perm.name}' }
+  editButton: { role: button, name: 'İzinleri düzenle: {perm.name}' }
+  rowNone: { text: İzin yok, within: { role: row, hasText: '{perm.name}' } }
+  rowAppointed: { text: '/^Atayan: /', within: { role: row, hasText: '{perm.name}' } }
+  # the group's card under the table says its name too, so the chip is looked for inside the row
+  rowGroup: { text: '{perm.groupName}', within: { role: row, hasText: '{perm.name}' } }
+  rowExtra: { text: '/^Ayrıca 1 izin: /', within: { role: row, hasText: '{perm.name}' } }
+  rowCourseScope: { text: '/^Ders izinleri yalnız şu derslerde: /', within: { role: row, hasText: '{perm.name}' } }
+  rowEnd: { text: '{perm.futureLabel}', within: { role: row, hasText: '{perm.name}' } }
+  # a toast names itself and says its words in a second paragraph; the refusal's toast is told from the group's by its sentence
+  toastRefused: { role: alertdialog, name: İzinler kaydedilemedi, hasText: '/Bunu yapma izniniz yok|Bu izinlerin bir kısmı sizde yok|Kendinize rol ya da izin veremezsiniz|Seçtiğiniz izinlerden biri tanınmıyor|Seçtiğiniz dersler bu izinlerle bağdaşmıyor|Bitiş tarihi geçmişte|Bir şeyler ters gitti/' }
+  toastGroupGone: { role: alertdialog, name: İzinler kaydedilemedi, hasText: Bu grup artık yok }
+  # --- the dialog: the eyebrow and the address are said in the roster too, so they are looked for inside it
+  editorEyebrow: { text: '{seed.titles.madrasah}', within: { role: dialog, name: İzinleri düzenle } }
+  editorPerson: { text: '{perm.email}', within: { role: dialog, name: İzinleri düzenle } }
+  # the toasts have a "Kapat" button too
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: İzinleri düzenle } }
+  # <input type=datetime-local> has no role
+  endBox: { label: 'Bitiş tarihi ve saati (isteğe bağlı)' }
+  # two boxes are locked by the group and each carries "Gruptan gelir."
+  fromGroup: { text: Gruptan gelir., count: 2 }
+  # the walk's own course among the course boxes of the medrese (the seeded courses have boxes too)
+  courseBox: { role: checkbox, name: '{perm.courseTitle}' }
+
+# What a step leaves outside the screen: `held` reads the nazır's permissions through the API as the başmüderris and compares them with what
+# the walk knows (permissions-data.mjs). After a save the nazır holds the profile (or nothing); after a step that must write nothing (a
+# refused form, Vazgeç, a refusal of the server) they hold what they held before.
+effects:
+  savedProfile:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, profile]
+      expect: held profile
+  savedNothing:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, nothing]
+      expect: held nothing
+  savedOther:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, record]
+      expect: held record
+  tryFailed:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, same]
+      expect: held same
+  discard:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, same]
+      expect: held same
+  refusedToast:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, same]
+      expect: held same
+  groupGoneToast:
+    - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, held, same]
+      expect: held same

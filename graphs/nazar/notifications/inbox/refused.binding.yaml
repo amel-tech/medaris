@@ -1,0 +1,37 @@
+# nazar.notifications.inbox, the one failure the local stack can cause: a refused mark. It extends binding.yaml and adds one
+# scenario, `refuses`, which starts as `triage` does (the same rows) with `answer: failed`.
+#   node apps/engine/src/cli.ts replay graphs/nazar/notifications/inbox \
+#     --bind graphs/nazar/notifications/inbox/refused.binding.yaml --out <dir>
+# NOT RUN (see binding.yaml). How the refusal is made: the page draws the account's rows from its first read; when the walk reaches
+# `listed`, its `before` deletes the account's COURSE_BAN_PLACED rows with ./inbox.mjs, the newest unread row among them, which is
+# the one the walk presses first. The page still shows that row (it keeps its first read, rule not-live), so the press asks the API to
+# mark a row it no longer has: 404 NOTIFICATION_NOT_FOUND, the one refusal a person can meet. The page puts the list back and leaves the
+# error toast, the transition markingOne -> listed on FAIL.refused.
+#
+# What it does not do: the other transitions that a `answer: failed` start makes possible (a failed tab, a failed "more", a failed
+# "Tümünü okundu say") cannot be made to fail here, so a walk of this file with `--cover transitions` reports them as mismatches that
+# are not defects of the page; read the one transition above and leave the rest to binding.yaml's "not walkable" list.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nazar.notifications.inbox
+
+scenarios:
+  refuses:
+    given: { read: ok, holds: several, pages: several, answer: failed, row: button }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, triage]
+        expect: 'ready: triage total=31 unread=3'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+
+states:
+  # a state's entry replaces the base's whole entry, so the address is written again
+  listed:
+    url: '{nazar}/bildirimler'
+    before:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, drop, medreseNazir, COURSE_BAN_PLACED]

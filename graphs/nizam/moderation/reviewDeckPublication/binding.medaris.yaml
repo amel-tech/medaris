@@ -1,0 +1,76 @@
+# nizam.moderation.reviewDeckPublication read by a Medaris nazımı who holds platform.deck_publish (the story's "or a Medaris nazımı"), which the seed's own
+# Medaris nazımı cannot be: she holds five other codes (`refused` of binding.yaml walks the köşk nazımı, who is refused the same way).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewDeckPublication \
+#     --bind graphs/nizam/moderation/reviewDeckPublication/binding.medaris.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# The account. applicantG, a spare talebe, is appointed Medaris nazımı by the başnazım (POST /nizam/medaris-nazims) in `setup` with the one code
+# platform.deck_publish; `teardown` dismisses her (DELETE, which revokes the seat and its grants in one transaction), and `setup` dismisses first, so a walk
+# that died before its teardown leaves nothing to be refused as "already appointed" (409). The seed's Medaris nazımı is never touched. applicantG is also
+# the account other flows appoint or ban: walks are serial under the lock, and each setup dismisses before it appoints. She needs her users row before the
+# appointment (a first GET /me), which `up --touch` gives. The decks belong to applicantD, as in binding.yaml, except `own`, which is hers.
+#
+#   medaris   a Medaris nazımı reads A, B and C (A selected by the address), publishes A, refuses B with a reason, and reads "Karara bağlanan": B with its
+#             reason, A with no "Yayından kaldır" (the page hides it from her). The same transitions as the main story minus the take-back.
+#   ownDeck   the one waiting request is her own deck: "Yayımla" and "Reddet" are answered 403 DECK_REVIEW_FORBIDDEN ("A Medaris nazımı may not answer the
+#             publish request of his own deck"), the toast says "Bu işlem için izniniz yok.", the request stays and, for Reddet, the dialog stays open with
+#             the reason (FAIL.forbidden of both). The başnazım may answer his own deck; she may read it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.reviewDeckPublication
+
+data:
+  made: { json: ../.local/made/nrm.json }
+
+scenarios:
+  medaris:
+    given: { read: ok, link: waiting, requested: true, reviewer: medaris, decided: rejected, sample: cards, answer: done }
+    as: applicantG
+    open: '{nizam}/talepler/deste-yayin-istekleri?secili={made.a.id}'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrm, --touch, applicantG, 'a:pending:applicantD', 'b:pending:applicantD', 'c:pending:applicantD']
+        expect: '"tag":"nrm"'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_G_SUB}', --any]
+        expect: HTTP
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /nizam/medaris-nazims, '{"userId":"{secret.E2E_APPLICANT_G_SUB}","permissions":["platform.deck_publish"]}']
+        expect: '"appointedAt"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrm]
+        expect: 'review-data down'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_G_SUB}', --any]
+        expect: HTTP
+
+  ownDeck:
+    given: { read: ok, link: none, requested: true, reviewer: medaris, decided: none, sample: cards, answer: forbidden }
+    as: applicantG
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->deckRequests' }
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nrm, --touch, applicantG, 'own:pending:applicantG']
+        expect: '"tag":"nrm"'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_G_SUB}', --any]
+        expect: HTTP
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /nizam/medaris-nazims, '{"userId":"{secret.E2E_APPLICANT_G_SUB}","permissions":["platform.deck_publish"]}']
+        expect: '"appointedAt"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nrm]
+        expect: 'review-data down'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_G_SUB}', --any]
+        expect: HTTP
+
+effects:
+  readDeckPublishRequestCards:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'deck.private-read' and entity_id in (select id from decks where title like 'İnceleme destesi %')"]
+      expect: '"seen":true'
+  allShown:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'deck.private-read' and details->>'scope' = 'all' and entity_id in (select id from decks where title like 'İnceleme destesi %')"]
+      expect: '"seen":true'
+  approveDeckPublishRequest:
+    - run: [node, helpers/sql.mjs, "select publish_status, is_public from decks where id = '{made.a.id}'"]
+      expect: '"publish_status":"PUBLISHED","is_public":true'
+  rejectDeckPublishRequest:
+    - run: [node, helpers/sql.mjs, "select publish_status, is_public, publish_reject_reason from decks where id = '{made.b.id}'"]
+      expect: '"publish_status":"REJECTED","is_public":false,"publish_reject_reason":"Kartlarda kaynak gösterilmemiş."'

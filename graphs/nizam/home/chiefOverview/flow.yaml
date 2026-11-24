@@ -1,0 +1,406 @@
+# The Medaris home as the başnazım reads it (nizam-web "/", app/(home)/page.tsx and features/dashboard/components/medaris-home.tsx),
+# read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved. What it draws:
+#   - the two reads "/" makes for the başnazım (the roles, then GET /nizam/dashboard) and what the page shows after each:
+#     the home, the box that says the home could not be read, or a bare "Hoş geldiniz" when the roles could not;
+#   - the home itself: the greeting with the number of waiting requests, the passive-scope warning, the four platform numbers
+#     and the four cards (köşk applications, deck publish requests, scopes with no manager, new bans), with every way out of them
+#     into a queue, and the reload that makes the warning go once a scope has a manager again.
+# What it does not draw: the Medaris nazımı's cut of the same page (nizam.home.medarisNazimCut), the köşk home
+# (nizam.home.koskNazimLanding), who "/" sends where (nizam.shell.landingByRole) and the menu around the page
+# (nizam.shell.menuPerPersona). The pages it leads to are the flows it `starts`.
+# Findings it carries (the inventory's ids): F-W1-1, F-W1-10, F-W1-12, F-X-17, and F-W1-15 only as far as it touches the başnazım
+# (it does not: the card is the nazım's). Four more are this flow's own, proposed as CHIEF-1 to CHIEF-4 (ui.yaml `rules`).
+# Seen, as opposed to read: the answer of GET /nizam/dashboard for the seeded başnazım was fetched on the local stack (the four
+# numbers 2, 1, 3, 2 and four empty lists, no warning). Everything the page draws is from the code: nothing was opened in a
+# browser, and the unit specs apps/nizam/test/dashboard-views.spec.tsx and dashboard-present.spec.ts pin most of it.
+# Not walked yet: the owner's word is that replays happen once, at the end; binding.yaml loads and each scenario is bound. Only the
+# seed's own state (nothing waiting, nothing passive, no ban) can be walked read-only; the rows, the warning and the unreadable
+# states need data or a failing server that the stack does not give (binding.yaml says which).
+schema: delurio-graph/0
+kind: flow
+id: nizam.home.chiefOverview
+status: captured
+domain: medaris.api
+ui: nizam.home.chiefOverview
+title: Read the Medaris home as the başnazım
+summary: >-
+  The başnazım opens Ana sayfa. The page reads who they are and then the one answer that feeds it, and draws a greeting that says
+  how many requests wait for a decision, the numbers of the platform (köşks, medreses, courses, enrolled talebe) and four cards:
+  the newest köşk applications, the newest deck publish requests, the scopes that have no manager, and the newest bans. When a
+  scope has no manager a warning stands above the numbers and names it; once someone is given the post the next read has no
+  warning. "İncele" on a row, "Tümünü gör" on a card, "Yasaklamalar’a git", "Köşklere git", "Medreselere git" and "Köşk aç" carry
+  the başnazım into the queue or the form. When the home cannot be read a box says so and offers "Yeniden dene"; when the roles
+  cannot be read the page says only "Hoş geldiniz".
+source: apps/nizam/app/(home)/page.tsx
+
+scope:
+  shows: the Medaris home for the başnazım, the two reads behind it, and the links out of it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Medaris nazımı's cut of the same page (no 'Köşk aç', cards that a permission does not open absent, 'İzinleriniz', the permanent-ban card): nizam.home.medarisNazimCut"
+    - "who '/' sends where: a visitor's welcome, the hand-over to Nazar, the no-role page and the köşk nazımı's own home (nizam.shell.landingByRole, nizam.home.koskNazimLanding)"
+    - "the shell around the page: the sidebar and its five sections, the person row, the bell and the phone's menu sheet (nizam.shell.menuPerPersona); e2e dashboard#1 assertion 3 reads the five sections and is carried there"
+    - "a 403 from the dashboard read: the service lets SYSTEM_ADMIN through (nizam-dashboard.service.ts:44), so the başnazım never meets the 'izniniz yok' screen the page would draw (nizam.shell.noAccessAndNotFound)"
+    - "a token tedrisat refuses (401): both reads send the person to sign in again, not to a box (realm.auth.sessionEnded)"
+    - "the loading skeleton while the page is read (app/(home)/loading.tsx: an aria-busy div whose children are hidden, F-W1-8, which touches five pages) and the phone layout, where the grid is one column"
+    - "the busy state of 'Yeniden dene' while the page is read again: the button shows a spinner and a hidden status that says 'Yükleniyor' until the server answers (F-UI-W1-3), and it is not drawn here because the read itself is the next state"
+    - "the second greeting 'Selâmün aleyküm.' of a başnazım whose name is not known: it is one of the two texts of the greeting node, and no case variable picks it"
+    - "the pages the links lead to and what they do (the flows this one starts); the open-köşk form is nizam.kosks.open"
+    - "the köşk nazımı's menu badge, which this page does not touch"
+
+decisions:
+  D1:
+    question: >-
+      Should the greeting's honorific follow the person? "Selâmün aleyküm, {name} Bey." is the one sentence the catalog has for the
+      Medaris home (Dashboard.greeting), so the başnazım is "Bey" whoever they are, and the köşk home says "Hoca" the same way.
+    recommend: >-
+      Decide first which forms the product wants (a gender-neutral greeting, or one per gender, which the profile has). Until then
+      the page says what the catalog says; the inventory calls it an observation, not a defect.
+    affects: [homeClear, homeWarned]
+  D2:
+    question: >-
+      Should the home show the pending appeals that its greeting counts? The sentence "Karar bekleyen N talep var." adds the
+      pending appeals (pendingTotals.appeals) to the köşk applications and the deck requests, but the page has no card and no link
+      for appeals, so a başnazım whose only waiting item is an appeal reads "1 talep var" over four cards that say nothing waits
+      (CHIEF-1).
+    recommend: >-
+      Add a card or a link to İtirazlar, as the other three queues have, or leave appeals out of the sum until the home shows them.
+    affects: [homeClear, homeWarned]
+
+context:
+  roles:
+    values: [ok, unreadable]
+    initial: any
+    say:
+      ok: "the read of the roles (GET /me/assignments and /me/roles) answers"
+      unreadable: "either read of the roles fails, so the page has no roles to decide the variant from"
+  dashboard:
+    values: [ok, unreadable]
+    initial: any
+    say:
+      ok: "GET /nizam/dashboard answers"
+      unreadable: "the read fails, or tedrisat answers 404, or a 5xx; the page treats them alike"
+  requests:
+    values: [none, applications, decks, both, appealsOnly]
+    initial: any
+    say:
+      none: "nothing waits: no köşk application, no deck request, no appeal"
+      applications: "köşk applications wait and nothing else does"
+      decks: "deck publish requests wait and nothing else does"
+      both: "köşk applications and deck publish requests both wait"
+      appealsOnly: "only appeals wait: the greeting counts them, no card shows them (CHIEF-1)"
+  passive:
+    values: [none, kosk, madrasah, course]
+    initial: any
+    say:
+      none: "every köşk, medrese and course has a manager"
+      kosk: "a köşk has no manager (its last nazım left or expired)"
+      madrasah: "a medrese has no başmüderris"
+      course: "a course has no hoca"
+  bans:
+    values: [rows, empty]
+    initial: any
+    say:
+      rows: "at least one ban is open"
+      empty: "no ban is open"
+  unlisted:
+    values: [none, some]
+    initial: any
+    say:
+      none: "every köşk is listed"
+      some: "at least one köşk is not listed in the köşk lists (isPrivate)"
+
+guards:
+  appsRows: "requests in ['applications', 'both']"
+  decksRows: "requests in ['decks', 'both']"
+  waiting: "requests != 'none'"
+  passiveScopes: "passive != 'none'"
+  bansRows: "bans == 'rows'"
+
+effects:
+  again: { havoc: [roles, dashboard, requests, passive, bans, unlisted] } # a reload or a retry reads again, and the answer may differ: a scope was given a manager, a request was decided
+
+failures:
+  readingRoles: { from: getMyAssignments, unreadable: [] }
+  readingDashboard: { from: getNizamDashboard, unreadable: [] }
+# `unreadable` stands for any answer but a refused token (a 401 is the guard's and is left out of the domain): the page treats a
+# network error, a 5xx and a 404 alike. getNizamDashboard's one refusal, AUTHZ_FORBIDDEN, is the Medaris nazımı's and the
+# stranger's, never the başnazım's (see `scope.outOfView`).
+
+# The main story: the başnazım opens Ana sayfa, finds nothing waiting and nothing passive, and presses "Köşk aç".
+main:
+  given: { roles: ok, dashboard: ok, requests: none, passive: none, bans: empty, unlisted: none }
+  events: [DONE, DONE, OPEN_KOSK]
+
+initial: readingRoles
+states:
+  readingRoles:
+    title: Read the roles
+    description: >-
+      "/" reads GET /me/assignments and GET /me/roles at once (Promise.all) and keeps the answer: it decides the variant (the
+      başnazım's, from `systemAdmin`) and, for anyone but a nazım, sends the person away. A başnazım always stays. The graph draws
+      the two reads as one. A token tedrisat refuses is not a failure here: it sends the person to sign in again (out of view).
+    includes: ["whether the person is the başnazım, a Medaris nazımı, a köşk nazımı or neither"]
+    source: apps/nizam/app/(home)/page.tsx:42
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "roles == 'ok'", target: readingDashboard, say: "the person is the başnazım, so the page goes on to read the dashboard" }
+      FAIL.unreadable: { guard: "roles == 'unreadable'", target: bareWelcome, say: "the page keeps the address and draws the one line it has for a person it cannot place (F-W1-1)" }
+
+  readingDashboard:
+    title: Read the dashboard
+    description: >-
+      GET /nizam/dashboard, one read for the whole page: the greeting's name, what waits, the platform numbers and the first three rows
+      of each queue (the newest, for the applications, the deck requests and the bans; the oldest, for the scopes with no manager). For the başnazım every section comes back (never null) and `can.openKosk` is true.
+    source: apps/nizam/app/(home)/page.tsx:62
+    invoke: { action: getNizamDashboard }
+    on:
+      DONE: { guard: "dashboard == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "dashboard == 'unreadable'", target: loadFailed, say: "any failure but a refusal draws the box; the refusal is never the başnazım's" }
+
+  sorting:
+    title: See whether a scope has no manager
+    description: classification only; the passive warning is drawn from `inactiveScopeCount`
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:315
+    always:
+      - { guard: passiveScopes, target: homeWarned, say: "at least one scope has no manager" }
+      - { target: homeClear, say: "every scope has a manager" }
+
+  homeWarned:
+    title: The home, with the warning
+    by: human
+    goal: true
+    description: >-
+      The home with a warning above the numbers: "Bir kapsamın yöneticisi yok" (or "İki ...", or "N kapsamın ..."), and a sentence
+      that names the scopes and says they are closed to their enrolled talebe too. The title counts every scope with no manager, the
+      sentence names at most the first three, so beyond three the two disagree (CHIEF-3). The "Pasif kapsamlar" card lists the
+      three that have been without a manager the longest (the API sorts by the date they lost it, oldest first, and cuts at three) with a button each that says what to do ("Köşk nazımı ata", "Başmüderris ata", "Hoca ata") and goes to the one
+      page /pasif-kapsamlar, the same address for every row (F-W1-10). Below the warning stand the greeting, the four numbers, the
+      applications, the deck requests and the bans. The greeting adds the appeals to the sum (CHIEF-1), the application captions
+      spell the field from a table in code, not the catalog (F-W1-12, F-X-17), and the honorific is fixed (decision D1).
+    includes: ["the heading, the greeting and its waiting sentence", "the warning and its sentence", "the numbers and their notes", "the four cards with their empty sentences, their rows and their links"]
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:330
+    on:
+      OPEN_KOSK:
+        target: kosk_form_opened
+        starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "true" } }
+        say: "\"Köşk aç\" is a plain link to /kosks?ac=1, which opens the open-köşk form on arrival; nothing was pressed to open it there, so closing it gives the focus to nothing (F-W3-open-4)"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:308
+      OPEN_KOSKS:
+        target: kosks_opened
+        starts: { flow: nizam.kosks.browse }
+        say: "\"Köşklere git\" under the köşk number is a plain link to /kosks"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:266
+      OPEN_MADRASAHS:
+        target: madrasahs_opened
+        starts: { flow: nizam.madrasahs.browse }
+        say: "\"Medreselere git\" under the medrese number is a plain link to /medreseler"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:278
+      OPEN_APPLICATION:
+        guard: appsRows
+        target: kosk_application_opened
+        starts: { flow: nizam.applications.decide }
+        say: "\"İncele: {name}\" opens the application's own row: /talepler/kosk-basvurulari?secili=<id>"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:87
+      SEE_ALL_APPLICATIONS:
+        target: kosk_applications_opened
+        starts: { flow: nizam.applications.decide }
+        say: "\"Tümünü gör\" on the applications card opens the list, empty or not"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      OPEN_DECK_REQUEST:
+        guard: decksRows
+        target: deck_request_opened
+        starts: { flow: nizam.moderation.reviewDeckPublication }
+        say: "\"İncele: {title}\" opens the request's own row: /talepler/deste-yayin-istekleri?secili=<id>"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:131
+      SEE_ALL_DECKS:
+        target: deck_requests_opened
+        starts: { flow: nizam.moderation.reviewDeckPublication }
+        say: "\"Tümünü gör\" on the deck requests card opens the list"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      ASSIGN_SCOPE:
+        target: inactive_scopes_opened
+        starts: { flow: nizam.inactive.reassign }
+        say: "the row's button (\"Köşk nazımı ata\", \"Başmüderris ata\" or \"Hoca ata\") is a plain link to /pasif-kapsamlar: the same address for every row, so the person finds the scope again in the list (F-W1-10)"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:186
+      SEE_ALL_PASSIVE:
+        target: inactive_scopes_opened
+        starts: { flow: nizam.inactive.reassign }
+        say: "\"Tümünü gör\" on the passive scopes card opens the same page"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      OPEN_BAN:
+        guard: bansRows
+        target: bans_opened
+        starts: { flow: nizam.moderation.reviewBans }
+        say: "\"İncele: {name}\" goes to /yasaklamalar, which takes no ban to select: the same address for every row (CHIEF-2)"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:228
+      GO_TO_BANS:
+        target: bans_opened
+        starts: { flow: nizam.moderation.reviewBans }
+        say: "\"Yasaklamalar’a git\" under the bans card, a plain link drawn whether or not a ban is open"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:243
+      RELOAD:
+        target: readingRoles
+        effect: [again]
+        say: "they reload the page: a scope given a manager since drops the warning and its row, and the card says \"Yöneticisiz kapsam yok.\" (e2e dashboard#3)"
+      NAVIGATE: { target: left, say: "they go on to another page of the menu" }
+
+  homeClear:
+    title: The home, with no warning
+    by: human
+    goal: true
+    description: >-
+      The same home with nothing above the numbers: every scope has a manager, the "Pasif kapsamlar" card says "Yöneticisiz kapsam yok."
+      and has no row button. The greeting says "Karar bekleyen talep yok." when nothing waits, and "Karar bekleyen N talep var." when
+      something does, appeals included (CHIEF-1). A card with no row says so in one sentence of its own and keeps its link, so
+      "Tümünü gör" and "Yasaklamalar’a git" are drawn on an empty list too. The seeded başnazım meets this state with every card
+      empty.
+    includes: ["the heading, the greeting and its waiting sentence", "the numbers and their notes", "the four cards with their empty sentences, their rows and their links"]
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:330
+    on:
+      OPEN_KOSK:
+        target: kosk_form_opened
+        starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "true" } }
+        say: "the plain link to /kosks?ac=1: the form opens on arrival"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:308
+      OPEN_KOSKS:
+        target: kosks_opened
+        starts: { flow: nizam.kosks.browse }
+        say: "\"Köşklere git\" under the köşk number"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:266
+      OPEN_MADRASAHS:
+        target: madrasahs_opened
+        starts: { flow: nizam.madrasahs.browse }
+        say: "\"Medreselere git\" under the medrese number"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:278
+      OPEN_APPLICATION:
+        guard: appsRows
+        target: kosk_application_opened
+        starts: { flow: nizam.applications.decide }
+        say: "\"İncele: {name}\" on an application row"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:87
+      SEE_ALL_APPLICATIONS:
+        target: kosk_applications_opened
+        starts: { flow: nizam.applications.decide }
+        say: "\"Tümünü gör\" on the applications card"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      OPEN_DECK_REQUEST:
+        guard: decksRows
+        target: deck_request_opened
+        starts: { flow: nizam.moderation.reviewDeckPublication }
+        say: "\"İncele: {title}\" on a deck request row"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:131
+      SEE_ALL_DECKS:
+        target: deck_requests_opened
+        starts: { flow: nizam.moderation.reviewDeckPublication }
+        say: "\"Tümünü gör\" on the deck requests card"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      SEE_ALL_PASSIVE:
+        target: inactive_scopes_opened
+        starts: { flow: nizam.inactive.reassign }
+        say: "\"Tümünü gör\" on the passive scopes card, drawn whether or not a scope is passive"
+        source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      OPEN_BAN:
+        guard: bansRows
+        target: bans_opened
+        starts: { flow: nizam.moderation.reviewBans }
+        say: "\"İncele: {name}\" on a ban row (CHIEF-2)"
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:228
+      GO_TO_BANS:
+        target: bans_opened
+        starts: { flow: nizam.moderation.reviewBans }
+        say: "\"Yasaklamalar’a git\""
+        source: apps/nizam/features/dashboard/components/medaris-home.tsx:243
+      RELOAD:
+        target: readingRoles
+        effect: [again]
+        say: "they reload the page; a scope may have lost its manager meanwhile, and the warning is back"
+      NAVIGATE: { target: left, say: "they go on to another page of the menu" }
+
+  loadFailed:
+    title: The home could not be read
+    by: human
+    description: >-
+      A box in the page's place: "Ana sayfa okunamadı", one sentence that says the information cannot be read now, and "Yeniden dene",
+      which reads the page again with router.refresh(). It is an error Alert, so it is announced when it appears. The page has no
+      heading, no greeting and no number, and no focus is set (CHIEF-4). The sidebar around it is drawn as usual.
+    source: apps/nizam/features/kosks/components/load-failed.tsx:23
+    on:
+      RETRY: { target: readingRoles, effect: [again], say: "they press \"Yeniden dene\": the page's server side runs again, and the answer may differ", source: apps/nizam/features/kosks/components/load-failed.tsx:25 }
+      NAVIGATE: { target: left, say: "they go on to another page of the menu" }
+
+  bareWelcome:
+    title: Only "Hoş geldiniz"
+    by: human
+    description: >-
+      The roles could not be read, so the page does not know who it is drawing for and falls through to its last line: a bare <div>
+      with "Hoş geldiniz" inside the shell, with no heading, no error and no retry (F-W1-1). The shell reads the roles itself, in a
+      mode that returns null, and draws what that read gave it. nizam.shell.landingByRole draws the same page from the roles' side
+      (F-P0-9).
+    source: apps/nizam/app/(home)/page.tsx:90
+    on:
+      RELOAD: { target: readingRoles, effect: [again], say: "the only thing the person can do is reload, and nothing tells them to" }
+      NAVIGATE: { target: left, say: "they go on to another page of the menu, if the shell drew one" }
+
+  kosk_form_opened:
+    type: final
+    title: The open-köşk form is open
+    description: The browser is on /kosks?ac=1 with the form "Köşk aç" open over the Köşkler page. nizam.kosks.open draws it, from the address.
+  kosks_opened:
+    type: final
+    title: They open the Köşkler list
+    description: The browser is on /kosks. nizam.kosks.browse draws it.
+  madrasahs_opened:
+    type: final
+    title: They open the Medreseler list
+    description: The browser is on /medreseler. nizam.madrasahs.browse draws it.
+  kosk_application_opened:
+    type: final
+    title: They open one köşk application
+    description: The browser is on /talepler/kosk-basvurulari?secili=<id>, with that application selected. nizam.applications.decide draws it.
+  kosk_applications_opened:
+    type: final
+    title: They open the köşk applications
+    description: The browser is on /talepler/kosk-basvurulari. nizam.applications.decide draws it.
+  deck_request_opened:
+    type: final
+    title: They open one deck publish request
+    description: The browser is on /talepler/deste-yayin-istekleri?secili=<id>. nizam.moderation.reviewDeckPublication draws it.
+  deck_requests_opened:
+    type: final
+    title: They open the deck publish requests
+    description: The browser is on /talepler/deste-yayin-istekleri. nizam.moderation.reviewDeckPublication draws it.
+  inactive_scopes_opened:
+    type: final
+    title: They open Pasif kapsamlar
+    description: The browser is on /pasif-kapsamlar. nizam.inactive.reassign draws it; the row they came from is not marked there (F-W1-10).
+  bans_opened:
+    type: final
+    title: They open Yasaklamalar
+    description: The browser is on /yasaklamalar, the Medaris view of every ban. nizam.moderation.reviewBans draws it; the ban they came from is not marked there (CHIEF-2).
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - id: warning-only-for-a-passive-scope
+    never: "state == 'homeWarned' and passive == 'none'"
+    say: The warning above the numbers is drawn only when a scope has no manager
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:315
+  - id: no-warning-with-a-passive-scope
+    never: "state == 'homeClear' and passive != 'none'"
+    say: A scope with no manager always puts the warning above the numbers, so the home with no warning has none
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:315
+  - id: home-only-after-both-reads
+    never: "state in ['homeWarned', 'homeClear'] and (roles != 'ok' or dashboard != 'ok')"
+    say: The home is drawn only when the roles and the dashboard were both read
+    source: apps/nizam/app/(home)/page.tsx:61
+  - id: box-only-after-a-failed-dashboard
+    never: "state == 'loadFailed' and (dashboard != 'unreadable' or roles != 'ok')"
+    say: The box that says the home could not be read is drawn only when the roles came and the dashboard did not
+    source: apps/nizam/app/(home)/page.tsx:67
+  - id: bare-line-only-after-failed-roles
+    never: "state == 'bareWelcome' and roles != 'unreadable'"
+    say: The bare "Hoş geldiniz" is drawn only when the roles could not be read
+    source: apps/nizam/app/(home)/page.tsx:90

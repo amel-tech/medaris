@@ -1,0 +1,149 @@
+# nizam.hosting.grantAndRevoke on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the köşk nazımı of the stack
+# (KOSK_NAZIM) signed in through Keycloak's real form, on a köşk of the walk's own.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/hosting/grantAndRevoke --bind graphs/nizam/hosting/grantAndRevoke/binding.yaml --cover transitions --out <dir>
+# and the files that carry a scenario of their own (a scenario that takes no transition of its own, or needs a hook on one button, is not
+# walked by `--cover transitions` of this file):
+#   binding.chief.yaml          the başnazım gives and withdraws (the role "Medaris başnazımı", the hide at the platform's level)
+#   binding.madrasahGone.yaml   the medrese is hidden after it was chosen: MADRASAH_NOT_FOUND, the toast, the window stays open
+#   binding.notHeld.yaml        the right is withdrawn by someone else before the person's withdrawal: HOSTING_RIGHT_NOT_FOUND
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every behaviour below is from the code; none was
+# seen in a browser. What a read-only look did show: GET /madrasahs (no token) lists one medrese, the seeded one, and nizam-web answers 307
+# to the sign-in at /kosks.
+#
+# The data and how it is taken away. The seeded köşks and the seeded medrese are other flows' data: this flow gives and withdraws rights and
+# hides courses, so it never does either there. `setup` makes (walk-data.mjs, as the başnazım, through tedrisat's HTTP API, no SQL)
+#   - the köşk "Barındırma Deneme Köşkü" (barindirma-hosting) with KOSK_NAZIM as its one nazım, so the page of the walk's own köşk is the köşk
+#     nazımı's, and the seed's two köşks are not touched;
+#   - the medrese "Deneme medresesi hosting" (deneme-hosting), APPLICANT_G as its başmüderris;
+#   - for the walks with open courses, a published course and a draft one of that medrese in that köşk (helpers/course.mjs make --madrasah
+#     --kosk: "Deneme dersi hosting-ders" and "Deneme dersi hosting-taslak", MUDERRIS as the hoca, no talebe: "Henüz talebe yok").
+# A walk that starts with no right held gives the medrese the right first and withdraws it again (KEEP), so that its two courses stay in
+# the köşk and the medrese is in the list the grant window offers. `teardown` removes the two courses (course.mjs remove), then the köşk
+# (DELETE /kosks/:id, which takes whatever courses, rights and nazım role are left) and the medreses (walk-data.mjs remove), also of a walk
+# that ended with the courses hidden or the medrese hidden. Every command is safe to run twice, and `setup` removes what a walk that died
+# left. What stays: audit_log rows (kosk.create/delete, madrasah.create/delete, hosting_right.grant/revoke, course.open, madrasah.hide,
+# user.lookup), which the API cannot remove.
+#
+# Scenario grantsAndKeeps is the story: no right held, the medrese (with its two open courses) in the grant window's list; the person gives
+# the right, withdraws it, finds the button off until an answer is chosen, chooses "Dersler sürsün". With `--cover transitions` the same start
+# also drives Vazgeç and Escape on both windows, the list opened and closed, and the grant again (the medrese is in the list again once its
+# right is withdrawn) followed by "Dersleri gizle". `hides` starts with the right held (the withdrawal alone), `noCourses` with a right that
+# has no open course, `withOther` with a second right that stays, `refused` is another köşk's page and `gone` a köşk that is not there.
+#
+# Not bound, with the reason (each is a transition or a node the walk leaves out):
+#   - `read: failed`, `options: failed` and `answer: failed|forbidden` (the API does not answer, the list of medreses fails, the caller may no
+#     longer do this): tedrisat answers every call the stack makes and the stack cannot make it fail on request.
+#   - `options: none` ("Barındırma hakkı verilebilecek başka medrese yok."): every open medrese must hold a right in the walk's köşk, and the
+#     seeded medrese is one of them; giving it a right in any köşk changes what nazar.courses.open and nazar.pano.decideApplications list,
+#     so it is never done. Ask: a stack that holds no medrese but the walks' own.
+#   - `tabs: hidden` (a Medaris nazımı holding platform.hosting_grant and not platform.kosk_edit): the seeded MEDARIS_NAZIM holds
+#     platform.kosk_create, madrasah_create, kosk_edit, audit_read and course_hide; giving it hosting_grant for a walk changes a seeded
+#     account other flows read. Ask: an account `medarisHosting` with that one code.
+#   - `answer: koskGone` (the köşk is deleted behind the page): the same hook as binding.notHeld.yaml with a DELETE /kosks/:id; not written.
+#   - a row that says "Başmüderris yok" (HostingPage.noHead): a medrese opens with a başmüderris and no route takes it away without passivating
+#     the medrese.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.hosting.grantAndRevoke
+
+scenarios:
+  grantsAndKeeps:
+    given: { read: ok, before: none, tabs: shown, options: some, courses: some, rest: none, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held]
+        expect: '"tag":"hosting"'
+      - run: [node, helpers/course.mjs, make, hosting-ders, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hosting-ders"'
+      - run: [node, helpers/course.mjs, make, hosting-taslak, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --draft, --hoca, MUDERRIS]
+        expect: '"tag":"hosting-taslak"'
+      # the right goes back, the courses stay: the medrese is in the grant window's list with two open courses behind it
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, withdraw, hosting, KEEP]
+        expect: 'walk-data withdraw hosting: withdrawn (KEEP)'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hosting-ders]
+        expect: 'course remove hosting-ders'
+      - run: [node, helpers/course.mjs, remove, hosting-taslak]
+        expect: 'course remove hosting-taslak'
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+  # The right is held when the page opens: the withdrawal alone, with "Dersleri gizle" the one answer that writes more than the right
+  # (madrasahs.e2e.ts#12): both courses, the draft too, are hidden at the köşk's level.
+  hides:
+    given: { read: ok, before: some, tabs: shown, options: some, courses: some, rest: none, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held]
+        expect: '"tag":"hosting"'
+      - run: [node, helpers/course.mjs, make, hosting-ders, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hosting-ders"'
+      - run: [node, helpers/course.mjs, make, hosting-taslak, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --draft, --hoca, MUDERRIS]
+        expect: '"tag":"hosting-taslak"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hosting-ders]
+        expect: 'course remove hosting-ders'
+      - run: [node, helpers/course.mjs, remove, hosting-taslak]
+        expect: 'course remove hosting-taslak'
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+  # A right with no open course: the window asks nothing and the button is on at once.
+  noCourses:
+    given: { read: ok, before: some, tabs: shown, options: some, courses: none, rest: none, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held]
+        expect: '"tag":"hosting"'
+    teardown:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+  # A second right stays in the table when the first is withdrawn: the first row (the walk's own medrese, given the right first) goes,
+  # the second ("Deneme medresesi hosting ikinci") stays.
+  withOther:
+    given: { read: ok, before: some, tabs: shown, options: some, courses: none, rest: some, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held, --other]
+        expect: '"tag":"hosting"'
+    teardown:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+  # Another köşk's page (madrasahs.e2e.ts#13): a köşk of the walk's own whose one nazım is APPLICANT_H, not the account that walks. The
+  # köşk nazımı meets "Bu bölüm için izniniz yok" and no table. Nothing is given or withdrawn.
+  refused:
+    given: { read: forbidden, before: none, tabs: shown, options: some, courses: none, rest: none, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.stranger}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --stranger]
+        expect: '"tag":"hosting"'
+    teardown:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+  # A köşk that is not there: a well-formed address that no köşk owns. The same screen as the refusal, from notFound(). Nothing is made.
+  gone:
+    given: { read: missing, before: none, tabs: shown, options: some, courses: none, rest: none, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/ayarlar/barindirma'
+
+# The two server actions are Next server actions: a POST to the page's own address, held while the busy state is checked. Its answer is 200
+# whatever the API said, so the replay cannot compare a refusal's status there: the files that walk a refusal leave `call` off.
+states:
+  granting: { call: '{nizam}/kosks/*/ayarlar/barindirma' }
+  revoking: { call: '{nizam}/kosks/*/ayarlar/barindirma' }

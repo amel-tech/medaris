@@ -1,0 +1,27 @@
+# nazar.sessions.manage as a ders nazırı who holds session.manage and nothing else of the page's codes (the seeded persona, for a course of the
+# walk's own): the page offers the link, the time, the in-person mark and "İptal et", and no stream button and no "Kayıt erişimi". It adds no
+# transition to binding.yaml's (the same writes, fewer buttons), so it is a file of its own, to be walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/sessions/manage \
+#     --bind graphs/nazar/sessions/manage/binding.manage.yaml --cover transitions --absent --out <dir>
+# (without --cover the walk is the main story, which is the müderris's and not bound here.) `--absent` is what this file is for: the stream and the
+# release buttons are absent from the page for this person (`holds: manage` leaves them out of the graph's states), and it checks that they are
+# not there. NOT RUN; see locators.binding.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.sessions.manage
+
+scenarios:
+  manage:
+    given: { exam: none, holds: manage, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/celseler'
+    setup:
+      - run: [node, helpers/course.mjs, make, sesManage, --weeks, '1', --lessons, '1']
+        expect: '"tag":"sesManage"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, sesManage]
+        expect: 'course remove sesManage'
+    vars: { bump: '0' }

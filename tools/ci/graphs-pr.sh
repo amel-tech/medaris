@@ -23,7 +23,7 @@ domains=()
 declare -A seen
 dirs=()
 for f in "${files[@]}"; do
-  case "$f" in graphs/*/domain/domain.yaml) domains+=("$f") ;; esac
+  case "$f" in graphs/*/domain/domain.yaml | graphs/domain/*.yaml) domains+=("$f") ;; esac
   g=$(graph_of "$f")
   if [ -n "$g" ] && [ -z "${seen[$g]:-}" ]; then
     seen[$g]=1
@@ -48,7 +48,12 @@ if [ ${#dirs[@]} -eq 0 ] && [ ${#domains[@]} -eq 0 ]; then
   body+="No graph changes."$'\n'
 fi
 for f in "${domains[@]}"; do
-  body+="The API of an area changed (\`$f\`); the flows below are compared with it."$'\n\n'
+  case "$f" in
+    graphs/domain/*.yaml)
+      body+="The API changed (\`$f\`). Every flow reads this one domain, \`medaris.api\`; the check holds each of them to it, and the flows changed with it are compared below."$'\n\n'
+      ;;
+    *) body+="The API of an area changed (\`$f\`); the flows below are compared with it."$'\n\n' ;;
+  esac
 done
 mkdir -p _pages
 for d in "${dirs[@]}"; do

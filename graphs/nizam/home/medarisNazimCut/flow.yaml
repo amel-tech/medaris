@@ -1,0 +1,294 @@
+# The Medaris home as a Medaris nazımı reads it (nizam-web "/", app/(home)/page.tsx, features/dashboard/components/medaris-home.tsx, the
+# shell's menu in components/shell/nizam-shell.tsx and lib/shell-nav.ts), read from the code of the branch (the tree of PR #394) on
+# 15 Nov 2026. Nothing here is approved. What it draws:
+#   - the three reads a Medaris nazımı's "/" makes (the permissions that cut the menu, GET /nizam/dashboard, GET /me/grants) and the
+#     home that follows: a greeting that counts only the queues she may decide, two platform numbers, a card for each queue a
+#     permission opens (and no other), "İzinleriniz", and a sidebar with only the entries her permissions open;
+#   - what is absent: "Köşk aç", the passive warning, the course numbers, every card and menu entry that no permission of hers opens;
+#   - the screen for a page she may not open ("Bu bölüm için izniniz yok");
+#   - the başnazım taking one permission away while the page is open (it does not change), and the reload that drops the card, the
+#     menu entry, the grant and the count.
+# What it does not draw: the başnazım's whole home (nizam.home.chiefOverview, which draws the rows of each card, the "Yeniden dene" box
+# and the numbers' captions), who "/" sends where (nizam.shell.landingByRole), the menu of every persona (nizam.shell.menuPerPersona),
+# the screen for a section she may not open (nizam.shell.noAccessAndNotFound, drawn here only as far as the words and the way back)
+# and the pages the cards lead to.
+# Started by nizam.nazims.appoint and nizam.nazims.editPermissions (the cut follows the grants): `granted: some` is what they hand over.
+# Findings it carries (the inventory's ids): F-W1-10, F-W1-12 (the cards' rows, not drawn), F-W1-15, F-P0-4 and F-X-11 (the permanent-ban
+# card and menu entry), F-X-12. Four more are this flow's own, proposed as MCUT-1 to MCUT-4 (ui.yaml `rules`; the last is an observation).
+# E2E it takes over: dashboard#8 and #9, up to what a replay can hold (needs.yaml says what is left: the revoke is the başnazım's own call
+# to the API here, not the spec's SQL).
+# Seen, as opposed to read: the three answers the page is made of were fetched with GET on the local stack as the seeded Medaris nazımı
+# (GET /nizam/dashboard: viewer MEDARIS_NAZIM, greetingName "Selma", can.openKosk false, every queue and every course number null, köşk 2
+# and medrese 1; GET /me/grants: five platform grants given by the başnazım, no end; GET /me/permissions: the five codes). Nothing was
+# opened in a browser. Every signed-in behaviour of the page is from the code, and the unit specs
+# apps/nizam/test/dashboard-present.spec.ts (the menu cut, the grant cards, the footnote), dashboard-views.spec.tsx and shell-nav.spec.ts pin most
+# of it. Not walked yet: the owner's word is that replays happen once, at the end; the bindings load and each scenario is bound.
+schema: delurio-graph/0
+kind: flow
+id: nizam.home.medarisNazimCut
+status: captured
+domain: medaris.api
+ui: nizam.home.medarisNazimCut
+title: Read the Medaris home as a Medaris nazımı
+summary: >-
+  A Medaris nazımı opens Ana sayfa. The menu is cut to the entries her platform permissions open (Ana sayfa and Bildirimler are
+  everyone's), and the page shows the greeting with the number of requests she may decide, the köşk and medrese numbers, one card for
+  each queue a permission of hers opens, and "İzinleriniz": what the başnazım gave her, who gave it and until when. A section she does
+  not hold is not in the page at all, "Köşk aç" is never drawn to her, and a page she may not open says "Bu bölüm için izniniz yok".
+  When the başnazım takes a permission away the page she has open does not change; after a reload the card, the menu entry, the grant
+  and the number are gone.
+source: apps/nizam/app/(home)/page.tsx
+
+scope:
+  shows: >-
+    the Medaris home for a Medaris nazımı, the menu around it, the reads behind them, the screen for a page she may not open, and a
+    permission taken away and the reload that follows
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the başnazım's side of the revoke (the Medaris nazımları page, 'İzinleri düzenle'): nizam.nazims.editPermissions, which starts this flow; here it is an event someone else causes"
+    - "the rows of the cards (a köşk application, a deck request, a ban, a scope with no manager), their captions and their 'İncele' buttons beyond the two queues the greeting counts: nizam.home.chiefOverview draws the same rows for the başnazım; the bans and passive cards are drawn here by their heading and link only"
+    - "the page's own 'Ana sayfa okunamadı' box with 'Yeniden dene' (a failed or a 404 dashboard read) and the bare 'Hoş geldiniz' when the roles cannot be read (nizam.home.chiefOverview, nizam.shell.landingByRole); the 403 of the dashboard read, which would draw the screen of noAccess, needs a seat that ends between two reads"
+    - "the shell's permission read failing: GET /me/permissions answered with an error leaves the menu uncut (filterByPermissions(groups, null) hides nothing, shell-nav.ts:317, nizam-shell.tsx:86-89) and tedrisat then refuses what is not hers; not drawn, the stack cannot make it refuse"
+    - "a nazım who was given a ready group instead of single permissions: the card then names the group ('Hazır grup · N izin') and joins the short sentences; and a grant given on several days (the footnote's second wording); a permission with an end date ('… tarihine kadar')"
+    - "the small print under a single permission (PermissionCatalog …help), the captions under the numbers ('Biri listelenmeyen', 'Biri pasif') and the amount counted in them"
+    - "a Medaris nazımı who also manages a köşk: the widest role wins, so the home and the menu are this one's (shellVariant, shell-nav.ts:25-32)"
+    - "the phone layout, where the sidebar is replaced by an app bar with a sheet (nizam.shell.menuPerPersona), and the loading skeleton (app/(home)/loading.tsx, F-W1-8)"
+    - "the second greeting 'Selâmün aleyküm.' of a nazım whose name is not known (greetingAnon): it is one of the greeting's texts and no case variable picks it"
+    - "the pages the links lead to and what they do"
+    - "a token tedrisat refuses (401): every read sends the person to sign in again (realm.auth.sessionEnded)"
+
+decisions:
+  D1:
+    question: >-
+      Should the greeting's honorific follow the person? "Selâmün aleyküm, {name} Bey." is the only sentence the catalog has for the
+      Medaris home (Dashboard.greeting), so a woman who is a Medaris nazımı, as the stack's own is, is read "Bey" (MCUT-1).
+    recommend: >-
+      Derive the honorific from the profile's gender, which is required at registration, or greet with the name alone. nizam.home.chiefOverview
+      asks the same of the başnazım's page.
+    affects: [homeShown, homeStale, homeCut]
+  D2:
+    question: >-
+      Should a Medaris nazımı who may decide appeals (platform.appeal_decide) be shown them? The greeting adds the waiting appeals to
+      the number it prints, but the home has no card for them and the menu no entry (İtirazlar is in no Medaris nazımı's menu, F-X-12),
+      so the number counts something she cannot reach from a page (MCUT-2).
+    recommend: >-
+      Give the Medaris menu an İtirazlar entry for platform.appeal_decide and a card on the home, or leave appeals out of the sum.
+    affects: [homeShown, homeStale, homeCut]
+
+context:
+  granted:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the başnazım has given them at least one platform permission, alone or in a group"
+      none: "they hold the seat and no permission at all: the appointment was made with an empty list, or the last permission was taken away"
+  applications:
+    values: [none, empty, waiting]
+    initial: any
+    say:
+      none: "they do not hold platform.kosk_application_decide"
+      empty: "they hold it and no köşk application waits"
+      waiting: "they hold it and at least one köşk application waits"
+  decks:
+    values: [none, empty, waiting]
+    initial: any
+    say:
+      none: "they do not hold platform.deck_publish"
+      empty: "they hold it and no deck waits for publication"
+      waiting: "they hold it and at least one deck waits for publication"
+  appeals:
+    values: [none, empty, waiting]
+    initial: any
+    say:
+      none: "they do not hold platform.appeal_decide"
+      empty: "they hold it and no appeal waits"
+      waiting: "they hold it and at least one appeal waits"
+  bans:
+    values: [none, scoped, account]
+    initial: any
+    say:
+      none: "they hold neither platform.ban_scoped nor platform.ban_account"
+      scoped: "they hold platform.ban_scoped (köşk and medrese bans) and not platform.ban_account"
+      account: "they hold platform.ban_account (bans from the whole platform and permanent-ban requests)"
+  passive:
+    values: [none, held]
+    initial: any
+    say:
+      none: "they do not hold platform.inactive_scopes_manage"
+      held: "they hold platform.inactive_scopes_manage"
+  platform:
+    values: [none, madrasahs, kosks, both]
+    initial: any
+    say:
+      none: "they hold no permission that opens Medreseler or Köşkler"
+      madrasahs: "they hold platform.madrasah_create, head_muderris_manage or madrasah_edit, and nothing that opens Köşkler"
+      kosks: "they hold platform.kosk_create, kosk_nazim_manage, kosk_edit or hosting_grant, and nothing that opens Medreseler"
+      both: "they hold a permission of each"
+  read:
+    values: [ok, grantsFailed]
+    initial: any
+    say:
+      ok: "GET /me/grants answers"
+      grantsFailed: "GET /me/grants fails, or answers 403 or 404: the page draws the dashboard and a box in place of the grants"
+  deckLost:
+    values: [false, true]
+    initial: false
+    say:
+      "false": "the page was read with the permissions the nazım held when it opened"
+      "true": "the başnazım took platform.deck_publish away and the page was read again"
+
+guards:
+  appsHeld: "granted == 'some' and applications != 'none'"
+  decksHeld: "granted == 'some' and decks != 'none' and not deckLost"
+  appsWaiting: "appsHeld and applications == 'waiting'"
+  decksWaiting: "decksHeld and decks == 'waiting'"
+  appealsWaiting: "granted == 'some' and appeals == 'waiting'"
+  anyWaiting: "appsWaiting or decksWaiting or appealsWaiting"
+  bansHeld: "granted == 'some' and bans != 'none'"
+  accountBans: "granted == 'some' and bans == 'account'"
+  passiveHeld: "granted == 'some' and passive == 'held'"
+  madrasahsHeld: "granted == 'some' and (platform == 'madrasahs' or platform == 'both')"
+  kosksHeld: "granted == 'some' and (platform == 'kosks' or platform == 'both')"
+  platformGroup: "madrasahsHeld or kosksHeld"
+  requestsGroup: "appsHeld or decksHeld or accountBans"
+  grantsListed: "read == 'ok' and granted == 'some'"
+  grantsEmpty: "read == 'ok' and granted == 'none'"
+
+effects:
+  taken: { set: { deckLost: true } } # the reload reads the permissions again
+
+failures:
+  readingGrants: { from: getMyGrants, unreadable: [] }
+# `unreadable` stands for any answer but a refused token (a 401 is the guard's and is left out of the domain): the page treats a network
+# error, a 5xx, a 403 and a 404 alike (features/dashboard/reads.ts:23-42, :58-63).
+
+# The main story (e2e dashboard#8): a Medaris nazımı holding the köşk applications, the deck publication and the ban permissions reads
+# her cut home, opens a page that is not hers, comes back, and after the başnazım takes the deck permission away reloads.
+main:
+  given: { granted: some, applications: empty, decks: waiting, appeals: none, bans: account, passive: none, platform: none, read: ok }
+  events: [DONE, DONE, DONE, OPEN_UNHELD, BACK_HOME, DONE, DONE, DONE, REVOKE_DECKS, RELOAD]
+
+initial: readingPermissions
+states:
+  readingPermissions:
+    title: Read the permissions that cut the menu
+    description: >-
+      The shell reads GET /me/assignments (which says she is a Medaris nazımı, so her menu is the Medaris one) and GET /me/permissions (every
+      platform code she holds, flat) on the server, and draws the Medaris menu less the entries no code of hers opens. A read that fails
+      is not drawn here (see `scope.outOfView`).
+    includes: ["the entries of the Medaris menu each code opens (the table ITEM_PERMISSIONS)", "the group captions, which go with their last entry"]
+    source: apps/nizam/components/shell/nizam-shell.tsx:87
+    invoke: { action: getMyPermissions }
+    on:
+      DONE: { target: readingHome }
+
+  readingHome:
+    title: Read the home
+    description: >-
+      The page reads GET /nizam/dashboard: the platform numbers always, and each queue only when a code of hers opens it (a section she
+      may not see is null, never zero). The greeting's name is her own given name. The page also reads GET /me/grants at the same moment
+      (Promise.all); the graph draws them one after the other.
+    source: apps/nizam/app/(home)/page.tsx:62
+    invoke: { action: getNizamDashboard }
+    on:
+      DONE: { target: readingGrants }
+
+  readingGrants:
+    title: Read what the başnazım gave her
+    description: >-
+      GET /me/grants answers every grant she holds in any scope; the page keeps those of the platform, groups first. When the read fails
+      the home is still drawn and "İzinleriniz" holds a box that says so, without a retry button.
+    source: apps/nizam/features/dashboard/reads.ts:58
+    invoke: { action: getMyGrants }
+    on:
+      DONE: { guard: "read == 'ok'", target: homeShown, say: "the grants came: the page draws the home with İzinleriniz" }
+      FAIL.unreadable: { guard: "read == 'grantsFailed'", target: homeShown, say: "the grants did not come: the page draws the home and, under İzinleriniz, a box that says they cannot be read" }
+
+  homeShown:
+    title: The cut home
+    by: human
+    goal: true
+    description: >-
+      The Medaris nazımı's Ana sayfa (data-testid home-medaris): the greeting, "Platform sayıları" with the köşk and medrese numbers, a
+      card for each queue a permission opens, "İzinleriniz" and the menu. Absent, by the code and not by a style: "Köşk aç" (the başnazım's
+      alone, can.openKosk is chief only), the passive warning (the başnazım's branch), "Ders" and "Kayıtlı talebe", the links "Köşklere
+      git" and "Medreselere git", and every card, menu entry and grant that no permission of hers opens. "Kalıcı yasak talepleri" is a
+      card that always says nothing waits and a menu entry that leads to "Sayfa bulunamadı" (F-W1-15, F-P0-4). The greeting says "Bey"
+      to every nazım (MCUT-1) and counts appeals that the page does not show (MCUT-2). Opening it sets no focus (rule focus-not-set).
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+    on:
+      REVOKE_DECKS: { guard: decksHeld, target: homeStale, say: "the başnazım takes 'Desteyi herkese yayımla' away; the page she has open does not know" }
+      OPEN_UNHELD: { target: noAccess, say: "she opens a page her permissions do not open, by its address (the permission groups page is the başnazım's alone)" }
+      OPEN_APPLICATIONS: { guard: appsHeld, target: applications_opened, say: "'Tümünü gör' or 'İncele' of the applications card" }
+      OPEN_DECKS: { guard: decksHeld, target: decks_opened, say: "'Tümünü gör' or 'İncele' of the deck requests card" }
+      OPEN_PASSIVE: { guard: passiveHeld, target: passive_opened, say: "'Tümünü gör' of the passive scopes card (the menu has no entry for it, F-X-12)" }
+      OPEN_BANS: { guard: bansHeld, target: bans_opened, say: "'Yasaklamalar’a git' of the bans card" }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu's 'Kalıcı yasak talepleri'" }
+      NAVIGATE: { target: left, say: "she goes on to another page" }
+
+  homeStale:
+    title: The home, after a permission was taken away
+    by: human
+    description: >-
+      The başnazım has taken platform.deck_publish away. Nothing pushes the change: the page she has open still shows the deck requests
+      card, the menu entry, the grant and the number, until the page is read again (a reload, or any link followed). What she may do is
+      already cut, because tedrisat reads her codes on every request (apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:49-52): the
+      deck requests link that this page still draws opens a page that now says "Bu bölüm için izniniz yok". Every other link of the
+      page goes where it goes on the cut home (homeShown).
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+    on:
+      RELOAD: { target: homeCut, effect: [taken], say: "she reloads the page: the reads run again with the permissions she holds now" }
+      OPEN_DECKS: { guard: decksHeld, target: noAccess, effect: [taken], say: "'Tümünü gör' or 'İncele' of the deck requests card, still drawn: the queue is read with the codes she holds now and answers 'Bu bölüm için izniniz yok', and the shell around it is read again without the entry", source: apps/nizam/features/dashboard/components/medaris-home.tsx:107 }
+      OPEN_APPLICATIONS: { guard: appsHeld, target: applications_opened, say: "'Tümünü gör' or 'İncele' of the applications card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:63 }
+      OPEN_PASSIVE: { guard: passiveHeld, target: passive_opened, say: "'Tümünü gör' of the passive scopes card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 }
+      OPEN_BANS: { guard: bansHeld, target: bans_opened, say: "'Yasaklamalar’a git' of the bans card, as on the cut home", source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu's 'Kalıcı yasak talepleri', as on the cut home", source: apps/nizam/lib/shell-nav.ts:122 }
+
+  homeCut:
+    title: The home, after the reload
+    by: human
+    description: >-
+      The same page read again: the deck requests card, its menu entry, its grant card and its share of the greeting's number are gone (and
+      "Talepler", the group caption, goes too when nothing else of hers belongs under it). The rest is as it was, and its links go where
+      they went on homeShown.
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+    on:
+      OPEN_APPLICATIONS: { guard: appsHeld, target: applications_opened, say: "'Tümünü gör' or 'İncele' of the applications card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:63 }
+      OPEN_PASSIVE: { guard: passiveHeld, target: passive_opened, say: "'Tümünü gör' of the passive scopes card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 }
+      OPEN_BANS: { guard: bansHeld, target: bans_opened, say: "'Yasaklamalar’a git' of the bans card", source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu's 'Kalıcı yasak talepleri'", source: apps/nizam/lib/shell-nav.ts:122 }
+      NAVIGATE: { target: left, say: "she goes on to another page" }
+
+  noAccess:
+    title: A page that is not hers
+    by: human
+    description: >-
+      The page for a section she may not open: the heading "Bu bölüm için izniniz yok", a sentence that names the başnazım when the
+      directory knows them, the e-mail she signed in as, and "Ana sayfaya dön". It is a real 403 answer inside the shell, so the menu
+      stays as it was. It is the same screen for a record that does not exist; nizam.shell.noAccessAndNotFound draws it for every way in.
+      No focus is set.
+    source: apps/nizam/components/errors/no-access.tsx:27
+    on:
+      BACK_HOME: { target: readingPermissions, say: "'Ana sayfaya dön' is a link to '/': the page is read again" }
+      OPEN_PERMANENT_BANS: { guard: accountBans, target: permanent_bans_opened, say: "the menu stays around the refusal: its 'Kalıcı yasak talepleri' leads to 'Sayfa bulunamadı' (F-P0-4)", source: apps/nizam/lib/shell-nav.ts:122 }
+
+  applications_opened: { type: final, title: The köşk applications queue is opened, leavesPage: true }
+  decks_opened: { type: final, title: The deck publication requests queue is opened, leavesPage: true }
+  passive_opened: { type: final, title: The passive scopes page is opened, leavesPage: true }
+  bans_opened: { type: final, title: The bans page is opened, leavesPage: true }
+  permanent_bans_opened: { type: final, title: The permanent-ban requests address is opened and answers "Sayfa bulunamadı" (F-P0-4), leavesPage: true }
+  left: { type: final, title: She leaves the home, leavesPage: true }
+
+assertions:
+  - id: revoke-needs-the-permission
+    never: "(state == 'homeStale' or state == 'homeCut') and (granted == 'none' or decks == 'none')"
+    say: "The deck permission can be taken away only from a nazım who holds it, so a page is never 'stale' about a permission she did not have"
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+  - id: nothing-waits-without-a-permission
+    never: "state == 'homeShown' and granted == 'none' and anyWaiting"
+    say: "A nazım who holds no permission is told nothing waits: every queue is cut to a permission, so the greeting counts none"
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:51
+  - id: the-cut-page-has-no-deck-count
+    never: "state == 'homeCut' and decksWaiting"
+    say: "After the reload the deck permission no longer adds to the number or draws a card"
+    source: apps/nizam/features/dashboard/components/medaris-home.tsx:103

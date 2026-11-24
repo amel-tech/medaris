@@ -1,0 +1,37 @@
+# nizam.home.decideApplications: the newest applications are settled behind the page's back, so "Onayla" and "Reddet" are answered with
+# 404 ENROLLMENT_NOT_FOUND, the error toast "Başvuru yanıtlanamadı: Bu başvuru artık bekleyenler arasında değil; liste yenilendi.", the
+# row leaves and, for Reddet, the dialog closes with it (FAIL.gone of both decisions).
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/decideApplications --bind graphs/nizam/home/decideApplications/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: SETTLED_ELSEWHERE is no node's, so the binding gives it. The two newest applications are applicantH's and
+# applicantG's (the last two to apply; the page lists newest first, so they are the rows the walk presses); the event has the köşk's
+# nazım reject both through the API (DELETE /courses/:id/enrollments/:userId, as another nazım would), and the page, which was read
+# before, still draws them. `--any` makes a second run of the event, which finds both gone already, answer 404 and not fail the step. It
+# is an event of the flow (the page is stale before the person presses), not a failure injected into the held call, so it does not depend
+# on whether the replay runs actions before it releases the held call. The status the replay compares on FAIL.gone is the server action's
+# own 200 (an engine limit, see locators.binding.yaml). The rejections send the two talebe a notice that course.mjs's `remove` clears.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.decideApplications
+
+events:
+  SETTLED_ELSEWHERE:
+    - run: [node, helpers/api.mjs, koskNazim, DELETE, '/courses/{course}/enrollments/{secret.E2E_APPLICANT_H_SUB}', --any]
+      expect: HTTP
+    - run: [node, helpers/api.mjs, koskNazim, DELETE, '/courses/{course}/enrollments/{secret.E2E_APPLICANT_G_SUB}', --any]
+      expect: HTTP
+
+scenarios:
+  gone:
+    given: { approval: needed, mayDecide: may }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    vars: { course: '{nhdGone.course}', reason: 'Ön koşul sağlanmıyor.' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nhdGone, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantF, applicantG, applicantH]
+        expect: '"APPLICANT_H":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nhdGone]
+        expect: 'course remove nhdGone'

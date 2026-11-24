@@ -1,0 +1,142 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.madrasahs.restore
+status: proposed
+summary: >-
+  What must exist for the Medaris administration to bring a hidden medrese back from the Medreseler table: the flow's product
+  list. Each need is what the product must do, from the flow's story and the decisions around it (the API's own description of the
+  restore, the kademe rule of MDRS-135 and MDRS-143), never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# The scenarios restoresHidden, restoresAll and noButton are written and have NOT been run (no replay is run in the writing phase), so no
+# need names a replay as walked; the e2e check carried is apps/nizam/e2e/madrasahs.e2e.ts#3 (its fixture hides by SQL; the walk hides
+# through the API, as the başmüderris).
+#
+# missing (no code):  a-viewer-who-cannot-restore-is-told-why (RESTORE-2), a-refusal-brings-the-page-up-to-date (RESTORE-4),
+# the-page-does-not-offer-what-the-api-refuses (F-W2-2), focus-follows-the-restore (F-W2-10, F-X-7),
+# the-busy-word-is-in-the-catalog (RESTORE-3)
+# unwalked (code, no e2e and no replay passed yet): its-courses-come-back-with-it, a-passive-medrese-comes-back-passive,
+# a-medaris-nazim-with-the-code-restores, the-kademe-is-told-where-it-can-apply (RESTORE-1: no walk can reach it),
+# a-race-is-told-in-words
+
+needs:
+  - id: bring-a-hidden-medrese-back
+    need: >-
+      The Medaris başnazım, or a Medaris nazımı whom she gave the permission, brings a hidden medrese back from the table of
+      medreseler in one step, wherever the medrese was hidden from (by its başmüderris or by Medaris yönetimi): it is listed
+      again, as Etkin when it has a başmüderris, and the person is told so.
+    evidence:
+      - state: list
+      - state: restoring
+      - state: restored
+      - node: rowRestore
+      - node: toastRestored
+      - node: toastRestoredBody
+      - node: rowStatusActive
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+      - source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:116
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)"
+
+  - id: its-courses-come-back-with-it
+    need: >-
+      The courses that were hidden at the same instant as the medrese come back with it and are counted again; a course that was
+      hidden earlier, on its own, stays hidden, so that bringing a medrese back never shows what somebody chose to hide.
+    evidence:
+      - state: restored
+      - node: rowCoursesNone
+      - node: rowCoursesBack
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+
+  - id: a-passive-medrese-comes-back-passive
+    need: >-
+      A medrese that is passive as well as hidden is listed again as Pasif, with its warning and "Başmüderris ata", not as Etkin:
+      hiding and passivating are two decisions and bringing one back does not undo the other.
+    evidence:
+      - state: restored
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+
+  - id: a-medaris-nazim-with-the-code-restores
+    need: >-
+      A Medaris nazımı who holds platform.madrasah_edit is offered "Geri al" on a hidden medrese, as the başnazım is, and the API
+      lets her restore what any level hid.
+    evidence:
+      - node: rowRestore
+      - source: apps/nizam/features/madrasahs/present.ts:99
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+
+  - id: a-viewer-who-cannot-restore-is-told-why
+    need: >-
+      A Medaris nazımı who may read the table but does not hold platform.madrasah_edit, like the seeded one, is told in the row's
+      last cell why a hidden medrese has no button and who restores it, or is not shown hidden rows she cannot act on.
+    missing: no Linear issue; RESTORE-2
+    note: >-
+      Drawn on the state list, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: the-kademe-is-told-where-it-can-apply
+    need: >-
+      Where a person can look at something that a higher level hid (a başmüderris at a course in nazar's Arşiv that the köşk or
+      Medaris yönetimi hid), the screen says which level hid it in place of a button that would be refused; in this table, whose
+      viewers all act at the top level, the sentence is never drawn to a person who really cannot restore.
+    evidence:
+      - node: lockedNote
+      - source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:251
+
+  - id: a-race-is-told-in-words
+    need: >-
+      When somebody else brought the medrese back, or deleted it, while the page was open, the press is refused in words that say
+      which (not hidden any more, not there any more) and nothing is written twice.
+    evidence:
+      - state: restoring
+      - node: toastNotHidden
+      - node: toastGone
+      - node: toastFailed
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+      - source: apps/nizam/features/madrasahs/present.ts:302
+
+  - id: a-refusal-brings-the-page-up-to-date
+    need: >-
+      After such a refusal the table is read again, so that the row shows what is true (shown, or gone) and offers nothing that is
+      refused again (RESTORE-4).
+    missing: no Linear issue; RESTORE-4
+    note: >-
+      Drawn on the states list and restoring, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-does-not-offer-what-the-api-refuses
+    need: >-
+      When the page cannot read a person's roles or permissions it says so, and does not switch every button on for a Medaris
+      nazımı who holds none of the permissions (F-W2-2, MDRS-108).
+    missing: no Linear issue; F-W2-2
+    note: >-
+      Drawn on the state list and on the node lockedNote, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-follows-the-restore
+    need: >-
+      After "Geri al" the focus goes to a place a keyboard or screen-reader user can use (the next row's control, or the table's
+      heading), and the result is written on the page as well as in a toast of six seconds (F-W2-10, F-X-7).
+    missing: no Linear issue; F-W2-10, F-X-7
+    note: >-
+      Drawn on the state restored and on the node toastRestored, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-busy-word-is-in-the-catalog
+    need: The word a busy "Geri al" says to a screen reader comes from the page's catalog, in the page's language (RESTORE-3).
+    missing: no Linear issue; RESTORE-3
+    note: >-
+      Drawn on the state restoring and on the node restoreBusy, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: every-restore-is-on-the-record
+    need: >-
+      Each restore writes one audit row naming the medrese, the level that hid it, the level that brought it back and the courses
+      that came back.
+    evidence:
+      - state: restoring
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)"

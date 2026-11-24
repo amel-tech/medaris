@@ -1,0 +1,10 @@
+# The way into tedris.course.apply: Keşfet, then the link of a course on its medrese's card. tedris.nav's own binding gives
+# no locator for an entry that needs an item (`data: true`), because the item is the walk's to choose, so this file extends
+# it and names the course the walk applies to (the scenario's `course` variable), found by its address.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  discover->course: { css: 'a[href="/courses/{course}"]' }

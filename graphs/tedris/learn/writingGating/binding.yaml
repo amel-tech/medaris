@@ -1,0 +1,558 @@
+# tedris.learn.writingGating on the local stack (graphs/README.md, "The stack and the bindings"): a course of its own, with one talebe, `applicantD`
+# ("Salih Başvuran"), who is whatever the scenario needs him to be, and the course's hoca, `muderris`, who takes the seat away and is the one person
+# who is not a talebe. Nothing seeded is touched: no seeded course, no seeded talebe, no seeded note.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/tedris/learn/writingGating \
+#     --bind graphs/tedris/learn/writingGating/binding.yaml --absent --out <dir>                    (the main story: scenario staleSeat)
+#   ... --to lockedShown --to cancelledShown ...                                                    (more starts, each its own scenario)
+# WRITTEN ON 15 NOV 2026 AND NOT WALKED: the owner moved every replay to the end, after all graphs are written. What loads is checked with
+# `replay --emit-spec`, which walks nothing; every behaviour below is "from the code", and every `expect` is the API's answer as the code gives it.
+#
+# Data. Each scenario's `setup` makes the same course, `wgate` (helpers/course.mjs make, tag `wgate`: "Deneme dersi wgate", published, in the second
+# köşk, ONE week of FOUR celses at 21:00 in Istanbul, four, two and zero days ago and in two days, `--start -4`, so the first two are over), then
+# gating-data.mjs `content` gives the celses their roles (below) and `world` makes the talebe what the scenario wants. The ids are read from
+# graphs/.local/made/wgate.json as {made.*} and, for the talebe's note and question, from graphs/.local/writing-gating.json as {wg.*}.
+#   celse 1  made.lessons.0  a celse with nothing to watch and a homework: "Notlarım" and "Ödev" are on its page
+#   celse 2  made.lessons.1  a recording (a pasted link at a host with no player): the watch page, with "Soru sor" and "Notlarım"
+#   celse 3  made.lessons.2  cancelled
+#   celse 4  made.lessons.3  hidden (archived)
+# One account does every walk, `applicantD`, because each scenario makes its own course and takes it away: his row in one course is gone with it
+# (the purge deletes the enrolments, REVOKED ones too). Nothing else of his is left: the teardown clears his mailbox (the invitation and
+# cancellation mails) and his notifications (a removal, a ban, a cancellation and a recording each write one). `clean` first deletes the SQL
+# leftovers of a walk that crashed (a course's ban rows, which have no foreign key, and the nazımları's COURSE_BAN_PLACED notifications).
+# The one SQL besides `clean`: `lose passive` revokes the course's MUDERRIS role rows, because no route takes the last müderris out.
+#
+# What each scenario is. `given` is (seat, address); vars `noteAnswer`, `handInAnswer`, `questionAnswer`, `readNotes`, `readQuestions` are what the
+# API's own answers must contain for that seat (the `expect` of the by-hand events), `who` is whose token the by-hand calls carry, `here` is the page
+# the exits' addresses are, `lesson` the celse the calls name.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.writingGating
+
+data:
+  made: { json: ../.local/made/wgate.json }
+  wg: { json: ../.local/writing-gating.json }
+
+samples:
+  title: Celse 1
+  week: "1"
+
+scenarios:
+  # The main story. An active talebe has the celse page open, with a note typed; the course team takes their seat away (the event SEAT_REMOVED, POST .../remove as the hoca); "Notu ekle" is refused in the panel; they reload and meet the lock card of a removed seat; a note written by hand is refused with 403, and so is a hand-in's note. The same scenario serves SEAT_BARRED and SEAT_PASSIVE (the cover phase): the reads at the end are loose here, because the seat that goes is the event's choice.
+  staleSeat:
+    given: { seat: active, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP '
+      readQuestions: 'HTTP '
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, active]
+        expect: 'gating-data world active'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # A signed-in person with no row in the course opens the celse: the lock card with the apply button, no panel. By hand: a note and a hand-in's note are 403, their own list is empty (a stranger of a visible, open course).
+  stranger:
+    given: { seat: stranger, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4']
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, stranger]
+        expect: 'gating-data world stranger'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # A talebe whose application waits (the course asks for approval). Same page as the stranger's with a badge and a note and no button.
+  pending:
+    given: { seat: pending, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --approval, --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, pending]
+        expect: 'gating-data world pending'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # The hoca removed the seat before the walk (a REVOKED row); the talebe had written a note and a question, and the hoca had answered it. The lock card says "Bu derse erişimin kaldırıldı."; by hand the talebe still reads their own note, and cannot write (MDRS-268).
+  removed:
+    given: { seat: removed, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'Yazma denemesi notu'
+      readQuestions: 'Yazma denemesi cevabi'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, removed]
+        expect: 'gating-data world removed'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # An open ban bars the talebe from the course; the seat stays ENROLLED. The page is the stranger's lock card (CLS-02); by hand they still read their own note and cannot write.
+  barred:
+    given: { seat: barred, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'Yazma denemesi notu'
+      readQuestions: 'Yazma denemesi cevabi'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, barred]
+        expect: 'gating-data world barred'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # The course has lost its last müderris (its MUDERRIS role rows are revoked): the scope is passive and the content is closed to the enrolled talebe. The stranger's lock card with the apply button (MDRS-265); by hand every call is 403, the reads too.
+  passive:
+    given: { seat: passive, address: celse }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      readQuestions: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, passive]
+        expect: 'gating-data world passive'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # The course's hoca opens the celse: no panel. The talebe has a note on it; by hand the hoca's list holds none of it, an edit is 403 and a delete is 404 (lesson-notes#16).
+  staff:
+    given: { seat: staff, address: celse }
+    as: muderris
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      who: muderris
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, staff]
+        expect: 'gating-data world staff'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # An active talebe on the watch page of the second celse (a recording): the questions and the notes beside the video.
+  watchActive:
+    given: { seat: active, address: watch }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}/izle'
+    samples: { title: Celse 2 }
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.1}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}/izle'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, active]
+        expect: 'gating-data world active'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # The hoca on the watch page: the video, no aside.
+  watchStaff:
+    given: { seat: staff, address: watch }
+    as: muderris
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}/izle'
+    samples: { title: Celse 2 }
+    vars:
+      who: muderris
+      course: '{made.course}'
+      lesson: '{made.lessons.1}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}/izle'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, staff]
+        expect: 'gating-data world staff'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # A removed talebe types the watch address and ends on the celse page's lock card (the redirect).
+  watchRemoved:
+    given: { seat: removed, address: watch }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}/izle'
+    samples: { title: Celse 2 }
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.1}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'Yazma denemesi notu'
+      readQuestions: 'Yazma denemesi cevabi'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, removed]
+        expect: 'gating-data world removed'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # An active talebe asks the course page for the Sorularım tab: it is in the row and selected.
+  tabActive:
+    given: { seat: active, address: tab }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}?tab=sorularim'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}?tab=sorularim'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, active]
+        expect: 'gating-data world active'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # A removed talebe asks for the tab: it is not in the row, "Müfredat" is selected, and the aside says the access was removed. By hand: a question is 403 (lesson-questions#7), and their answered question is still given to them (lesson-questions#8).
+  tabRemoved:
+    given: { seat: removed, address: tab }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}?tab=sorularim'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}?tab=sorularim'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'Yazma denemesi notu'
+      readQuestions: 'Yazma denemesi cevabi'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, removed]
+        expect: 'gating-data world removed'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # A talebe of a passive course asks for the tab: not in the row. By hand: a question is 403 and so is their own list (lesson-questions#5).
+  tabPassive:
+    given: { seat: passive, address: tab }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}?tab=sorularim'
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      here: '{tedris}/courses/{made.course}?tab=sorularim'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      readQuestions: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, passive]
+        expect: 'gating-data world passive'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # An active talebe opens the third celse, which the hoca cancelled: the card says it was cancelled and no panel is drawn (lesson-notes#13).
+  cancelled:
+    given: { seat: active, address: cancelled }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.2}'
+    samples: { title: Celse 3 }
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.2}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.2}'
+      noteAnswer: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+      handInAnswer: '"code":"SUBMISSION_FORBIDDEN","status":403'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, active]
+        expect: 'gating-data world active'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+  # An active talebe opens the fourth celse, which the hoca hid: the not-found page. By hand the same talebe's note is stored (201, WG-1) and their hand-in's note is 404, which is what a hand-in does on a hidden celse.
+  hidden:
+    given: { seat: active, address: hidden }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.3}'
+    samples: { title: Celse 4 }
+    vars:
+      who: applicantD
+      course: '{made.course}'
+      lesson: '{made.lessons.3}'
+      here: '{tedris}/courses/{made.course}/lessons/{made.lessons.3}'
+      noteAnswer: 'HTTP 201'
+      handInAnswer: '"code":"LESSON_NOT_FOUND","status":404'
+      questionAnswer: '"code":"LESSON_QUESTION_FORBIDDEN","status":403'
+      readNotes: 'HTTP 200 []'
+      readQuestions: '"items":[]'
+    setup:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, make, wgate, --weeks, '1', --lessons, '4', --start, '-4', --talebe, applicantD]
+        expect: '"tag":"wgate"'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, content, wgate]
+        expect: 'gating-data content'
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, world, wgate, active]
+        expect: 'gating-data world active'
+    teardown:
+      - run: [node, ../tedris/learn/writingGating/gating-data.mjs, clean, wgate]
+      - run: [node, helpers/course.mjs, remove, wgate]
+        expect: 'course remove wgate'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+
+# The events that no node of the page sends.
+#   TYPE                  the note's text goes into the form of "Notlarım" (the form is the one <form> of the region)
+#   SEAT_REMOVED / _BARRED / _PASSIVE   someone else takes the seat away, puts a ban on it or takes the course's last hoca: gating-data.mjs `lose`
+#   RELOAD, NAVIGATE      the page is read again; the person goes on to another page
+#   TRY_NOTE              a note and then a hand-in's note, sent by hand with the person's token (api.mjs --any prints `HTTP <status> <body>`; an error
+#                         body is `{"type":"APP_ERROR","code":"…","status":403,…}`, so one substring holds the code and the status)
+#   TRY_QUESTION          a question by hand
+#   READ_NOTES            the person's own notes of the celse by hand; READ_QUESTIONS their own questions of the course
+#   READ_OTHERS           the hoca asks for the celse's notes, then tries to change and to delete the talebe's one: gating-data.mjs `world staff`
+#                         wrote it and put its id in writing-gating.json as {wg.note}
+events:
+  TYPE:
+    - fill: { role: textbox, name: Not, within: { css: form, within: { role: region, name: Notlarım } }, value: 'Yazma denemesi: yazılan not' }
+  SEAT_REMOVED:
+    - run: [node, ../tedris/learn/writingGating/gating-data.mjs, lose, wgate, removed]
+      expect: 'gating-data lose'
+  SEAT_BARRED:
+    - run: [node, ../tedris/learn/writingGating/gating-data.mjs, lose, wgate, barred]
+      expect: 'gating-data lose'
+  SEAT_PASSIVE:
+    - run: [node, ../tedris/learn/writingGating/gating-data.mjs, lose, wgate, passive]
+      expect: 'gating-data lose'
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  TRY_NOTE:
+    - run: [node, helpers/api.mjs, '{who}', POST, '/lessons/{lesson}/notes', '{"body":"Yazma denemesi: elle yazılan not","offsetSeconds":null}', --any]
+      expect: '{noteAnswer}'
+    - run: [node, helpers/api.mjs, '{who}', PUT, '/lessons/{lesson}/submission', '{"note":"Yazma denemesi: elle yazılan teslim notu"}', --any]
+      expect: '{handInAnswer}'
+  TRY_QUESTION:
+    - run: [node, helpers/api.mjs, '{who}', POST, '/lessons/{lesson}/questions', '{"body":"Yazma denemesi: elle gönderilen soru"}', --any]
+      expect: '{questionAnswer}'
+  READ_NOTES:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/lessons/{lesson}/notes', --any]
+      expect: '{readNotes}'
+  READ_QUESTIONS:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/courses/{course}/questions/mine', --any]
+      expect: '{readQuestions}'
+  READ_OTHERS:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/lessons/{lesson}/notes', --any]
+      expect: 'HTTP 200 []'
+    - run: [node, helpers/api.mjs, '{who}', PATCH, '/lessons/{lesson}/notes/{wg.note}', '{"body":"Yazma denemesi: hocanın değiştirdiği"}', --any]
+      expect: '"code":"LESSON_NOTE_FORBIDDEN","status":403'
+    - run: [node, helpers/api.mjs, '{who}', DELETE, '/lessons/{lesson}/notes/{wg.note}', --any]
+      expect: '"code":"LESSON_NOTE_NOT_FOUND","status":404'
+
+# The exits that stay on the page they were reached from (a call by hand changes no screen), and the one that leaves it.
+states:
+  write_refused: { url: '{here}' }
+  hidden_celse_written: { url: '{here}' }
+  own_writing_read: { url: '{here}' }
+  own_writing_closed: { url: '{here}' }
+  own_writing_only: { url: '{here}' }
+  left: { url: '{tedris}/home' }
+
+# Where role and name do not find a node. The page is the <main> that holds the course's title (every page of this flow has the breadcrumb or the
+# back link with it, and the page a walk leaves for does not); the notes form and its button are the ones of the region "Notlarım"; the refusal line
+# is the <p role="alert"> with the sentence, not Next's empty route announcer.
+nodes:
+  page: { css: main, hasText: '{made.title}' }
+  noteBody: { role: textbox, name: Not, within: { css: form, within: { role: region, name: Notlarım } } }
+  addButton: { role: button, name: Notu ekle, within: { role: region, name: Notlarım } }
+  forbiddenAlert: { css: 'p[role="alert"]', hasText: Not yazmak için derse kayıtlı olman gerekir. }

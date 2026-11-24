@@ -1,0 +1,55 @@
+# nazar.courseSettings.publish, the other failure: the course is hidden while the hoca's page is open. The başnazım hides it (POST
+# /courses/<id>/archive, which only the köşk's nazım, a başmüderris with madrasah.course_hide and platform management may do), so the müderris's
+# write meets a course she may not see: tedrisat answers 404 COURSE_NOT_FOUND (a hidden course is not written by someone who cannot restore it,
+# course.service.ts:329-350 and :926), the question closes and an error toast says "Yayın durumu değiştirilemedi" and the generic sentence "İşlem
+# tamamlanamadı. Biraz sonra yeniden deneyin."; the card is not read again.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courseSettings/publish --bind graphs/nazar/courseSettings/publish/binding.failed.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay; every behaviour is from the code. As in binding.refused.yaml, `drafting` and `publishing` carry no `call`, and
+# the break runs when the walk reaches `asking` (a published course) or `draft` (a draft), before the press, and is idempotent (`--any`: a
+# second hide answers 409 COURSE_ALREADY_HIDDEN, which is not a failure here). Walked here: FAIL.other of `drafting`, `publishing` and `publishingEdited`; the case
+# variable `write: hidden` is what makes the replay take it and not DONE.
+# Note for the orchestrator: helpers of nazar.archive.hideAndRestoreCourse (hide.mjs) posts /courses/<id>/hide; the API's route is POST
+# /courses/{id}/archive (apps/tedrisat/src/course/course.controller.ts:421), so that helper needs the same correction.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseSettings.publish
+
+scenarios:
+  hiddenPublished:
+    given: { stored: published, write: hidden }
+    as: muderris
+    open: '{nazar}/ders/{pubGone.course}/ayarlar'
+    samples: { name: '{pubGone.title}', title: '{pubGone.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubGone, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubGone"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubGone]
+        expect: 'course remove pubGone'
+  hiddenDraft:
+    given: { stored: draft, write: hidden }
+    as: muderris
+    open: '{nazar}/ders/{pubGone.course}/ayarlar'
+    samples: { name: '{pubGone.title}', title: '{pubGone.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubGone, --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubGone"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubGone]
+        expect: 'course remove pubGone'
+
+states:
+  asking:
+    url: '{nazar}/ders/*/ayarlar'
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{pubGone.course}/archive', --any]
+        expect: 'HTTP'
+  draft:
+    url: '{nazar}/ders/*/ayarlar'
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{pubGone.course}/archive', --any]
+        expect: 'HTTP'
+  drafting: { url: '{nazar}/ders/*/ayarlar' }
+  publishing: { url: '{nazar}/ders/*/ayarlar' }
+  publishingEdited: { url: '{nazar}/ders/*/ayarlar' }

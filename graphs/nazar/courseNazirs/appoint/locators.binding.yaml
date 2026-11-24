@@ -1,0 +1,193 @@
+# What the bindings of nazar.courseNazirs.appoint share: the data sources, the events no node sends, the places each exit opens, where
+# role and name cannot find a node, and what a step leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml        the scenarios of the hoca at a course of the walk's own (appoints, member, herself, nobody, notAddress,
+#                       holdsSeat, barred)
+#   binding.race.yaml   a person appointed elsewhere while the dialog is open (person: raced); one file because it puts a `before` on "Kaydet"
+#   binding.head.yaml   the same story read by the başmüderris of the course's medrese, who opens the course by its address (the e2e's account)
+# The page is `/ders/<id>/nazirlar` of nazar-web at http://localhost:4002, read by the course's müderris (Hamdi Müderris) in a wide window
+# (1440 x 900, as the e2e).
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every
+# command below comes from the code, the catalog and read-only looks at the API, and is unverified until a walk. Where the walk may need a fix,
+# a comment says so. The binding loads: `replay <dir> --bind <file> --emit-spec --out <dir>` wrote a spec and walked nothing.
+#
+# Data. Each scenario's `setup` makes the walk's own, and `teardown` takes it away; no seeded course, post or setting is touched:
+#   - the course "Deneme dersi nzappoint" (helpers/course.mjs make nzappoint --madrasah: a course of the seeded medrese, published, one week
+#     of one celse, MUDERRIS as its one hoca), whose ids are read from graphs/.local/made/nzappoint.json as {made.course} and {made.title}. A
+#     medrese course, because the başmüderris opens only the courses of her own medrese by address (features/shell/opened-scope.ts:32) and the e2e's seed is
+#     a medrese's. The list of its ders nazırları is empty, so the main story starts from "Bu derste henüz ders nazırı yok.";
+#   - the spare talebe applicantG ("Dilek Başvuran"), the person the hoca appoints, the person who signs in ({appt.viewerName}, {appt.viewerSub},
+#     {appt.viewerEmail}: the hoca, or the başmüderris in binding.head.yaml) and the days the end field is typed with, by ./appoint-data.mjs
+#     up into graphs/.local/nzappoint.json ({appt.sub}, {appt.name}, {appt.email}, {appt.today}, {appt.future}, {appt.futureMs},
+#     {appt.futureLabel}, {appt.past}). The seeded ders nazırı, Rukiye Ders Nazırı, is never touched.
+#   `teardown` dismisses the spare's post (DELETE /courses/:id/nazirs/:postId), lifts the ban it made, and removes the course (helpers/course.mjs
+#     remove). `setup` starts with the same dismissal, so that a walk that died leaves nothing the next one trips on. What it cannot undo: the
+#     audit rows (user.lookup, course_nazir.assign, course_nazir.revoke, ban.create, ban.lift), the revoked role and grant rows kept as
+#     history, and the invitation mails of the course (course.mjs clears the ones it can).
+# The people who are found and not appointed: MEDARIS_NAZIM (holds the platform seat: e2e course-nazirs#8) and the viewer herself.
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   person: down        the directory does not answer (Keycloak would have to be stopped)
+#   person: vanished    the account is gone between the search and the click
+#   person: overreach   the hoca's ceiling is cut between the page and the click (e2e course-nazirs#14 makes the medrese passive, which changes the seeded medrese)
+#   person: refused     the save is refused for any other reason (not allowed, a hidden course, an unknown code, the directory failing at the save)
+#   states opened -> refused, not_found   a caller with no course_nazir.assign meets the refusal (nazar.access.dersNazirPages walks it), and a course that
+#                                         is not there is the 404 page (nazar.shell.errorStates; e2e course-nazirs#15 a11-a12)
+# `EDIT_PERMISSIONS` and `END_POST` are taken in every scenario that reaches `listed` with a row: the walk presses the row's button.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseNazirs.appoint
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/nzappoint.json }
+  appt: { json: ../.local/nzappoint.json }
+
+# Where the page has one answer for a whole scenario, it is given here. The person the hoca finds is a scenario's own: its `vars` name them
+# (`foundName`, `foundEmail`; the spare, the Medaris nazımı or the hoca herself), and `name` and `email` below read them. The days are the
+# helper's.
+samples:
+  course: '{made.title}'
+  name: '{foundName}'
+  email: '{foundEmail}'
+  giver: '{appt.viewerName}'
+  date: '{appt.today}'
+  endDate: '{appt.futureLabel}'
+  count: '2'
+
+events:
+  # the address field has no node that sends an event: the binding types in it and presses Enter (the address is searched on Enter, and also
+  # when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: E-posta adresi, value: '{typed}' }
+    - key: Enter
+  # the two boxes of the e2e's #3: the codes the hoca ticks for the walk; the footer then counts "2 izin seçili"
+  TICK_PERMISSION:
+    - click: { role: checkbox, name: 'Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir' }
+    - click: { role: checkbox, name: 'Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir' }
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`; it has no role, so it is found by its label (the e2e's getByLabel)
+  TYPE_FUTURE_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{appt.future}' } }]
+  TYPE_PAST_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{appt.past}' } }]
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  listed: { url: '{nazar}/ders/*/nazirlar' }
+  # the lookup and the appointment are Next server actions: a POST to the page's own address, held while the busy state is checked
+  searching: { call: '{nazar}/ders/*/nazirlar' }
+  appointing: { call: '{nazar}/ders/*/nazirlar' }
+  # exits with no screen of their own are checked by their address
+  refused: { url: '{nazar}/ders/*/nazirlar' }
+  not_found: { url: '{nazar}/ders/*/nazirlar' }
+  handed_over.permissions: { url: '{nazar}/ders/*/nazirlar' }
+  handed_over.dismiss: { url: '{nazar}/ders/*/nazirlar' }
+  left: { url: '{nazar}/ders/*' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a bare main, names that several elements share, data in the text,
+# a status or a toast found by its words.
+nodes:
+  # the shell's one <main id="main"> is on every page; the intro line is this page's own
+  page: { role: main, hasText: '/dersinin ders nazırları\. Ders nazırı yalnız/' }
+  # "Ders nazırı ata" is the button and the dialog's name, "Ders nazırı atandı" and "Ders nazırı atanamadı" are the toasts': the whole name
+  appointButton: { role: button, name: '/^Ders nazırı ata$/' }
+  dialog: { role: dialog, name: '/^Ders nazırı ata$/' }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^Ders nazırı ata$/' } }
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: '{made.title}' }
+  # the row of the post: the person's name and address are in it and in the chosen block, the toast and the alert say the name too
+  rowName: { text: '{appt.name}', within: { role: row, hasText: '{appt.email}' } }
+  rowAddress: { text: '{appt.email}', within: { role: row } }
+  rowNoPerms: { text: '/^İzin yok$/' }
+  rowCount: { text: '/^\d+ izin$/' }
+  rowPermissionsLine: { testId: permissions-line }
+  rowEnd: { text: '{appt.futureLabel}', within: { role: row } }
+  rowNever: { text: '/^Süresiz$/' }
+  rowGiver: { text: '{appt.viewerName} (siz)', within: { role: row } }
+  rowGiverDay: { text: '{appt.today}', within: { role: row } }
+  # the table's caption is "<course> dersinin ders nazırları", hidden; the name is found by its end
+  rosterTable: { role: table, name: '/ dersinin ders nazırları$/' }
+  # the chosen block says the person's name and address; the warning "<name> bu dersin ders nazırı zaten." says the name too
+  chosenName: { text: '{foundName}', within: { testId: chosen-course-nazir } }
+  chosenAddress: { text: '{foundEmail}', within: { testId: chosen-course-nazir } }
+  # the hidden <output> beside the field and the status of the busy button are found by their words
+  searchingStatus: { role: status, hasText: Aranıyor }
+  busy: { role: status, hasText: Kaydediliyor }
+  selfAlert: { role: status, hasText: Kendinizi ders nazırı yapamazsınız. }
+  alreadyAlert: { role: status, hasText: bu dersin ders nazırı zaten. }
+  # "Kaydet" alone
+  save: { role: button, name: '/^Kaydet$/' }
+  # the footer's counts: "İzin seçilmedi" and "2 izin seçili"
+  summaryNone: { text: '/^İzin seçilmedi$/' }
+  summaryCount: { text: '/^\d+ izin seçili$/' }
+  # an <input type=datetime-local> has no role
+  endField: { label: 'Bitiş tarihi ve saati (isteğe bağlı)' }
+  # the toasts: the success one is a dialog, the errors are alertdialogs; the five errors share one title and are told apart by their sentence
+  toastAppointed: { role: dialog, name: Ders nazırı atandı }
+  toastHoldsSeat: { role: alertdialog, hasText: zaten bir görevi var }
+  toastBarred: { role: alertdialog, hasText: yasaklı }
+  toastUnknown: { role: alertdialog, hasText: Bu hesap bulunamadı. }
+  toastExists: { role: alertdialog, hasText: Bu kişi bu dersin ders nazırı zaten. }
+  toastExceeds: { role: alertdialog, hasText: Kendinizde olmayan bir izni veremezsiniz. }
+  toastRefused: { role: alertdialog, name: Ders nazırı atanamadı, hasText: '/Bunu yapma izniniz yok|Seçtiğiniz izinlerden biri tanınmıyor|Bitiş zamanı şu andan sonra olmalı|Gizli bir derse|Hesap şu an doğrulanamıyor|Kendinize rol ya da izin veremezsiniz|Bir şeyler ters gitti/' }
+
+# What a step leaves outside the screen, read through the API and the database. After a search the audit log has it (every search is written,
+# found or not: the help line says so). After an appointment the post is the hoca's, still held (e2e course-nazirs#3 a7), with the permissions
+# and the end that were typed (a8), and the audit row exists. A step that must write nothing (a refusal, the stale post) leaves the person
+# without a post, or with the post someone else made.
+effects:
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'user.lookup' and actor_id = '{appt.viewerSub}' and details->>'email' = lower('{typed}') and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  createCourseNazir:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/nazirs']
+      expect: '{appt.sub}'
+    - run: [node, helpers/sql.mjs, "select granted_by = '{appt.viewerSub}' as by_hoca, revoked_at is null as live from role_assignments where user_id = '{appt.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' order by created_at desc limit 1"]
+      expect: '"by_hoca":true,"live":true'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'course_nazir.assign' and entity_id = '{made.course}' and details->>'userId' = '{appt.sub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # the four rows an appointment can make: the codes ticked and the end typed are in the post and in each grant, at the same instant
+  appointedGivenEnd:
+    - run: [node, helpers/sql.mjs, "select (extract(epoch from expires_at) * 1000)::bigint as ends from role_assignments where user_id = '{appt.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"ends":{appt.futureMs}'
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{appt.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"grants":"recording.manage@{appt.futureMs},session.manage@{appt.futureMs}"'
+  appointedGiven:
+    - run: [node, helpers/sql.mjs, "select expires_at is null as open from role_assignments where user_id = '{appt.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"open":true'
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{appt.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"grants":"recording.manage@none,session.manage@none"'
+  appointedBareEnd:
+    - run: [node, helpers/sql.mjs, "select (extract(epoch from expires_at) * 1000)::bigint as ends from role_assignments where user_id = '{appt.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"ends":{appt.futureMs}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from permission_grants where user_id = '{appt.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"n":0'
+  appointedBare:
+    - run: [node, helpers/sql.mjs, "select expires_at is null as open from role_assignments where user_id = '{appt.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"open":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from permission_grants where user_id = '{appt.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"n":0'
+  # a refused save writes nothing (e2e course-nazirs#8 a6, #10 a5): the person found holds no post
+  holdsSeatToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, none, MEDARIS_NAZIM]
+      expect: 'held none'
+  barredToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, none]
+      expect: 'held none'
+  unknownToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, none]
+      expect: 'held none'
+  exceedsToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, none]
+      expect: 'held none'
+  refusedToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, none]
+      expect: 'held none'
+  # the post that stands is the one made elsewhere, with no permission and no end: the refused save wrote nothing of what was ticked
+  existsToast:
+    - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, held, bare]
+      expect: 'held bare'

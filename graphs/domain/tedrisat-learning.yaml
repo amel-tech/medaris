@@ -1,0 +1,1213 @@
+# Homework, homework hand-ins and their review, memorisation marks, exams, session notes, session questions and appeals: the
+# handlers of domain.md lines 2259-2689 (the inventory chapter "Homework, questions, notes, evaluations, exams, appeals"). The chapter
+# counts 41 handlers (5 homework definition + 13 hand-in and review + 4 evaluation + 4 exam + 4 note + 6 question + 5 appeal) and
+# this file writes 41 of them, plus one action with no route, the exam reminder poll, so 42 actions in all; MDRS-248 (#402) added the
+# two routes of LessonViewController (recordLessonView, listMyLessonViews), which the chapter predates: 44 actions in all. Each is named by its
+# explicit OpenAPI operationId (the `operationId` of @ApiOperation), which is unique across the API and says what a person would say.
+#
+# Routes are written with {param}, as OpenAPI does (the controllers spell them :param). `source` on an action is the
+# line of its route decorator; `source` on a refusal is the line that throws it, checked against the code of this branch (the
+# worktree is stacked on #394).
+#
+# What is NOT repeated on every action (it holds for all of them; domain.yaml carries the invariants):
+#   401 HTTP_401        no token, a header that is not `Bearer <token>`, or a token the verifier refuses (AuthGuard, invariant access-token-only).
+#   429 HTTP_429        the address throttle and the per-user throttle (invariant rate-limit-before-auth).
+#   passive scope       every decision that opens a passive scope's content to management writes the audit row scope.passive_open
+#                       (invariant passive-scope-closes-content).
+#
+# How a request is refused, in this order, for the routes of this file:
+#   1. AuthGuard: 401.
+#   2. AuthzGuard resolves the resource and answers its own 404 before anything else: `byLessonCourse` (course/lesson.controller.ts:89)
+#      gives 404 LESSON_NOT_FOUND for an id that is not a uuid or names no session; `byExistingCourse` (course/course.controller.ts:103)
+#      gives 404 COURSE_NOT_FOUND; `byExistingMadrasah` (madrasah/madrasah.controller.ts:104) gives 404 MADRASAH_NOT_FOUND;
+#      `byQuestionCourse` (lesson-question/lesson-question.controller.ts:71) gives 404 LESSON_QUESTION_NOT_FOUND.
+#   3. assertOpen (authz.guard.ts:89): a course of a hidden (archived) köşk answers 404 COURSE_NOT_FOUND to everyone but holders of
+#      course.hide or platform.kosk_edit (tedrisat-role-resolver.service.ts:102), on every route whose resource is a course.
+#   4. The permission of @Authz: 403 AUTHZ_FORBIDDEN (authz.guard.ts:92). A route whose @Authz asks course.view never refuses here:
+#      every signed-in caller holds course.view on an existing course (relation PUBLIC), on purpose, so that the guard only gives the
+#      404s and the service makes the real decision (see the three helpers below). Those routes list no AUTHZ_FORBIDDEN.
+#      Where a route asks a content code (session.manage, submission.read, question.answer, course.view_details) a passive scope removes it
+#      from everyone but the holders of platform.inactive_scopes_manage and the nazım of the köşk, so the course team is refused 403 there too.
+#   5. For an upload route, UploadGateInterceptor: 503 STORAGE_NOT_CONFIGURED before the body is read, 413 FILE_TOO_LARGE for a
+#      Content-Length above 25 MB + 64 KB, a multipart body that breaks multer's limits (400 HTTP_400).
+#   6. Pipes: a parameter that is not a uuid is 400 HTTP_400 (ParseUUIDPipe), a body that breaks its DTO is 400 VALIDATION_ERROR.
+#   7. The handler and its service.
+# `:id` of a session route is read by the resolver first, so a malformed session id is 404 and never 400; a second parameter
+# (`:fileId`, `:noteId`, `:userId`, `:submissionId`) has no resolver and is 400 HTTP_400 when it is not a uuid.
+#
+# The three service helpers of course/course.service.ts that decide who is a talebe here:
+#   mayWriteAsTalebe (:570)     an enrollment ENROLLED or COMPLETED, no open ban that bars the course, and the course's content open to
+#                               the caller (course.view_details, which a passive scope closes even to the enrolled). Staff who are not
+#                               enrolled and the başnazım are refused.
+#   mayReachOwnWriting (:593)   the content is open to the caller, or the course is in no passive scope: a removed, barred or pending
+#                               person, and a stranger of a visible course, still reach what they wrote.
+#   findVisibleLessonCourse (:514) / findWritableLessonCourse (:538): the course of a session, seen through getDetail. A hidden course, a
+#                               draft the caller may not edit or view unpublished, and (for the writable one) an archived session are
+#                               404 LESSON_NOT_FOUND, never COURSE_NOT_FOUND.
+#
+# UPLOAD, the refusals every upload route gives (storage/upload.ts, storage/object-storage.ts): 503 STORAGE_NOT_CONFIGURED when no
+# BUNNY_STORAGE_* key is set; 413 FILE_TOO_LARGE above 25 MB; 400 FILE_REQUIRED for no file or an empty one; 415 FILE_TYPE_NOT_ALLOWED
+# unless the bytes are a PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text; 503 STORAGE_UNAVAILABLE when the store does not
+# answer. A stored file is claimed in the same transaction as its row and its audit row; deletions go through the storage_deletions
+# queue (StorageDeletion) and a kick of its sweep. DOWNLOAD streams through the API with Content-Disposition attachment, the type read at
+# upload, X-Content-Type-Options nosniff and Cache-Control private, no-store (storage/stored-file.ts:19).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+actions:
+  # ---- Homework a müderris sets on a session (LessonAssignmentController, course/lesson-assignment.controller.ts) ----
+  saveLessonAssignment:
+    summary: Set a session's homework, or change its description or how it is handed in
+    route: PUT /lessons/{id}/assignment
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse); course.edit alone is refused; a hidden session or a course the caller may not write to is not found
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        description: { type: [string, "null"], maxLength: 4000, note: "plain text, trimmed; null, absent or blank is none, so a save without it clears the description" }
+        kind: { enum: [FILE, MEMORIZE], note: "absent keeps what the homework has, FILE for a new one; MEMORIZE is recited to the müderris and takes no file" }
+    result: { returns: LessonAssignment, status: 200 }
+    refusals:
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "the id is not a uuid or names no session (lesson.controller.ts:91, :95); the session is archived (course.service.ts:553; again under the lock, lesson-assignment.repository.ts:306); its course is hidden or a draft to this caller (course.service.ts:549)" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk and the caller holds neither course.hide nor platform.kosk_edit" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "description over 4000 characters, a kind that is neither FILE nor MEMORIZE, or an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:lesson_assignment.create
+      - audit:lesson_assignment.update
+      - "the first save makes the homework (lesson_assignment.create); a later save that changes the description or the kind writes lesson_assignment.update; a save that changes nothing writes nothing. The audit row carries the description's length, never its text"
+    note: The homework is not part of PUT /courses/{id}, so the course's version is not bumped.
+    source: apps/tedrisat/src/course/lesson-assignment.controller.ts:84
+
+  deleteLessonAssignment:
+    summary: Take a session's homework off
+    route: DELETE /lessons/{id}/assignment
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse)
+    result: { status: 204 }
+    refusals:
+      LESSON_ASSIGNMENT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson-assignment.service.ts:68, note: "the session has no homework" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "as saveLessonAssignment: an id that is not a session, an archived session, a hidden course or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:lesson_assignment.delete
+      - "deletes the homework's AssignmentEvaluation marks, its LessonAssignmentFile rows and the LessonAssignment row; each file's object is queued in StorageDeletion and the sweep is kicked; the audit row says what went (marks, files). The talebe's LessonSubmission rows stay"
+    source: apps/tedrisat/src/course/lesson-assignment.controller.ts:110
+
+  addLessonAssignmentFile:
+    summary: Add a file to a session's homework
+    route: POST /lessons/{id}/assignment/files
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse)
+    body:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary, note: "multipart field `file`, one file, 25 MB at most, a PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text by its bytes; at most 4 other fields" }
+    result: { returns: LessonAssignment, status: 201 }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key; the upload gate refuses before the body is read (upload.ts:113)" }
+      FILE_TOO_LARGE: { status: 413, source: apps/tedrisat/src/storage/upload.ts:120, note: "a Content-Length above 25 MB + 64 KB, a body that streams past 25 MB (upload.ts:126) or a file over 25 MB (upload.ts:151)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/storage/upload.ts:72, note: "the multipart body breaks multer's limits: a field other than `file`, more than one file, more than 4 fields or 6 parts" }
+      FILE_REQUIRED: { status: 400, source: apps/tedrisat/src/storage/upload.ts:150, note: "no file in the field `file`, or an empty one" }
+      FILE_TYPE_NOT_ALLOWED: { status: 415, source: apps/tedrisat/src/storage/upload.ts:153, note: "the type read from the bytes is not one of the eight" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer; the reserved object is queued for removal" }
+      LESSON_ASSIGNMENT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson-assignment.service.ts:85, note: "the session has no homework yet (a homework file needs one); asked again under the row lock, lesson-assignment.repository.ts:235, when the homework was taken off meanwhile" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "an id that is not a session, an archived session, a hidden course or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:lesson_assignment.file_upload
+      - "the object is put in Bunny Storage under a key tedrisat makes (lessonAssignmentFileKey) and the claim on it is taken in the same transaction as the LessonAssignmentFile row"
+    note: No cap on the number of files of one homework was found in the service or the repository (lesson-assignment.repository.ts:227-262). A homework file is never one of the session's LessonResource rows.
+    source: apps/tedrisat/src/course/lesson-assignment.controller.ts:144
+
+  deleteLessonAssignmentFile:
+    summary: Remove a file from a session's homework
+    route: DELETE /lessons/{id}/assignment/files/{fileId}
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse)
+    result: { status: 204 }
+    refusals:
+      LESSON_ASSIGNMENT_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson-assignment.service.ts:111, note: "no such file on this session's homework, or the session has no homework" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/course/lesson-assignment.controller.ts:169, note: "fileId is not a uuid" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "an id that is not a session, an archived session, a hidden course or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects: [audit:lesson_assignment.file_delete, "the object is queued in StorageDeletion and the sweep is kicked"]
+    source: apps/tedrisat/src/course/lesson-assignment.controller.ts:165
+
+  downloadLessonAssignmentFile:
+    summary: Download a file of a session's homework
+    route: GET /lessons/{id}/assignment/files/{fileId}
+    needs: "course.view_details on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse): an ENROLLED or COMPLETED talebe with no bar, the course team, the başnazım"
+    result: { status: 200, type: string, format: binary, note: "the file as an attachment under its stored name (DOWNLOAD headers)" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "a pending talebe, a stranger, a removed or barred talebe: none holds course.view_details; and everyone but the managers a passive scope leaves open (platform.inactive_scopes_manage, the köşk nazımı) while the course is in a passive scope" }
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson-assignment.service.ts:137, note: "an id that is not a session, a hidden course or a draft to this caller (course.service.ts:521), or the session is archived and so not in the course detail" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      LESSON_ASSIGNMENT_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson-assignment.service.ts:141, note: "no such file on this session, the course detail says the content is locked, or the store no longer has the object (stored-file.ts:38)" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/course/lesson-assignment.controller.ts:196, note: "fileId is not a uuid" }
+    sideEffects:
+      - audit:course.content_read
+      - "written (via assignment.download) before the body is returned when the reader is neither an enrolled talebe nor one of the course's müderrisler (MDRS-103); a failed write fails the read"
+    source: apps/tedrisat/src/course/lesson-assignment.controller.ts:192
+
+  # ---- A talebe's homework hand-in, and the review of it (LessonSubmissionController and CourseSubmissionsController) ----
+  getMySubmission:
+    summary: The caller's own homework on a session
+    route: GET /lessons/{id}/submission
+    needs: any signed-in caller (course.view on the session's course, which the guard never refuses); the service reads only the caller's own row, while the course is visible and not passive (mayReachOwnWriting). Cache-Control private, no-store
+    result:
+      type: object
+      required: [submission, maxFiles, maxFileBytes]
+      properties:
+        submission: { type: [object, "null"], note: "a LessonSubmission with its SubmissionFile rows and, once the review is sent, the review (note, reviewer, SubmissionReviewFile rows); null while nothing is handed in. The review is null until it is sent" }
+        maxFiles: { const: 10 }
+        maxFileBytes: { const: 26214400 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:502, note: "the course is in a passive scope and its content is closed to the caller" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session (lesson.controller.ts:91, :95), or the session's course is hidden or a draft to this caller; an archived session is still found" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    note: A stranger of a visible, open course gets 200 with submission null.
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:99
+
+  listMySubmissions:
+    summary: The sessions of a course the caller handed homework in on
+    route: GET /courses/{id}/my-submissions
+    needs: any signed-in caller (course.view on the course, resolver byExistingCourse); own rows only, while the course is visible and not passive. Cache-Control private, no-store
+    result:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          note: "each live session where the caller's homework holds a note or at least one file; one emptied since is not listed"
+          items:
+            type: object
+            required: [lessonId, updatedAt]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              updatedAt: { type: string, format: date-time }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:256, note: "the course is in a passive scope and its content is closed to the caller" }
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:119
+
+  saveMySubmissionNote:
+    summary: Save the note of the caller's homework on a session
+    route: PUT /lessons/{id}/submission
+    needs: an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe); no deadline
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: [string, "null"], maxLength: 4000, sensitivity: personal, note: "trimmed; null, absent or blank clears it; stored as typed, never rendered as HTML" }
+    result: { returns: LessonSubmission, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490, note: "not an active talebe (pending, removed, barred, a stranger, staff who are not enrolled, the başnazım) or the content is closed" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:487, note: "an id that is not a session, a hidden course or a draft to this caller; the session is archived (also under the transaction, lesson-submission.repository.ts:294)" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a note over 4000 characters, not a string, or an unknown property" }
+    sideEffects:
+      - "upserts the LessonSubmission on (lessonId, userId), making the row if there is none even when the note is blank; the session need not have a LessonAssignment, any live session takes a hand-in. No audit row"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:138
+
+  addMySubmissionFile:
+    summary: Hand a file in on a session
+    route: POST /lessons/{id}/submission/files
+    needs: an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe)
+    body:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary, note: "multipart field `file`, one file, 25 MB at most, the eight types of UPLOAD" }
+    result: { returns: LessonSubmission, status: 201 }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key; the upload gate refuses before the body is read (upload.ts:113)" }
+      FILE_TOO_LARGE: { status: 413, source: apps/tedrisat/src/storage/upload.ts:120, note: "a Content-Length above 25 MB + 64 KB, a body that streams past 25 MB (upload.ts:126) or a file over 25 MB (upload.ts:151)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/storage/upload.ts:72, note: "the multipart body breaks multer's limits: a field other than `file`, more than one file, more than 4 fields or 6 parts" }
+      FILE_REQUIRED: { status: 400, source: apps/tedrisat/src/storage/upload.ts:150, note: "no file in the field `file`, or an empty one" }
+      FILE_TYPE_NOT_ALLOWED: { status: 415, source: apps/tedrisat/src/storage/upload.ts:153, note: "the type read from the bytes is not one of the eight" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer; the reserved object is queued for removal" }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490, note: "not an active talebe, or the content is closed" }
+      SUBMISSION_FILES_NOT_TAKEN: { status: 409, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:184, note: "the session's homework is a MEMORIZE homework: recited to the müderris, never uploaded; asked again under a share lock, lesson-submission.repository.ts:333" }
+      SUBMISSION_FILE_LIMIT: { status: 409, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:190, note: "the caller already has 10 files on the session (MAX_SUBMISSION_FILES); re-checked under the row lock, lesson-submission.repository.ts:356" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:487, note: "an id that is not a session, a hidden course or a draft to this caller; the session is archived (also lesson-submission.repository.ts:323)" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    sideEffects:
+      - audit:submission.file_upload
+      - "makes the LessonSubmission row if there is none, then inserts the SubmissionFile under the row's lock so two uploads cannot pass the limit together; the claim on the stored object is taken in the same transaction"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:174
+
+  deleteMySubmissionFile:
+    summary: Remove one of the caller's own homework files
+    route: DELETE /lessons/{id}/submission/files/{fileId}
+    needs: an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe), and the file is theirs
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490, note: "not an active talebe, so a removed, barred or pending talebe cannot remove a file; or the file is another talebe's (service.ts:476)" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:475, note: "no such file on this session (also :222, when it went meanwhile)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:199, note: "fileId is not a uuid" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:487, note: "an id that is not a session, a hidden course or a draft to this caller; the session is archived" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    sideEffects: [audit:submission.file_delete, "the object is queued in StorageDeletion and the sweep is kicked; the LessonSubmission's updatedAt moves"]
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:195
+
+  downloadMySubmissionFile:
+    summary: Download one of the caller's own homework files
+    route: GET /lessons/{id}/submission/files/{fileId}
+    needs: any signed-in caller (course.view on the session's course); only the talebe who handed the file in, while the course is open to them (a removed or barred talebe still reads their own)
+    result: { status: 200, type: string, format: binary, note: "the file as an attachment (DOWNLOAD headers); no audit row for the owner's own download" }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key" }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:502, note: "the course is in a passive scope and its content is closed; or the file is another talebe's (service.ts:476); staff asking here are refused too, they use the course route" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:475, note: "no such file on this session, or the store no longer has the object (service.ts:240)" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:223, note: "fileId is not a uuid" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller; an archived session is still found" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:219
+
+  downloadMySubmissionReviewFile:
+    summary: Download a file the course team returned with the review of the caller's homework
+    route: GET /lessons/{id}/submission/review-files/{fileId}
+    needs: any signed-in caller (course.view on the session's course); only the talebe whose homework the review answers, and only once the review is sent
+    result: { status: 200, type: string, format: binary, note: "the file as an attachment (DOWNLOAD headers)" }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:313, note: "no such review file on this session, or its review is not sent yet (reviewedAt is null); or the store no longer has the object (service.ts:320)" }
+      SUBMISSION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:315, note: "the review file belongs to another talebe's homework; or the course is in a passive scope and its content is closed (service.ts:502)" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:248, note: "fileId is not a uuid" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:244
+
+  listCourseSubmissions:
+    summary: The course's homework hand-ins, for the course team
+    route: GET /courses/{id}/submissions
+    needs: "submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse): müderris, başmüderris and köşk nazımı by role, a ders nazırı when granted, the başnazım. Cache-Control private, no-store"
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        lessonId: { type: string, format: uuid, references: Lesson, note: "narrows both lists to one session" }
+    result:
+      type: object
+      required: [items, sessions, talebeCount]
+      properties:
+        items:
+          type: array
+          note: "every LessonSubmission of the course's live sessions in programme order, the latest change first within a session, with its files, review, session title, week number and the talebe's name: a row whose note and files were all removed is listed, and so is a talebe who is no longer seated"
+          items: { type: object, properties: { id: { type: string, format: uuid, references: LessonSubmission } } }
+        sessions:
+          type: array
+          note: "every live session of the course: whether it has homework, whether that homework is a MEMORIZE one, and how many ENROLLED or COMPLETED talebe handed in a note or a file"
+          items:
+            type: object
+            required: [lessonId, hasAssignment, isMemorization, handedInCount]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              hasAssignment: { type: boolean }
+              isMemorization: { type: boolean }
+              handedInCount: { type: integer, minimum: 0 }
+        talebeCount: { type: integer, minimum: 0, note: "ENROLLED plus COMPLETED: the M of N / M teslim" }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course; a talebe is refused" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:297, note: "lessonId is not a uuid" }
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:293
+
+  downloadCourseSubmissionFile:
+    summary: Download a talebe's homework file, for the course team
+    route: GET /courses/{id}/submissions/files/{fileId}
+    needs: submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse)
+    result: { status: 200, type: string, format: binary, note: "the file as an attachment (DOWNLOAD headers)" }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:288, note: "the file is no homework file of this course (another course's file is 404); or the store no longer has the object (service.ts:295)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:322, note: "fileId is not a uuid" }
+    sideEffects:
+      - audit:submission.file_download
+      - "names the talebe and the file; written before any byte is sent, and a failed write fails the download (recordStaffDownload)"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:318
+
+  sendSubmissionReview:
+    summary: Send the review of a talebe's homework (a note, with or without files) to the talebe
+    route: PUT /courses/{id}/submissions/{submissionId}/review
+    needs: "submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse): whoever reads the homework reviews it; the homework must be on a live session of this course"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: [string, "null"], maxLength: 4000, sensitivity: personal, note: "trimmed; null, absent or blank leaves none, which then needs at least one review file; sending again replaces the note and keeps the files" }
+    result: { returns: LessonSubmission, status: 200 }
+    refusals:
+      SUBMISSION_REVIEW_EMPTY: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:721, note: "no note and no review file: a review needs one of the two" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a note over 4000 characters, not a string, or an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:348, note: "submissionId is not a uuid" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:446, note: "the homework is not on a live session of this course, or its session is hidden (also :452)" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:714, note: "only when the session is hidden between the check and the row lock" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course" }
+    sideEffects:
+      - audit:submission.review
+      - notification:SUBMISSION_REVIEWED
+      - "sets reviewNote, reviewedBy and reviewedAt under the row lock; review files already attached become visible to the talebe at this moment. The audit row carries the note's length and `first`. The talebe is notified (target SESSION; params courseId, courseTitle, sessionLabel) on EVERY send, a re-send that changes nothing included, unless the reviewer is that talebe; a failed notification is logged and never the caller's error"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:344
+
+  addSubmissionReviewFile:
+    summary: Attach a file to the review of a talebe's homework
+    route: POST /courses/{id}/submissions/{submissionId}/review/files
+    needs: submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse)
+    body:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary, note: "multipart field `file`, one file, 25 MB at most, the eight types of UPLOAD" }
+    result: { returns: LessonSubmission, status: 201 }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key; the upload gate refuses before the body is read (upload.ts:113)" }
+      FILE_TOO_LARGE: { status: 413, source: apps/tedrisat/src/storage/upload.ts:120, note: "a Content-Length above 25 MB + 64 KB, a body that streams past 25 MB (upload.ts:126) or a file over 25 MB (upload.ts:151)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/storage/upload.ts:72, note: "the multipart body breaks multer's limits; or submissionId is not a uuid (lesson-submission.controller.ts:391)" }
+      FILE_REQUIRED: { status: 400, source: apps/tedrisat/src/storage/upload.ts:150, note: "no file in the field `file`, or an empty one" }
+      FILE_TYPE_NOT_ALLOWED: { status: 415, source: apps/tedrisat/src/storage/upload.ts:153, note: "the type read from the bytes is not one of the eight" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer; the reserved object is queued for removal" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:446, note: "the homework is not on a live session of this course" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:618, note: "only when the session is hidden between the check and the row lock" }
+      SUBMISSION_REVIEW_FILE_LIMIT: { status: 409, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:355, note: "the review already carries 5 files (MAX_REVIEW_FILES); re-checked under the row lock, lesson-submission.repository.ts:625" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course" }
+    sideEffects:
+      - audit:submission.review_file_upload
+      - "inserts the SubmissionReviewFile (uploadedBy the caller) and takes the claim on its object. It does not send the review: before the review is sent the talebe sees nothing of the file, after it a new file shows at once"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:387
+
+  deleteSubmissionReviewFile:
+    summary: Remove a file from the review of a talebe's homework
+    route: DELETE /courses/{id}/submissions/{submissionId}/review/files/{fileId}
+    needs: submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse)
+    result: { status: 204 }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:446, note: "the homework is not on a live session of this course" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:393, note: "no such review file on this homework" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:416, note: "submissionId or fileId is not a uuid" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course" }
+    sideEffects: [audit:submission.review_file_delete, "the object is queued in StorageDeletion and the sweep is kicked"]
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:411
+
+  downloadCourseSubmissionReviewFile:
+    summary: Download a review file of any homework of the course, for the course team
+    route: GET /courses/{id}/submissions/review-files/{fileId}
+    needs: submission.read on the course (AuthGuard + AuthzGuard, resolver byExistingCourse); review files of any submission of the course, sent or not
+    result: { status: 200, type: string, format: binary, note: "the file as an attachment (DOWNLOAD headers)" }
+    refusals:
+      STORAGE_NOT_CONFIGURED: { status: 503, source: apps/tedrisat/src/storage/object-storage.ts:68, note: "no BUNNY_STORAGE_* key" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      SUBMISSION_FILE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:334, note: "no such review file in this course; or the store no longer has the object (service.ts:340)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks submission.read on the course" }
+      STORAGE_UNAVAILABLE: { status: 503, source: apps/tedrisat/src/storage/bunny-object-storage.ts:155, note: "the store did not answer" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:445, note: "fileId is not a uuid" }
+    sideEffects: [audit:submission.review_file_download, "written before the file is sent; a failed write fails the download"]
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:441
+
+  # ---- Memorisation marks and the board, "Değerlendirme" (EvaluationController, evaluation/evaluation.controller.ts) ----
+  getEvaluationBoard:
+    summary: The course's board of memorisation marks and exam results, for the course team
+    route: GET /courses/{id}/evaluations
+    needs: "session.manage on the course (AuthGuard + AuthzGuard, resolver byExistingCourse): müderris, başmüderris and köşk nazımı by role, a granted ders nazırı, the başnazım; a talebe is refused. Cache-Control private, no-store"
+    result:
+      type: object
+      required: [columns, talebe, marks, results]
+      properties:
+        columns:
+          type: array
+          note: "in programme order: a MEMORIZE column for each memorisation homework and an EXAM column for each exam, each with the session's lessonId, title, weekNumber, scheduledAt, description and fullCount (the FULL marks of a memorisation, the entered results of an exam); an exam column also carries format, maxScore, isRetake and resultsReleasedAt"
+          items:
+            type: object
+            required: [kind, lessonId, title, weekNumber, fullCount]
+            properties:
+              kind: { enum: [MEMORIZE, EXAM] }
+              lessonId: { type: string, format: uuid, references: Lesson }
+              title: { type: string }
+              weekNumber: { type: integer }
+              fullCount: { type: integer, minimum: 0 }
+        talebe:
+          type: array
+          note: "the ENROLLED and COMPLETED talebe by name; a mark or result of somebody no longer seated is kept but not shown"
+          items:
+            type: object
+            required: [id]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"] }
+        marks:
+          type: array
+          note: "a cell with no row is Bekliyor"
+          items:
+            type: object
+            required: [lessonId, userId, status]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              userId: { type: string, format: uuid, references: User }
+              status: { enum: [FULL, INCOMPLETE, ABSENT] }
+              note: { type: [string, "null"] }
+              updatedAt: { type: string, format: date-time }
+        results:
+          type: array
+          items:
+            type: object
+            required: [lessonId, userId, absent]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              userId: { type: string, format: uuid, references: User }
+              score: { type: [integer, "null"] }
+              absent: { type: boolean }
+              updatedAt: { type: string, format: date-time }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    source: apps/tedrisat/src/evaluation/evaluation.controller.ts:68
+
+  exportEvaluationBoard:
+    summary: The board as a spreadsheet ("Excel indir")
+    route: GET /courses/{id}/evaluations/export
+    needs: session.manage on the course (AuthGuard + AuthzGuard, resolver byExistingCourse), as the board. Cache-Control private, no-store
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        lang: { type: string, note: "tr, en or ar, picks the language of the headers and the words; not validated, tr otherwise" }
+    result: { status: 200, type: string, format: binary, note: "an .xlsx named degerlendirme: a row per talebe (Ad Soyad) and a column per memorisation homework and exam in programme order; a cell is Tam, Eksik, Vermedi or Bekliyor, or an exam's score or Girmedi; text that looks like a formula is neutralised by ExcelService" }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    source: apps/tedrisat/src/evaluation/evaluation.controller.ts:91
+
+  saveEvaluation:
+    summary: Mark a talebe on a session's memorisation homework (Tam, Eksik, Vermedi)
+    route: PUT /lessons/{id}/evaluations/{userId}
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse); the session is live and its homework is a MEMORIZE one; the talebe is ENROLLED or COMPLETED in the course
+    body:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { enum: [FULL, INCOMPLETE, ABSENT], note: "FULL is Tam, INCOMPLETE is Eksik, ABSENT is Vermedi" }
+        note: { type: [string, "null"], maxLength: 280, note: "trimmed; null, absent or blank is none; the talebe reads it with the mark" }
+    result: { returns: AssignmentEvaluation, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      MEMORIZATION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/evaluation/evaluation.repository.ts:249, note: "the session has no homework, or its homework is a FILE one" }
+      EVALUATION_TALEBE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/evaluation/evaluation.repository.ts:262, note: "no ENROLLED or COMPLETED seat for this talebe in the session's course" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "an id that is not a session, an archived session, a hidden course or a draft to this caller (course.service.ts:549); again under the transaction, evaluation.repository.ts:237" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a status that is none of the three, a note over 280 characters, or an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/evaluation/evaluation.controller.ts:119, note: "userId is not a uuid" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:assignment_evaluation.save
+      - "upserts on (assignmentId, userId) under a FOR UPDATE lock on the homework, so two first saves of one cell take turns. A save equal to the stored mark writes nothing and no audit row. The audit row carries the status ({from, to} on a change) and the note's length. No notification"
+    source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
+
+  getMyEvaluation:
+    summary: The caller's own mark on a session's memorisation homework
+    route: GET /lessons/{id}/evaluation
+    needs: any signed-in caller (course.view on the session's course); own mark only, while the course is visible and not passive (mayReachOwnWriting). Cache-Control private, no-store
+    result:
+      type: object
+      required: [status, note, updatedAt]
+      properties:
+        status: { enum: [FULL, INCOMPLETE, ABSENT, null], note: "null is Bekliyor: no mark yet" }
+        note: { type: [string, "null"] }
+        updatedAt: { type: [string, "null"], format: date-time }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      MEMORIZATION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/evaluation/evaluation.repository.ts:185, note: "the session's homework is not a memorisation, or there is none: answered to any caller of a visible course, enrolled or not (invariant evaluation-read-keeps-homework-kind-closed)" }
+      EVALUATION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/evaluation/evaluation.service.ts:239, note: "the course is in a passive scope and its content is closed to the caller" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller; an archived session is still found" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    source: apps/tedrisat/src/evaluation/evaluation.controller.ts:145
+
+  # ---- Exams, "Sınav" (ExamController, exam/exam.controller.ts); an exam is planned by the session batch of the courses chapter ----
+  saveExamResult:
+    summary: Enter a talebe's score on an exam, or mark them Girmedi
+    route: PUT /lessons/{id}/exam-results/{userId}
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse); the session is live and an exam; the talebe is ENROLLED or COMPLETED in the course; no time window, so a result can be entered before the exam and before the release
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        score: { type: [integer, "null"], minimum: 0, note: "a whole number from 0 to the exam's maxScore, checked under a lock; null with absent" }
+        absent: { type: boolean, default: false, note: "Girmedi: a score sent with it is dropped, no score is kept" }
+    result: { returns: ExamResult, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      EXAM_SCORE_OUT_OF_RANGE: { status: 400, source: apps/tedrisat/src/exam/exam.repository.ts:188, note: "not absent and the score is missing or outside 0..maxScore" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/exam/exam.repository.ts:182, note: "the session is not an exam" }
+      EXAM_TALEBE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/exam/exam.repository.ts:201, note: "no ENROLLED or COMPLETED seat for this talebe in the session's course" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "an id that is not a session, an archived session, a hidden course or a draft to this caller (course.service.ts:549); again under the transaction, exam.repository.ts:171" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a score that is not an integer, an absent that is not a boolean, or an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/exam/exam.controller.ts:80, note: "userId is not a uuid" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:exam_result.save
+      - "upserts on (examId, userId) with the exam row held FOR UPDATE, so max_score cannot change under the check. A save equal to the stored result writes nothing and no audit row. The audit row carries the score and absent. No notification"
+    source: apps/tedrisat/src/exam/exam.controller.ts:76
+
+  releaseExamResults:
+    summary: Open an exam's results to the talebe ("Sonuçları talebelere aç")
+    route: POST /lessons/{id}/exam-results/release
+    needs: session.manage on the session's course (AuthGuard + AuthzGuard, resolver byLessonCourse); the session is live and an exam
+    result: { returns: LessonExam, status: 200, note: "{ lessonId, resultsReleasedAt }; HttpCode 200, not 201" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/exam/exam.repository.ts:295, note: "the session is not an exam, is archived, or is of another course" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:553, note: "an id that is not a session, an archived session, a hidden course or a draft to this caller (course.service.ts:549)" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks session.manage on the course" }
+    sideEffects:
+      - audit:exam.release
+      - notification:EXAM_RESULTS_RELEASED
+      - "the first call sets resultsReleasedAt, writes the audit row and tells the course's ENROLLED seat holders except the caller (a COMPLETED talebe is not told, though they can read the grades); a repeat changes nothing, writes nothing and tells nobody, and answers the same resultsReleasedAt"
+    source: apps/tedrisat/src/exam/exam.controller.ts:97
+
+  getMyGrades:
+    summary: The caller's own exam results and memorisation marks in a course ("Notlarım")
+    route: GET /courses/{id}/my-grades
+    needs: any signed-in caller (course.view on the course, resolver byExistingCourse); own grades only. Cache-Control private, no-store
+    result:
+      type: object
+      required: [exams, memorizations]
+      properties:
+        exams:
+          type: array
+          note: "score and absent are filled only once the exam's results are released; to a caller whose content is closed (a stranger, a removed or barred talebe) only an exam whose result for them was released is listed"
+          items:
+            type: object
+            required: [lessonId, title, weekNumber, maxScore, isRetake, released, score, absent]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              title: { type: string }
+              weekNumber: { type: integer }
+              scheduledAt: { type: [string, "null"], format: date-time }
+              maxScore: { type: integer }
+              isRetake: { type: boolean }
+              released: { type: boolean }
+              score: { type: [integer, "null"] }
+              absent: { type: [boolean, "null"] }
+        memorizations:
+          type: array
+          note: "each live memorisation homework with the caller's own mark, null for Bekliyor; a caller whose content is closed sees only the ones they were marked on"
+          items:
+            type: object
+            required: [lessonId, title, weekNumber, status]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              title: { type: string }
+              weekNumber: { type: integer }
+              scheduledAt: { type: [string, "null"], format: date-time }
+              status: { enum: [FULL, INCOMPLETE, ABSENT, null] }
+    refusals:
+      GRADES_FORBIDDEN: { status: 403, source: apps/tedrisat/src/exam/exam.service.ts:89, note: "the content is closed to the caller and the course is in a passive scope" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+    source: apps/tedrisat/src/exam/exam.controller.ts:117
+
+  getMadrasahExamSummary:
+    summary: How the exams of a medrese's courses went, in counts
+    route: GET /madrasahs/{id}/exam-summary
+    needs: "any one of madrasah.course_open, madrasah.course_hide or madrasah.muderris_manage on the medrese (AuthGuard + AuthzGuard, resolver byExistingMadrasah): the başmüderris by role, a granted medrese nazırı, the başnazım. Cache-Control private, no-store"
+    result:
+      type: array
+      note: "a row for each non-hidden course of the medrese that holds an exam; hidden and cancelled sessions are left out; results of talebe no longer seated still count; counts only, no talebe is named"
+      items:
+        type: object
+        required: [courseId, courseTitle, examCount, takenCount, absentCount, averagePercent]
+        properties:
+          courseId: { type: string, format: uuid, references: Course }
+          courseTitle: { type: string }
+          examCount: { type: integer, minimum: 0 }
+          takenCount: { type: integer, minimum: 0, note: "results with a score" }
+          absentCount: { type: integer, minimum: 0, note: "results marked Girmedi" }
+          averagePercent: { type: [number, "null"], note: "the mean of score * 100 / maxScore, one decimal; null when nobody sat" }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "an id that is not a uuid or names no medrese" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller holds none of the three codes on the medrese" }
+    source: apps/tedrisat/src/exam/exam.controller.ts:143
+
+  # ---- A talebe's private notes on a session (LessonNoteController, lesson-note/lesson-note.controller.ts) ----
+  listLessonNotes:
+    summary: The caller's own notes on a session
+    route: GET /lessons/{id}/notes
+    needs: "any signed-in caller (course.view on the session's course); only the caller's own notes, even for the başnazım: no route reads another person's note. While the course is visible and not passive (mayReachOwnWriting). Cache-Control private, no-store"
+    result:
+      type: array
+      note: "by offsetSeconds ascending with the null ones last, then createdAt, then id; a stranger of a visible, open course gets an empty list"
+      items: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: LessonNote } } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_NOTE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:104, note: "the course is in a passive scope and its content is closed to the caller" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller; an archived session is still found" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+    source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:80
+
+  createLessonNote:
+    summary: Write a private note on a session
+    route: POST /lessons/{id}/notes
+    needs: an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe); an archived session of a visible course is not refused
+    body:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000, sensitivity: personal, note: "trimmed; Markdown stored as typed, never rendered as HTML" }
+        offsetSeconds: { type: [integer, "null"], minimum: 0, maximum: 359999, note: "the player position in seconds; absent or null for none" }
+    result: { returns: LessonNote, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_NOTE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:91, note: "not an active talebe (pending, removed, barred, a stranger, staff who are not enrolled, the başnazım) or the content is closed" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a body empty after trimming or over 4000 characters, an offset negative, above 359999 or not an integer, or an unknown property" }
+    source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
+
+  updateLessonNote:
+    summary: Change the text or the position of one of the caller's notes
+    route: PATCH /lessons/{id}/notes/{noteId}
+    needs: the note's author, while still an active talebe (course.view on the session's course, then mayWriteAsTalebe)
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000, sensitivity: personal, note: "a key left out stays" }
+        offsetSeconds: { type: [integer, "null"], minimum: 0, maximum: 359999, note: "null clears the position; a key left out stays" }
+    result: { returns: LessonNote, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_NOTE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:91, note: "not an active talebe, or the content is closed" }
+      LESSON_NOTE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:67, note: "no such note of the caller on this session: another person's note, one of another session, or none" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a body empty after trimming or over 4000 characters, an offset out of range or not an integer, or an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:127, note: "noteId is not a uuid" }
+    note: A body with neither key changes nothing and answers the stored note.
+    source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:123
+
+  deleteLessonNote:
+    summary: Delete one of the caller's own notes
+    route: DELETE /lessons/{id}/notes/{noteId}
+    needs: the note's author, whatever has become of their enrollment, while the course is visible and not passive (course.view on the session's course, then mayReachOwnWriting); a real delete, no history
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_NOTE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:104, note: "the course is in a passive scope and its content is closed to the caller" }
+      LESSON_NOTE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:78, note: "no such note of the caller on this session" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:150, note: "noteId is not a uuid" }
+    source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:146
+
+  # ---- How far a talebe watched each celse (LessonViewController, lesson-view/lesson-view.controller.ts, MDRS-248) ----
+  recordLessonView:
+    summary: Record how far the caller has watched a celse's video
+    route: PUT /lessons/{id}/view
+    needs: "an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe): a pending, removed or barred talebe, a stranger, the course team as such, the başnazım and SYSTEM_ADMIN are refused; an archived session of a visible course is not refused"
+    body:
+      type: object
+      required: [positionSeconds]
+      additionalProperties: false
+      properties:
+        positionSeconds: { type: integer, minimum: 0, maximum: 359999, note: "the player's position in whole seconds from the start of the video" }
+        durationSeconds: { type: integer, minimum: 1, maximum: 359999, note: "the video's length as the player reports it; left out while it has not said, and the length stored last stays" }
+        ended: { type: boolean, note: "true when the player said the video ended" }
+    result: { returns: LessonView, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_VIEW_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-view/lesson-view.service.ts:42, note: "not an active talebe (pending, removed, barred, a stranger, the course team as such, SYSTEM_ADMIN), or the content is closed to them (a passive scope)" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/lesson.controller.ts:95, note: "the id is not a uuid or names no session (byLessonCourse, lesson.controller.ts:91, :95); the session's course is hidden or a draft to this caller (course.service.ts:524)" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a position that is negative, above 359999 or not an integer, a length below 1, above 359999 or not an integer, an `ended` that is not a boolean, or an unknown property" }
+    sideEffects:
+      - "upserts the caller's LessonView on (user, celse) with the position and the length; the first report that ends the video or reaches nine tenths of the length stamps completedAt, and every later write keeps the stamp (lesson-view.repository.ts:95-136)"
+      - "the report that stamps completedAt also sets the caller's Enrollment.progress, in the same transaction, to the share of the course's celses watched, in whole percent (not hidden, not in a hidden week, not cancelled; 0 for a course with none), on an ENROLLED or COMPLETED row only and never its status (lesson-view.repository.ts:138-174); no other report writes it"
+      - "no audit row and no notification"
+    note: "Handler LessonViewController.record. Sent by the watch page's counter (tedris.celse.watchRecording) while a YouTube or Bunny recording plays; tedris calls it from nothing else."
+    source: apps/tedrisat/src/lesson-view/lesson-view.controller.ts:66
+
+  listMyLessonViews:
+    summary: The caller's own watch records on a course's celses
+    route: GET /courses/{id}/lesson-views
+    needs: "any signed-in caller (course.view on the course, resolver byExistingCourse); only the caller's own records, even for the course team, the başnazım and SYSTEM_ADMIN: no route reads another talebe's. While the content is open to the caller or the course is in no passive scope (mayReachOwnWriting), so a removed talebe still reads theirs. Cache-Control private, no-store"
+    result:
+      type: array
+      note: "one item per celse the caller has a record of; a celse never played has none; hidden celses and the celses of a hidden week are left out (lesson-view.repository.ts:71-85)"
+      items:
+        type: object
+        required: [lessonId, positionSeconds, durationSeconds, completedAt, updatedAt]
+        properties:
+          lessonId: { type: string, format: uuid, references: Lesson }
+          positionSeconds: { type: integer, minimum: 0 }
+          durationSeconds: { type: [integer, "null"] }
+          completedAt: { type: [string, "null"], format: date-time }
+          updatedAt: { type: string, format: date-time }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_VIEW_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-view/lesson-view.service.ts:58, note: "the course is in a passive scope and its content is closed to the caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course (byExistingCourse); a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+    note: "Handler LessonViewController.list. Read by the course page for a seat holder (the programme's watch marks, tedris.course.readProgramme) and by the watch page for its line under the player (tedris.celse.watchRecording); a failed read draws no mark."
+    source: apps/tedrisat/src/lesson-view/lesson-view.controller.ts:87
+
+  # ---- A talebe's questions to the course team (LessonQuestionController, lesson-question/lesson-question.controller.ts) ----
+  askLessonQuestion:
+    summary: Ask the course team a question on a session
+    route: POST /lessons/{id}/questions
+    needs: an ENROLLED or COMPLETED talebe with no bar and the content open (course.view on the session's course, then mayWriteAsTalebe); only the author and the holders of question.answer ever read it
+    body:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000, note: "trimmed; Markdown stored as typed, never rendered as HTML" }
+    result: { returns: LessonQuestion, status: 201 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_QUESTION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:81, note: "not an active talebe, or the content is closed" }
+      LESSON_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.service.ts:521, note: "an id that is not a session, or the session's course is hidden or a draft to this caller; an archived session is not refused" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a body empty after trimming or over 4000 characters, or an unknown property" }
+    sideEffects: ["no notification to the course team"]
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:133
+
+  listMyCourseQuestions:
+    summary: The questions the caller asked in a course, with their answers
+    route: GET /courses/{id}/questions/mine
+    needs: any signed-in caller (course.view on the course, resolver byParam(COURSE)); only questions they asked, whatever became of their enrollment, while the course is visible and not passive. Cache-Control private, no-store
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        cursor: { type: string, note: "the nextCursor of the previous page, an opaque base64url value; left out for the first page" }
+        limit: { type: integer, default: 20, note: "lowered into 1..50" }
+    result:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          note: "newest first; the author's own name is left out; the answer carries body, answeredAt and answeredBy {id, name, isMuderris, unvan}, the unvan only for a hoca of the course"
+          items: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: LessonQuestion } } }
+        nextCursor: { type: [string, "null"] }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      INVALID_QUESTION_CURSOR: { status: 400, source: apps/tedrisat/src/lesson-question/lesson-question-cursor.ts:39, note: "the cursor is not one this server issued" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:163, note: "id is not a uuid (this route has no existence resolver), or limit is not an integer" }
+      LESSON_QUESTION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:94, note: "the course is in a passive scope and its content is closed to the caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400, note: "no course has this id (the resolver); a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:160
+
+  listCourseQuestions:
+    summary: The course's questions, for the people who answer them
+    route: GET /courses/{id}/questions
+    needs: "question.answer on the course (AuthGuard + AuthzGuard, resolver byExistingCourse): müderris, başmüderris and köşk nazımı by role, a granted ders nazırı, the başnazım. question.answer alone does not open the course's other content. Cache-Control private, no-store"
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        cursor: { type: string, note: "the nextCursor of the previous page; left out for the first page" }
+        limit: { type: integer, default: 20, note: "lowered into 1..50" }
+    result:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          note: "still-waiting questions first, oldest first, then the answered ones; paging is stable across equal timestamps; each adds author {id, name} to what the asker reads"
+          items: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: LessonQuestion } } }
+        nextCursor: { type: [string, "null"] }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      INVALID_QUESTION_CURSOR: { status: 400, source: apps/tedrisat/src/lesson-question/lesson-question-cursor.ts:39, note: "the cursor is not one this server issued" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:197, note: "limit is not an integer" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/course/course.controller.ts:111, note: "an id that is not a uuid or names no course; a course of a hidden köşk (the guard); a hidden course or a draft to this caller (course.service.ts:352, :366)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks question.answer on the course; a talebe is refused" }
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:192
+
+  answerLessonQuestion:
+    summary: Answer a question, or replace the answer
+    route: PUT /questions/{questionId}/answer
+    needs: course.view on the question's course, which the guard never refuses (it only gives the 404s); the service then asks that the course is visible to the caller and question.answer on it, and any refusal reads as "no such question" so the question's existence is not confirmed
+    body:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000, note: "trimmed; Markdown stored as typed" }
+    result: { returns: LessonQuestion, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:188, note: "an id that is not a uuid or names no question (the resolver, lesson-question.controller.ts:79); the course is not visible to the caller (a hidden course or a draft); or the caller lacks question.answer there: no 403 is ever given" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the question's course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a body empty after trimming or over 4000 characters, or an unknown property" }
+    sideEffects: ["sets answer, answeredBy and answeredAt, replacing an earlier answer with no history; no notification to the asker"]
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217
+
+  updateLessonQuestion:
+    summary: Rewrite one of the caller's own unanswered questions
+    route: PATCH /questions/{questionId}
+    needs: the question's author, while still an active talebe (course.view on the question's course, then mayWriteAsTalebe); another person's question, the course team's included, is 404
+    body:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 4000, note: "trimmed; Markdown stored as typed" }
+    result: { returns: LessonQuestion, status: 200 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:209, note: "an id that is not a uuid or names no question (the resolver); not the caller's question; its course is not visible to the caller; or it went meanwhile (service.ts:147)" }
+      LESSON_QUESTION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:140, note: "not an active talebe, or the content is closed" }
+      LESSON_QUESTION_ANSWERED: { status: 409, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:146, note: "the question was answered, so the answer belongs to the question as asked and it can no longer be edited" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the question's course is in a hidden köşk" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a body empty after trimming or over 4000 characters, or an unknown property" }
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:239
+
+  deleteLessonQuestion:
+    summary: Delete one of the caller's own questions, with its answer
+    route: DELETE /questions/{questionId}
+    needs: the question's author at any time, answered or not, whatever has become of their enrollment, while the course is visible and not passive (course.view on the question's course, then mayReachOwnWriting)
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      LESSON_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:209, note: "an id that is not a uuid or names no question (the resolver); not the caller's question; its course is not visible to the caller; or it went meanwhile (service.ts:163)" }
+      LESSON_QUESTION_FORBIDDEN: { status: 403, source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:160, note: "the course is in a passive scope and its content is closed to the caller" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:111, note: "the question's course is in a hidden köşk" }
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:259
+
+  # ---- Appeals, "İtirazlar": a medrese appeals a köşk's refusal of its course request (AppealController, appeal/appeal.controller.ts) ----
+  listMadrasahAppeals:
+    summary: The medrese's refused course requests and their appeals
+    route: GET /madrasahs/{id}/appeals
+    needs: "madrasah.appeal_open on the medrese (AuthGuard + AuthzGuard, resolver byExistingMadrasah): the başmüderris by role, a granted medrese nazırı, the başnazım"
+    result:
+      type: array
+      note: "newest first, at most 100: each REJECTED course request of the medrese and every request it appealed; an accepted appeal sends its request back to PENDING, so such a row shows requestStatus PENDING"
+      items:
+        type: object
+        required: [courseRequestId, title, kosk, requestStatus, rejectReason, appeal]
+        properties:
+          courseRequestId: { type: string, format: uuid, references: CourseRequest }
+          title: { type: string }
+          kosk: { type: object, required: [id, name], properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } }
+          requestStatus: { type: string, note: "the course request's status" }
+          rejectReason: { type: [string, "null"] }
+          appeal:
+            type: [object, "null"]
+            note: "an Appeal as id, status, reason, decisionNote, createdAt and decidedAt; null while nothing was appealed"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "an id that is not a uuid or names no medrese" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks madrasah.appeal_open on the medrese" }
+    source: apps/tedrisat/src/appeal/appeal.controller.ts:64
+
+  createMadrasahAppeal:
+    summary: Appeal a köşk's refusal of the medrese's course request
+    route: POST /madrasahs/{id}/appeals
+    needs: madrasah.appeal_open on the medrese (AuthGuard + AuthzGuard, resolver byExistingMadrasah)
+    body:
+      type: object
+      required: [courseRequestId, reason]
+      additionalProperties: false
+      properties:
+        courseRequestId: { type: string, format: uuid, references: CourseRequest }
+        reason: { type: string, minLength: 1, maxLength: 1000, note: "trimmed; also a database check" }
+    result:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid, references: Appeal }
+    refusals:
+      APPEAL_REQUEST_NOT_FOUND: { status: 404, source: apps/tedrisat/src/appeal/appeal.service.ts:108, note: "no such course request in this medrese: absent, or another medrese's" }
+      APPEAL_REQUEST_NOT_REJECTED: { status: 409, source: apps/tedrisat/src/appeal/appeal.service.ts:111, note: "only a request the köşk refused can be appealed" }
+      APPEAL_EXISTS: { status: 409, source: apps/tedrisat/src/appeal/appeal.service.ts:121, note: "a request is appealed once: the unique index on course_request_id (appeal.repository.ts:143)" }
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "an id that is not a uuid or names no medrese" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a courseRequestId that is not a uuid, a reason that is empty after trimming or over 1000 characters, or an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "the caller lacks madrasah.appeal_open on the medrese" }
+    sideEffects: [audit:appeal.create, "written in the same transaction as the Appeal (courseRequestId, title, madrasahId, koskId, reason). No notification to the platform"]
+    source: apps/tedrisat/src/appeal/appeal.controller.ts:84
+
+  listAppeals:
+    summary: Appeals, waiting and decided (Bekleyen, Karara bağlanan)
+    route: GET /appeals
+    needs: "signed in, then platform.appeal_decide asked inside the service (PlatformAccessService.assert; AuthGuard only, no AuthzGuard and no @Authz): the başnazım, or a Medaris nazımı holding it by a grant or a group whose role is still held"
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        status: { enum: [PENDING, DECIDED], default: PENDING }
+    result:
+      type: object
+      required: [items, pendingCount, decidedCount]
+      properties:
+        items:
+          type: array
+          note: "at most 100; waiting ones oldest first, decided ones newest first by decidedAt; each is an Appeal with the medrese and köşk (id, name), courseRequestId, title, rejectReason and createdBy {id, name}"
+          items: { type: object, required: [id], properties: { id: { type: string, format: uuid, references: Appeal } } }
+        pendingCount: { type: integer, minimum: 0 }
+        decidedCount: { type: integer, minimum: 0 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "Only the Medaris başnazımı and a Medaris nazımı holding platform.appeal_decide may do this" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/appeal/appeal.controller.ts:122, note: "status is neither PENDING nor DECIDED" }
+    note: The route has no AuthzGuard, so the route inventory and the OpenAPI document carry no `needs` for it (invariant every-handler-declares-its-access, MDRS-44).
+    source: apps/tedrisat/src/appeal/appeal.controller.ts:116
+
+  acceptAppeal:
+    summary: Accept an appeal (Kabul et)
+    route: POST /appeals/{id}/accept
+    needs: "signed in, then platform.appeal_decide asked inside the service (PlatformAccessService.assert; AuthGuard only): the başnazım, or a Medaris nazımı holding it"
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "Only the Medaris başnazımı and a Medaris nazımı holding platform.appeal_decide may do this" }
+      APPEAL_NOT_FOUND: { status: 404, source: apps/tedrisat/src/appeal/appeal.service.ts:160, note: "no appeal with this id" }
+      APPEAL_NOT_PENDING: { status: 409, source: apps/tedrisat/src/appeal/appeal.service.ts:161, note: "the appeal was decided already, or another caller decided it first (service.ts:163)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/appeal/appeal.controller.ts:143, note: "id is not a uuid; answered before the permission is asked" }
+    sideEffects:
+      - audit:appeal.accept
+      - "in one transaction: the Appeal becomes ACCEPTED with decidedBy and decidedAt, only while it is still PENDING, and its CourseRequest goes back to PENDING with decidedBy and decidedAt cleared, only if it was REJECTED, so the köşk decides again; the köşk's earlier reject reason stays on it. No notification to the medrese or the köşk"
+    source: apps/tedrisat/src/appeal/appeal.controller.ts:139
+
+  rejectAppeal:
+    summary: Refuse an appeal (Reddet)
+    route: POST /appeals/{id}/reject
+    needs: "signed in, then platform.appeal_decide asked inside the service (PlatformAccessService.assert; AuthGuard only): the başnazım, or a Medaris nazımı holding it"
+    body:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 1000, note: "required, trimmed; the medrese reads it as the decision note" }
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "Only the Medaris başnazımı and a Medaris nazımı holding platform.appeal_decide may do this" }
+      APPEAL_NOT_FOUND: { status: 404, source: apps/tedrisat/src/appeal/appeal.service.ts:160, note: "no appeal with this id" }
+      APPEAL_NOT_PENDING: { status: 409, source: apps/tedrisat/src/appeal/appeal.service.ts:161, note: "the appeal was decided already, or another caller decided it first (service.ts:163)" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:52, note: "a note that is empty after trimming or over 1000 characters, or an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/appeal/appeal.controller.ts:162, note: "id is not a uuid; answered before the permission is asked" }
+    sideEffects: [audit:appeal.reject, "the Appeal becomes REJECTED with decidedBy, decidedAt and the decision note, only while it is still PENDING; the course request stays REJECTED. No notification to the medrese or the köşk"]
+    source: apps/tedrisat/src/appeal/appeal.controller.ts:158
+
+  # ---- The one background job of this chapter: no route ----
+  remindDueExams:
+    summary: Remind the talebe of an exam a day before it, once
+    needs: "the system itself: an in-process timer of tedrisat (ExamReminderPoller), with no caller, no token and no actor"
+    result: { type: integer, minimum: 0, note: "how many exams the pass claimed; a pass never overlaps another" }
+    sideEffects:
+      - notification:EXAM_REMINDER
+      - "claims, in one statement that checks and marks (skip locked, at most 50), the exams that start within 24 hours, are neither cancelled nor hidden, sit in an unhidden course and have no remindedAt, and sets lesson_exams.reminded_at; an exam planned less than a day ahead is reminded on the next pass; moving the exam's time clears remindedAt (course.repository.ts:1604)"
+      - "tells the course's ENROLLED seat holders in the app (no actor to leave out); a COMPLETED talebe is not told"
+      - "mail, a Yaklaşan sınav message, only when SMTP and TEDRIS_WEB_URL are set: to each ENROLLED talebe with a verified e-mail whose users.lesson_invitation_emails is true; one failing recipient is logged and skipped, a pass that fails is logged and not retried"
+    note: Trigger is a 60 second timer started at application bootstrap (EXAM_REMINDER_POLL_INTERVAL_MS), never under the test runner; the specs call remindDue(clock) themselves. It raises no refusal.
+    source: apps/tedrisat/src/exam/exam-reminder.poller.ts:73
+
+invariants:
+  # ---- Homework a müderris sets ----
+  - id: homework-one-per-session
+    rule: >-
+      A session has at most one homework (a LessonAssignment, unique on lessonId); a session with no row has none. Its kind is FILE, the
+      default and what every homework that existed before the column became, or MEMORIZE; its description is at most 4000 characters. A hand-in
+      has no deadline and no grade.
+    source: apps/tedrisat/src/database/schema/lesson-assignment.schema.ts:52
+
+  - id: homework-is-set-by-session-manage
+    rule: >-
+      Only holders of session.manage set, change or remove a session's homework and its files, on a live session of a course they may write
+      to; course.edit alone is refused, and a hidden session, or a course the köşk hid, is not found (LESSON_NOT_FOUND).
+    source: apps/tedrisat/src/course/course.service.ts:535
+
+  - id: homework-files-need-homework
+    rule: >-
+      A homework file needs an existing homework (LESSON_ASSIGNMENT_NOT_FOUND otherwise); homework files are never listed as the session's
+      resources, and they download as attachments to readers of the course's content only. No cap on how many files one homework holds was found.
+    source: apps/tedrisat/src/course/lesson-assignment.service.ts:85
+
+  - id: taking-homework-off-keeps-hand-ins
+    rule: >-
+      Taking a homework off removes its description, its files (from storage too, through the deletion queue) and its memorisation marks, and
+      never a talebe's LessonSubmission.
+    source: apps/tedrisat/src/course/lesson-assignment.repository.ts:185
+
+  # ---- What a talebe writes on a session ----
+  - id: talebe-writing-needs-an-active-seat
+    rule: >-
+      A note, a question and a hand-in (its note and its files) are written only by a person with an ENROLLED or COMPLETED enrollment, no open
+      ban that bars the course, and the course's content open to them (course.view_details, which a passive scope closes even to the enrolled).
+      A pending or removed talebe, a stranger, staff who are not enrolled, and the başnazım without an enrollment are refused with the
+      route's own 403: LESSON_NOTE_FORBIDDEN, LESSON_QUESTION_FORBIDDEN or SUBMISSION_FORBIDDEN.
+    source: apps/tedrisat/src/course/course.service.ts:567
+
+  - id: own-writing-outlives-the-seat
+    rule: >-
+      A talebe who was removed, barred or left pending still reads what they wrote (their notes, their questions with the answers, their
+      hand-in with its files and review, their mark and their grades) while the course is open, and still deletes their notes and their
+      questions. Only a passive scope closes it. They can no longer change or delete a hand-in: saving its note, adding a file and removing a
+      file ask for an active seat, so a removed talebe can read their own files and cannot take them off.
+    note: >-
+      The inventory said "reads and deletes ... own submission files"; deleteMySubmissionFile asks assertMayWrite (lesson-submission.service.ts:217,
+      :481), which needs the seat, so only the reads survive for a hand-in.
+    source: apps/tedrisat/src/course/course.service.ts:590
+
+  - id: writing-stays-with-its-reader
+    rule: >-
+      A note is read by its author alone: no route reads a note by id or across sessions, and the başnazım, the müderris and the köşk nazımı
+      read nobody else's. A question is read by its author and by the holders of question.answer. A hand-in is read by its talebe and by the
+      holders of submission.read. A memorisation mark is read by its talebe and by the holders of session.manage.
+    source: apps/tedrisat/src/lesson-note/lesson-note.repository.ts:40
+
+  - id: session-routes-hide-an-unseen-course
+    rule: >-
+      On every session route of this file a hidden course, a draft the caller may not edit or view unpublished, and a course of a hidden köşk
+      answer as a session that is not there: 404 LESSON_NOT_FOUND from the service, or COURSE_NOT_FOUND from the guard for the hidden köşk, and
+      nothing is written. A question's routes answer LESSON_QUESTION_NOT_FOUND for a course the caller may not see.
+    source: apps/tedrisat/src/course/course.service.ts:511
+
+  - id: learning-text-limits
+    rule: >-
+      Every text is trimmed first, then held to its limit: a note's body 1..4000 characters (Markdown, stored as typed, never rendered as HTML)
+      and its position 0..359999 seconds; a question and an answer 1..4000; a hand-in's note and a review's note at most 4000, a blank one being
+      none; a homework description at most 4000; a memorisation note at most 280; an appeal's reason and decision note 1..1000. A text over its
+      limit is 400 VALIDATION_ERROR.
+    source: apps/tedrisat/src/lesson-submission/dto/lesson-submission.dto.ts:7
+
+  - id: hand-in-file-limits
+    rule: >-
+      A talebe has at most 10 files on one session (409 SUBMISSION_FILE_LIMIT, refused before an eleventh is stored and checked again under the
+      row lock); a review carries at most 5 files (409 SUBMISSION_REVIEW_FILE_LIMIT); every file is at most 25 MB and one of PDF, PNG, JPEG,
+      WebP, docx, xlsx, pptx or plain UTF-8 text by its bytes; a MEMORIZE homework takes no file (409 SUBMISSION_FILES_NOT_TAKEN).
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:184
+
+  - id: hand-in-needs-a-live-session
+    rule: >-
+      A hand-in, a review, a memorisation mark and an exam result are written on a live session, never an archived one (404 LESSON_NOT_FOUND);
+      any live session takes a hand-in, whether or not it has a homework row.
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:487
+
+  - id: notes-and-questions-reach-hidden-sessions
+    rule: >-
+      A note or a question is written on an archived (hidden) session of a visible course: findVisibleLessonCourse counts archived sessions on
+      purpose (MDRS-150), and neither the note nor the question repository checks the session. Whether a talebe can reach a hidden session's id
+      is a question for the web apps.
+    note: Kept as the code has it, beside hand-in-needs-a-live-session; it is a difference between the routes, not a defect.
+    source: apps/tedrisat/src/course/course.service.ts:511
+
+  - id: a-ban-bars-writing-not-the-seat
+    rule: >-
+      An open ban that bars a course stops a talebe writing notes, questions and hand-ins (mayWriteAsTalebe asks BanService.isBarred) and takes
+      course.view_details away (the resolver falls back to PUBLIC), but does not change the enrollment: nothing under ban/ writes the enrollments
+      table, so a barred ENROLLED or COMPLETED talebe stays seated, still a column of the evaluation board and still marked and graded.
+    source: apps/tedrisat/src/course/course.service.ts:567
+
+  # ---- Review of a hand-in ----
+  - id: review-reaches-the-talebe-when-sent
+    rule: >-
+      The talebe sees a review's note, reviewer and files only after reviewedAt is set by sending it; review files uploaded before that stay
+      hidden (404 SUBMISSION_FILE_NOT_FOUND); sending again replaces the note and keeps the files; a review needs a note or a file (400
+      SUBMISSION_REVIEW_EMPTY); the talebe is notified (SUBMISSION_REVIEWED) on every send, a re-send that changes nothing included.
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:698
+
+  - id: hand-in-downloads-by-staff-are-recorded
+    rule: >-
+      A staff download of a hand-in file or of a review file writes submission.file_download or submission.review_file_download before a byte is
+      sent, and a failed write fails the download; the owner's own download writes nothing.
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:279
+
+  # ---- Memorisation marks, exams ----
+  - id: memorization-mark-rules
+    rule: >-
+      A mark is FULL, INCOMPLETE or ABSENT (Tam, Eksik, Vermedi) and no row is Bekliyor; there is one per talebe per MEMORIZE homework, written
+      by holders of session.manage for an ENROLLED or COMPLETED talebe only; a session whose homework is a FILE one, or has none, is 404
+      MEMORIZATION_NOT_FOUND; a save equal to the stored mark writes nothing and no audit row; concurrent first saves of one cell take turns
+      under a row lock.
+    source: apps/tedrisat/src/evaluation/evaluation.repository.ts:215
+
+  - id: exam-is-one-session
+    rule: >-
+      An exam is exactly one session (a LessonExam, unique on lessonId): planning it with a pattern of more than one session is 400
+      EXAM_ONE_SESSION; its format is WRITTEN or ORAL, its maxScore 1..1000 (default 100), its topics and location optional, and isRetake marks
+      a make-up. An exam with a location is in person, else online.
+    source: apps/tedrisat/src/course/course.service.ts:1418
+
+  - id: exam-result-rules
+    rule: >-
+      A result is a whole number from 0 to the exam's maxScore, or absent with no score (a score sent with absent is dropped); holders of
+      session.manage write it for an ENROLLED or COMPLETED talebe on a live exam session; an unchanged save writes nothing; concurrent first
+      saves take turns; there is no time window, so a result can be entered before the exam and before the release.
+    source: apps/tedrisat/src/exam/exam.repository.ts:160
+
+  - id: exam-results-are-released-once
+    rule: >-
+      A talebe reads their score or Girmedi only after resultsReleasedAt; releasing is once only, and a second call changes nothing and tells
+      nobody; the course team always reads every result; a caller whose content is closed sees only their own released results and their own
+      marks.
+    source: apps/tedrisat/src/exam/exam.repository.ts:266
+
+  - id: exam-reminder-is-sent-once
+    rule: >-
+      An exam starting within 24 hours of a poll, not cancelled or hidden and with no remindedAt, is claimed in one statement and reminded of
+      once, in the app and, with SMTP and TEDRIS_WEB_URL set, by e-mail to each ENROLLED talebe with a verified address whose lesson
+      invitation e-mails are on; moving the exam's time clears remindedAt; the same start sent again does not.
+    source: apps/tedrisat/src/exam/exam.repository.ts:470
+
+  # ---- Appeals ----
+  - id: appeal-lifecycle
+    rule: >-
+      A course request is appealed once (unique courseRequestId), and only a REJECTED request of the appealing medrese. An Appeal goes PENDING to
+      ACCEPTED, which puts the request back to PENDING for the köşk to decide again with its decider cleared and its old reject reason kept,
+      or PENDING to REJECTED, which needs a note and leaves the request REJECTED. It is decided once (409 APPEAL_NOT_PENDING, also on a lost
+      race) and the decision and its audit row are one transaction. Opening needs madrasah.appeal_open, deciding platform.appeal_decide or
+      SYSTEM_ADMIN.
+    source: apps/tedrisat/src/appeal/appeal.service.ts:101
+
+  # ---- Two things the code does on purpose, written as it has them ----
+  - id: exam-news-goes-to-enrolled-seats-only
+    rule: >-
+      EXAM_RESULTS_RELEASED, like EXAM_SCHEDULED, EXAM_REMINDER and the other session news, goes to the course's ENROLLED seat holders, and the
+      reminder mail only to ENROLLED talebe: a COMPLETED talebe, who still reads their grades on Notlarım, is told of nothing.
+    note: >-
+      findSeatHolders selects ENROLLED only and says why: a request is not a seat, a completion has finished the course, a revoked seat is out
+      (course-notification.repository.ts:104-118; exam.repository.ts reminderRecipients). The inventory listed the COMPLETED case as a finding;
+      it is the code's own decision, so it is written as a rule and not as one the code breaks.
+    source: apps/tedrisat/src/course/course-notification.repository.ts:107
+
+  - id: staff-hand-in-list-holds-more-than-its-counts
+    rule: >-
+      The course team's list of hand-ins holds every LessonSubmission row of the live sessions, including a row whose note and files were all
+      removed and the row of a talebe who is no longer seated, while handedInCount, talebeCount and the talebe's own list count only a note or a
+      file of an ENROLLED or COMPLETED talebe, so that N never passes M in "N / M teslim".
+    note: >-
+      The repository says so itself: a submission of somebody no longer enrolled is listed by listForCourse but not counted (lesson-submission.repository.ts:850-855).
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:500
+
+  # ---- What the code does not keep ----
+  - id: evaluation-read-keeps-homework-kind-closed
+    rule: >-
+      Whether a session carries a memorisation homework is content: it is read only by a caller who may read the course's content, as the grades
+      list does for a caller it is closed to.
+    holds: false
+    finding: evaluation-probe-leaks-homework-kind
+    note: >-
+      GET /lessons/{id}/evaluation answers 200 {status null} to any signed-in caller of a visible, open course when the session's homework is a
+      memorisation and 404 MEMORIZATION_NOT_FOUND when it is not (evaluation.repository.ts:185), so a stranger, a pending or a removed talebe
+      learns which sessions are memorisations, while exam.service.ts:91 treats "which sessions are exams or carry homework" as content. Read
+      from the code; no request was made.
+    source: apps/tedrisat/src/evaluation/evaluation.repository.ts:185

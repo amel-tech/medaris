@@ -1,0 +1,90 @@
+# The screens of tedris.account.rolesOverview: tedris-web's Hesap (/account, app/account/page.tsx) as it draws the roles
+# section (features/account/components/roles-section.tsx) for a person with no role, with roles, and when a read fails.
+# Only the nodes of this flow are drawn; the personal cards of the same page belong to tedris.account.profile.
+#
+# Words: every `AccountPage.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.AccountPage`), the key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they
+# are the texts the app builds in code from messages and data, written here with their placeholders so a replay can match
+# them (a placeholder with no sample matches any text):
+#   composed.AccountPage.openNizam / openNizamPlatform / openNazar  the buttons' aria-label, roles-section.tsx:82
+#                                                                    ("<open>: <role in lower case>[, <scope>]")
+#   composed.AccountPage.groupTitle                                  permissions-list.tsx:28 ("<scope> · <role>")
+#   composed.AccountPage.scopeMeta / scopeMetaKosk                   assignment-view.ts:46-52 ("<köşk> · <medrese>")
+#   composed.AccountPage.scope / grantor / grantedAt / expires       a value the API gives, shown as it is
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.account.rolesOverview
+flow: tedris.account.rolesOverview
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  role: hoca
+  scope: Örnek ders
+  kosk: Örnek köşk
+  madrasah: Örnek medrese
+  grantor: Örnek kişi
+  granted: 3 Kasım 2026
+  expires: Süresiz
+
+nodes:
+  # ---- Hesap's own frame, which the section sits in ----
+  accountPage: { type: page, component: Page, role: main, in: [plainAccount, rolesShown, rolesUnreadable], source: apps/tedris/app/account/page.tsx:37 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.pageTitle }, in: [plainAccount, rolesShown, rolesUnreadable], source: apps/tedris/app/account/page.tsx:39 } # h1
+  subtitle: { type: text, component: Text, text: { key: AccountPage.pageSubtitle }, in: [plainAccount, rolesUnreadable], source: apps/tedris/app/account/page.tsx:41 }
+  subtitleRoles: { type: text, component: Text, text: { key: AccountPage.pageSubtitleRoles }, in: [rolesShown], source: apps/tedris/app/account/page.tsx:41 } # "Görevlerin, adın, ..."
+
+  # ---- the section ----
+  rolesSection: { type: page, component: Page, role: region, name: { labelledBy: rolesTitle }, in: [rolesShown], source: apps/tedris/features/account/components/roles-section.tsx:90 }
+  rolesTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.title }, in: [rolesShown], source: apps/tedris/features/account/components/roles-section.tsx:95 } # h2
+  rolesIntro: { type: text, component: Text, text: { key: AccountPage.intro }, in: [rolesShown], source: apps/tedris/features/account/components/roles-section.tsx:98 }
+  rolesWhere: { type: text, component: Text, text: { key: AccountPage.whereIntro }, in: [rolesShown], source: apps/tedris/features/account/components/roles-section.tsx:99 }
+
+  # the table: a caption nobody sees names it, then one row per role held
+  rolesTable: { type: list, component: List, role: table, name: { key: AccountPage.tasks }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:137 }
+  columnRole: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.role }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:47 }
+  columnScope: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.scope }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:62 }
+  columnGrantor: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.grantor }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:92 }
+  columnExpires: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.expires }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:106 }
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.actions }, in: [rolesShown], source: apps/tedris/features/account/components/assignments-table.tsx:116 } # its text is visually hidden
+  rowRole: { type: text, component: Text, role: cell, text: { oneOf: [AccountPage.roles.MEDARIS_NAZIM, AccountPage.roles.KOSK_NAZIM, AccountPage.roles.MEDRESE_BASMUDERRIS, AccountPage.roles.MEDRESE_NAZIR, AccountPage.roles.MUDERRIS, AccountPage.roles.DERS_NAZIR] }, in: [rolesShown], repeat: assignments, source: apps/tedris/features/account/components/assignments-table.tsx:50 }
+  rowScope: { type: text, component: Text, text: { key: composed.AccountPage.scope, params: { scope: assignment.scopeName } }, in: [rolesShown], when: scoped, repeat: assignments, source: apps/tedris/features/account/components/assignments-table.tsx:68 } # no row for the Medaris nazımı: the platform has no name
+  rowBadge: { type: text, component: Text, text: { oneOf: [AccountPage.courseBadge.published, AccountPage.courseBadge.draft, AccountPage.courseBadge.hidden] }, in: [rolesShown], when: courseRow, repeat: assignments.courses, source: apps/tedris/features/account/components/assignments-table.tsx:71 } # a course row only; hidden wins over draft and published
+  rowMeta: { type: text, component: Text, text: { oneOf: [composed.AccountPage.scopeMeta, composed.AccountPage.scopeMetaKosk] }, in: [rolesShown], when: courseRow, repeat: assignments.courses, source: apps/tedris/features/account/components/assignments-table.tsx:85 } # the köşk, then the medrese when the course has one
+  rowGrantor: { type: text, component: Text, text: { key: composed.AccountPage.grantor, params: { grantor: assignment.grantedBy } }, in: [rolesShown], repeat: assignments, source: apps/tedris/features/account/components/assignments-table.tsx:97 } # "Kendin" when the person gave it to themselves, "Bilinmiyor" when the giver has no name
+  rowGranted: { type: text, component: Text, text: { key: composed.AccountPage.grantedAt, params: { granted: assignment.grantedAt } }, in: [rolesShown], repeat: assignments, source: apps/tedris/features/account/components/assignments-table.tsx:99 } # a <time>, the long date in the viewer's zone
+  rowExpires: { type: text, component: Text, text: { key: composed.AccountPage.expires, params: { expires: assignment.expiresAt } }, in: [rolesShown], repeat: assignments, source: apps/tedris/features/account/components/assignments-table.tsx:106 } # a date, or "Süresiz"
+
+  # the two ways out: a link drawn as a button, in the last cell of a row, opening a new tab
+  openNizam: { type: action, component: LinkButton, role: link, intent: secondary, name: { oneOf: [composed.AccountPage.openNizam, composed.AccountPage.openNizamPlatform] }, text: { key: AccountPage.open.nizam }, in: [rolesShown], when: nizamRole, repeat: assignments.nizam, emits: OPEN_NIZAM, source: apps/tedris/features/account/components/assignments-table.tsx:121 } # target=_blank; a köşk row opens <NIZAM_URL>/kosks/<id>, the Medaris nazımı's the root
+  openNazar: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.AccountPage.openNazar }, text: { key: AccountPage.open.nazar }, in: [rolesShown], when: nazarRole, repeat: assignments.nazar, emits: OPEN_NAZAR, source: apps/tedris/features/account/components/assignments-table.tsx:121 } # target=_blank; always <NAZAR_URL>, never a course page (assignment-view.ts:26-29)
+
+  # ---- "Etkin izinlerin": one group per role and scope, a sentence for each permission ----
+  permissionsBlock: { type: page, component: Page, role: region, name: { labelledBy: permissionsTitle }, in: [rolesShown], when: "permissions != 'none'", source: apps/tedris/features/account/components/roles-section.tsx:118 }
+  permissionsTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.permissionsTitle }, in: [rolesShown], when: "permissions != 'none'", source: apps/tedris/features/account/components/roles-section.tsx:124 } # h3
+  permissionsIntro: { type: text, component: Text, text: { key: AccountPage.permissionsIntro }, in: [rolesShown], when: "permissions != 'none'", source: apps/tedris/features/account/components/roles-section.tsx:126 }
+  permissionGroup: { type: page, component: Page, role: region, name: { labelledBy: groupTitle }, in: [rolesShown], when: "permissions == 'listed'", repeat: permissions.groups, source: apps/tedris/features/account/components/permissions-list.tsx:74 }
+  groupTitle: { type: text, component: Heading, role: heading, text: { oneOf: [composed.AccountPage.groupTitle, AccountPage.roles.MEDARIS_NAZIM, AccountPage.roles.KOSK_NAZIM, AccountPage.roles.MEDRESE_BASMUDERRIS, AccountPage.roles.MEDRESE_NAZIR, AccountPage.roles.MUDERRIS, AccountPage.roles.DERS_NAZIR, AccountPage.grantedRole] }, in: [rolesShown], when: "permissions == 'listed'", repeat: permissions.groups, source: apps/tedris/features/account/components/permissions-list.tsx:79 } # h4: "<scope> · <role>" for a role in one named scope, else the role (or "Verilen izinler" for a grant no role covers)
+  permissionLine: { type: text, component: Text, role: listitem, text: { oneOf: [AccountPage.permissions.kosk_manage, AccountPage.permissions.kosk_hosting, AccountPage.permissions.course_open_standalone, AccountPage.permissions.course_manage_all, AccountPage.permissions.ban_manage_kosk, AccountPage.permissions.deck_manage_kosk, AccountPage.permissions.course_nazir_assign_kosk, AccountPage.permissions.course_partner_codes, AccountPage.permissions.user_lookup, AccountPage.permissions.course_edit, AccountPage.permissions.session_manage, AccountPage.permissions.session_live_link, AccountPage.permissions.week_hide, AccountPage.permissions.course_settings, AccountPage.permissions.course_publish, AccountPage.permissions.course_view_unpublished, AccountPage.permissions.enrollment_decide, AccountPage.permissions.enrollment_remove, AccountPage.permissions.enrollment_complete, AccountPage.permissions.recording_manage, AccountPage.permissions.recording_upload, AccountPage.permissions.recording_watch_restricted, AccountPage.permissions.session_view_content, AccountPage.permissions.question_answer, AccountPage.permissions.ban_course, AccountPage.permissions.ban_lift_course, AccountPage.permissions.deck_manage_course, AccountPage.permissions.deck_propose_kosk, AccountPage.permissions.course_nazir_assign, AccountPage.permissions.permission_group_define] }, in: [rolesShown], when: "permissions == 'listed'", repeat: permissions.codes, source: apps/tedris/features/account/components/permissions-list.tsx:85 } # a code with no sentence is left out, and so is a group that has none (ROLES-1)
+
+  # ---- the box that takes the section's place ----
+  loadFailedBox: { type: page, component: Page, role: region, name: { labelledBy: loadFailedTitle }, in: [rolesUnreadable], source: apps/tedris/features/account/components/roles-section.tsx:30 } # SystemState draws the <section>; the one around it names an id that does not exist (ACC-17)
+  loadFailedTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.loadFailedTitle }, in: [rolesUnreadable], source: apps/tedris/features/account/components/roles-section.tsx:30 } # h2
+  loadFailedText: { type: text, component: Text, text: { key: AccountPage.loadFailed }, in: [rolesUnreadable], source: apps/tedris/features/account/components/roles-section.tsx:31 } # no retry control: the sentence says to reload
+
+edges:
+  - { labelledBy: [rolesSection, rolesTitle] }
+  - { labelledBy: [permissionsBlock, permissionsTitle] }
+  - { labelledBy: [permissionGroup, groupTitle] }
+  - { labelledBy: [loadFailedBox, loadFailedTitle] }
+
+rules:
+  - { id: ACC-08, rule: "The buttons \"Nizam’da aç\" and \"Nazar’da aç\" open a new tab (target=_blank) and their accessible name does not say so: it is the visible text, a colon, the role in lower case and the scope (assignments-table.tsx:119-133). Fix: append \"(yeni sekmede açılır)\" to the aria-label." }
+  - { id: ACC-17, rule: "In the failed-read box the outer <section aria-labelledby=\"roles-heading\"> names an id that only exists in the success branch (roles-section.tsx:29), so the outer section has no name; the inner SystemState section carries the box's name. Fix: drop the outer aria-labelledby in that branch." }
+  - { id: focus-not-set, rule: "Hesap sets no initial focus (no autoFocus and no focus() in features/account or app/account), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: ROLES-1, rule: "\"Etkin izinlerin\" and its introduction are drawn when the permission read has any group (roles-section.tsx:115), but PermissionsList then drops each group that has no code with a sentence (permissions-list.tsx:62-66). When every group is dropped the heading and the introduction stand with nothing under them. Replay on the stack: the seeded Medaris nazımı meets exactly this (heading and introduction shown, no group, no sentence), so it is not latent. Fix: add the platform codes' sentences to AccountPage.permissions, or count the groups that will be drawn before drawing the heading. Proposed id; not in the inventory." }
+  - { id: ROLES-2, rule: "A Medaris başnazım (the realm role SYSTEM_ADMIN) is not a role row, so Hesap shows them the plain page: no role, and no way into Nizam. GET /me/roles has a `systemAdmin` flag the page does not read (page.tsx:30-33). Decision D1 of the flow. Proposed id." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the open buttons' name starts with their visible text" }
+  - { id: section-needs-a-role, rule: "the section is drawn only for a person who holds a role; for anyone else the page is the plain account page" }

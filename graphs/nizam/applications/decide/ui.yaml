@@ -1,0 +1,161 @@
+# The screens of nizam.applications.decide: the page "Köşk başvuruları" (/talepler/kosk-basvurulari) with its tabs, its list and the
+# detail of the selected application, the reject dialog, and the toasts of a decision. Read from apps/nizam/features/platform-admin/
+# components/applications-view.tsx and apps/nizam/features/deck-review/components/reject-dialog.tsx on 15 Nov 2026; the words are copied
+# from libs/i18n/src/locales/tr/nizam.json (namespaces KoskApplicationsPage, DeckReject, and OpenKoskDialog.saved/savedBody for the
+# toast of the köşk form's own).
+#
+# Two kinds of entries are not copied from the app:
+#   Changes.note   the one message written for this graph: no app message says what the two decisions change (see `changes`).
+#   composed.*     text the page builds in code from data and that is in no i18n file: the row's name (applications-view.tsx:205-231),
+#                  the tab counts (libs/ui/src/mds/tabs.tsx:63) and the values of the detail's lists (applications-view.tsx:241-270, 306-334).
+#                  Each is one placeholder or the line the code joins with " · ".
+#
+# The köşk form that "Köşkü aç" opens is nizam.kosks.open's, started with fromApplication: true; the page behind it is inert, so the
+# state `koskForm` draws no node. The detail of an application that has no telephone number says "Verilmedi" (`phone == 'missing'`).
+schema: delurio-graph/0
+kind: ui
+id: nizam.applications.decide
+flow: nizam.applications.decide
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note } # the one authored message of this catalog: no app message says what a decision changes
+samples:
+  name: Örnek Kelâm Köşkü
+  count: "2"
+  field: Akaid ve kelâm
+  applicant: Esma Başvuran
+  date: 16 Kas 10:00
+  outcome: Kabul edildi
+  sentAt: 16 Kasım 2026 Pazartesi 10:00
+  kosks: Henüz yok
+  summary: Metinleri şerhleriyle okuyan, ders vermeye hazır bir köşk.
+  reason: Halkamız yüz yüze yürüyor; ders verecek hocalarımız ve okunacak metinlerimiz belli.
+  email: e2e-basvuran-c@medaris.test
+  phone: +90 532 000 00 01
+  rejectReason: Aynı alanda başka bir köşk var.
+
+# The page sets no focus of its own (nothing in applications-view.tsx does), so the page has no `initialFocus`, and no node has `focus`
+# after a step: choosing a row, closing a dialog over a button that left, and a decision all leave the focus where the browser puts it
+# (APPDEC-5). The reject dialog's own focus is drawn.
+nodes:
+  # ---- the page ------------------------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [selecting, empty, unreadable, retrying, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:32 } # the shell's <main>; it has no name
+  title: { type: text, component: Heading, role: heading, text: { key: KoskApplicationsPage.title }, in: [selecting, empty, unreadable, retrying, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:376 } # h1
+  intro: { type: text, component: Text, text: { key: KoskApplicationsPage.intro }, in: [selecting, empty, unreadable, retrying, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:377 }
+
+  # ---- the read failed -----------------------------------------------------------------------------------------------------
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: KoskApplicationsPage.loadFailedTitle }, text: { key: KoskApplicationsPage.loadFailed }, in: [unreadable, retrying], source: apps/nizam/features/platform-admin/components/applications-view.tsx:381 } # tone error: role alert, so it is announced when it appears
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskApplicationsPage.retry }, in: [unreadable, retrying], emits: RETRY, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:383 } # no disabled while the read runs: a second press sends a second read at once
+
+  # ---- the tabs ------------------------------------------------------------------------------------------------------------
+  tabList: { type: list, component: List, role: tablist, name: { key: KoskApplicationsPage.tabsLabel }, in: [selecting, empty, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:389 } # no tab panel behind either tab (F-W3-5, F-X-1)
+  tabWaiting: { type: action, component: Button, role: tab, text: { key: KoskApplicationsPage.tabs.PENDING }, in: [selecting, empty, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], emits: TAB_WAITING, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:396 } # its name carries the count: "Bekleyen 2". Not disabled while a read runs. Pressed while the answered tab loads, it switches at once, and the read, when it lands, is dropped (applications-view.tsx:99, :122): it selects nothing, so no answered applicant's contact details are read, and audited, under the waiting tab (APPDEC-7, fixed)
+  tabDecided: { type: action, component: Button, role: tab, text: { key: KoskApplicationsPage.tabs.DECIDED }, in: [selecting, empty, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], emits: TAB_DECIDED, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:401 }
+  waitingCount: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.count, params: { count: counts.pending } }, in: [selecting, empty, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:398 } # the number inside the tab, from the first read and every read after it
+  decidedCount: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.count, params: { count: counts.decided } }, in: [selecting, empty, loadingTab, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:403 }
+
+  # ---- nothing to list -----------------------------------------------------------------------------------------------------
+  emptyWaiting: { type: text, component: Text, text: { key: KoskApplicationsPage.empty.PENDING }, in: [empty], when: "tab == 'waiting'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:414 }
+  emptyDecided: { type: text, component: Text, text: { key: KoskApplicationsPage.empty.DECIDED }, in: [empty], when: "tab == 'decided'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:414 }
+
+  # ---- the list ------------------------------------------------------------------------------------------------------------
+  applicationList: { type: list, component: List, role: list, in: [selecting, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:417 } # no name; testid application-list; the list is cut at 100 rows (APPDEC-6)
+  row: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.KoskApplicationsPage.row, params: { name: application.name, field: application.field, applicant: application.applicantName, date: application.createdAt } }, in: [selecting, detailUnreadable, waitingDetail, approving], when: "tab == 'waiting'", repeat: applications.items, emits: SELECT_OTHER, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:205 } # a <button> in an <li>; the selected one has aria-current="true"; the name is the row's text read in order
+  rowDecided: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.KoskApplicationsPage.rowDecided, params: { name: application.name, field: application.field, applicant: application.applicantName, date: application.decidedAt, outcome: application.outcome } }, in: [selecting, detailUnreadable, decidedDetail], when: "tab == 'decided'", repeat: applications.items, emits: SELECT_OTHER, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:226 } # the third line adds the outcome after the time of the answer
+
+  # ---- the detail of the selected application -------------------------------------------------------------------------------
+  detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [selecting, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:280 } # testid application-detail
+  detailEyebrow: { type: text, component: Text, text: { key: KoskApplicationsPage.detailEyebrow }, in: [selecting, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:287 }
+  detailTitle: { type: text, component: Heading, role: heading, text: { key: composed.KoskApplicationsPage.applicationName, params: { name: application.name } }, in: [selecting, detailUnreadable, waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:288 } # h2
+  badgeWaiting: { type: text, component: Text, text: { key: KoskApplicationsPage.status.PENDING }, in: [selecting, detailUnreadable, waitingDetail, approving], when: "tab == 'waiting'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:301 } # a warning Badge
+  badgeApproved: { type: text, component: Text, text: { key: KoskApplicationsPage.status.APPROVED }, in: [selecting, detailUnreadable, decidedDetail], when: "tab == 'decided' and answered == 'approved'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:301 }
+  badgeRejected: { type: text, component: Text, text: { key: KoskApplicationsPage.status.REJECTED }, in: [selecting, detailUnreadable, decidedDetail], when: "tab == 'decided' and answered == 'rejected'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:301 }
+  detailFailedAlert: { type: alert, component: Alert, role: alert, text: { key: KoskApplicationsPage.detailFailed }, in: [detailUnreadable], source: apps/nizam/features/platform-admin/components/applications-view.tsx:311 } # no retry button (APPDEC-4's neighbour)
+
+  fieldLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.field }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:316 } # a <dt>
+  fieldValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.field, params: { field: detail.field } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:317 } # fieldLabel() of present.ts:54-68, hard-coded Turkish (F-W1-12)
+  sentAtLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.sentAt }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:320 }
+  sentAtValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.sentAt, params: { sentAt: detail.createdAt } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:321 }
+  sameFieldLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.sameField }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:324 }
+  sameFieldValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.sameField, params: { kosks: detail.sameFieldKosks } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:326 } # the köşks of the field joined by ", ", or "Henüz yok" (KoskApplicationsPage.sameFieldNone) when there is none
+  summaryLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.summary }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:333 }
+  summaryValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.summary, params: { summary: detail.summary } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:335 }
+  reasonLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.reason }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:339 }
+  reasonValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.reason, params: { reason: detail.reason } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:341 }
+
+  # the applicant, and the contact details whose read is audited
+  applicantRegion: { type: page, component: Page, role: region, name: { labelledBy: applicantTitle }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:237 }
+  applicantTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplicationsPage.applicant }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:238 } # h3
+  applicantNameLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.applicantName }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:243 }
+  applicantNameValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.applicantName, params: { applicant: detail.applicant.name } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:246 }
+  rolesLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.roles }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:250 }
+  rolesNone: { type: text, component: Text, text: { key: KoskApplicationsPage.noRoles }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:253 } # a person who holds roles has them listed by name instead (not drawn)
+  emailLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.email }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:260 }
+  emailValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.email, params: { email: detail.applicant.email } }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:262 } # what the applicant typed on the form, not the account's address; left to right
+  phoneLabel: { type: text, component: Text, text: { key: KoskApplicationsPage.phone }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:266 }
+  phoneValue: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.phone, params: { phone: detail.applicant.phone } }, in: [waitingDetail, decidedDetail, approving], when: "phone == 'given'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:268 } # testid applicant-phone
+  phoneMissing: { type: text, component: Text, text: { key: KoskApplicationsPage.phoneMissing }, in: [waitingDetail, decidedDetail, approving], when: "phone == 'missing'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:268 }
+  contactNote: { type: text, component: Text, text: { key: KoskApplicationsPage.contactNote }, in: [waitingDetail, decidedDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:272 } # said under the details, after the read that it describes has been made (F-W3-7)
+
+  # the two buttons of a waiting application, and the reason of a refused one
+  openNote: { type: text, component: Text, text: { key: KoskApplicationsPage.openNote }, in: [waitingDetail, approving], source: apps/nizam/features/platform-admin/components/applications-view.tsx:349 } # still promises the "alan": the form carries the name and the description only (F-W3-8)
+  openButton: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskApplicationsPage.open }, in: [waitingDetail, approving], emits: OPEN_KOSK, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:351 } # not disabled while the approval runs: pressing it again makes a second köşk (F-W3-8)
+  rejectButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskApplicationsPage.reject }, in: [waitingDetail, approving], emits: REJECT, duringStep: true, source: apps/nizam/features/platform-admin/components/applications-view.tsx:352 }
+  rejectedReasonAlert: { type: alert, component: Alert, role: status, name: { key: KoskApplicationsPage.rejectReasonTitle }, text: { key: composed.KoskApplicationsPage.rejectReason, params: { rejectReason: detail.rejectReason } }, in: [decidedDetail], when: "answered == 'rejected'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:358 } # a neutral Alert is a status, not an alert
+
+  # ---- the toasts: sonner's, a region of notifications; a success goes after 6 seconds, an error stays until it is closed -------
+  toastApproved: { type: status, component: Status, name: { key: KoskApplicationsPage.approved }, text: { key: KoskApplicationsPage.approvedBody, params: { name: application.name } }, in: [selecting, empty, waitingDetail, decidedDetail, detailUnreadable], when: "last == 'approved'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:180 }
+  toastRejected: { type: status, component: Status, name: { key: KoskApplicationsPage.rejected }, text: { key: KoskApplicationsPage.rejectedBody, params: { name: application.name } }, in: [selecting, empty, waitingDetail, decidedDetail, detailUnreadable], when: "last == 'rejected'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:194 }
+  toastAnswered: { type: status, component: Status, name: { key: KoskApplicationsPage.answerFailed }, text: { key: KoskApplicationsPage.errors.answered }, in: [selecting, empty, waitingDetail, decidedDetail, detailUnreadable], when: "last == 'answered'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:165 }
+  toastGone: { type: status, component: Status, name: { key: KoskApplicationsPage.answerFailed }, text: { key: KoskApplicationsPage.errors.gone }, in: [selecting, empty, waitingDetail, decidedDetail, detailUnreadable], when: "last == 'gone'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:165 }
+  toastForbidden: { type: status, component: Status, name: { key: KoskApplicationsPage.answerFailed }, text: { key: KoskApplicationsPage.errors.forbidden }, in: [waitingDetail], when: "last == 'forbidden'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:165 }
+  toastFailed: { type: status, component: Status, name: { key: KoskApplicationsPage.answerFailed }, text: { key: KoskApplicationsPage.errors.generic }, in: [waitingDetail], when: "last == 'failed'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:165 }
+  toastLoadFailed: { type: status, component: Status, name: { key: KoskApplicationsPage.loadFailedTitle }, text: { key: KoskApplicationsPage.loadFailed }, in: [unreadable], when: "last == 'loadFailed'", source: apps/nizam/features/platform-admin/components/applications-view.tsx:104 }
+  toastKoskOpened: { type: status, component: Status, name: { key: OpenKoskDialog.saved }, text: { key: OpenKoskDialog.savedBody, params: { name: application.name } }, in: [approving], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:115 } # the köşk form's own toast, on while the approval runs
+
+  # ---- Reddet asks for a reason ---------------------------------------------------------------------------------------------
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [rejectForm, rejectFormReady, rejecting], initialFocus: reasonField, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:77 }
+  rejectEyebrow: { type: text, component: Text, text: { key: composed.KoskApplicationsPage.applicationName, params: { name: application.name } }, in: [rejectForm, rejectFormReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:85 } # the application's name above the title
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: DeckReject.application.title }, in: [rejectForm, rejectFormReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:86 }
+  rejectClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: DeckReject.close }, in: [rejectForm, rejectFormReady], emits: CANCEL, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:87 } # it stays on and does nothing while the refusal is sent (`if (!saving)`), as in the other dialogs: not drawn in `rejecting`
+  rejectBody: { type: text, component: Text, text: { key: DeckReject.application.body }, in: [rejectForm, rejectFormReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:98 }
+  rejectRequiredNote: { type: text, component: Text, text: { key: DeckReject.requiredNote }, in: [rejectForm, rejectFormReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:99 } # drawn as "* zorunlu alan"
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: DeckReject.reasonLabel }, value: { literal: "" }, in: [rejectForm, rejectFormReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:106 } # a textarea of 4 rows, 1000 characters at most, required; starts empty; the focus starts here and it stays editable while the refusal is sent
+  reasonHelp: { type: text, component: Text, text: { key: DeckReject.application.help }, in: [rejectForm, rejectFormReady, rejecting], when: "reason != 'touched'", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:103 }
+  reasonRequired: { type: text, component: Text, text: { key: DeckReject.reasonRequired }, in: [rejectForm], when: "reason == 'touched'", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:104 } # replaces the help once the field was left empty; no live region, no move of the focus
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: DeckReject.cancel }, in: [rejectForm, rejectFormReady], emits: CANCEL, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:91 }
+  rejectSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: DeckReject.submit }, in: [rejectForm, rejectFormReady, rejecting], disabledIn: [rejectForm, rejecting], emits: SUBMIT, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 } # natively disabled while the reason is blank (F-X-3); busy (aria-disabled, aria-busy) while it is sent
+
+edges:
+  - { labelledBy: [detailRegion, detailTitle] }
+  - { labelledBy: [applicantRegion, applicantTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [row, selecting] }
+  - { triggers: [rowDecided, selecting] }
+  - { triggers: [tabDecided, loadingTab] }
+  - { triggers: [retryButton, retrying] }
+  - { triggers: [openButton, koskForm] }
+  - { triggers: [rejectButton, rejectForm] }
+  - { triggers: [rejectSubmit, rejecting] }
+  - { returnsFocus: [rejectDialog, rejectButton] } # Vazgeç, Escape and the close icon: the page's Reddet is still there; not verified in a browser. After a decision it is gone (APPDEC-5)
+
+rules:
+  - { id: F-W3-5, rule: "The tabs 'Bekleyen' and 'Karara bağlanan' are `Tabs mode=tabs` with no `TabsPanel` (applications-view.tsx:389-406): the tablist controls no panel, and a tab switch changes the list and the detail below with no announcement and no move of the focus. Fix: wrap the list in a TabsPanel, or use links; add a status line '{n} başvuru'." }
+  - { id: F-X-1, rule: "The family of F-W3-5: Tabs with no TabsPanel in six pages of nizam (libs/ui/src/mds/tabs.tsx:52-125)." }
+  - { id: F-W3-7, rule: "The page selects an application on its own and so reads its applicant's e-mail and telephone, which tedrisat writes to the audit log (`kosk_application.contact_read`, kosk-application-review.service.ts:121): opening the list audits a read of personal data nobody asked for, and the line that says so ('İletişim bilgilerini görmeniz denetim kaydına yazılır.') appears under the details after the read it describes. Fix: select nothing until the reader chooses a row, or read the details behind an explicit 'Göster'." }
+  - { id: APPDEC-2, rule: "New: F-W3-7 is wider than the first load. Every change of the selected application reads and audits the contact details of the one it lands on: after each decision the page selects the next waiting one (settle, applications-view.tsx:160), and every tab switch selects the first row of the tab (changeTab, :125). A reader who refuses ten applications in a row writes ten contact reads of people they never opened." }
+  - { id: F-W3-8, rule: "Opening a köşk from an application is two writes (POST /kosks in the form, then POST /nizam/kosk-applications/{id}/approve here, applications-view.tsx:172-184). When the second fails the köşk exists, the form is closed, the toast says 'Karar kaydedilemedi' and nothing says the köşk was made; the application still says 'Karar bekliyor' and 'Köşkü aç' is on, so pressing it again makes a second köşk (the short name is optional, so nothing refuses it). The sentence 'Köşk açma formu, başvurudaki ad, alan ve açıklamayla açılır' still promises the field the form no longer carries (present.ts:75-80, MDRS-252). Fix: one transaction in the API, or a retry of the approval named in the toast; correct the sentence." }
+  - { id: F-3, rule: "Drawn by tedris.discover.applyForKosk, owned here: the approval only records the köşk's id, and tedrisat does not check that the köşk was opened from this application (kosk-application-review.service.ts:156-181); the applicant's notice carries the köşk's name and no target, so the notification page cannot lead to it. The answered detail does not name the köşk either (APPDEC-3)." }
+  - { id: APPDEC-1, rule: "New: `?secili=` is honoured only when the id is among the waiting applications the server read (applications-view.tsx:73-77, documented at :45); an application that was decided meanwhile, or any other id, falls back to the first waiting one in silence. The home page's 'İncele' link can therefore open another person's contact details than the one it named, and write that read to the audit log, with no word. Fix: say that the application is no longer waiting, and select nothing." }
+  - { id: APPDEC-3, rule: "New: an accepted application shows its badge and nothing else: the API sends `koskId` (KoskApplicationDetailResponse) and the page never draws it, so the reader cannot go from an accepted application to the köşk it opened (applications-view.tsx:357-361). A refused one does show its reason. Fix: a link 'Açılan köşk' to /kosks/{id}." }
+  - { id: APPDEC-4, rule: "New: when a read after the first fails, the error alert replaces the tabs, the list and the detail (`failed && lists[tab] === undefined`, applications-view.tsx:380): after a failed read of the answered tab the person has no tab to go back with, only 'Tekrar dene' or a reload. A failed detail read draws an alert in the panel with no retry, and pressing the selected row again changes nothing (:138). Not verified in a browser (nothing makes the API fail on request)." }
+  - { id: APPDEC-5, rule: "New: no code moves the focus after a decision. The pressed button and the row it belongs to leave with `settle` (applications-view.tsx:153-161) and the next application's detail is read behind a skeleton, so the focus falls to the page; the only word is a toast, which a success removes after 6 seconds. The same after 'Köşkü aç': the form closes onto a button that is gone. Fix: after a decision move the focus to the next row (or the tab list when none is left). From the code; not verified in a browser." }
+  - { id: APPDEC-6, rule: "New: tedrisat lists at most 100 applications per tab (LIST_LIMIT, kosk-application-review.service.ts:48) and the page has no pager and no word about it, while the tab counts are the real totals: with 120 waiting, 'Bekleyen 120' lists 100 and the oldest 20 of the answered tab can never be read." }
+  - { id: F-X-3, rule: "'Reddet' of the reject dialog is natively disabled while the reason is blank and nothing ties the reason to the button; leaving the field empty draws 'Bir gerekçe yazın.' as a plain line (no live region, no move of the focus). The family of F-W3-1." }
+  - { id: F-W1-12, rule: "fieldLabel() spells the eleven fields in hard-coded Turkish (present.ts:54-68), again in tedrisat (KOSK_FIELD_LABEL, kosk-application-review.service.ts:51-63), while tedris's form translates them (tedris-account.json): the list's row and the detail would not follow a locale." }
+  - { id: APPDEC-7, rule: "Fixed on 23 Nov 2026 (found from the code on 22 Nov): nothing is disabled while a read runs, and a switch back to Bekleyen while the answered tab loads shows the waiting list at once. The late read once still called setSelectedId with the first answered application (applications-view.tsx:116), whose contact details were then read, and audited, while the waiting tab was on the screen. Each read now carries a ticket (:87-99) and a tab switch takes a new one (:122), so a read that lands for a tab no longer shown is dropped: it fills nothing and selects nothing. The graph draws the switch in the read's own state (loadingTab, TAB_WAITING) and the other presses during the steps as before (duringStep). Test: apps/nizam/test/requests-late-answers.spec.tsx." }
+  - { id: focus-not-set, rule: "The page sets no initial focus and the app does not move it after a step: choosing a row, a tab, a decision and the close of a dialog over a button that has gone all leave it where the browser puts it (APPDEC-5). Not drawn." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Bekleyen' in 'Bekleyen 2', 'Köşkü aç', 'Reddet'. Holds (WCAG 2.5.3)." }
+  - { id: answer-is-given-once, rule: "tedrisat answers an application once: the update is `where status = 'PENDING'` and no row means KOSK_APPLICATION_DECIDED (409, kosk-application-review.repository.ts:192-209). The page treats DECIDED and NOT_FOUND as 'it is settled': the row leaves and the toast says so, for the refusal as for the approval. Holds." }

@@ -1,0 +1,103 @@
+# The screens of tedris.learning.schedule: tedris-web's Programım (/schedule, app/schedule/page.tsx and
+# features/schedule/components/schedule-page.tsx) as a signed-in talebe meets it: the week of celses grouped by day, the sentence for
+# a week with none, and the box for a failed read. The chrome around the page (the wide bar, the phone sheet, the footer, the theme
+# switch) is tedris.shell.frame's and is not drawn here; the menu "Takvime ekle" opens is tedris.learning.addToCalendar's.
+#
+# Words: every `SchedulePage.*`, `SessionPage.*`, `AddToCalendar.*` and `CalendarSubscription.*` key is copied from
+# libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`), the key being the path inside that file. The
+# `composed.SchedulePage.*` keys are NOT in any i18n file: they are the texts the app builds in code from messages and data, written
+# here with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.SchedulePage.dayHeading   the day of a card, Intl ("16 Kasım Pazartesi")                               schedule-model.ts:146, schedule-page.tsx:269
+#   composed.SchedulePage.clock        the clock of a row, Intl ("21:00"), a <time>                                  schedule-model.ts:165, schedule-page.tsx:71
+#   composed.SchedulePage.course       a course's title, a value the API gives, a <bdi>                              schedule-page.tsx:84
+#   composed.SchedulePage.celseTitle   a celse's title, a value the API gives                                        schedule-page.tsx:94
+#   composed.SchedulePage.platformChip the kit's chip: the platform's label and, for one it does not know, its host  libs/ui/src/mds/platform-chip.tsx:26-67, schedule-page.tsx:123
+#   composed.SchedulePage.examRun      SchedulePage.exam, " · " and CoursePage.examCountdown ("Sınav · 4 gün kaldı")  features/courses/exam-countdown.ts:37-47, schedule-page.tsx:101
+#   composed.SchedulePage.joinName     SessionPage.joinAction and the hidden SessionPage.newTab, which make the name  schedule-page.tsx:159-163
+# CoursePage.examCountdown is an ICU plural ("{count, plural, =0 {Bugün} =1 {Yarın} other {# gün kaldı}}"), which the checker does not
+# fill today, so it is not copied: the exam badge is the composed key above.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learning.schedule
+flow: tedris.learning.schedule
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  zone: İstanbul
+  day: 16 Kasım Pazartesi
+  count: "60"
+  week: "3"
+  clock: "21:00"
+  course: Örnek ders
+  title: Örnek celse
+  note: Hoca yolda.
+  platform: Zoom
+  host: example.test
+  left: 4 gün kaldı
+
+nodes:
+  # ---- the page and its head: the same in the three looks ----
+  schedulePage: { type: page, component: Page, role: main, in: [week, emptyWeek, loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:227 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set); the legacy wrapper is not added (tab-view ownsItsMain lists /schedule*)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: SchedulePage.title }, in: [week, emptyWeek, loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:230 } # h1
+  subtitle: { type: text, component: Text, text: { key: SchedulePage.subtitle }, in: [week, emptyWeek, loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:231 }
+  zoneNote: { type: text, component: Text, text: { key: SchedulePage.zone, params: { zone: zone } }, in: [week, emptyWeek, loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:233 } # always "İstanbul", whatever the viewer's zone (DSC-16); the same <p> holds the link after it
+  changeZone: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SchedulePage.changeZone }, in: [week, emptyWeek, loadFailed], emits: OPEN_ZONE, source: apps/tedris/features/schedule/components/schedule-page.tsx:234 } # /account; a link-styled <a>
+  subscriptionLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CalendarSubscription.link }, in: [week, emptyWeek, loadFailed], emits: OPEN_SUBSCRIPTION, source: apps/tedris/features/schedule/components/schedule-page.tsx:239 } # /account/calendar
+
+  # ---- the week: one card per day, one row per celse ----
+  dayGroup: { type: page, component: Page, role: region, name: { labelledBy: dayTitle }, in: [week], repeat: week.days, source: apps/tedris/features/schedule/components/schedule-page.tsx:262 } # a <section class=mds-card> named by its h2 (aria-labelledby="day-<YYYY-MM-DD>")
+  dayTitle: { type: text, component: Heading, role: heading, text: { key: composed.SchedulePage.dayHeading, params: { day: day.title } }, in: [week], repeat: week.days, source: apps/tedris/features/schedule/components/schedule-page.tsx:268 } # h2
+  dayWords: { type: text, component: Text, text: { oneOf: [SchedulePage.today, SchedulePage.tomorrow, SchedulePage.dayAfter, SchedulePage.inDays] }, in: [week], repeat: week.days, source: apps/tedris/features/schedule/components/schedule-page.tsx:271 } # "Bugün", "Yarın", "Öbür gün" or "{n} gün sonra", beside the heading and not in it
+  dayList: { type: list, component: List, role: list, in: [week], repeat: week.days, source: apps/tedris/features/schedule/components/schedule-page.tsx:275 } # a <ul>, unnamed
+  rowItem: { type: text, component: Text, role: listitem, in: [week], repeat: day.rows, source: apps/tedris/features/schedule/components/schedule-page.tsx:68 } # an <li>: three columns (clock and length, the middle, the status)
+  rowClock: { type: text, component: Text, text: { key: composed.SchedulePage.clock, params: { clock: session.startsAt } }, in: [week], repeat: day.rows, source: apps/tedris/features/schedule/components/schedule-page.tsx:71 } # a <time datetime>, in Istanbul time
+  rowLength: { type: text, component: Text, text: { key: SchedulePage.minutes, params: { count: session.durationMinutes } }, in: [week], repeat: day.rows, source: apps/tedris/features/schedule/components/schedule-page.tsx:75 } # left out for a celse with no length
+  rowCourse: { type: text, component: Text, text: { key: composed.SchedulePage.course, params: { course: session.courseTitle } }, in: [week], repeat: day.rows, source: apps/tedris/features/schedule/components/schedule-page.tsx:84 } # a <bdi> in a caption, then a decorative dot
+  rowWeek: { type: text, component: Text, text: { key: SchedulePage.week, params: { week: session.weekNumber } }, in: [week], repeat: day.rows, source: apps/tedris/features/schedule/components/schedule-page.tsx:87 }
+  rowTitle: { type: action, component: LinkButton, role: link, text: { key: composed.SchedulePage.celseTitle, params: { title: session.title } }, in: [week], repeat: day.rows, emits: OPEN_CELSE, source: apps/tedris/features/schedule/components/schedule-page.tsx:89 } # underlined; /courses/<course>/lessons/<celse>, a plain <a> and so a full page load
+  examBadge: { type: text, component: Text, text: { key: composed.SchedulePage.examRun, params: { left: exam.left } }, in: [week], when: mixed, repeat: day.exams, source: apps/tedris/features/schedule/components/schedule-page.tsx:99 } # a warning badge above the line, only for an exam that was not cancelled; "Sınav" alone once it has begun
+  cancelNoteWhole: { type: text, component: Text, text: { key: SessionPage.cancelNote, params: { note: session.cancelReason } }, in: [week], when: mixed, repeat: day.cancelled, source: apps/tedris/features/schedule/components/schedule-page.tsx:115 } # "Hocanın notu: ...", one truncated line whose full text is only in its title attribute (DSC-17)
+  cancelNoteNone: { type: text, component: Text, text: { key: SchedulePage.cancelledNote }, in: [week], when: mixed, repeat: day.cancelled, source: apps/tedris/features/schedule/components/schedule-page.tsx:119 } # a cancelled celse with no note
+  rowLine: { type: text, component: Text, text: { oneOf: [composed.SchedulePage.platformChip, SchedulePage.noLink, SchedulePage.inPerson, SchedulePage.stream, SchedulePage.streamLive, SchedulePage.inPersonStream, SchedulePage.inPersonStreamLive] }, in: [week], repeat: day.liveRows, source: apps/tedris/features/schedule/components/schedule-page.tsx:121 } # exactly one per row that is not cancelled and not over: the platform chip when there is a link, else the sentence withoutLinkKey picks (attendance.ts:28-37)
+
+  # the status, one badge per row
+  badgeScheduled: { type: text, component: Text, text: { key: SchedulePage.statusScheduled }, in: [week], repeat: day.upcomingRows, source: apps/tedris/features/schedule/components/schedule-page.tsx:167 }
+  badgeCancelled: { type: text, component: Text, text: { key: SchedulePage.statusCancelled }, in: [week], when: mixed, repeat: day.cancelled, source: apps/tedris/features/schedule/components/schedule-page.tsx:140 } # an outline badge
+  badgeEnded: { type: text, component: Text, text: { key: SchedulePage.statusEnded }, in: [week], when: onAir, repeat: day.endedRows, source: apps/tedris/features/schedule/components/schedule-page.tsx:167 } # only in the window that holds today: a later window has no celse that is over
+  badgeLive: { type: text, component: Text, text: { key: SessionPage.liveLabel }, in: [week], when: onAir, repeat: day.liveRows, source: apps/tedris/features/schedule/components/schedule-page.tsx:148 } # a live badge with a decorative dot; only in the window that holds today
+  joinLink: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: composed.SchedulePage.joinName }, text: { key: SessionPage.joinAction }, in: [week], when: onAir, repeat: day.liveLinkedRows, emits: JOIN, source: apps/tedris/features/schedule/components/schedule-page.tsx:153 } # target=_blank to the meeting; the new tab is said in a visually hidden span, so the visible text is in the name. Every live row's name is the same (SCHED-3)
+  calendarButton: { type: action, component: Button, role: button, intent: secondary, name: { key: AddToCalendar.rowLabel, params: { title: session.title } }, in: [week], repeat: day.upcomingRows, emits: OPEN_CALENDAR_MENU, source: apps/tedris/features/schedule/components/schedule-page.tsx:176 } # an icon-only Menu trigger (aria-haspopup="menu"), only on a row still to come; not on a cancelled, live or over row; its menu is tedris.learning.addToCalendar's
+
+  # ---- a week with no celse ----
+  emptyText: { type: text, component: Text, text: { key: SchedulePage.empty }, in: [emptyWeek], source: apps/tedris/features/schedule/components/schedule-page.tsx:258 } # an EmptyState with one sentence and no action (SCHED-2)
+
+  # ---- the box for a failed read ----
+  loadFailedBox: { type: alert, component: Alert, role: alert, text: { key: SchedulePage.loadErrorTitle }, in: [loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:249 } # role=alert, so it is announced when it appears; its title is a <p>, not a heading, so the box has no accessible name
+  loadFailedText: { type: text, component: Text, text: { key: SchedulePage.loadError }, in: [loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:250 }
+  retry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SchedulePage.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/schedule/components/schedule-page.tsx:252 } # <a href="">: loads the page's own address again, `?from=` kept (SHL-08)
+
+  # ---- the window links, always at the foot ----
+  weekNav: { type: page, component: Page, role: navigation, name: { key: SchedulePage.listLabel }, in: [week, emptyWeek, loadFailed], source: apps/tedris/features/schedule/components/schedule-page.tsx:292 } # named "Celseler", though it holds week links and no celses (DSC-09)
+  backToToday: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: SchedulePage.backToToday }, in: [week, emptyWeek, loadFailed], when: inLater, emits: BACK_TO_TODAY, source: apps/tedris/features/schedule/components/schedule-page.tsx:296 } # /schedule; only when the window does not start today
+  nextWeek: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SchedulePage.next }, in: [week, emptyWeek, loadFailed], emits: NEXT_WEEK, source: apps/tedris/features/schedule/components/schedule-page.tsx:301 } # /schedule?from=<first day + 7>; always drawn, with no upper end (SCHED-1)
+
+edges:
+  - { labelledBy: [dayGroup, dayTitle] }
+  - { triggers: [calendarButton, calendar_menu_opened] }
+
+rules:
+  - { id: SCHED-1, rule: "\"Sonraki yedi günü göster\" is drawn in every window and has no upper end (schedule-page.tsx:301): it links to `?from=<the window's first day + 7>`. The last window the page can draw starts on 9999-12-24 (measured on the stack: \"Bu yedi günde celsen yok.\", \"Bugüne dön\", and the next link is `?from=9999-12-31`). At `/schedule?from=9999-12-31` the page answers 200 with app/error.tsx, \"Bir şeyler ters gitti\" and \"Yeniden dene\" (measured): `addDays` (schedule-model.ts:28-31) turns 9999-12-31 plus 7 into \"+010000-01\" (an ISO string of year 10000 cut to ten characters), `startOfDay` (schedule-model.ts:70-72) reads NaN from it and `Intl.DateTimeFormat` throws RangeError \"Invalid time value\" in `scheduleWindow` (schedule-model.ts:106), before any read. Pressing the link would take some 415,000 presses, so it is reached only by typing the address. Fix: stop drawing the link after a limit (the calendar feed ends at 180 days) and clamp `parseDay` to the same limit. Proposed id; not in the inventory." }
+  - { id: SCHED-2, rule: "The empty week is one sentence, \"Bu yedi günde celsen yok.\", with no action (schedule-page.tsx:258, EmptyState with no `action`). A talebe in no course at all (the spare applicantD, measured: the page holds the sentence, \"Takvim aboneliği\" and the window link, nothing else) reads the same words as one whose courses rest this week, and neither is offered Derslerim or Keşfet, which Derslerim's own empty state does offer (\"Keşfet’e git\", MyCoursesPage.goDiscover). Fix: for a person with no seat, say so and link to Keşfet. Proposed id; not in the inventory. L." }
+  - { id: SCHED-3, rule: "\"Celseye katıl\" on a live row is named \"Celseye katıl (yeni sekmede açılır)\" and nothing else (schedule-page.tsx:153-164, measured on a page with one live row), while the calendar button of a row carries the celse's title (\"Takvime ekle: <title>\"). With two celses on air at once the page has two links of one name (WCAG 2.4.4). Fix: add the title to the name, as the calendar button does. Proposed id; not in the inventory. L." }
+  - { id: DSC-09, rule: "Part (b) of the inventory's finding, measured on the stack: the page's last navigation is named \"Celseler\" (SchedulePage.listLabel, schedule-page.tsx:292-294) but holds the two window links, not the celses; the day lists (`ul`) have no name. Fix: name the navigation for what it does (a new key such as \"Hafta gezintisi\")." }
+  - { id: DSC-16, rule: "Programım is hard-wired to Europe/Istanbul: the window, the day groups and every clock use DEFAULT_TIME_ZONE (page.tsx:26, schedule-page.tsx:223), whatever the viewer's zone cookie says. The page says so (\"Saatler İstanbul saatiyle.\") and offers \"Saat dilimini değiştir\" to Hesap, whose setting says \"Celse saatleri bu saat diliminde gösterilir\" but never changes this page. Read from the code, not measured (the stack's viewer is in Istanbul). Fix: decision D1 of the flow." }
+  - { id: DSC-17, rule: "A cancelled celse's note is one `truncate` line whose full text is only in its `title` attribute (schedule-page.tsx:109-120; measured: `<p class=\"mds-caption truncate\" title=\"...\" data-testid=\"cancel-note\">`), which keyboard and touch users cannot read. Fix: let the note wrap." }
+  - { id: DSC-19, rule: "app/schedule/loading.tsx is `<main aria-busy=\"true\">` of `aria-hidden` skeletons with no text, so nothing says \"loading\" to a screen reader (aria-busy is not announced). Read from the code; the page is not drawn in this graph. Fix: a visually hidden \"Yükleniyor\" status." }
+  - { id: SHL-08, rule: "The box of a failed read carries \"Yeniden dene\", drawn as `Button href=\"\"` (schedule-page.tsx:252): an <a href=\"\"> to the page's own address, so it reloads the whole page and keeps `?from=`. It is not a retry of the read, which the sentence above it promises. Read from the code; the stack cannot make the read fail. Fix: a button that calls router.refresh()." }
+  - { id: DSC-14, rule: "Listed against this flow in FLOWS.md, and does not apply: the finding is about Server Actions awaited with no try/catch in the follow button, the application row, the leave menu and the köşk-application form. Programım has none; its one client call (the .ics fetch of the calendar menu) is inside a try/catch and toasts (calendar-menu.tsx:68-90), and that is tedris.learning.addToCalendar's." }
+  - { id: focus-not-set, rule: "Programım sets no initial focus (no autoFocus and no focus() in features/schedule or app/schedule), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Measured on the stack: document.activeElement is the <body> after the page loads. Recorded so the silence is not read as an omission." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): \"Celseye katıl\" is inside \"Celseye katıl (yeni sekmede açılır)\". The calendar button has no visible text, so it has nothing to contain." }
+  - { id: a-row-says-one-thing, rule: "under a celse's title a row says exactly one of: its cancellation note, the platform chip, or the sentence for a celse with no link; a celse that is over says nothing there, and an exam adds its badge above (schedule-page.tsx:96-135)" }

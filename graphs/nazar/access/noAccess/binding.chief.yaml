@@ -1,0 +1,18 @@
+# nazar.access.noAccess for the başnazım: the seeded SYSTEM_ADMIN, who holds no seat and no role row. He opens "/", is sent to /erisim-yok and
+# is told "Bu portala erişiminiz yok", with "Talebe" under his name (NOACC-1, seen in the smoke run's nazar-SYSTEM_ADMIN.png). Then he types
+# the address of the seed's medrese, and the layout, which asks GET /me, opens it: the page that said he has no access was wrong (F-E-17,
+# F-L-8). binding.yaml's chiefAsksScope takes the second half from the address alone; this file walks both.
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/noAccess --bind graphs/nazar/access/noAccess/binding.chief.yaml \
+#     --to opened_by_address --absent --out <dir>
+# NOT RUN: written without a replay. Nothing is made or removed; the medrese's Pano is only read.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.access.noAccess
+
+scenarios:
+  chiefRoot:
+    given: { who: chief, entry: root, read: ok }
+    as: systemAdmin
+    open: '{nazar}/'
+    vars: { acct: SYSTEM_ADMIN, held: '"assignments":[]', chief: 'true' }

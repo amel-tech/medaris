@@ -1,0 +1,329 @@
+# Where nizam-web's root address sends each person, and the two pages it sends them to when Nizam is not their app, read from
+# the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved. What it draws:
+#   - "/" (app/(home)/page.tsx): a visitor gets "Hoş geldiniz" and a link to sign in; a signed-in person's roles are read and
+#     "/" redirects them: no role -> /yetki-yok, only medrese or course roles -> /nazar-yonlendirme, a köşk nazımı -> the home
+#     of the first köşk they manage, the başnazım and a Medaris nazımı stay on the Medaris home.
+#   - the two pages it sends people to (/yetki-yok and /nazar-yonlendirme), each with the redirect that sends back anyone who
+#     does not belong there (the reverse guards), and the proxy that sends a visitor who asks for either to sign in.
+#   - the read that all three pages make, and what each shows when it fails (three different things).
+# What it does not draw: the Medaris home, which "/" shows the başnazım and a Medaris nazımı (nizam.home.chiefOverview,
+# nizam.home.medarisNazimCut), the köşk's home (nizam.home.koskNazimLanding), the menu of each person (nizam.shell.menuPerPersona),
+# the page of a section a person may not open (nizam.shell.noAccessAndNotFound), Nazar's and Tedris's own landings.
+# Findings it carries (the inventory's ids): F-P0-6, F-P0-7, F-P0-9, F-UI-P0-2, and F-P0-3 for the welcome page it draws. Two
+# more are this flow's own, proposed as LBR-1 and LBR-2 (ui.yaml `rules`).
+# E2E it takes over: shell#1 and shell#2, assignments#1, #2 and #3, up to what a replay can hold (needs.yaml says what is left).
+# Seen, as opposed to read: the signed-out welcome page and the two redirects of a visitor were fetched with curl on the local
+# stack (the markup agrees with the code; `<title>` is "Nizam"). Every signed-in behaviour is from the code, and the unit specs
+# apps/nizam/test/no-role.spec.tsx, nazar-redirect.spec.ts and welcome.spec.tsx pin most of it. Not walked yet: the owner's word
+# is that replays happen once, at the end; binding.yaml loads and each scenario is bound. `read` other than `ok` has no scenario:
+# tedrisat answers every read here and the stack cannot make it refuse one.
+schema: delurio-graph/0
+kind: flow
+id: nizam.shell.landingByRole
+status: captured
+domain: medaris.api
+ui: nizam.shell.landingByRole
+title: Land where the roles say
+summary: >-
+  A visitor who opens Nizam's root sees "Hoş geldiniz" and a link to sign in; /yetki-yok and /nazar-yonlendirme send a visitor
+  to sign in. A signed-in person's roles are read, and "/" sends them on. A person who holds no role goes to /yetki-yok:
+  "Yönetim yetkiniz yok", the e-mail they signed in as, a button back to Tedris and a sidebar with no menu. A person whose
+  roles are all a medrese's or a course's goes to /nazar-yonlendirme: a list of what they hold and a button to Nazar. A köşk
+  nazımı goes to the home of the first köşk they manage, and the başnazım and a Medaris nazımı stay on "/", which is the
+  Medaris home. Anyone who opens the other page by its address is sent back to "/" and on from there. When the roles cannot be
+  read, each of the three pages says so in its own way, and only "/" says nothing (F-P0-9).
+source: apps/nizam/app/(home)/page.tsx
+
+scope:
+  shows: >-
+    "/", /yetki-yok and /nazar-yonlendirme for a visitor and for each kind of signed-in person, the read of the roles they all
+    make, and where each person ends up
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Medaris home that '/' keeps for the başnazım and a Medaris nazımı, its read GET /nizam/dashboard failing into a card or being refused into the no-access screen (nizam.home.chiefOverview, nizam.home.medarisNazimCut), and the köşk's home that a köşk nazımı lands on (nizam.home.koskNazimLanding)"
+    - "the menu: the sidebar here is drawn only as far as the person row says who is signed in and the brand and the theme toggle are there; the menu of each variant, the phone sheet and the skip link are nizam.shell.menuPerPersona (F-UI-P0-1, F-P0-8); the person row's link to Hesap and the sign-out confirmation are nizam.account.settings and realm.auth.signOut"
+    - "the screen for a section the person may not open and the screen for an address no page answers (nizam.shell.noAccessAndNotFound)"
+    - "the sign-in itself: the round trip and Keycloak's form (realm.auth.signIn); a token tedrisat refuses (401) on any of the three pages sends the person to sign in again with reauth, never to an error (realm.auth.sessionEnded)"
+    - "the privacy-notice footer under each page (common.shell.privacyNotice); the language: the app is Turkish only"
+    - "the buttons 'Tedris’e dön' and 'Nazar’a git' are left out when TEDRIS_URL and NAZAR_URL are not set; the local stack sets both. The e-mail line is left out when the session has none"
+    - "a person who holds roles of both kinds: landingFor keeps them in Nizam when any of them is a nazım's, and a list with both a medrese and a course row is drawn here one kind at a time (`tasks`); the imam's star after a course role, which shows only among more than one müderris"
+    - "the phone layout, where the sidebar is replaced by an app bar and a sheet, and the loading skeleton of /nazar-yonlendirme (aria-busy, F-X-10)"
+
+decisions:
+  D1:
+    question: >-
+      When the roles cannot be read, should "/" say so and offer a retry, as /yetki-yok and /nazar-yonlendirme do, instead of
+      the bare line "Hoş geldiniz" for a person who may well be a nazım (F-P0-9)?
+    recommend: >-
+      Yes: draw the same "Görevleriniz okunamadı" alert with "Tekrar dene" that /yetki-yok draws, and keep the sidebar's role
+      line from saying "Talebe" while nothing is known of the person (LBR-1).
+    affects: [rootUnread]
+  D2:
+    question: >-
+      Which spelling of the role does Nizam use: "nâzırı" (the sidebar's role line) or "nazırı" (the list on
+      /nazar-yonlendirme, and Tedris and Nazar)?
+    recommend: >-
+      "nazırı" everywhere, as Tedris and Nazar write it; the page that shows both words together is the hand-over to Nazar
+      (LBR-2).
+    affects: [nazarList]
+
+context:
+  address:
+    values: [root, noRolePage, nazarPage]
+    initial: any
+    say:
+      root: "they open Nizam's root address, \"/\": by the sign-in's return, by typing it, by the logo or a button that says \"Ana sayfaya dön\""
+      noRolePage: "they open /yetki-yok by its address: a bookmark, an old link, or \"Tekrar dene\" on that page"
+      nazarPage: "they open /nazar-yonlendirme by its address"
+  person:
+    values: [visitor, noRole, nazarOnly, koskNazim, medarisNazim, chief]
+    initial: any
+    say:
+      visitor: "they hold no session"
+      noRole: "they are signed in and hold no role at all (a talebe, a guest)"
+      nazarOnly: "all their roles are a medrese's or a course's: a başmüderris, a medrese nazırı, a hoca or a ders nazırı"
+      koskNazim: "they are the nazım of at least one köşk, and neither the başnazım nor a Medaris nazımı"
+      medarisNazim: "they hold the Medaris nazımı's platform role, with or without a köşk"
+      chief: "they are the başnazım: the realm role SYSTEM_ADMIN, with no role row"
+  tasks:
+    values: [courses, madrasah, draft]
+    initial: any
+    say:
+      courses: "a person of nazarOnly holds published courses: one row each, with the role, the köşk and the number of talebe"
+      madrasah: "a person of nazarOnly is a başmüderris or a nazır of a medrese: a row with the role alone"
+      draft: "a person of nazarOnly teaches a course that is still a draft: a row with 'Taslak' and no number of talebe"
+  read:
+    values: [ok, assignmentsFailed, rolesFailed]
+    initial: any
+    say:
+      ok: "both reads answer: GET /me/assignments and GET /me/roles"
+      assignmentsFailed: "the read of the roles held (GET /me/assignments) fails with anything but a refused token: a 5xx, a network error"
+      rolesFailed: "the roles held come and the read of the başnazım flag (GET /me/roles) fails"
+
+guards:
+  signedOut: "person == 'visitor'"
+  asksRoot: "address == 'root'"
+
+effects:
+  again: { havoc: [read] } # a reload reads again, and the answer may differ
+
+failures:
+  readingAssignments: { from: getMyAssignments, unreadable: [] }
+  readingRoles: { from: getMyRoles, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the two reads (a 401 is the guard's
+# and is left out of the domain), and getMyAssignments treats a network error, a 5xx and a 4xx alike (reads.ts:31-35).
+
+# The main story: a person with no role signs in, "/" sends them to /yetki-yok, they read it and go back to Tedris.
+main:
+  given: { address: root, person: noRole, tasks: courses, read: ok }
+  events: [DONE, DONE, BACK_TO_TEDRIS]
+
+initial: start
+states:
+  start:
+    title: Open an address of Nizam
+    description: >-
+      The browser asks nizam-web for "/", /yetki-yok or /nazar-yonlendirme. The proxy lets a visitor open exactly three paths, "/",
+      /auth/signin and /auth/signout, and sends a visitor who asks for any other to /auth/signin with the address in callbackUrl;
+      a person with a session passes. The graph draws that gate as one step.
+    source: apps/nizam/proxy.ts:25
+    always:
+      - { guard: "signedOut and asksRoot", target: visitorWelcome, say: "\"/\" is a public path: a visitor is served the welcome page", source: apps/nizam/lib/public-paths.ts:19 }
+      - { guard: signedOut, target: handed_over.sign_in_gate, starts: { flow: realm.auth.signIn, given: { app: "'nizam'", entry: "'protectedPage'" } }, say: "the proxy answers a visitor who asked for /yetki-yok or /nazar-yonlendirme with a redirect to /auth/signin?callbackUrl=<the address>, and the sign-in round trip starts", source: apps/nizam/lib/public-paths.ts:21 }
+      - { target: readingAssignments, say: "a session: the page reads the roles", source: "apps/nizam/app/(home)/page.tsx:42" }
+
+  visitorWelcome:
+    title: The welcome page of a visitor
+    by: human
+    description: >-
+      "/" with no session: no shell, the Medaris logo with "Nizam" under it, the heading "Hoş geldiniz" and one primary link,
+      "Giriş yap", to /auth/signin. The sentence under the heading is an empty paragraph (SystemState draws its children in a
+      <p>; this page gives it none, which holds F-UI-P0-2 here as nothing is passed). The tab says "Nizam" (F-P0-3); the page
+      sets no focus. The privacy-notice link under it is a footer outside the <main> (common.shell.privacyNotice).
+    source: "apps/nizam/app/(home)/page.tsx:22"
+    on:
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'nizam'", entry: "'signInPage'" } }, say: "\"Giriş yap\" is a plain link to /auth/signin, which sends the browser on to Keycloak's form; after right credentials the round trip returns to \"/\" and this flow starts again with a session", source: "apps/nizam/app/(home)/page.tsx:37" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  readingAssignments:
+    title: Read the roles held
+    description: >-
+      The page's server side calls getMyAssignments, which reads GET /me/assignments and GET /me/roles at once (Promise.all) and
+      gives back the rows and the flag, or null when either read fails. The graph draws the two reads one after the other. The
+      sidebar around the page makes the same two reads for itself, in a mode that never redirects (nizam-shell.tsx:63). A token
+      tedrisat refuses is not a failure here: it sends the person to sign in again (out of view).
+    includes: ["the rows with their roles and scopes, which /nazar-yonlendirme lists"]
+    source: apps/nizam/features/assignments/reads.ts:24
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read != 'assignmentsFailed'", target: readingRoles }
+      FAIL.unreadable: { guard: "read == 'assignmentsFailed'", target: unreadable, say: "no roles came, so the page has nothing to decide with", source: apps/nizam/features/assignments/reads.ts:31 }
+
+  readingRoles:
+    title: Read whether they are the başnazım
+    description: >-
+      GET /me/roles: the flag systemAdmin, true when the token carries the realm role SYSTEM_ADMIN. The başnazım holds no role
+      row, so the flag is the only thing that tells him from a person with no role (landing.ts:22).
+    source: apps/nizam/features/assignments/reads.ts:25
+    invoke: { action: getMyRoles }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'rolesFailed'", target: unreadable, say: "the flag did not come, so the page cannot tell the başnazım from a person with no role", source: apps/nizam/features/assignments/reads.ts:31 }
+
+  sorting:
+    title: Compare the address with the roles
+    description: >-
+      Classification only. /yetki-yok keeps a person who holds no role and /nazar-yonlendirme keeps a person whose roles are all
+      a medrese's or a course's; each sends anyone else to "/" with a redirect. The same redirect is the reverse guard: a nazım
+      who opens either page by its address is sent to "/", and "/" sends them on.
+    source: apps/nizam/features/assignments/landing.ts:18
+    always:
+      - { guard: "address == 'noRolePage' and person == 'noRole'", target: noRolePage, say: "/yetki-yok is the page of a person with no role", source: apps/nizam/app/yetki-yok/page.tsx:26 }
+      - { guard: "address == 'nazarPage' and person == 'nazarOnly'", target: nazarList, say: "/nazar-yonlendirme is the page of a person with only medrese or course roles", source: apps/nizam/app/nazar-yonlendirme/page.tsx:25 }
+      - { guard: "address == 'noRolePage'", target: landing, say: "a person who holds a role is sent from /yetki-yok to \"/\": redirect(\"/\")", source: apps/nizam/app/yetki-yok/page.tsx:26 }
+      - { guard: "address == 'nazarPage'", target: landing, say: "a nazım or a person with no role is sent from /nazar-yonlendirme to \"/\": redirect(\"/\")", source: apps/nizam/app/nazar-yonlendirme/page.tsx:25 }
+      - { target: landing, say: "\"/\" itself", source: "apps/nizam/app/(home)/page.tsx:44" }
+
+  landing:
+    title: Send the person where their roles say
+    description: >-
+      What "/" does with a signed-in person whose roles were read. landingFor: the başnazım, and anyone holding MEDARIS_NAZIM or
+      KOSK_NAZIM, stay in Nizam; anyone else with a role goes to Nazar; no role at all goes to /yetki-yok. Then shellVariant picks
+      the widest role: a köşk nazımı is redirected to the first köşk they manage (the oldest KOSK_NAZIM row), and the başnazım and
+      a Medaris nazımı keep "/", which reads the dashboard and draws the Medaris home.
+    source: apps/nizam/features/assignments/landing.ts:18
+    always:
+      - { guard: "person == 'noRole'", target: noRolePage, say: "redirect to /yetki-yok", source: "apps/nizam/app/(home)/page.tsx:49" }
+      - { guard: "person == 'nazarOnly'", target: nazarList, say: "redirect to /nazar-yonlendirme", source: "apps/nizam/app/(home)/page.tsx:48" }
+      - { guard: "person == 'koskNazim'", target: home_opened.kosk, starts: { flow: nizam.home.koskNazimLanding }, say: "redirect to /kosks/<the first köşk>/ana-sayfa", source: "apps/nizam/app/(home)/page.tsx:58" }
+      - { guard: "person == 'medarisNazim'", target: home_opened.medaris, starts: { flow: nizam.home.medarisNazimCut }, say: "stays on \"/\": the Medaris home, cut to the permissions they hold", source: "apps/nizam/app/(home)/page.tsx:61" }
+      - { guard: "person == 'chief'", target: home_opened.chief, starts: { flow: nizam.home.chiefOverview }, say: "stays on \"/\": the whole Medaris home", source: "apps/nizam/app/(home)/page.tsx:61" }
+
+  unreadable:
+    title: The roles could not be read
+    description: >-
+      Classification only. A failed read is not "no role": each page keeps the address it was asked for and draws what its own
+      code says, and the three pages say three different things.
+    source: apps/nizam/features/assignments/reads.ts:31
+    always:
+      - { guard: "address == 'root'", target: rootUnread, source: "apps/nizam/app/(home)/page.tsx:90" }
+      - { guard: "address == 'noRolePage'", target: noRoleUnread, source: apps/nizam/app/yetki-yok/page.tsx:32 }
+      - { target: nazarUnread, source: apps/nizam/app/nazar-yonlendirme/page.tsx:27 }
+
+  noRolePage:
+    title: Yönetim yetkiniz yok
+    by: human
+    description: >-
+      The page of a person who holds no role: the sidebar with the brand, the theme toggle and the person row and no menu (the
+      Sidebar draws a <nav> only when it has items), and in the main area the heading "Yönetim yetkiniz yok" with the focus on it
+      (FocusHeading), a sentence that says what Nizam is and that this account was given no role, "Giriş yaptığınız hesap:" and
+      the e-mail in a code element, and a secondary button "Tedris’e dön" to Tedris's root. The person row says "Talebe". The
+      tab says the same as the heading.
+    source: apps/nizam/features/assignments/components/no-role-page.tsx:42
+    on:
+      BACK_TO_TEDRIS: { target: handed_over.tedris, starts: { flow: tedris.shell.home }, say: "\"Tedris’e dön\" is a link to TEDRIS_URL; tedris-web sends its root on to Ana sayfa", source: apps/nizam/features/assignments/components/no-role-page.tsx:57 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  noRoleUnread:
+    title: Görevleriniz okunamadı, on /yetki-yok
+    by: human
+    description: >-
+      When the roles could not be read /yetki-yok does not claim the person has none: an error alert "Görevleriniz okunamadı"
+      with one sentence and "Tekrar dene", a link to /yetki-yok itself. There is no heading and nothing takes the focus, so the
+      page has no h1 (F-P0-6). The sidebar's person row still says "Talebe" (LBR-1). Not walked: the stack cannot make the
+      read fail.
+    source: apps/nizam/features/assignments/components/no-role-page.tsx:29
+    on:
+      RETRY: { target: readingAssignments, effect: [again], say: "\"Tekrar dene\" loads /yetki-yok again, and the answer may differ", source: apps/nizam/features/assignments/components/no-role-page.tsx:34 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  nazarList:
+    title: Medrese ve ders işleriniz Nazar’da
+    by: human
+    description: >-
+      The hand-over page of a person whose work is in Nazar: the heading, one sentence, a section "Görevleriniz" with one row per
+      role held (medrese roles first, then courses; a medrese row says the role, a course row the role, the köşk and the number of
+      talebe, and a draft course "Taslak" with no number) and a primary button "Nazar’a git" to Nazar's root. The sidebar's person
+      row names the widest of their roles in its own spelling, which is not the list's (LBR-2). Nothing moves the focus. Where a
+      person holds roles but the list has no row the page would show "Henüz bir medrese ya da ders göreviniz görünmüyor.", which
+      cannot happen: every role that sends a person here has a row.
+    source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:43
+    on:
+      GO_TO_NAZAR: { target: handed_over.nazar, starts: { flow: nazar.access.landingScope }, say: "\"Nazar’a git\" is a link to NAZAR_URL; nazar-web sends its root on to the scope the person works in", source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:119 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  nazarUnread:
+    title: Görevleriniz yüklenemedi, on /nazar-yonlendirme
+    by: human
+    description: >-
+      The heading and the sentence stay. In place of the list the page raises a toast, "Görevleriniz yüklenemedi" with one
+      sentence, which stays until it is closed, and draws an error alert with the very same words and "Tekrar dene", a link to
+      the page itself: two announcements of one thing (F-P0-7). "Nazar’a git" is still there. The person row says "Talebe" (LBR-1).
+      Not walked: the stack cannot make the read fail.
+    source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:48
+    on:
+      RETRY: { target: readingAssignments, effect: [again], say: "\"Tekrar dene\" loads /nazar-yonlendirme again, and the answer may differ", source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:60 }
+      GO_TO_NAZAR: { target: handed_over.nazar, starts: { flow: nazar.access.landingScope }, say: "the button to Nazar is drawn although the roles were not read", source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:119 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  rootUnread:
+    title: Hoş geldiniz, with nothing else
+    by: human
+    description: >-
+      "/" keeps the address when the roles could not be read and draws a plain <div> with "Hoş geldiniz" inside the shell: no
+      heading, no error, no retry, no menu, for a person who may well be a nazım (F-P0-9). The sidebar's person row says "Talebe"
+      (LBR-1). Not walked: the stack cannot make the read fail.
+    source: "apps/nizam/app/(home)/page.tsx:90"
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to sign in
+    description: "realm.auth.signIn: /auth/signin, then Keycloak's form, then back to \"/\"."
+  handed_over.sign_in_gate:
+    type: final
+    title: The proxy sends them to sign in
+    description: "realm.auth.signIn, with the page they asked for in callbackUrl: after right credentials the browser returns to /yetki-yok or /nazar-yonlendirme, and this flow starts again with a session."
+  handed_over.tedris:
+    type: final
+    title: They go back to Tedris
+    description: "tedris-web's root, which sends a signed-in person on to Ana sayfa (tedris.shell.home)."
+  handed_over.nazar:
+    type: final
+    title: They go on to Nazar
+    description: "nazar-web's root, which lands the person in the scope they work in (nazar.access.landingScope)."
+  home_opened.kosk:
+    type: final
+    title: They land on their köşk's home
+    description: "/kosks/<the first köşk they manage>/ana-sayfa, drawn by nizam.home.koskNazimLanding. The first is the oldest of their KOSK_NAZIM rows (GET /me/assignments is ordered by when the role was given)."
+  home_opened.medaris:
+    type: final
+    title: They stay on the Medaris home, cut to their permissions
+    description: "\"/\" for a Medaris nazımı, drawn by nizam.home.medarisNazimCut."
+  home_opened.chief:
+    type: final
+    title: They stay on the Medaris home
+    description: "\"/\" for the başnazım, drawn by nizam.home.chiefOverview."
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - id: visitor-never-reads
+    never: "state in ['readingAssignments', 'readingRoles'] and person == 'visitor'"
+    say: "A visitor's roles are never read: the welcome page or the sign-in redirect answers them first"
+    source: apps/nizam/lib/public-paths.ts:19
+  - id: no-role-page-only-for-no-role
+    never: "state == 'noRolePage' and person != 'noRole'"
+    say: "/yetki-yok is drawn only for a person who holds no role"
+    source: apps/nizam/app/yetki-yok/page.tsx:26
+  - id: nazar-list-only-for-nazar-roles
+    never: "state == 'nazarList' and person != 'nazarOnly'"
+    say: "The hand-over to Nazar is drawn only for a person whose roles are all a medrese's or a course's; a nazım, the başnazım and a person with no role are never sent to Nazar from here"
+    source: apps/nizam/app/nazar-yonlendirme/page.tsx:25
+  - id: failed-read-never-claims-an-outcome
+    never: "state in ['noRolePage', 'nazarList', 'home_opened.kosk', 'home_opened.medaris', 'home_opened.chief'] and read != 'ok'"
+    say: "A person whose roles were not read is never told they hold none, never handed over to Nazar and never sent to a home: the three pages each say the read failed (or, on \"/\", say nothing)"
+    source: apps/nizam/features/assignments/reads.ts:31

@@ -1,0 +1,108 @@
+# nizam.moderation.banStudent on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on http://localhost:4001, a course's
+# Talebeler opened by its address, as the köşk's nazım (Cemal Köşk Nazımı, the nazım of "Süleymaniye Köşkü" and of "Kubbealtı Köşkü"), in the
+# real Keycloak sign-in of the base.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \
+#     --bind graphs/nizam/moderation/banStudent/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the owner's word: replays and runs come once, at the end). Everything here is from the
+# code and unverified until a walk; where the walk may need a fix, a comment says so. The binding loads (`replay <dir> --bind <this file>
+# --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# What a walk bars, and how it is taken away. A walk bars a SPARE talebe and only on a course of its own, never a seeded person: bans.mjs
+# refuses any account that is not applicantA to applicantH. `setup` makes, through tedrisat's API (helpers/course.mjs, which keeps it under
+# graphs/.local/made/banst.json), "Deneme dersi banst": a published course of the seed's second köşk, made by its nazım, with one celse
+# tomorrow at 21:00, the müderris as its hoca and applicantC (Esma Başvuran) enrolled in it, so she is a row of "Kayıtlı".
+# `teardown`, in this order: lifts every ban of hers in that köşk (bans.mjs lift, as the başnazım: POST /bans/:id/lift), deletes the lifted
+# rows (bans.mjs clear: the one SQL write, because no route deletes a ban, and a lifted row would stay in the köşk's "Kaldırılan" count for
+# the other ban pages), deletes the course, which takes her seat and the notice that points at it (helpers/course.mjs remove), and deletes
+# the COURSE_BAN_PLACED or KOSK_BAN_PLACED notice the ban wrote for the Medaris nazımı (bans.mjs forget: SQL again, no route removes a
+# notice, and the notice points at the köşk, which the course's removal does not clear). `setup` does the first, second and fourth first, so
+# a walk that died before its teardown leaves nothing: an open ban would refuse the new course's seat, and a stale notice would stop
+# nizam.notifications.triage. Every step is safe to run twice. What it cannot undo: the audit rows (ban.create, ban.lift,
+# course.roster_read), which no route removes, and the lessons' invitation mails, which `course remove` takes.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   course   the main story: the roster, "Kayıtlı", the row's "Yasakla", the reason with its white space, the ban on the course; the row turns
+#            "Yasaklı · Bu ders"; Yasaklamalar lists it (bans#1, #2, #3, #4). `--cover transitions` also walks, from this start, the empty
+#            reason left (the error), written and emptied again, Vazgeç, Escape and the close icon.
+#   kosk     the same, choosing "Köşkten de yasakla": a ban of the whole köşk, remembered with the course it came from (bans#5)
+# The other bindings of this flow (binding.noSession.yaml, binding.invalidTarget.yaml, binding.already.yaml, binding.courseGone.yaml) are
+# each a file of its own: see locators.binding.yaml.
+# Not bound, with the reason (each is drawn in the flow and cannot be made on the local stack):
+#   scope: limited       nobody can be the person who opens the page without being the köşk's nazım (BANST-1): no persona has it
+#   answer: notAllowed   BAN_FORBIDDEN needs the nazım to lose ban.manage_kosk between the page and the press; no walk changes a seeded person's roles
+#   PRESS_SCRIM          the replay cannot click at a position (see locators.binding.yaml)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.banStudent
+
+scenarios:
+  # The main story: the course's Talebeler by its address (the course is the walk's own, so there is no nav entry that finds it), the tab
+  # "Kayıtlı", the row of the walk's talebe, "Yasakla", the reason with its white space, the ban placed on the course.
+  course:
+    given: { scope: course, answer: saved, session: ahead }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantC
+      whoKey: APPLICANT_C
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: '  Celselerde ders dışı reklam yaptı  '
+      reasonSaved: Celselerde ders dışı reklam yaptı
+      expectedBan: 'ban APPLICANT_C COURSE course={made.course} from=- role=KOSK_NAZIM reason=Celselerde ders dışı reklam yaptı'
+
+  # The same story, choosing "Köşkten de yasakla": a ban of the whole köşk. The row says "Yasaklı · Köşk" and Yasaklamalar says "Köşk" and
+  # "Deneme dersi banst dersinden genişletildi" (bans#5). This scenario also takes PICK_KOSK and, on the way, PICK_COURSE.
+  kosk:
+    given: { scope: kosk, answer: saved, session: ahead }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantC
+      whoKey: APPLICANT_C
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: Köşkün her yerinde sorun çıkardı
+      reasonSaved: Köşkün her yerinde sorun çıkardı
+      expectedBan: 'ban APPLICANT_C KOSK course=- from={made.course} role=KOSK_NAZIM reason=Köşkün her yerinde sorun çıkardı'

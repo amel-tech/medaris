@@ -1,0 +1,100 @@
+# The screens of nizam.exams.zerothAnswers: "Sıfırıncı soru cevapları" in nizam, for the platform and for a köşk. BUILT (MDRS-299,
+# #420, #427; apps/nizam/features/zeroth-answers). No node carries a `source`: the graph is `proposed`. Every count is a number, with
+# its percentage; nothing is hidden (the owner, 22 Nov 2026). The keys are the plan's (`planned.Exams.*`).
+schema: delurio-graph/0
+kind: ui
+id: nizam.exams.zerothAnswers
+flow: nizam.exams.zerothAnswers
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  zerothQuestion: Bu hadisi ne zaman öğrendiniz?
+  exams: "12"
+  answered: "238"
+  zerothOption: Bu derste
+  zerothCount: "97"
+  zerothPercent: "41"
+  percent: "41"
+  course: Fıkıh Usulü I
+  kosk: Örnek Köşkü
+  date: 28 Kas 2026
+
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------------------
+  zerothPage: { type: page, component: Page, role: main, in: [listed, empty, questionDetail] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothAnswersTitle }, in: [listed, empty, questionDetail] } # h1 "Sıfırıncı soru cevapları"
+  pageIntro: { type: text, component: Text, text: { key: planned.Exams.zerothAnswersIntro }, in: [listed, empty] }
+  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [listed, empty, questionDetail] } # dir="rtl", lang="ar" and the Arabic font on this element itself (rule arabic-runs)
+  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [listed, empty, questionDetail] }
+
+  # --- the filters ------------------------------------------------------------------------------------------------------------------
+  filters: { type: page, component: Page, role: search, name: { key: planned.Exams.filtersLabel }, in: [listed, empty] } # a <search> landmark
+  spanGroup: { type: list, component: List, role: group, name: { key: planned.Exams.dateSpan }, in: [listed, empty] } # "Tarih aralığı": the two dates of the span; the last 90 days when the page opens (rule default-span)
+  fromField: { type: field, component: TextField, native: date, text: { key: planned.Exams.from }, in: [listed, empty] } # <input type=date>: no ARIA role of its own, found by its label
+  toField: { type: field, component: TextField, native: date, text: { key: planned.Exams.to }, in: [listed, empty] } # <input type=date>
+  koskField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.kosk }, in: [listed, empty] } # every köşk, or "Bütün köşkler"; to a köşk nazımı it holds their köşk only (rule kosk-nazim-scope)
+  madrasahField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.madrasah }, in: [listed, empty] } # the medreses of the köşk chosen, or every one
+  courseField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.course }, in: [listed, empty] } # the courses that held an online exam in the span
+  applyFilters: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.applyFilters }, in: [listed, empty], emits: FILTER } # the filters stay in the page's address, so a link opens the same counts
+
+  # --- the questions --------------------------------------------------------------------------------------------------------------
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothQuestionsTitle }, in: [listed] } # h2
+  questionsList: { type: list, component: List, role: list, name: { labelledBy: questionsTitle }, in: [listed] } # the same words with the same options of several exams are one item
+  questionItem: { type: page, component: Page, role: region, name: { labelledBy: questionText }, in: [listed], repeat: counts.questions }
+  questionText: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: row.zerothQuestion } }, in: [listed], repeat: counts.questions } # h3, the preparer's words
+  questionExams: { type: text, component: Text, text: { key: planned.Exams.askedInExams, params: { exams: row.exams } }, in: [listed], repeat: counts.questions } # "12 sınavda soruldu"
+  questionAnswered: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [listed], repeat: counts.questions } # "238 talebe cevapladı"
+  optionCounts: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [listed], repeat: counts.questions }
+  optionCount: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [listed], repeat: counts.questions.options } # "Bu derste: 97 talebe (%41)", every count exact
+  optionBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.optionBarLabel, params: { zerothOption: row.zerothOption, zerothPercent: row.zerothPercent } }, text: { key: planned.Exams.percent, params: { percent: row.zerothPercent } }, in: [listed], repeat: counts.questions.options.shown } # repeats the line above it, only for a count shown as a number; never the only place the figure is
+  openQuestion: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openExamsLabel, params: { zerothQuestion: row.zerothQuestion } }, text: { key: planned.Exams.openExams }, in: [listed], repeat: counts.questions, emits: OPEN }
+  toastGone: { type: status, component: Status, role: status, text: { key: planned.Exams.zerothQuestionGone }, in: [listed], when: "toast == 'gone'" }
+
+  # --- no answer in the span --------------------------------------------------------------------------------------------------------
+  emptyNote: { type: text, component: Text, text: { key: planned.Exams.noZerothAnswers }, in: [empty] }
+
+  # --- one question's exams ---------------------------------------------------------------------------------------------------------
+  detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [questionDetail] }
+  detailTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: detail.zerothQuestion } }, in: [questionDetail] } # h2
+  detailTotal: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [questionDetail] } # over every exam that asked it
+  detailOptions: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [questionDetail] }
+  detailOption: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.options }
+  examsTable: { type: list, component: List, role: table, name: { key: planned.Exams.examsTableLabel }, in: [questionDetail] } # newest first
+  colCourse: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.course }, in: [questionDetail] }
+  colKosk: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.kosk }, in: [questionDetail] }
+  colDate: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colDate }, in: [questionDetail] }
+  colAnswered: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colAnswered }, in: [questionDetail] }
+  colOptions: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colOptions }, in: [questionDetail] }
+  examCourse: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.course, params: { course: row.course } }, in: [questionDetail], repeat: detail.exams }
+  examKosk: { type: text, component: Text, role: cell, text: { key: composed.Exams.kosk, params: { kosk: row.kosk } }, in: [questionDetail], repeat: detail.exams }
+  examDate: { type: text, component: Text, role: cell, text: { key: composed.Exams.date, params: { date: row.date } }, in: [questionDetail], repeat: detail.exams }
+  examAnswered: { type: text, component: Text, role: cell, text: { key: composed.Exams.answered }, in: [questionDetail], repeat: detail.exams } # every count exact
+  examOptions: { type: text, component: Text, role: cell, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.exams.options } # one line per option, the same words as above
+  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToQuestions }, in: [questionDetail], emits: BACK }
+
+  # --- the refusal: the shell's own screen, which exists (nizam.shell.noAccessAndNotFound) ---------------------------------------------
+  refusedMain: { type: page, component: Page, role: main, in: [forbidden], source: libs/ui/src/mds/app-shell.tsx:41 }
+  refusedSection: { type: page, component: Page, role: region, name: { labelledBy: refusedTitle }, in: [forbidden], source: libs/ui/src/mds/system-state.tsx:33 }
+  refusedTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  refusedHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: NoAccess.back }, text: { key: NoAccess.back }, in: [forbidden], emits: GO_HOME, source: apps/nizam/components/errors/no-access.tsx:38 }
+
+edges:
+  - { labelledBy: [questionsList, questionsTitle] }
+  - { labelledBy: [questionItem, questionText] }
+  - { labelledBy: [detailRegion, detailTitle] }
+  - { labelledBy: [refusedSection, refusedTitle] }
+  - { triggers: [applyFilters, opening] }
+  - { triggers: [openQuestion, questionReading] }
+
+rules:
+  - { id: never-traced, rule: "No name, no user id and no single answer is on this page or in its reads (invariant zeroth-answers-never-traced). Every count is exact, 1 to 4 included: the owner, 22 Nov 2026, \"ben böyle bi karar vermedim, saçma bu zaten neden gizleyeyim tabi ki görünecek\" (#427)." }
+  - { id: kosk-nazim-scope, rule: "Drawn, not decided: to a köşk nazımı the köşk field holds their köşk and no other, so every count is of their köşk's exams, and the medrese and course fields list only what is held there. The başnazım and a Medaris nazımı who holds exam.zeroth_read see 'Bütün köşkler' first." }
+  - { id: default-span, rule: "Proposal: the page opens on the last 90 days. There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's 'bu dönem ... diğer dönem' reads (need filtered-by-time-and-place). The span and the place stay in the page's address." }
+  - { id: same-words-together, rule: "Two exams' zeroth questions are counted together when their words and their options are the same, letter for letter after spaces are trimmed; a question asked in other words, or with other options, is an item of its own. An item says in how many exams it was asked and opens them." }
+  - { id: figures-as-text, rule: "Every count is said in numbers and words ('Bu derste: 97 talebe (%41)'); the bar beside an option only repeats it and is named with the same figure, and is not drawn for a count under five. The exams' table has headers a screen reader reads." }
+  - { id: arabic-runs, rule: "The hadith is drawn as the talebe sees it: 'مَنْ غَشَّنَا فَلَيْسَ مِنَّا' and its meaning 'Bizi aldatan bizden değildir.'; the Arabic text and the meal are for the owner to confirm. An Arabic run gets dir=\"rtl\", lang=\"ar\", the Arabic font and its 1.9 leading on the element itself, never on a shared ancestor (the design system's rule). A zeroth question or option the preparer wrote in Arabic is set the same way." }
+  - { id: menu-entry-not-drawn, rule: "The page needs an entry in nizam's menu for the persons who hold exam.zeroth_read, and none for anyone else (need only-management). The menu is the captured nav graph nizam.nav, read from the code, so the entry is not drawn there until it is built." }
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; 'Uygula' keeps the focus on itself and the list's h2 says how many questions it holds; opening a question moves the focus to its h2, and the back button gives it back to that question's 'Sınavlar'. The graph says nothing of the focus because nothing is built." }
+  - { id: planned-words, rule: "Every key `planned.Exams.*` is a proposal for the owner to review; NoAccess.* is the app's own (nizam.json)." }

@@ -1,0 +1,332 @@
+# Changing the hocas of a medrese course in nazar-web: the başmüderris opens the row menu on Dersler (/medrese/<id>/dersler),
+# chooses "Hocaları değiştir", and edits the course's hoca list in a dialog before saving it. Read from the code of PR #394 on 15 Nov
+# 2026 (apps/nazar/features/courses/{team.ts,actions.ts,courses.ts}, components/{courses-table,change-muderris,muderris-picker}.tsx,
+# the API's PUT /madrasahs/:id/courses/:courseId/muderrises and GET /users/lookup). Nothing here was walked: it is what the code says.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - the e-mail search is silent when it fails and it is run when the field is left as well as on Enter, which the audit log keeps
+#     (F-A-4, HOCAS-1, HOCAS-3); the hidden announcement outlives the person it names (HOCAS-2); an address answered "listed" is not
+#     searched again after that person is taken off (HOCAS-4);
+#   - "Dersin imamını seçin." is written at once and never announced (F-A-5); a list with no account has no sentence that says an
+#     account is needed (HOCAS-6); "Vazgeç" and the close icon are live while the list is saved and do nothing (HOCAS-5);
+#   - the dialog's whole body is its description (F-A-13); both menu items are on every row whatever the person holds (F-A-8); a call
+#     that fails outright is not caught (F-A-10).
+#   - the model counts the accounts up to three and a hoca with no account beside at most one added account; a list of more accounts
+#     behaves the same way and is not drawn (see `scope.outOfView`).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courses.changeHocas
+status: captured
+domain: medaris.api
+ui: nazar.courses.changeHocas
+title: Change the hocas of a course
+summary: >-
+  The başmüderris opens "Diğer işlemler" on a course's row of Dersler and chooses "Hocaları değiştir". The dialog lists the course's
+  hocas as the API has them and starts with "Kaydet" off. She finds a person by the exact e-mail address of their account (searched
+  on Enter or when the field is left), who is added at once, or told "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." / "Bu kişi
+  zaten listede." / "Arama şu an yapılamıyor."; she takes a hoca off with "Çıkar" (not the last account: that button is off), and with
+  several accounts she chooses the imam, which the page asks for with "Dersin imamını seçin." when none is left. A hoca who has no
+  account is listed by name, with "Hesabı olmayan hoca; bu listeden değiştirilemez.", and is left as it is. "Kaydet" comes on when
+  the list differs from where it started and is complete; it sends the whole list (PUT /madrasahs/:id/courses/:courseId/muderrises),
+  a toast "Hocalar kaydedildi" says so, the dialog closes and the row follows. A refusal is a toast and the dialog stays open, except
+  a course that is gone, which closes it.
+
+scope:
+  shows: >-
+    the row menu of Dersler, the "Hocaları değiştir" dialog (the list, the e-mail search, "Çıkar", the imam's radios, "Kaydet" and
+    "Vazgeç"), the toast of the save and the row after it
+  world: open
+  outOfView:
+    - "the list, its filters, the side cards and the refusal a nazır meets (Bu sayfaya izniniz yok): nazar.courses.browse, nazar.access.medreseNazirRefused"
+    - "'Dersi gizle', the other item of the menu: nazar.archive.hideAndRestoreCourse"
+    - "the same change from the köşk's side, with its own pages and words: nizam.courses.editHocalar"
+    - "a list of more than three accounts, a hoca with no account beside several accounts, and the limit of 20 ('En fazla 20 hoca eklenebilir.'): the model counts to three accounts and stops after one account is added to a name-only list; the code works the same way beyond"
+    - "undoing a change by changing it back (the list equals where it started again, 'Kaydet' goes off): not drawn; `changed` only turns on"
+    - "an ended session: the search and the save send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the unvan of each hoca, which is set in Ders ayarları (nazar.courseSettings.hocaTitles), not here"
+
+decisions:
+  D1:
+    question: >-
+      Should the menu offer "Hocaları değiştir" (and "Dersi gizle") to a nazır who does not hold the permission? The list route admits a
+      nazır holding any of three codes, the menu draws both items on every row, and the refusal comes only after the dialog is filled
+      and "Kaydet" is pressed (F-A-8).
+    recommend: >-
+      Hide the items by the permissions the person holds (madrasah.muderris_manage for this one), so that the toast "Bunu yapma izniniz
+      yok." is never the first word.
+    affects: [menu]
+  D2:
+    question: >-
+      Should the dialog say why "Kaydet" is off when the list has no account? Today the only words are the help line "En az bir hoca
+      gerekir…", which a list with one named hoca seems to satisfy (HOCAS-6).
+    recommend: >-
+      Write one sentence under the list that says an account has to be added, as the page already does for the imam.
+    affects: [form]
+
+context:
+  team:
+    values: [guest, lone, pair]
+    initial: any
+    say:
+      guest: "the course lists one hoca by name alone, with no account behind it (a draft that came from the köşk's side)"
+      lone: "the course has one hoca with an account, the imam"
+      pair: "the course has two hocas with accounts and the first is the imam"
+  lookup:
+    values: [found, listed, notFound, down]
+    initial: any
+    say:
+      found: "the realm has an account with the e-mail address she types, and it is not on the list"
+      listed: "the address belongs to a hoca already on the list"
+      notFound: "the realm has no account with that address"
+      down: "the realm's directory does not answer"
+  answer:
+    values: [saved, gone, unknownUser, forbidden, invalid, other]
+    initial: any
+    say:
+      saved: "the server saves the list"
+      gone: "the course is not the medrese's any more, or has been hidden, while the dialog was open"
+      unknownUser: "an account on the list is in neither Medaris nor the realm"
+      forbidden: "the caller does not hold madrasah.muderris_manage in the medrese"
+      invalid: "the list is refused for its shape: no imam among several, the imam is not listed, a person is listed twice, or a body the API does not take"
+      other: "anything else: the köşk is hidden, the directory is down, a refused self-naming, the server does not answer"
+  list:
+    values: [guest, guestAndOne, lone, pair, pairNoImam, trio]
+    initial: lone
+    say:
+      guest: "no account on the list, one hoca by name alone"
+      guestAndOne: "one account has been added to a list that has a hoca by name alone: the account is the imam and the list has two lines"
+      lone: "one account, the imam"
+      pair: "two accounts, an imam chosen"
+      pairNoImam: "two accounts and no imam: the imam was taken off a list of three"
+      trio: "three accounts, an imam chosen"
+  changed: { values: [true, false], initial: false }
+  search:
+    values: [idle, none, listed, down]
+    initial: idle
+    say:
+      idle: "the field has no problem to show"
+      none: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' is under the field"
+      listed: "'Bu kişi zaten listede.' is under the field"
+      down: "'Arama şu an yapılamıyor.' is under the field"
+  said:
+    values: [none, added]
+    initial: none
+    say: { none: "the hidden output says nothing", added: "the hidden output says '{name} listeye eklendi'" }
+  toast:
+    values: [none, unknownUser, forbidden, invalid, other]
+    initial: none
+    say: { none: "no error toast is up", unknownUser: "an error toast says an account was not found", forbidden: "an error toast says she may not", invalid: "an error toast says the list is wrong", other: "an error toast says something went wrong" }
+
+guards:
+  # `ready` is `disabled={!ready}` of the "Kaydet" button (change-muderris.tsx:62-63, 118): the list is complete (an account, and an imam
+  # where there are several) and differs from where it started
+  ready: "changed and list in ['guestAndOne', 'lone', 'pair', 'trio']"
+  # what a search the model draws can lead to: an account is added only up to the model's size, and a hoca who is already listed needs an account
+  searchable: "(lookup == 'found' and list in ['guest', 'lone', 'pair']) or lookup == 'notFound' or lookup == 'down' or (lookup == 'listed' and list != 'guest')"
+
+effects:
+  openedGuest: { set: { list: guest, changed: false, search: idle, said: none, toast: none } }
+  openedLone: { set: { list: lone, changed: false, search: idle, said: none, toast: none } }
+  openedPair: { set: { list: pair, changed: false, search: idle, said: none, toast: none } }
+  startSearch: { set: { search: idle, said: none } }
+  addedToGuest: { set: { list: guestAndOne, changed: true, search: idle, said: added } }
+  addedToLone: { set: { list: pair, changed: true, search: idle, said: added } }
+  addedToPair: { set: { list: trio, changed: true, search: idle, said: added } }
+  alreadyListed: { set: { search: listed, said: none } }
+  nobodyFound: { set: { search: none, said: none } }
+  directoryDown: { set: { search: down, said: none } }
+  imamLeftPair: { set: { list: lone, changed: true } }
+  imamLeftTrio: { set: { list: pairNoImam, changed: true } }
+  otherLeftPair: { set: { list: lone, changed: true } }
+  otherLeftPairNoImam: { set: { list: lone, changed: true } }
+  otherLeftTrio: { set: { list: pair, changed: true } }
+  imamChosenOfTwo: { set: { list: pair, changed: true } }
+  imamChosenOfThree: { set: { list: trio, changed: true } }
+  clearToast: { set: { toast: none } }
+  unknownUserToast: { set: { toast: unknownUser } }
+  forbiddenToast: { set: { toast: forbidden } }
+  invalidToast: { set: { toast: invalid } }
+  otherToast: { set: { toast: other } }
+
+failures:
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN, VALIDATION_ERROR]
+  saving:
+    from: setMadrasahCourseMuderris
+    gone: [MADRASAH_COURSE_NOT_FOUND]
+    unknownUser: [MUDERRIS_UNKNOWN_USER]
+    forbidden: [AUTHZ_FORBIDDEN]
+    invalid: [COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED, MUDERRIS_DUPLICATE_USER, VALIDATION_ERROR]
+    other: [COURSE_NOT_FOUND, MADRASAH_NOT_FOUND, SELF_GRANT_REFUSED, KEYCLOAK_ADMIN_UNAVAILABLE, HTTP_400]
+
+# The story the page tells first, and what courses#7 walks: a course with two hocas, a third found by e-mail address, the list saved.
+main:
+  given: { team: pair, lookup: found, answer: saved }
+  events: [OPEN_MENU, CHOOSE_HOCAS, SEARCH, DONE, SAVE, DONE]
+
+initial: listed
+
+states:
+  listed:
+    title: The courses are listed
+    description: >-
+      The Dersler page with the course's row: its title, the köşk, its hocas (the imam's star only where the course has more than one
+      hoca), the talebe, the state, and the row's "Diğer işlemler" button, which every row has whatever the person holds (F-A-8). The
+      page keeps no focus of its own. Reading and filtering the list is nazar.courses.browse.
+    by: human
+    on:
+      OPEN_MENU: { target: menu, say: "they press 'Diğer işlemler: {course}' on the row", source: apps/nazar/features/courses/components/courses-table.tsx:164 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/courses/components/courses-table.tsx:185
+
+  menu:
+    title: The row's menu is open
+    description: >-
+      Base UI's menu: two items, "Hocaları değiştir" and "Dersi gizle", on every row whatever the person may do (F-A-8; D1). Arrow
+      keys and typeahead are its own; Esc closes it and the focus is on its button (Base UI's own, not verified).
+    by: human
+    on:
+      CHOOSE_HOCAS:
+        - { guard: "team == 'guest'", target: form, effect: [openedGuest], source: apps/nazar/features/courses/components/courses-table.tsx:171, say: "they choose 'Hocaları değiştir' on a course whose one hoca has no account" }
+        - { guard: "team == 'lone'", target: form, effect: [openedLone], source: apps/nazar/features/courses/components/courses-table.tsx:171, say: "they choose 'Hocaları değiştir' on a course with one hoca" }
+        - { guard: "team == 'pair'", target: form, effect: [openedPair], source: apps/nazar/features/courses/components/courses-table.tsx:171, say: "they choose 'Hocaları değiştir' on a course with two hocas" }
+      CHOOSE_HIDE: { target: hide_dialog_opened, source: apps/nazar/features/courses/components/courses-table.tsx:176, say: "they choose 'Dersi gizle'" }
+      CLOSE_MENU: { target: listed, say: "they press Esc, or press outside the menu" }
+    source: libs/ui/src/mds/menu.tsx:49
+
+  settle:
+    title: Is "Kaydet" on?
+    description: >-
+      Not a screen: after every change to the list "Kaydet" is on or off. It is natively disabled (`disabled={!ready}`) until the list
+      differs from where it started and is complete, which is at least one account, and an imam where there are several.
+    always:
+      - { guard: ready, target: formReady, say: "the list is complete and has changed: the button is on" }
+      - { target: form, say: "the list has not changed, or is not complete: the button is off" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:62
+
+  form:
+    title: The dialog, "Kaydet" off
+    description: >-
+      "Hocaları değiştir" opens over the page with the course's title above it, the list as the API has it and the focus in the search
+      field "Hoca". "Kaydet" is natively disabled until the list changes, and for a list whose only hoca has no account the only
+      sentence near it is the generic help "En az bir hoca gerekir…", which does not say that an account is needed (HOCAS-6). The list shows each hoca's name and e-mail; with several accounts
+      each has a radio "Dersin imamı: {name}" and the imam's row a badge; each account has "Çıkar" (off for the last one); a hoca with
+      no account has neither, and "Hesabı olmayan hoca; bu listeden değiştirilemez.". With several accounts and no imam the line under
+      "Hocalar" is the error "Dersin imamını seçin." (F-A-5). The count "{n} hoca" counts the lines. The scrim does not close the dialog;
+      its whole body is its description (F-A-13). An error toast of a refused save may be up over it. "Çıkar" asks nothing and the
+      unsaved list is lost silently on Esc. The e-mail is searched on Enter and when the field is left (HOCAS-1); the outcomes are
+      the field's own error, not announced (F-A-4).
+    by: human
+    on:
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they type an e-mail address into 'Hoca' and press Enter, or leave the field" }
+      REMOVE_IMAM:
+        - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': the other account is the imam now" }
+      REMOVE_OTHER:
+        - { guard: "list == 'pair'", target: settle, effect: [otherLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the other account's 'Çıkar': the imam stays, alone" }
+        - { guard: "list == 'pairNoImam'", target: settle, effect: [otherLeftPairNoImam], source: apps/nazar/features/courses/team.ts:57, say: "they press an account's 'Çıkar' while the imam is missing: the account left is the imam" }
+      PICK_IMAM:
+        - { guard: "list in ['pair', 'pairNoImam']", target: settle, effect: [imamChosenOfTwo], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc: the list is thrown away, nothing is saved" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:98
+
+  formReady:
+    title: The dialog, "Kaydet" on
+    description: The same dialog with "Kaydet" on; pressing it sends the whole list.
+    by: human
+    on:
+      SEARCH: { guard: searchable, target: looking, effect: [startSearch], source: apps/nazar/features/courses/components/muderris-picker.tsx:112, say: "they look up another hoca" }
+      REMOVE_IMAM:
+        - { guard: "list == 'pair'", target: settle, effect: [imamLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar'" }
+        - { guard: "list == 'trio'", target: settle, effect: [imamLeftTrio], source: apps/nazar/features/courses/team.ts:57, say: "they press the imam's 'Çıkar': none is the imam, the button goes off" }
+      REMOVE_OTHER:
+        - { guard: "list == 'pair'", target: settle, effect: [otherLeftPair], source: apps/nazar/features/courses/team.ts:57, say: "they press the other account's 'Çıkar'" }
+        - { guard: "list == 'trio'", target: settle, effect: [otherLeftTrio], source: apps/nazar/features/courses/team.ts:57, say: "they press a non-imam account's 'Çıkar'" }
+      PICK_IMAM:
+        - { guard: "list in ['pair', 'pairNoImam']", target: settle, effect: [imamChosenOfTwo], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
+        - { guard: "list == 'trio'", target: settle, effect: [imamChosenOfThree], source: apps/nazar/features/courses/team.ts:93, say: "they choose another account as the imam" }
+      SAVE: { target: saving, effect: [clearToast], source: apps/nazar/features/courses/components/change-muderris.tsx:65, say: "they press 'Kaydet'" }
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "Vazgeç: the list is thrown away, nothing is saved" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc: the list is thrown away" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:114
+
+  looking:
+    title: Look the person up
+    description: >-
+      The server action lookupPerson, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account) and
+      tedrisat writes the search to the audit log, found or not. The field is `disabled` and aria-busy while it runs, so it loses the
+      focus (HOCAS-3); the hidden output says "Aranıyor". A person found who is not on the list is added to it and the field is
+      cleared, the output says "{name} listeye eklendi" (HOCAS-2); a person already on the list, no account, or a directory that
+      does not answer is the field's own error, which is not announced (F-A-4). "Kaydet" is natively disabled while the search runs
+      (the picker's `onSearchingChange`, change-muderris.tsx:118, and `submit` refuses a form sent with Enter, :67), so the list is
+      not saved without the hoca being looked up; the rest of the dialog stays live.
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found' and list == 'guest'", target: settle, effect: [addedToGuest], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added after the name-only hoca and is the imam; the model stops here" }
+        - { guard: "lookup == 'found' and list == 'lone'", target: settle, effect: [addedToLone], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added; there are two accounts now and the imam stays who it was" }
+        - { guard: "lookup == 'found' and list == 'pair'", target: settle, effect: [addedToPair], source: apps/nazar/features/courses/components/muderris-picker.tsx:132, say: "the person is added; there are three accounts" }
+        - { guard: "lookup == 'listed'", target: settle, effect: [alreadyListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:128, say: "'Bu kişi zaten listede.' under the field and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:141, say: "'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.' under the field" }
+      CANCEL: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:113, say: "they close the dialog while the search runs: its answer is dropped" }
+      CLOSE: { target: closed, source: apps/nazar/features/courses/components/change-muderris.tsx:108, say: "the close icon, or Esc, while the search runs: its answer is dropped" }
+    source: apps/nazar/features/courses/components/muderris-picker.tsx:122
+
+  saving:
+    title: The list is on its way
+    description: >-
+      The server action replaceMuderris calls PUT /madrasahs/:id/courses/:courseId/muderrises with the whole list of accounts and the
+      imam (a hoca with no account is not sent and is left as it is). The API gives the accounts that leave no MUDERRIS role, writes
+      the audit row `course.muderris.update` only when the list or the imam changed, and moves the course's version. "Kaydet" is busy
+      (aria-disabled, "Kaydediliyor" in its hidden output); Vazgeç and the close icon stay on and do nothing (HOCAS-5). The search
+      field, the imam's radios and every "Çıkar" are natively disabled meanwhile (the picker's `disabled`,
+      change-muderris.tsx:137): a success closes the dialog, so a change made then would be lost, and the list saved is the list
+      shown. A call that fails outright is not caught (F-A-10).
+    invoke: { action: setMadrasahCourseMuderris }
+    on:
+      DONE: { guard: "answer == 'saved'", target: saved, source: apps/nazar/features/courses/components/change-muderris.tsx:75, say: "the list is saved" }
+      FAIL.gone: { guard: "answer == 'gone'", target: course_gone, source: apps/nazar/features/courses/components/change-muderris.tsx:90, say: "the course is gone: a toast says so, the dialog closes and the list is read again" }
+      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: settle, effect: [unknownUserToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says an account was not found; the dialog stays open" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says she may not; the dialog stays open" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: settle, effect: [invalidToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says what is wrong with the list; the dialog stays open" }
+      FAIL.other: { guard: "answer == 'other'", target: settle, effect: [otherToast], source: apps/nazar/features/courses/components/change-muderris.tsx:85, say: "an error toast says something went wrong, try again; the dialog stays open" }
+      CANCEL: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:101, say: "Vazgeç: nothing happens, the list is still saved (HOCAS-5)" }
+      CLOSE: { target: saving, source: apps/nazar/features/courses/components/change-muderris.tsx:101, say: "the close icon, or Esc: nothing happens, the list is still saved (HOCAS-5)" }
+    source: apps/nazar/features/courses/components/change-muderris.tsx:69
+
+  saved:
+    type: final
+    title: The list is saved
+    description: >-
+      The toast "Hocalar kaydedildi" names the course, the dialog closes, and the page is read again (`router.refresh()`): the row has
+      the new list, and the imam's star only where more than one hoca is left (a lone hoca has none). Where the focus lands is not said
+      by the code (the opener was a menu item); not verified.
+
+  closed:
+    type: final
+    title: The dialog is closed and nothing was saved
+    description: The list the person built is thrown away and the row is as it was. Where the focus lands is not said by the code; not verified.
+
+  course_gone:
+    type: final
+    title: The course is gone
+    description: >-
+      MADRASAH_COURSE_NOT_FOUND: the course is not the medrese's any more or has been hidden. An error toast says "Bu ders artık yok.
+      Liste yenilendi.", the dialog closes and the list is read again without the row.
+
+  hide_dialog_opened:
+    type: final
+    title: The hide question opens
+    description: "'Dersi gizle' opens its own alertdialog over the same page; that is nazar.archive.hideAndRestoreCourse."
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-a-complete-list-is-sent, never: "state == 'saving' and list == 'pairNoImam'", say: "A list with several accounts and no imam is never sent: Kaydet is off and the page says 'Dersin imamını seçin.'.", source: apps/nazar/features/courses/components/change-muderris.tsx:62 }
+  - { id: only-a-changed-list-is-sent, never: "state == 'saving' and not changed", say: "A list that is the one the course already has is never sent: Kaydet is off until it differs.", source: apps/nazar/features/courses/components/change-muderris.tsx:63 }
+  - { id: never-without-an-account, never: "state == 'saving' and list == 'guest'", say: "A list with no account on it is never sent: the API refuses an empty list and the last account's 'Çıkar' is off.", source: apps/nazar/features/courses/team.ts:105 }

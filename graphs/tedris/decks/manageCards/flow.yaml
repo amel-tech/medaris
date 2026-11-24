@@ -1,0 +1,334 @@
+# The author's "Kartlar" page of one deck (/decks/<id>/cards in tedris-web): the table of the deck's cards with the author's own status for
+# each, and the three writes the author makes there, "Kart ekle", "Düzenle: kart n" and "Sil: kart n". Read from the code of PR #394's branch on
+# 15 Nov 2026 (apps/tedris/features/flashcards/components/deck-cards-page.tsx, card-form-dialog.tsx, actions/index.ts, attempt.ts; the API's
+# POST /flashcard/decks/{deckId}/cards, PATCH and DELETE /flashcard/cards/{id}). Nothing here was seen in a browser; every behaviour is from the
+# code, and where the code leaves a doubt it says "from the code". It says what the code does today:
+#   - a face is checked in the page before anything is sent (3 to 5000 characters after trimming); the messages show only after a submit
+#     attempt, are not live regions and do not move the focus (DCK-06); the controls carry no `required` (DCK-07)
+#   - the new card's type is the deck's (`kindOf(deck)`); the dialog has no type picker and the API compares nothing (invariants deck-card-type-fixed,
+#     card-type-matches-deck, both `holds: false`: PUT /flashcard/decks/{id} can change a deck's cardType, so a later card takes the new type next
+#     to older cards of the old one; this page sends none of that)
+#   - an edit sends both faces every time: a form submitted unchanged still writes and still says "Kart güncellendi" (MCARDS-2); the deck's own edit
+#     dialog skips the write in that case
+#   - "Kartı sil?" says the author's progress on the card is deleted; the API deletes the card only and its progress rows stay (domain invariant
+#     progress-orphans; MCARDS-1)
+#   - the list has no ORDER BY at the API (flashcard.repository.ts:63), the names "Düzenle: kart n" are positions, and an UPDATE of a row can move it in
+#     the heap order Postgres answers in: the row an author edited may come back last (MCARDS-3, from the code, not seen)
+#   - fixed on 23 Nov 2026: "Vazgeç", the close icon and Esc closed an add, edit or delete dialog while its write was out without cancelling it
+#     (MCARDS-4); now they are off until the answer, and the graph draws the busy dialog with them disabled
+#   - after a delete the row, and with it the opener, is gone, and after the first card the empty state's "Kart ekle" is gone: the focus falls to
+#     the document (DCK-17, not seen in a browser)
+#   - the API's own broken rules on these routes are not reachable from this page, whose bodies are always well-formed: a card id that is not a uuid
+#     is a 500 AUTHZ_RESOLVER_ERROR and not a 400 (card-routes-malformed-id-400), a null or an empty body is a 500 (accepted-write-never-500) and
+#     the create route spreads extra properties of an element into the insert, an id among them (card-create-takes-only-its-fields). They are in
+#     ui.yaml `rules` and needs.yaml and live in the domain as invariants with `holds: false`.
+# E2E carried: decks#18 (the empty state, the blank attempt "Bu alan boş olamaz." twice, the add with the Arabic front, the row and "Kartlar 1",
+# the edit with a changed back face, the delete refused by "Vazgeç" and then confirmed, "Kartlar 0"; its SQL assertion on the type is the effect
+# of `createCards` in the binding) and decks#19 (the author's own status in every row, the Arabic face with lang=ar dir=rtl, the explanatory
+# sentence). Not carried exactly: decks#19's row positions (row 1 "Tamamlandı", row 8 "Öğreniliyor", the last "Yeni" of its 18-card fixture): the
+# graph says every row carries one of the three words, because the order is unspecified (MCARDS-3).
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.manageCards
+status: captured
+domain: medaris.api
+ui: tedris.decks.manageCards
+title: Add, edit and delete the cards of my deck
+summary: >-
+  The author of a deck opens its "Kartlar" tab. An empty deck says "Bu destede henüz kart yok."; otherwise a table lists every card with its
+  front ("Ön yüz", an Arabic face set right to left), its back ("Arka yüz") and the author's own status for it ("Yeni", "Öğreniliyor",
+  "Tamamlandı"). "Kart ekle" opens a form of two faces: a blank or too short face is refused under its field after the first attempt, a good
+  one adds the card, a toast says "Kart eklendi" and the tab's count grows. "Düzenle: kart n" opens the same form filled with the card; a
+  save says "Kart güncellendi". "Sil: kart n" asks first, in an alertdialog whose focus starts on "Vazgeç"; the card goes only after "Kartı
+  sil", and the toast says "Kart silindi". A write the API refuses is one error toast, "Kaydedilemedi" or "Silinemedi", and the form keeps
+  what was typed.
+
+scope:
+  shows: >-
+    the card list of the author's own deck, the three dialogs (add, edit, delete) and the toasts of the three writes
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "'Dışa aktar', 'İçe aktar' and the template downloads, which sit in the same header: tedris.decks.importExport"
+    - "the deck's own page, its name and description, its deletion and the publication request: tedris.decks.editOrDelete, tedris.decks.publish"
+    - "a reader or a stranger on this address (the forbidden page, the not-found page): tedris.decks.accessRefusals; a reader copying a card: tedris.decks.readAndCopy"
+    - "studying the cards and the progress that fills the status column: tedris.decks.study"
+    - "a session that has ended: each write goes through attempt() (attempt.ts), which sends the person to sign in and back and leaves the control busy until the browser leaves (realm.auth.signIn); a request that never reaches the server is a failed write, one error toast like any other refusal"
+    - "the course staff's own deck pages in nazar (nazar.decks.openAndFill, nazar.decks.import): the API's single-card routes answer 404 to a course staff member who did not write the deck (invariant course-deck-staff-edit-any-card)"
+    - "the page's frame (the bar, the phone menu, the footer, the toast host's region): tedris.shell.frame"
+
+decisions:
+  D1:
+    question: >-
+      Should an edit that changes nothing send nothing? The deck's own edit dialog closes without a request and without a toast when nothing
+      changed (`unchanged`, deck-model.ts:164); this form writes, and says "Kart güncellendi", whatever was typed (MCARDS-2).
+    recommend: >-
+      Yes: compare the trimmed faces with the card's and close the dialog silently, as the deck's edit does.
+    affects: [editForm, updating]
+  D2:
+    question: >-
+      Should the list of cards have an order, and which? The API's list has none, and "Düzenle: kart n" and "Sil: kart n" name a row by its
+      position (MCARDS-3).
+    recommend: >-
+      Order by creation time at the API (the study round already does, flashcard.repository.ts:211) and name the buttons by the card's front.
+    affects: [list]
+
+context:
+  deck:
+    values: [empty, one, several]
+    initial: any
+    say:
+      empty: "the deck has no card yet"
+      one: "the deck has one card, with no progress"
+      several: "the deck has several cards, each with the author's own status"
+  fields:
+    values: [valid, short]
+    initial: any
+    say:
+      valid: "what the author types in a face is long enough (3 to 5000 characters)"
+      short: "what the author types in a face is under three characters"
+  answer:
+    values: [saved, failed]
+    initial: any
+    say:
+      saved: "the API takes the write"
+      failed: "the API refuses the write (the deck or the card is gone, the author may not any more) or does not answer"
+  rows:
+    values: [none, one, some]
+    initial: none
+    say:
+      none: "the table is not drawn: the deck has no card"
+      one: "the table has one row"
+      some: "the table has two rows or more"
+  typed:
+    values: [none, kept, valid, short]
+    initial: none
+    say:
+      none: "the add form is empty"
+      kept: "the edit form holds the card's faces as they are"
+      valid: "the faces hold a text that is long enough"
+      short: "a face holds a text under three characters"
+  attempted: { values: [true, false], initial: false } # a submit was tried on the form that is open: only then the messages show
+  toast:
+    values: [none, added, updated, deleted, saveFailed, deleteFailed]
+    initial: none
+    say:
+      none: "no toast, or it is gone"
+      added: "'Kart eklendi'"
+      updated: "'Kart güncellendi'"
+      deleted: "'Kart silindi'"
+      saveFailed: "'Kaydedilemedi', an error toast that stays until closed"
+      deleteFailed: "'Silinemedi', an error toast that stays until closed"
+  confirmed: { values: [true, false], initial: false } # the author pressed "Kartı sil" in the dialog that is open
+
+guards:
+  # card-form-dialog.tsx:55: a message shows only once a submit was tried, and only for a face with a problem
+  faceBad: "attempted and (typed == 'none' or typed == 'short')"
+  # the edit form starts filled, so only a face typed too short can have a message
+  backBad: "attempted and typed == 'short'"
+  goodFaces: "typed == 'valid'"
+
+effects:
+  startsOne: { set: { rows: one } }
+  startsSeveral: { set: { rows: some } }
+  openAdd: { set: { typed: none, attempted: false, toast: none } }
+  openEdit: { set: { typed: kept, attempted: false, toast: none } }
+  openDelete: { set: { confirmed: false, toast: none } }
+  typedValid: { set: { typed: valid } }
+  typedShort: { set: { typed: short } }
+  attempt: { set: { attempted: true } }
+  clearToast: { set: { toast: none } }
+  answered: { set: { confirmed: true, toast: none } }
+  addedFirst: { set: { rows: one, toast: added } }
+  addedMore: { set: { rows: some, toast: added } }
+  updatedRevised: { set: { toast: updated } }
+  updatedUnchanged: { set: { toast: updated } }
+  deletedLast: { set: { rows: none, toast: deleted } }
+  deletedOne: { set: { toast: deleted } } # the model does not count below two rows: a table of two rows after a delete is `some`, as before
+  saveFailed: { set: { toast: saveFailed } }
+  deleteFailed: { set: { toast: deleteFailed } }
+
+failures:
+  adding:
+    from: createCards
+    failed: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, INTERNAL_ERROR]
+  updating:
+    from: updateCard
+    failed: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN, INTERNAL_ERROR]
+  deleting:
+    from: deleteCard
+    failed: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN]
+
+# The story of the e2e decks#18: an empty deck, a blank attempt, a card added, edited, then deleted after a "Vazgeç" and a confirmation.
+main:
+  given: { deck: empty, fields: valid, answer: saved }
+  events: [ADD_CARD, SUBMIT, FILL_IN, SUBMIT, DONE, EDIT_CARD, REVISE, SUBMIT, DONE, DELETE_CARD, CANCEL, DELETE_CARD, CONFIRM_DELETE, DONE]
+
+initial: start
+states:
+  start:
+    title: The author's card list opens
+    description: >-
+      The page reads the deck and its cards with the author's own progress on the server (getDeck and the card list with include=progress,
+      readDeck, reads.ts:69) and draws `DeckCardsPage` for the author. A deck of somebody else's, a missing deck and a refused one are other
+      screens (tedris.decks.accessRefusals). An empty deck draws the empty state, any other draws the table. The first read is not drawn as a
+      state: the page is built on the server and nothing waits on screen.
+    source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:44"
+    always:
+      - { guard: "deck == 'empty'", target: emptyList, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110, say: "no card: the empty state" }
+      - { guard: "deck == 'one'", target: list, effect: [startsOne], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:125, say: "one card: a table of one row" }
+      - { target: list, effect: [startsSeveral], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:125, say: "several cards: a table with a row each" }
+
+  emptyList:
+    title: A deck with no card
+    by: human
+    description: >-
+      The tab "Kartlar" with the count 0, the sentence "Durum sütunu senin çalışma ilerlemeni gösterir. Kartları yalnız sen ekler, düzenler ve
+      silersin." and the empty state "Bu destede henüz kart yok." with its own "Kart ekle". The header's "Kart ekle" is a second button of the same name
+      (the e2e presses the first). After the first card the empty state's button is gone, so a form opened from it has no opener to give the focus back
+      to (DCK-17). The page sets no initial focus.
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110
+    on:
+      ADD_CARD: { target: addForm, effect: [openAdd], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:100, say: "they press 'Kart ekle'" }
+      NAVIGATE: { target: left, say: "they follow a link, the menu or the tab 'Genel'" }
+
+  list:
+    title: The table of the cards
+    by: human
+    goal: true
+    description: >-
+      One row for each card: the front (a row header; Arabic set right to left in lang="ar"), the back, the author's own status as a badge ("Yeni" when
+      no progress row, "Öğreniliyor", "Tamamlandı") and "Düzenle" and "Sil" with the names "Düzenle: kart n" and "Sil: kart n" (n is the row's position).
+      The order is the API's, which has none (MCARDS-3). The tab's count follows the number of rows. The status is the author's own, as the sentence above
+      the table says; the table says nothing of who else reads the deck. A toast of the last write may still be on (`toast`). In this table the "Ön yüz"
+      cells are row headers; in the public view's table they are not (DCK-31).
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:125
+    on:
+      ADD_CARD: { target: addForm, effect: [openAdd], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:100, say: "they press 'Kart ekle'" }
+      EDIT_CARD: { target: editForm, effect: [openEdit], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:175, say: "they press 'Düzenle: kart n' on a row: the form opens filled with that card" }
+      DELETE_CARD: { target: confirmDelete, effect: [openDelete], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:185, say: "they press 'Sil: kart n' on a row: nothing is deleted yet" }
+      NAVIGATE: { target: left, say: "they follow a link, the menu or the tab 'Genel'" }
+
+  addForm:
+    title: The "Kart ekle" form
+    by: human
+    description: >-
+      A form dialog over the page; the scrim does not close it, so what was typed is not lost to a stray click. The focus starts in "Ön yüz" (the dialog
+      resolves it by id). Two textareas, each with a help line for the deck's kind ("Arapça kelime ya da kalıp." and "Anlamı ve notu." for a Kelime
+      deck, "Hadisten bir parça." and "Tam metni ve kaynağı." for a Hadis deck). "Kaydet" is always on. Pressing it with a blank face puts "Bu alan boş
+      olamaz." under it, with a face under three characters "En az 3 karakter yaz."; the message replaces the help line, is not a live region and the
+      focus stays on the button (DCK-06); the controls carry no `required` (DCK-07). The type of the card to come is the deck's own, the dialog has no
+      picker (invariants deck-card-type-fixed, card-type-matches-deck). A refused write puts the error toast over the form, which keeps what was typed.
+      The words "Kapat" of the close icon and "Vazgeç" are the kit's and the dialog's, "Kapat" from a default of the kit (DCK-23); the dialog's whole
+      body is the dialog's description for a screen reader (DCK-24).
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91
+    on:
+      FILL_IN:
+        - { guard: "fields == 'valid'", target: addForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:131, say: "they type a front and a back that are long enough" }
+        - { guard: "fields == 'short'", target: addForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:131, say: "they type a front and a back of under three characters" }
+      SUBMIT:
+        - { guard: goodFaces, target: adding, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:68, say: "they press 'Kaydet' with both faces long enough: the card is sent" }
+        - { target: addForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67, say: "they press 'Kaydet' with an empty or too short face: nothing is sent, the messages appear under the faces" }
+      CANCEL:
+        - { guard: "rows == 'none'", target: emptyList, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is made, the empty state is back" }
+        - { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is made, the table is back" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  adding:
+    title: The card is on its way
+    description: >-
+      The server action createCard, POST /flashcard/decks/{deckId}/cards with a body of one element, `{ type, contentFront, contentBack }`, the faces
+      trimmed and the type the deck's. The API makes no check that the type is the deck's and spreads the elements it is sent into the insert, so a
+      caller of the API may set the card's id (invariants card-create-takes-only-its-fields and card-type-matches-deck; this page sends exactly those
+      three fields). "Kaydet" is busy (aria-disabled, aria-busy) and says "Yükleniyor" to a screen reader from a default of the kit (DCK-23). The
+      faces are read-only (card-form-dialog.tsx:130, 147), as a change typed now would not be sent. "Vazgeç" and the close icon are disabled and Esc does nothing until the answer (the dialog's dismissDisabled,
+      card-form-dialog.tsx:98), as closing would not stop the write (MCARDS-4, fixed). On
+      success: the toast "Kart eklendi", the page is read again and the dialog closes, the focus going back to the header's "Kart ekle". On any
+      refusal (`attempt()` turns a rejected call into one): the error toast "Kaydedilemedi" / "Bir sorun oluştu; yazdıkların korundu. Yeniden dene." and
+      the dialog stays with its text.
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72
+    invoke: { action: createCards }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and rows == 'none'", target: list, effect: [addedFirst], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "the first card: the empty state gives way to a table of one row, the tab says 'Kartlar 1'; its button, if the dialog was opened from it, is gone (DCK-17)" }
+        - { guard: "answer == 'saved'", target: list, effect: [addedMore], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "another card: the table has a row more, the count grows" }
+      FAIL.failed: { guard: "answer == 'failed'", target: addForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74, say: "an error toast; the form stays open with what was typed" }
+
+  editForm:
+    title: The "Kartı düzenle" form
+    by: human
+    description: >-
+      The same form with the title "Kartı düzenle", filled with the card's two faces. The focus starts in "Ön yüz". An edit sends both faces, trimmed,
+      as PATCH /flashcard/cards/{id} (the type is not sent); an unchanged form sends them all the same and the toast says "Kart güncellendi" (MCARDS-2).
+      A back face under three characters is refused under it once "Kaydet" was tried. After a save the row's own "Düzenle" button is still there to
+      take the focus back; the list may have moved the row (MCARDS-3, from the code).
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:91
+    on:
+      REVISE:
+        - { guard: "fields == 'valid'", target: editForm, effect: [typedValid], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:148, say: "they change the back face to a text that is long enough" }
+        - { guard: "fields == 'short'", target: editForm, effect: [typedShort], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:148, say: "they change the back face to under three characters" }
+      SUBMIT:
+        - { guard: "typed == 'short'", target: editForm, effect: [attempt], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67, say: "they press 'Kaydet' with a back face that is too short: nothing is sent, the message appears" }
+        - { target: updating, effect: [clearToast], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:71, say: "they press 'Kaydet': the faces are sent, changed or not (MCARDS-2)" }
+      CANCEL: { target: list, source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:93, say: "'Vazgeç', the close icon or Esc: nothing is changed" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  updating:
+    title: The change is on its way
+    description: >-
+      The server action updateCard, PATCH /flashcard/cards/{id} with `{ contentFront, contentBack }`. The API takes any subset of the fields and an
+      empty body or a JSON null in one of them is a 500 (invariant accepted-write-never-500; this page always sends both faces, so it cannot reach
+      those). A card id that is not a uuid is a 500 AUTHZ_RESOLVER_ERROR and not a 400 (card-routes-malformed-id-400; the ids come from the API, so
+      neither can this page). Busy as `adding`. On success the toast "Kart güncellendi" and the page is read again; on a refusal the error toast and
+      the form stays.
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:71
+    invoke: { action: updateCard }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and typed == 'valid'", target: list, effect: [updatedRevised], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "the row shows the new back face" }
+        - { guard: "answer == 'saved'", target: list, effect: [updatedUnchanged], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:82, say: "nothing was changed and the toast says it was updated all the same (MCARDS-2)" }
+      FAIL.failed: { guard: "answer == 'failed'", target: editForm, effect: [saveFailed], source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74, say: "an error toast; the form stays open with what was typed" }
+
+  confirmDelete:
+    title: '"Kartı sil?" asks once'
+    by: human
+    description: >-
+      An alertdialog over the page: the eyebrow "Kart n", the title "Kartı sil?" and "Bu kart ve karta kayıtlı ilerlemen silinecek. Bu işlem geri
+      alınamaz." The card is deleted only after "Kartı sil". The sentence says the progress is deleted; the API deletes the card and its progress rows
+      stay behind (domain invariant progress-orphans; MCARDS-1). The focus starts on "Vazgeç" (the kit's AlertDialog sets it, asserted for the deck's
+      own delete dialog by decks#16), the scrim does not close it, Esc, "Vazgeç" and the close icon do. "Vazgeç" is the kit's default word and so is
+      "Kapat" (DCK-23). Closing it unmounts it and Base UI gives the focus back to the row's "Sil: kart n" (from the code).
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:212
+    on:
+      CONFIRM_DELETE: { target: deleting, effect: [answered], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:223, say: "they press 'Kartı sil'" }
+      CANCEL: { target: list, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:214, say: "'Vazgeç', the close icon or Esc: the card stays" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  deleting:
+    title: The card is being deleted
+    description: >-
+      The server action deleteCard, DELETE /flashcard/cards/{id}, which answers true; the card's labels go with it and its progress rows do not.
+      "Kartı sil" is busy. "Vazgeç" and the close icon are disabled and Esc does nothing until the answer (the window's dismissDisabled,
+      deck-cards-page.tsx:222), as closing would not stop the delete (MCARDS-4, fixed). On success: the
+      toast "Kart silindi", the page is read again and the dialog closes; the row, and with it the button that opened the dialog, is gone, so the focus
+      falls to the document (DCK-17, from the code). When it was the last card the empty state is back and the tab says "Kartlar 0". On a refusal the
+      dialog closes and the error toast "Silinemedi" / "Bir sorun oluştu. Yeniden dene." says so; the row stays.
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:58
+    invoke: { action: deleteCard }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and rows == 'one'", target: emptyList, effect: [deletedLast], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:69, say: "the last card: the empty state is back" }
+        - { guard: "answer == 'saved'", target: list, effect: [deletedOne], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:69, say: "the row is gone, the others stay" }
+      FAIL.failed: { guard: "answer == 'failed'", target: list, effect: [deleteFailed], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:60, say: "the dialog closes and an error toast says it could not be deleted; the row stays" }
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: a-card-is-sent-only-with-long-enough-faces, never: "state == 'adding' and typed != 'valid'", say: "A card is sent only when both faces were checked in the page: 3 to 5000 characters after trimming", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67 }
+  - { id: an-edit-is-never-sent-with-a-short-face, never: "state == 'updating' and typed == 'short'", say: "A card is changed only with a back face that is long enough", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:67 }
+  - { id: a-card-is-deleted-only-after-the-answer, never: "state == 'deleting' and not confirmed", say: "A card is deleted only after the author pressed 'Kartı sil' in the confirmation", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:223 }
+  - { id: a-refused-write-keeps-what-was-typed, never: "state == 'addForm' and toast == 'saveFailed' and typed == 'none'", say: "After a refused write the form still holds what was typed", source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:74 }
+  - { id: the-table-is-never-empty, never: "state == 'list' and rows == 'none'", say: "The table is drawn only for a deck that has a card", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110 }
+  - { id: the-empty-state-is-never-over-cards, never: "state == 'emptyList' and rows != 'none'", say: "The empty state is drawn only for a deck with no card", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110 }

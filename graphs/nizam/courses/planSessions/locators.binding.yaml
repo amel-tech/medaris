@@ -1,0 +1,127 @@
+# nizam.courses.planSessions: what every binding of this flow shares (the addresses, the nodes, the events and the effects); the scenarios are in
+# binding.yaml (the main walks) and binding.fromOpen.yaml (the page reached from Ders aç).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.planSessions
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/nzPlan.json }
+  when: { json: ../.local/made/nzPlan.dates.json }
+
+# `previewing` holds no server call: the preview is a Next server action that answers 200 on the page's own address, and it is asked 250 ms after the last key,
+# so the replay simply waits for the screen it expects. `creating` holds the write, which is the one place the button is busy; a server action answers 200
+# whatever the API said, so only the busy state is seen there, not a refusal's status.
+states:
+  loadFailed: { url: '{nizam}/kosks/*/courses/*/sessions/new', text: Ders bilgisi okunamadı }
+  form: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  previewing: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  formReady: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  previewFailed: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  creating: { call: '{nizam}/kosks/*/courses/*/sessions/new' }
+  landed: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  sessions_opened: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  no_access: { url: '{nizam}/kosks/*/courses/*/sessions/new', text: Bu bölüm için izniniz yok }
+  left: { url: '{nizam}/hesap' }
+
+nodes:
+  # --- the page: a bare <main> is also the page a walk leaves for, so each is told apart by what is inside it -----------------------------------
+  planPage: { role: main, hasText: '/Önizleme/' }
+  problemPage: { role: main, hasText: Ders bilgisi okunamadı }
+  landedPage: { role: main, hasText: '/Yaklaşan celseler/' }
+  # the sidebar has a link "Celseler" too, and the h1 says "Celse planla" as the current page does
+  breadcrumbRoot: { role: link, name: Celseler, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: '[aria-current=page]', hasText: Celse planla, within: { role: navigation, name: Sayfa yolu } }
+  # "* zorunlu alan": the star is typed in the paragraph, so the message alone is not its whole text
+  requiredNote: { css: 'form[data-testid=session-plan] header p.mds-caption', hasText: zorunlu alan }
+
+  # --- the fields: found by label (no role) or by their name attribute ---------------------------------------------------------------------
+  startTimeField: { label: '/^Başlangıç saati/' }
+  startDateField: { label: '/^Başlangıç tarihi/' }
+  dateField: { label: '/^Tarih/' }
+  endDateField: { label: '/^Bitiş tarihi/' }
+  # a Base UI Select: its trigger is the one combobox of the form; how it is named is not verified
+  zoneField: { css: 'button[role=combobox]' }
+  dayChip: { role: button, name: '/^(Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/', count: 7 }
+  # the message under the days: a <p role=alert>
+  daysError: { role: alert, hasText: En az bir gün seçin. }
+
+  # --- radios: the words are the label's, beside the control, so they are found by role and name, not by what they contain ---------------------
+  endByDate: { role: radio, name: Bir tarihte }
+  endByCount: { role: radio, name: Belirli sayıda celseden sonra }
+  linksEmptyRadio: { role: radio, name: Boş bırak }
+  linksFirstRadio: { role: radio, name: Yalnız ilk celseye ekle }
+
+  # --- the buttons: the count is in the name -------------------------------------------------------------------------------------------------
+  submitOff: { role: button, name: 0 celse oluştur }
+  submitOn: { role: button, name: '/^[1-9]\d* celse oluştur$/' }
+
+  # --- the preview, an <aside data-testid=plan-preview>: the sentences are built with numbers and dates, so they are matched by their shape ------
+  previewZero: { css: '[data-testid=plan-preview] .mds-badge', hasText: '/^0 celse$/' }
+  previewCount: { css: '[data-testid=plan-preview] .mds-badge', hasText: '/^[1-9]\d* celse$/' }
+  previewNote: { css: '[data-testid=plan-preview] p.mds-caption', hasText: Henüz hiçbir şey kaydedilmedi }
+  previewList: { css: '[data-testid=plan-preview] ul' }
+  previewRow: { css: '[data-testid=plan-preview] li', count: '{planned}' }
+  previewRowCaption: { css: '[data-testid=plan-preview] li .mds-caption', hasText: '/^Hafta \d+ · \d+ dk · Bağlantı (var|boş)$/', count: '{planned}' }
+  previewFoot: { css: '[data-testid=plan-preview] p.mds-caption', hasText: '/saatiyle\.$/' }
+
+  # --- the toasts are Sonner's: one <li data-sonner-toast> with the title in [data-title] and the description in [data-description] -------------
+  arrivalTitle: { css: '[data-sonner-toast] [data-title]', hasText: 'Ders açıldı, celseler eklenemedi' }
+  arrivalBody: { css: '[data-sonner-toast] [data-description]', hasText: açıldı ama celseler eklenemedi }
+  toastFailedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Celseler oluşturulamadı }
+  toastPatternBody: { css: '[data-sonner-toast] [data-description]', hasText: Bu tekrar düzeni geçerli bir celse üretmiyor }
+  toastForbiddenBody: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için yetkiniz yok. }
+  toastGenericBody: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. }
+  toastCreatedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Celseler oluşturuldu }
+  toastCreatedBody: { css: '[data-sonner-toast] [data-description]', hasText: '{planned} celse eklendi.' }
+
+events:
+  # chips and typed fields have no node that sends an event: the binding presses and fills them. The vars say which: dayA and dayB, the two weekdays chosen,
+  # startDate, endDate, howMany, singleDate, titleText.
+  FILL_IN_WEEKLY:
+    - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
+    - click: { role: button, name: '{dayB}', within: { role: group, name: 'Günler *' } }
+    - fill: { css: 'input[name=startDate]', value: '{startDate}' }
+    - fill: { css: 'input[name=endDate]', value: '{endDate}' }
+    - fill: { css: 'input[name=title]', value: '{titleText}' }
+  # e2e courses#15: one day, a start date and the number of celses; the title stays "Haftanın tekrarı"
+  FILL_IN_COUNT:
+    - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
+    - fill: { css: 'input[name=startDate]', value: '{startDate}' }
+    - fill: { css: 'input[name=count]', value: '{howMany}' }
+  # one celse: its date; the title stays "Haftanın tekrarı" (NPLAN-4)
+  FILL_IN_SINGLE:
+    - fill: { css: 'input[name=startDate]', value: '{singleDate}' }
+  # "Yalnız ilk celseye ekle" opens the link field, which the walk fills at once
+  LINKS_FIRST:
+    - click: { role: radio, name: Yalnız ilk celseye ekle }
+    - fill: { css: 'input[name=meetingUrl]', value: '{firstUrl}' }
+  # the field the page said was wrong, put right: fixField is its name attribute and fixValue what it holds then
+  FIX:
+    - fill: { css: 'input[name={fixField}]', value: '{fixValue}' }
+  # the chosen days pressed again until none is chosen: a pattern that is not whole, with `sent` still set
+  CLEAR_DAYS:
+    - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
+    - click: { role: button, name: '{dayB}', within: { role: group, name: 'Günler *' } }
+  # a refused pattern changed and asked again: the end date moved to the start date, which a pattern on Monday and Saturday over one Tuesday still gives no celse for
+  REFILL:
+    - fill: { css: 'input[name=endDate]', value: '{refillEnd}' }
+  NAVIGATE:
+    - goto: '{nizam}/hesap'
+
+# What a write leaves outside the screen, read through the database as the stack's own Postgres holds it.
+effects:
+  # the preview is a POST that writes nothing: the walk's course still has no celse
+  previewSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":0'
+  # the celses of the pattern are in the course under the title the walk typed; the link is on the first celse only (courses#14 a3, courses#15 a2 and a3)
+  createSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = '{createdTitle}'"]
+      expect: '"n":{planned}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.meeting_url = '{madeUrl}'"]
+      expect: '"n":{linksMade}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.meeting_url is not null and l.scheduled_at > (select min(x.scheduled_at) from lessons x join course_weeks y on y.id = x.week_id where y.course_id = '{made.course}')"]
+      expect: '"n":0'

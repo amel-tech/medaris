@@ -1,0 +1,109 @@
+# The screens of nazar.appeals.open: İtirazlar (/medrese/<id>/itirazlar), its table of the köşk's refusals, the "İtiraz aç" dialog over
+# it and the toasts. Read from apps/nazar/features/appeals/components/{appeals-page,appeals-table,appeal-dialog}.tsx and
+# libs/ui/src/mds/{table,dialog,field,toast,button}.tsx on 15 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nazar.json
+# (namespaces Appeals, Nav, Shell, Problems). Not looked at in a browser: every role, name and focus below is from the code.
+#
+# Messages that are not the app's own:
+#   Changes.note                     authored: no message of the app says what an appeal changes (the toast's "Medaris yönetimine iletildi"
+#                                    claims more than the API does, F-B-appeals-5). Each sentence was checked against appeal.service.ts,
+#                                    appeal.repository.ts and appeal.controller.ts (no notification, no withdraw route, one appeal per request).
+#   composed.Appeals.course          "{title}", the course's own title as a cell and as the dialog's eyebrow (appeals-table.tsx:35, appeal-dialog.tsx:85)
+#   composed.Appeals.kosk            "{kosk}", the köşk's name in its cell (appeals-table.tsx:41)
+#   composed.Appeals.rejectReason    "{rejectReason}", the köşk's reason in its cell (appeals-table.tsx:47)
+#   composed.Appeals.requiredNote    "* {required}", built in code from the star and Appeals.dialog.required = "zorunlu alan" (appeal-dialog.tsx:98)
+#   composed.Button.loading          "Yükleniyor", the hidden word of a busy button, hard-coded in the kit (libs/ui/src/mds/button.tsx:62, :114)
+#
+# The page behind the dialog is inert while the dialog is open, so no page node is listed in a dialog state. A toast is a dialog in the
+# "Bildirimler" live region; an error toast is an alertdialog and stays until closed, a success toast closes after 6 seconds
+# (libs/ui/src/mds/toast.tsx:30).
+schema: delurio-graph/0
+kind: ui
+id: nazar.appeals.open
+flow: nazar.appeals.open
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Hadis Okumaları
+  kosk: Süleymaniye Köşkü
+  rejectReason: Bu dönem programımızda yer yok.
+  required: zorunlu alan
+
+# The page keeps no focus of its own on load (nothing in features/appeals sets it) and none after the dialog closes on success
+# (F-B-9), so there is no `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------------
+  appealsPage: { type: page, component: Page, role: main, in: [listed, empty, forbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  appealsTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.title }, in: [listed, empty, forbidden], source: apps/nazar/features/appeals/components/appeals-page.tsx:27 } # h1; the e2e's shell#4 a2
+  appealsCaption: { type: text, component: Text, text: { key: Appeals.caption }, in: [listed, empty, forbidden], source: apps/nazar/features/appeals/components/appeals-page.tsx:28 } # the same words are the table's caption
+  menuAppeals: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.appeals }, in: [listed, empty, forbidden], source: apps/nazar/features/shell/nav.ts:86 } # the sidebar's entry; it carries aria-current="page" here (libs/ui/src/mds/nav-item.tsx:56), which the graph cannot say (shell#4 a4)
+
+  # --- the refused requests -----------------------------------------------------------------------------------------------------
+  appealsTable: { type: list, component: List, role: table, name: { key: Appeals.caption }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:92 } # stack mode draws the table roles explicitly, so it is a table at every width
+  colCourse: { type: text, component: Text, role: columnheader, text: { key: Appeals.columns.course }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:32 }
+  colKosk: { type: text, component: Text, role: columnheader, text: { key: Appeals.columns.kosk }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:39 }
+  colRejectReason: { type: text, component: Text, role: columnheader, text: { key: Appeals.columns.rejectReason }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:45 }
+  colStatus: { type: text, component: Text, role: columnheader, text: { key: Appeals.columns.status }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:51 }
+  colActions: { type: text, component: Text, role: columnheader, text: { key: Appeals.columns.actions }, in: [listed], source: apps/nazar/features/appeals/components/appeals-table.tsx:68 } # visually hidden, in the accessibility tree
+  rowCourse: { type: text, component: Text, role: rowheader, text: { key: composed.Appeals.course, params: { title: appeal.title } }, in: [listed], repeat: appeals, source: apps/nazar/features/appeals/components/appeals-table.tsx:35 } # the row header: the request's title
+  rowKosk: { type: text, component: Text, role: cell, text: { key: composed.Appeals.kosk, params: { kosk: appeal.kosk } }, in: [listed], repeat: appeals, source: apps/nazar/features/appeals/components/appeals-table.tsx:41 }
+  rowRejectReason: { type: text, component: Text, role: cell, text: { key: composed.Appeals.rejectReason, params: { rejectReason: appeal.rejectReason } }, in: [listed], repeat: appeals, source: apps/nazar/features/appeals/components/appeals-table.tsx:47 } # the köşk's own reason, as it wrote it
+  statusNone: { type: text, component: Text, text: { key: Appeals.status.NONE }, in: [listed], when: "row == 'open'", repeat: appeals, source: apps/nazar/features/appeals/components/appeals-table.tsx:54 } # a Badge: a refused request nobody appealed
+  statusPending: { type: text, component: Text, text: { key: Appeals.status.PENDING }, in: [listed], when: "row == 'pending'", repeat: appeals, source: apps/nazar/features/appeals/components/appeals-table.tsx:54 } # a Badge: the appeal waits for Medaris management
+  openAppeal: { type: action, component: Button, role: button, intent: secondary, name: { key: Appeals.openLabel, params: { title: appeal.title } }, text: { key: Appeals.open }, in: [listed], when: "row == 'open'", repeat: appeals, emits: OPEN, source: apps/nazar/features/appeals/components/appeals-table.tsx:74 } # one per refused request with no appeal; the cell is empty for any other row
+
+  emptyLine: { type: text, component: Text, text: { key: Appeals.empty }, in: [empty], source: apps/nazar/features/appeals/components/appeals-page.tsx:39 } # EmptyState, data-testid=appeals-empty
+
+  # --- the read is refused ------------------------------------------------------------------------------------------------------
+  forbiddenTitle: { type: text, component: Text, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a <p>, not a heading (F-B-13)
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a status; it has no accessible name of its own, so it is found by its words
+
+  # --- the toasts over the page -------------------------------------------------------------------------------------------------
+  toastSent: { type: status, component: Status, role: dialog, name: { key: Appeals.dialog.done }, text: { key: Appeals.dialog.doneBody, params: { title: appeal.title } }, in: [listed], when: "last == 'sent'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:57 } # closes by itself after 6 seconds; its words claim more than the API does (F-B-appeals-5)
+  toastExists: { type: alert, component: Alert, role: alertdialog, name: { key: Appeals.dialog.failedTitle }, text: { key: Appeals.errors.exists }, in: [listed], when: "last == 'exists'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65 } # an error toast stays until closed; the dialog has closed and the list was read again
+  toastNotRejected: { type: alert, component: Alert, role: alertdialog, name: { key: Appeals.dialog.failedTitle }, text: { key: Appeals.errors.notRejected }, in: [listed, empty], when: "last == 'notRejected'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65 }
+  toastGone: { type: alert, component: Alert, role: alertdialog, name: { key: Appeals.dialog.failedTitle }, text: { key: Appeals.errors.gone }, in: [listed, empty], when: "last == 'gone'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65 }
+
+  # --- İtiraz aç: the dialog ------------------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [form, formTouched, formReady, sending], initialFocus: reasonField, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:78 } # modal; the scrim does not close a form dialog
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.Appeals.course, params: { title: appeal.title } }, in: [form, formTouched, formReady, sending], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:85 } # the request the dialog acts on: a <p> above the title, in neither the dialog's name nor its description (F-B-appeals-3)
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.dialog.title }, in: [form, formTouched, formReady, sending], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:86 } # h2
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [form, formTouched, formReady, sending], emits: CANCEL, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:87 } # an icon button named only by aria-label; it stays on and does nothing while the appeal is sent (F-B-appeals-1)
+  requiredNote: { type: text, component: Text, text: { key: composed.Appeals.requiredNote, params: { required: dialog.required } }, in: [form, formTouched, formReady, sending], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:98 } # "* zorunlu alan"
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: Appeals.dialog.label }, value: { literal: "" }, in: [form, formTouched, formReady, sending], disabledIn: [sending], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:106 } # a textarea of 4 rows with `required` and maxLength 1000, the focus on open; disabled while the appeal is sent, so it loses the focus (F-B-appeals-1)
+  reasonRequired: { type: text, component: Text, text: { key: Appeals.dialog.reasonRequired }, in: [formTouched], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:103 } # under the field once it was left empty; not a live region and the focus is not moved (F-B-6, F-L-12)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Appeals.dialog.cancel }, in: [form, formTouched, formReady, sending], emits: CANCEL, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:91 } # does nothing while the appeal is sent (F-B-appeals-1)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Appeals.dialog.submit }, in: [form, formTouched, formReady, sending], disabledIn: [form, formTouched, sending], emits: SUBMIT, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:92 } # natively disabled while the reason is blank, nothing says why (F-B-6); busy (aria-disabled, aria-busy) while sent
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [sending], source: libs/ui/src/mds/button.tsx:114 } # the busy button's hidden <output>; the word is the kit's own, outside the catalog (F-B-2)
+
+  # a refusal that leaves the dialog open: a toast over it
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: Appeals.dialog.failedTitle }, text: { key: Appeals.errors.forbidden }, in: [formReady], when: "last == 'forbidden'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65 } # whether the toast region is reachable while the modal is open is not verified (F-B-appeals-6)
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Appeals.dialog.failedTitle }, text: { key: Appeals.errors.generic }, in: [formReady], when: "last == 'failed'", source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65 }
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [openAppeal, form] }
+  - { triggers: [submit, sending] }
+  - { returnsFocus: [dialog, openAppeal] } # Vazgeç, Esc or the close icon: the row's button is still there; after a sent appeal it is not (F-B-9). Not verified in a browser.
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no focus when it opens or after it was read again, and none after the dialog closes on success (the opener leaves with the row's status change): the focus falls to the document. The dialog itself starts in the textarea (appeal-dialog.tsx:88)." }
+  - { id: F-B-6, rule: "The submit button is natively disabled while the reason is blank (appeal-dialog.tsx:92), and the error 'Bir gerekçe yazın.' is shown only when the field was left empty (appeal-dialog.tsx:103, :115): focus has already moved on, the message is only aria-describedby, and the `blank` branch of the submit handler (:49) can never run because a disabled button sends nothing and Enter in a textarea is a new line. Fix: do not disable the submit; on submit show the error and move focus to the textarea, or give the error role=alert." }
+  - { id: F-L-12, rule: "Field's error text is no live region (libs/ui/src/mds/field.tsx:50-53), so 'Bir gerekçe yazın.' is read only when the focus returns to the field. The family of F-B-6 (F-L-18)." }
+  - { id: F-B-9, rule: "On success the dialog closes and the list is read again: 'İtiraz aç' disappears with the row's change to 'Bekliyor', so the element Base UI would give the focus back to no longer exists and the focus falls to the document. Fix: move the focus to the table's caption or the row's status and say it in the toast. Not verified in a browser." }
+  - { id: F-B-2, rule: "The busy 'Gönder' passes no loadingLabel, so its hidden <output> says 'Yükleniyor' from the kit's hard-coded default (libs/ui/src/mds/button.tsx:62, :114), outside the catalog and the same word for every write of the app." }
+  - { id: F-B-12, rule: "The dialog's whole body is its description (libs/ui/src/mds/dialog.tsx:107-116); here that is the star line and the field, so a screen reader reads 'zorunlu alan' and 'Gerekçe' with the title. Small here; the same finding is large on the permission editor." }
+  - { id: F-B-13, rule: "A refused reader (a medrese nazır without madrasah.appeal_open) lands on a page whose <title> and <h1> still say İtirazlar, under a neutral Alert (role status) whose title is a <p>, with no link out (page-problem.tsx:23-29)." }
+  - { id: F-B-14, rule: "The shell e2e (shell.e2e.ts:192-210, shell#4) still expects the shared placeholder 'Bu sayfa henüz hazır değil.' on İtirazlar (a3); İtirazlar is built, the placeholder is unreachable (app/medrese/[medreseId]/[bolum]/page.tsx:16-20) and a3 cannot pass. This graph carries the page the code draws and not a3; a1, a2 and a4 stand (a4, aria-current, is not expressible here)." }
+  - { id: F-B-1, rule: "The page's failed read ('İtirazlar okunamadı' with a retry) draws a second <h1> under the page's own (LoadFailed with `shell`, F-L-16). That state is drawn by nazar.shell.errorStates, with İtirazlar standing for every page; this flow does not repeat it." }
+  - { id: F-B-appeals-1, rule: "new: while the appeal is sent the textarea is disabled (appeal-dialog.tsx:113), so the focused field loses the focus, and 'Vazgeç', the close icon and Escape stay enabled and do nothing (`if (!open && !pending) onClose()`, :81). A refusal that keeps the dialog open (AUTHZ_FORBIDDEN or any other failure) enables the field again and nothing gives the focus back. The same pattern as F-W3-open-2 in nizam. Fix: aria-disabled on the cancel controls while busy, keep the textarea readOnly, and focus it after a refusal. Not verified in a browser." }
+  - { id: F-B-appeals-2, rule: "new: the table is read again silently after a success: the row's badge changes from 'Yok' to 'Bekliyor' and its button leaves under a wrapper that carries only aria-busy (appeals-table.tsx:90), which no screen reader speaks; the toast (6 seconds) is the only word, and it is over when a screen-reader user has found the page again. Fix: a status line under the heading ('1 itiraz bekliyor') or a live region on the row." }
+  - { id: F-B-appeals-3, rule: "new: the dialog's accessible name is 'İtiraz aç' alone; the request it acts on is the eyebrow paragraph above the title (libs/ui/src/mds/dialog.tsx:85-89), which is in neither the name nor the description, so a screen-reader user who opens it is not told which course is being appealed (the opener's own aria-label names it, 'İtiraz aç: {title}'). Fix: put the title in the dialog's description or its name. Not verified with a screen reader." }
+  - { id: F-B-appeals-4, rule: "new: the reason's limit of 1000 characters is a `maxLength` (appeal-dialog.tsx:110) with no counter, no help line and no message: typing simply stops at 1000, and the person is not told why. Fix: a counter or a help line, and an error when a paste is cut." }
+  - { id: F-B-appeals-5, rule: "new: the success toast says 'Medaris yönetimine iletildi' (Appeals.dialog.doneBody), but createMadrasahAppeal writes the appeal and one audit row and notifies no one (appeal.repository.ts:107-150; the domain's sideEffects say so): Medaris management learns of it only by opening nizam's İtirazlar, and the köşk's nazım is not told. The decision is not notified to the medrese either (acceptAppeal and rejectAppeal write no notification), so the medrese finds out by opening İtirazlar again. Fix: notify the platform's deciders when an appeal opens and the medrese when it is decided (needs.yaml, appeal-is-told), or reword the toast." }
+  - { id: F-B-appeals-6, rule: "new, not verified: an error toast over an open modal dialog. Base UI marks the content outside a modal dialog inert, and the toast viewport is a portal outside it, so whether 'İtiraz gönderilemedi' is reachable (and announced) while the dialog is open is to be seen in a walk. If it is not, the refusal that keeps the dialog open (AUTHZ_FORBIDDEN, any other failure) says nothing to a screen-reader user." }
+  - { id: label-in-name, rule: "'İtiraz aç' is contained in the row button's name 'İtiraz aç: {title}' (WCAG 2.5.3). Holds." }
+  - { id: no-default-accept, rule: "The dialog starts in the textarea, not on 'Gönder'. Holds." }
+  - { id: one-appeal-per-request, rule: "The button is drawn only on a refused request that has no appeal (`canAppeal`, appeals.ts:41); a sent appeal cannot be taken back or sent again (no withdraw route). The page says neither in the dialog (decision D2)." }

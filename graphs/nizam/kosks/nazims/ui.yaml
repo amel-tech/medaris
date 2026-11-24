@@ -1,0 +1,199 @@
+# The screens of nizam.kosks.nazims: "Köşk nazımları" (/kosks/<id>/ayarlar/nazimlar) with its table, and the "Köşk nazımı ekle" dialog over
+# it. Read from apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx, features/kosks/components/{nazims-view,add-nazim-dialog,nazim-picker}.tsx,
+# features/kosks/admin-present.ts and libs/ui/src/mds (alert, breadcrumb, button, dialog, field, table, tabs) on 16 Nov 2026; the words are
+# copied from libs/i18n/src/locales/tr/nizam.json (namespaces KoskNazims, AddNazimDialog, KoskNazimPicker). Nothing was walked in a browser
+# (from the code); the unit specs apps/nizam/test/*nazim* exercise the same components.
+#
+# The page behind the dialog is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it is open. The table's
+# rows are data: the nodes marked `repeat` stand for one item per person added, and the replay finds them through the binding; the one
+# standing row (the köşk's first nazım) and the second person of "one or more" are separate nodes, as their words differ.
+#
+# What the graph leaves out of a row, on purpose: the chosen person's remove button is drawn for each person chosen, but only the first
+# one's press is a step (`removeFirst`, with one person chosen); the second person's remove button is not drawn and removing one of two is not walked. The tab counts
+# ("Köşk nazımları1", "Barındırma hakları0") are not drawn (KNZ-6); the six lines of the card are.
+#
+# Composed text (built in code, in no i18n file), each a value the page puts in a place that has no message of its own. A sample is keyed by
+# the placeholder's name, so each person and each date has a placeholder of its own:
+#   composed.KoskNazims.standing          the köşk's first nazım, a <bdi> in the row header (nazims-view.tsx:74-76)
+#   composed.KoskNazims.added             a person the başnazım added, the same cell
+#   composed.KoskNazims.more              the second person of "one or more", the same cell
+#   composed.KoskNazims.giver             the giver's name, a <bdi> (nazims-view.tsx:90)
+#   composed.KoskNazims.date              the day of the post, grantedOn(): "15 Kasım 2026", in the viewer's zone (nazims-view.tsx:103)
+#   composed.KoskNazims.term              the day a post ends, termLabel(): the same shape (admin-present.ts:381, nazims-view.tsx:113)
+#   composed.KoskNazims.koskName          the köşk's name, the breadcrumb's link to its page (nazims-view.tsx:134)
+#   composed.AddNazimDialog.eyebrow       the köşk's name above the dialog's title (add-nazim-dialog.tsx:117)
+#   composed.AddNazimDialog.savedBody     AddNazimDialog.savedBody with its {kosk} named {koskGenitive}: the caption's {kosk} is the plain name
+#                                         and one placeholder has one sample (add-nazim-dialog.tsx:99-102 passes the genitive)
+#   composed.KoskNazimPicker.person       a chosen person's name, a <bdi> (nazim-picker.tsx:171)
+#   composed.KoskNazimPicker.address      a chosen person's address, a <bdi dir=ltr> (nazim-picker.tsx:175)
+#   composed.KoskNazimPicker.more         the second person chosen, the same <bdi>; their remove button is not drawn (one {name} has one sample)
+#   composed.KoskNazimPicker.chosenMore   KoskNazimPicker.chosen ("{name} seçildi") with its {name} named {moreName}: the <output> says the last one
+#   composed.AddNazimDialog.busy          "Yükleniyor", the default of Button's `loadingLabel` (libs/ui/src/mds/button.tsx:67), written into the
+#                                         hidden <output> beside "Ekle" while it saves: the page passes none, so it is not a message of the app
+# `changes` is the app's own sentence, AddNazimDialog.intro: "Eklediğiniz kişi hemen {köşk} köşk nazımı olur." It says nothing of a köşk that
+# becomes active again (KNZ-1) or of the audit row (the footnote does, in another line).
+#
+# Samples: the köşk of the walk and its three people, from the seeded accounts' names; the binding gives the real ones from its helper.
+schema: delurio-graph/0
+kind: ui
+id: nizam.kosks.nazims
+flow: nizam.kosks.nazims
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: AddNazimDialog.intro }
+samples:
+  title: Nazımlar Deneme Köşkü
+  kosk: Nazımlar Deneme Köşkü
+  koskAccusative: Nazımlar Deneme Köşkü’nü
+  koskGenitive: Nazımlar Deneme Köşkü’nün
+  firstName: Betül Başvuran
+  addedName: Salih Başvuran
+  addedEmail: e2e-basvuran-d@medaris.test
+  moreName: Dilek Başvuran
+  names: Salih Başvuran
+  name: Salih Başvuran
+  chiefName: Vedat Başnazım
+  today: 16 Kasım 2026
+  endDate: 16 Aralık 2026
+
+nodes:
+  # ---- the page, the dialog closed ------------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [listed, listFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main>, with no name; nothing moves the focus into it on load (focus-not-set)
+  breadcrumb: { type: list, component: List, role: navigation, name: { key: KoskNazims.breadcrumbLabel }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:128 } # <nav aria-label="Sayfa yolu"> over an ordered list
+  crumbKosks: { type: action, component: LinkButton, role: link, text: { key: KoskNazims.kosks }, in: [listed], when: chief, emits: OPEN_KOSKS, source: apps/nizam/features/kosks/components/nazims-view.tsx:133 } # the başnazım's first crumb
+  crumbKosk: { type: action, component: LinkButton, role: link, text: { key: composed.KoskNazims.koskName, params: { title: kosk.title } }, in: [listed], when: chief, emits: OPEN_KOSK, source: apps/nizam/features/kosks/components/nazims-view.tsx:134 } # the köşk's own name, a link to its management page
+  crumbSettings: { type: action, component: LinkButton, role: link, text: { key: KoskNazims.settings }, in: [listed], when: "not chief", emits: OPEN_SETTINGS, source: apps/nizam/features/kosks/components/nazims-view.tsx:137 } # a nazım's and a Medaris nazımı's first crumb
+  crumbCurrent: { type: text, component: Text, text: { key: KoskNazims.title }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:135 } # a <span aria-current="page"> with the same words as the heading
+  title: { type: text, component: Heading, role: heading, text: { key: KoskNazims.title }, in: [listed, listFailed], source: apps/nizam/features/kosks/components/nazims-view.tsx:142 } # h1; the <title> says the same for every köşk (F-W3-9)
+  intro: { type: text, component: Text, text: { key: KoskNazims.intro, params: { koskAccusative: kosk.accusative } }, in: [listed, listFailed], source: apps/nizam/features/kosks/components/nazims-view.tsx:143 } # "Nazımlar Deneme Köşkü’nü yöneten köşk nazımları."
+  addButton: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskNazims.add }, in: [listed], when: chief, emits: OPEN_ADD, source: apps/nizam/features/kosks/components/nazims-view.tsx:146 } # primary, with a plus icon; the başnazım's alone (KNZ-2); it stays after an addition, so the focus has somewhere to return
+
+  # the tabs: three links in a named <nav>, full page loads; the page's own has aria-current="page"
+  tabsNav: { type: page, component: Page, role: navigation, name: { key: KoskNazims.tabsLabel }, in: [listed], source: libs/ui/src/mds/tabs.tsx:72 }
+  tabGeneral: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskNazims.tabs.general }, in: [listed], emits: OPEN_SETTINGS, source: apps/nizam/features/kosks/components/nazims-view.tsx:161 }
+  tabNazims: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskNazims.tabs.nazims }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:162 } # the current one: "Köşk nazımları" and the count, no space between (KNZ-6)
+  tabHosting: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskNazims.tabs.hosting }, in: [listed], emits: OPEN_HOSTING, source: apps/nizam/features/kosks/components/nazims-view.tsx:168 }
+
+  # what a nazım and a Medaris nazımı read instead of the button
+  readOnlyNote: { type: alert, component: Alert, role: status, text: { key: KoskNazims.readOnly }, in: [listed], when: "not chief", source: apps/nizam/features/kosks/components/nazims-view.tsx:179 } # a neutral Alert is a status: "Köşk nazımlarını Medaris yönetimi atar..."; said to a Medaris nazımı too (KNZ-2)
+  # a button that is never there: the list is read-only for everybody (kosks.e2e.ts#10, a9)
+  removeNever: { type: action, component: Button, role: button, intent: dismiss, name: { literal: Çıkar }, in: [listed], when: "false", source: apps/nizam/features/kosks/components/nazims-view.tsx:64 } # no row has a remove button; found by the e2e as /Çıkar/ and counted 0
+
+  # the table: named by its caption, which is visually hidden; the empty line or a row per post
+  rosterTable: { type: list, component: List, role: table, name: { key: KoskNazims.caption, params: { kosk: kosk.title } }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:188 }
+  headNazim: { type: text, component: Text, role: columnheader, text: { key: KoskNazims.columns.nazim }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:67 }
+  headGrantedBy: { type: text, component: Text, role: columnheader, text: { key: KoskNazims.columns.grantedBy }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:86 }
+  headGrantedAt: { type: text, component: Text, role: columnheader, text: { key: KoskNazims.columns.grantedAt }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:99 }
+  headTerm: { type: text, component: Text, role: columnheader, text: { key: KoskNazims.columns.term }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:109 }
+  emptyLine: { type: text, component: Text, text: { key: KoskNazims.empty }, in: [listed], when: "viewer == 'chiefPassive' and list == 'start'", source: apps/nizam/features/kosks/components/nazims-view.tsx:193 } # a cell spanning the columns; the only sign that a köşk is passive (KNZ-1)
+
+  # the köşk's first nazım, who was there before anything was added (kosks.e2e.ts#10: the row of the nazım, "Siz" for them)
+  rowName: { type: text, component: Text, text: { key: composed.KoskNazims.standing, params: { firstName: standing.firstName } }, in: [listed], when: "viewer != 'chiefPassive'", source: apps/nizam/features/kosks/components/nazims-view.tsx:74 }
+  rowYou: { type: text, component: Text, text: { key: KoskNazims.you }, in: [listed], when: "viewer == 'nazim'", source: apps/nizam/features/kosks/components/nazims-view.tsx:78 } # under their own name only
+  rowGiver: { type: text, component: Text, text: { key: composed.KoskNazims.giver, params: { chiefName: giver.chiefName } }, in: [listed], when: "viewer != 'chiefPassive'", source: apps/nizam/features/kosks/components/nazims-view.tsx:90 }
+  rowGiverRole: { type: text, component: Text, text: { key: KoskNazims.roles.SYSTEM_ADMIN }, in: [listed], when: "viewer != 'chiefPassive'", source: apps/nizam/features/kosks/components/nazims-view.tsx:92 } # "Medaris başnazımı": worked out at read time from the realm's role holders
+  rowDate: { type: text, component: Text, text: { key: composed.KoskNazims.date, params: { today: appointment.today } }, in: [listed], when: "viewer != 'chiefPassive'", source: apps/nizam/features/kosks/components/nazims-view.tsx:103 }
+  rowNever: { type: text, component: Text, text: { key: KoskNazims.unlimited }, in: [listed], when: "viewer != 'chiefPassive'", source: apps/nizam/features/kosks/components/nazims-view.tsx:113 }
+
+  # the people the başnazım added (a row each; after "Ekle")
+  rowAddedName: { type: text, component: Text, text: { key: composed.KoskNazims.added, params: { addedName: added.addedName } }, in: [listed], when: "list != 'start'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:74 }
+  rowAddedGiver: { type: text, component: Text, text: { key: composed.KoskNazims.giver, params: { chiefName: giver.chiefName } }, in: [listed], when: "list != 'start'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:90 } # the başnazım gave it, whoever the viewer is
+  rowAddedRole: { type: text, component: Text, text: { key: KoskNazims.roles.SYSTEM_ADMIN }, in: [listed], when: "list != 'start'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:92 } # kosks.e2e.ts#12 a-last: "Medaris başnazımı"
+  rowAddedDate: { type: text, component: Text, text: { key: composed.KoskNazims.date, params: { today: appointment.today } }, in: [listed], when: "list != 'start'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:103 }
+  rowAddedNever: { type: text, component: Text, text: { key: KoskNazims.unlimited }, in: [listed], when: "list == 'added'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:113 } # no end typed: "Süresiz" (kosks.e2e.ts#12)
+  rowAddedEnd: { type: text, component: Text, text: { key: composed.KoskNazims.term, params: { endDate: appointment.endDate } }, in: [listed], when: "list == 'addedEnd'", repeat: added.items, source: apps/nizam/features/kosks/components/nazims-view.tsx:113 } # an end typed: the day, not "Süresiz" (kosks.e2e.ts#13)
+  rowMoreName: { type: text, component: Text, text: { key: composed.KoskNazims.more, params: { moreName: more.moreName } }, in: [listed], when: "list != 'start' and chosen == 'many'", source: apps/nizam/features/kosks/components/nazims-view.tsx:74 } # the second person of "one or more", added in the same call
+
+  # the card beside the table: what a köşk nazımı can do here
+  abilitiesAside: { type: page, component: Page, role: complementary, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:198 } # an <aside class=mds-card> with no name
+  abilitiesHeading: { type: text, component: Heading, role: heading, text: { key: KoskNazims.abilitiesHeading }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:199 } # h2
+  abilitiesList: { type: list, component: List, role: list, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:200 }
+  ability1: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.1 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  ability2: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.2 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  ability3: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.3 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  ability4: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.4 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  ability5: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.5 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  ability6: { type: list, component: ListItem, role: listitem, text: { key: KoskNazims.abilities.6 }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:207 }
+  abilitiesNote: { type: text, component: Text, text: { key: KoskNazims.abilitiesNote }, in: [listed], source: apps/nizam/features/kosks/components/nazims-view.tsx:211 }
+
+  # the toast of an addition: a sonner toast (add-nazim-dialog.tsx:98), a title and a description; it closes by itself after 6 seconds
+  toastSaved: { type: status, component: Status, text: { key: AddNazimDialog.saved }, in: [listed], when: "toast == 'saved'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98 }
+  toastSavedBody: { type: status, component: Status, text: { key: composed.AddNazimDialog.savedBody, params: { names: added.names, koskGenitive: kosk.genitive } }, in: [listed], when: "toast == 'saved'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:99 } # "Salih Başvuran artık Nazımlar Deneme Köşkü’nün köşk nazımı."
+
+  # ---- the list could not be read -------------------------------------------------------------------------------------------------
+  failAlert: { type: alert, component: Alert, role: alert, name: { key: KoskNazims.loadFailedTitle }, in: [listFailed], source: apps/nizam/features/kosks/components/nazims-view.tsx:181 } # an error Alert is role=alert
+  failText: { type: text, component: Text, text: { key: KoskNazims.loadFailed }, in: [listFailed], source: apps/nizam/features/kosks/components/nazims-view.tsx:182 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskNazims.retry }, in: [listFailed], emits: RETRY, source: apps/nizam/features/kosks/components/nazims-view.tsx:183 }
+
+  # ---- the dialog "Köşk nazımı ekle" ----------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [asking, askingReady, looking, adding], initialFocus: nazimField, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109 } # a form dialog; the scrim does not close it; the focus starts in the e-mail field (`initialFocus={emailRef}`, :120)
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.AddNazimDialog.eyebrow, params: { title: kosk.title } }, in: [asking, askingReady, looking, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:117 } # the köşk's name above the title
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: AddNazimDialog.title }, in: [asking, askingReady, looking, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:118 } # h2
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: AddNazimDialog.close }, in: [asking, askingReady, looking], emits: CANCEL, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:119 } # it stays on and does nothing while the people are added (`if (!saving)`, :112); not drawn in `adding`
+  dialogIntro: { type: text, component: Text, text: { key: AddNazimDialog.intro, params: { koskGenitive: kosk.genitive } }, in: [asking, askingReady, looking, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:131 }
+  requiredNote: { type: text, component: Text, text: { key: AddNazimDialog.requiredNote }, in: [asking, askingReady, looking, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:133 } # drawn as "* zorunlu alan"
+
+  # Köşk nazımı: the picker (the same component as nizam.kosks.open's; nazim-picker.tsx)
+  nazimField: { type: field, component: TextField, role: textbox, text: { key: KoskNazimPicker.label }, value: { literal: "" }, in: [asking, askingReady, looking, adding], disabledIn: [looking, adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:122 } # type=email, `required`; disabled while it searches, so it loses the focus (F-W2-3); it is empty again after every person found
+  nazimHelp: { type: text, component: Text, text: { key: KoskNazimPicker.help }, in: [asking, askingReady, looking, adding], when: "not pickerError", source: apps/nizam/features/kosks/components/nazim-picker.tsx:121 } # "her arama denetim kaydına yazılır"; an error replaces it
+  pickerNotFound: { type: text, component: Text, text: { key: KoskNazimPicker.notFound }, in: [asking, askingReady, looking, adding], when: "pickerError and note == 'notFound'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:106 } # the field's own error while nobody is chosen: no live region (F-UI-W3-1)
+  pickerDown: { type: text, component: Text, text: { key: KoskNazimPicker.failed }, in: [asking, askingReady, looking, adding], when: "pickerError and note == 'down'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:108 }
+  pickerAlertNotFound: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.notFound }, in: [asking, askingReady, looking, adding], when: "chosen != 'none' and note == 'notFound'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:149 } # once somebody is chosen the search messages stand beside the field, and then they are announced
+  pickerAlertDown: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.failed }, in: [asking, askingReady, looking, adding], when: "chosen != 'none' and note == 'down'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:149 }
+  pickerAlertAlready: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.already }, in: [asking, askingReady, looking, adding], when: "note == 'already'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:149 }
+  searching: { type: status, component: Status, role: status, text: { key: KoskNazimPicker.searching }, in: [looking], source: apps/nizam/features/kosks/components/nazim-picker.tsx:154 } # the hidden <output>
+  chosenAnnounce: { type: status, component: Status, role: status, text: { key: KoskNazimPicker.chosen, params: { name: added.addedName } }, in: [asking, askingReady, adding], when: "heard and chosen != 'many'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:84 } # the same <output>; it keeps the last name after a removal (F-W3-open-3)
+  chosenAnnounceMore: { type: status, component: Status, role: status, text: { key: composed.KoskNazimPicker.chosenMore, params: { moreName: more.moreName } }, in: [asking, askingReady, adding], when: "chosen == 'many'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:84 } # the <output> says the last person chosen
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: KoskNazimPicker.chosenTitle }, in: [asking, askingReady, looking, adding], when: "chosen != 'none'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:163 } # h3 of the chosen block, a section named by it
+  chosenFirst: { type: text, component: Text, text: { key: composed.KoskNazimPicker.person, params: { addedName: added.addedName } }, in: [asking, askingReady, looking, adding], when: "chosen != 'none'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:171 }
+  chosenFirstEmail: { type: text, component: Text, text: { key: composed.KoskNazimPicker.address, params: { addedEmail: added.addedEmail } }, in: [asking, askingReady, looking, adding], when: "chosen != 'none'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:175 } # kosks.e2e.ts#12: the chosen block holds the address
+  chosenSecond: { type: text, component: Text, text: { key: composed.KoskNazimPicker.more, params: { moreName: more.moreName } }, in: [asking, askingReady, looking, adding], when: "chosen == 'many'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:171 }
+  removeFirst: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskNazimPicker.remove, params: { name: added.addedName } }, in: [asking, askingReady, looking, adding], disabledIn: [adding], when: "chosen != 'none'", emits: REMOVE_NAZIM, duringStep: true, source: apps/nizam/features/kosks/components/nazim-picker.tsx:180 } # an icon button named by aria-label; no confirmation and the focus is not moved; pressed as a step only with one person chosen; live while a lookup runs (only the e-mail field is disabled): the remove is at once and holds, since a lookup that then finds somebody adds them to the list as it is when the answer comes (a state setter's update, nazim-picker.tsx:83; the remove itself, :186). Fixed 23 Nov 2026: the lookup once added to the list as it was when the search began, so the removed person came back (test: apps/nizam/test/course-create-in-flight.spec.tsx)
+
+  # Görev bitiş tarihi ve saati (isteğe bağlı)
+  endField: { type: field, component: TextField, role: textbox, text: { key: AddNazimDialog.endLabel }, value: { literal: "" }, in: [asking, askingReady, looking, adding], disabledIn: [adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:155 } # <input type=datetime-local name=endsAt>; empty means no end
+  endHelp: { type: text, component: Text, text: { key: AddNazimDialog.endHelp }, in: [asking, askingReady, looking, adding], when: "end != 'past'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:144 } # "Süre dolunca başka köşk nazımı yoksa köşk pasifleşir." (KNZ-1); the error replaces it
+  endPast: { type: text, component: Text, text: { key: AddNazimDialog.errors.endPast }, in: [asking, askingReady, looking, adding], when: "end == 'past'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:146 } # under the field the moment the end is typed (`resolveEnd` runs on every render), not a live region (F-UI-W3-1)
+  footnote: { type: text, component: Text, text: { key: AddNazimDialog.footnote }, in: [asking, askingReady, looking, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:168 }
+
+  # the footer
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: AddNazimDialog.submit }, in: [asking, askingReady, adding], disabledIn: [asking, adding], emits: SUBMIT, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124 } # natively disabled in `asking`, nothing says why (F-W3-1); busy (aria-disabled, aria-busy) in `adding`; not drawn in `looking`, where it keeps the state it had
+  busy: { type: status, component: Status, role: status, text: { key: composed.AddNazimDialog.busy }, in: [adding], source: libs/ui/src/mds/button.tsx:67 } # the visually hidden <output> beside the button
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: AddNazimDialog.cancel }, in: [asking, askingReady, looking], emits: CANCEL, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123 } # on while the people are added, and does nothing then; not drawn in `adding`
+
+  # a refusal: an error toast over the dialog (sonner), which stays until it is closed; the dialog stays open
+  toastFailed: { type: status, component: Status, text: { key: AddNazimDialog.failed }, in: [asking, askingReady], when: "toast in ['exists', 'unknownAccount', 'endPassed', 'gone', 'forbidden', 'failed']", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:92 }
+  toastExists: { type: status, component: Status, text: { key: AddNazimDialog.errors.nazimExists }, in: [asking, askingReady], when: "toast == 'exists'", source: apps/nizam/features/kosks/admin-present.ts:417 }
+  toastUnknownAccount: { type: status, component: Status, text: { key: AddNazimDialog.errors.unknownAccount }, in: [asking, askingReady], when: "toast == 'unknownAccount'", source: apps/nizam/features/kosks/admin-present.ts:418 }
+  toastEndPassed: { type: status, component: Status, text: { key: AddNazimDialog.errors.endPast }, in: [asking, askingReady], when: "toast == 'endPassed'", source: apps/nizam/features/kosks/admin-present.ts:424 }
+  toastGone: { type: status, component: Status, text: { key: AddNazimDialog.errors.notFound }, in: [asking, askingReady], when: "toast == 'gone'", source: apps/nizam/features/kosks/admin-present.ts:423 }
+  toastForbidden: { type: status, component: Status, text: { key: AddNazimDialog.errors.forbidden }, in: [asking, askingReady], when: "toast == 'forbidden'", source: apps/nizam/features/kosks/admin-present.ts:425 }
+  toastGeneric: { type: status, component: Status, text: { key: AddNazimDialog.errors.generic }, in: [asking, askingReady], when: "toast == 'failed'", source: apps/nizam/features/kosks/admin-present.ts:436 }
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [addButton, asking] }
+  - { triggers: [submit, adding] }
+  - { returnsFocus: [dialog, addButton] } # Base UI returns the focus to the element that was focused when the dialog opened: the page's "Köşk nazımı ekle"
+
+rules:
+  - { id: focus-not-set, rule: "the page sets no focus of its own on load (nothing in nazims-view.tsx or page.tsx does), so no node has initialFocus on the page and no `focus` is drawn; the dialog gives it to the e-mail field (`initialFocus={emailRef}`, add-nazim-dialog.tsx:120)" }
+  - { id: no-default-accept, rule: "no page has initialFocus on an action with intent confirm: the dialog starts in the e-mail field" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: F-W3-1, rule: "a submit button is not natively disabled while the form is incomplete with nothing saying what is missing. 'Ekle' is off until somebody is chosen and the end is not in the past; the message written for a submit try ('En az bir köşk nazımı seçin.', KoskNazimPicker.required, add-nazim-dialog.tsx:79-81 and :139) can never show, because a disabled default button blocks implicit submission and `sent` is never set. A keyboard or screen-reader user meets a dead button. Fix: keep it enabled, validate on submit and focus the first problem, or tie the reason to the button with aria-describedby (F-X-3 is the same finding in every dialog)" }
+  - { id: F-X-3, rule: "the family of F-W3-1: natively disabled submit buttons with no reason given, in this dialog and in every dialog of the app" }
+  - { id: F-W3-14, rule: "the address is looked up when the field is left (onBlur, nazim-picker.tsx:145), not only on Enter, and tedrisat writes every lookup, found or not, to the audit log; the help text says every search is audited. Tabbing through the field, or pressing Vazgeç with an address typed, makes audited lookups nobody meant. Fix: search on Enter or an explicit 'Ara' button only" }
+  - { id: F-X-14, rule: "the family of F-W3-14: e-mail lookups that run on blur in the four pickers of nizam" }
+  - { id: F-W2-3, rule: "the e-mail field has no search button and is `disabled` while it searches (nazim-picker.tsx:132), so the focused field loses the focus, and nothing says the search finished except a hidden <output> for a success; 'not found' and 'failed' are a Field error that is not a live region while nobody is chosen. Fix: a visible 'Ara' button, keep the input enabled with aria-busy, announce the result with role=status" }
+  - { id: F-UI-W3-1, rule: "Field's error element has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-53): 'Bitiş zamanı şu andan sonra olmalı.' appears under the end field the moment a past end is typed and is read only if the focus moves to the field; the toast of a refusal is announced, the field's own message is not" }
+  - { id: F-UI-W1-1, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx), so a screen reader reads the intro and every field as the dialog's description when it opens" }
+  - { id: F-W3-9, rule: "the <title> of the page is 'Köşk nazımları' for every köşk (nazimlar/page.tsx:12-15); a nazım of several köşks cannot tell the tabs or the history entries apart. The h1 and the breadcrumb do not name the köşk either for a nazım; the intro and the caption do. Fix: put the köşk's name in the title" }
+  - { id: F-W3-open-3, rule: "the picker's live <output> keeps 'X seçildi' after X is removed from the list, and a removal moves no focus and says nothing (nazim-picker.tsx:84, 173); the same component as nizam.kosks.open's" }
+  - { id: KNZ-1, rule: "new, from the code and the ledger's inactive-scope-accepts-new-scope: adding a nazım makes a passive köşk active again silently. addNazims clears passive_since and passive_reason in the same transaction for any köşk it adds to (kosk-admin.repository.ts:407-410), with no check that the köşk is passive, was ever managed, or is not hidden, the same family as the Pasif kapsamlar assign (inactive-scope.repository.ts:263, :306-312: any scope with no manager held now, a past manager not required). The page never shows a köşk's standing: a passive köşk's list is the empty line 'Bu köşkün köşk nazımı yok.', the dialog's help speaks only of the end of a post ('Süre dolunca başka köşk nazımı yoksa köşk pasifleşir.'), and the toast names the people. The başnazım passivated it with a 64-character confirmation that spelt out its courses, talebe and live celseler (deactivate, kosk-admin.repository.ts:702-755); reopening it, with every course below, needs one e-mail address and no confirmation. And 'passive' has two sources: the engine derives it from the role rows (a manager once, none now: role-assignments.ts:61-73), while the directory's status reads kosks.passive_since alone (kosk-admin.repository.ts:147), which only deactivate sets; a köşk whose last post simply ends is passive for the engine and 'Etkin' in the directory, and the help line's promise is kept for one and not the other. Fix: show the köşk's status on this page, say 'yeniden etkin' in the dialog and the toast, ask before reopening, and make the two notions one" }
+  - { id: KNZ-2, rule: "new: the page and the API disagree on who may add. The API asks platform.kosk_nazim_manage (kosk-admin.service.ts:117), which the başnazım and a Medaris nazımı holding the code pass; the page gives 'Köşk nazımı ekle' to `me.roles.systemAdmin` alone (page.tsx:48, nazims-view.tsx:145). A Medaris nazımı who may add meets a read-only page; and the one who holds only platform.kosk_edit (the seeded one) is told 'Köşk nazımlarını Medaris yönetimi atar; bu listeyi buradan değiştiremezsiniz.' although they are the Medaris yönetimi. The management view /kosks/<id> goes the other way (the button for every holder of platform.kosk_edit, F-W3-4). The Swagger summary says 'SYSTEM_ADMIN only' and the e2e title agrees (inventory F-6). A decision to take (D2): give the button by the permission the API asks, and word the note for the person it is shown to" }
+  - { id: KNZ-3, rule: "new, from the code: the error toast is raised with `toast.error` and no id, and a refusal's toast stays until it is closed (duration Infinity, add-nazim-dialog.tsx:92-95), so pressing 'Ekle' again after a 409 stacks a second identical toast, and an error toast stays on screen after a later attempt succeeds and the success toast appears beside it. Fix: give the toast an id per action, as the unified kit's notify does (libs/ui/src/mds/toast.tsx), or dismiss it on the next attempt" }
+  - { id: KNZ-4, rule: "new, from the code: the picker has no limit and the API takes one to ten people (KOSK_MANAGERS_MAX = 10, kosk-field-rules.ts:42, ArrayMaxSize in kosk-admin.dto.ts:189). With an eleventh person chosen 'Ekle' is on, the server answers 400 VALIDATION_ERROR and the toast says 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.', not that ten is the most. Fix: stop the picker at ten and say so, or give the code its own sentence" }
+  - { id: KNZ-5, rule: "new, from the code: the dialog does not know who is a nazım already, though the page has the list in hand (`nazims`); a person already on it is chosen like anyone and refused only after 'Ekle', in a toast that does not say which of the people it is, and the whole call is refused (all or nothing: nobody is added). kosks.e2e.ts#12 pins this ('Seçilen kişi zaten bu köşkün nazımı.'). Fix: tell the person at once, beside the chosen name, as the ders nazırı dialog of nazar does" }
+  - { id: KNZ-6, rule: "new, from the code: the tab's link reads label and count with no space between ('Köşk nazımları1', 'Barındırma hakları0'), a count of 0 included, because the count is an inline <span> in the link (libs/ui/src/mds/tabs.tsx:76-82); the same as the nazar tabs' F-A-12. Fix: put the count in a visually hidden ' (1)' or give the link an aria-label" }

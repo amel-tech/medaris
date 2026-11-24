@@ -301,6 +301,40 @@ describe("GET /api/auth/signin", () => {
     expect(later.headers.get("location")).toContain("https://idp.example");
   });
 
+  it("takes its cap and window from signInLimit (AUTH_SIGN_IN_LIMIT=30/60)", async () => {
+    const config = testConfig({ signInLimit: { max: 30, windowMs: 60_000 } });
+    const { handlers } = createAuth(config);
+
+    // Past the default cap, still under the raised one; the cookie lives
+    // only as long as what is left of the minute.
+    const allowed = await handlers.signIn(
+      request("/api/auth/signin", {
+        cookie: `nazar.auth-starts=29.${clock.now - 10_000}`,
+      })
+    );
+    expect(allowed.headers.get("location")).toContain("https://idp.example");
+    const counted = setCookie(allowed, "nazar.auth-starts");
+    expect(counted?.value).toBe(`30.${clock.now - 10_000}`);
+    expect(counted?.attributes).toContain("max-age=50");
+
+    const capped = await handlers.signIn(
+      request("/api/auth/signin", {
+        cookie: `nazar.auth-starts=30.${clock.now - 10_000}`,
+      })
+    );
+    expect(capped.headers.get("location")).toBe(
+      `${ORIGIN}/auth/signin?error=SignInLimit`
+    );
+
+    // A minute later the count starts again.
+    const later = await handlers.signIn(
+      request("/api/auth/signin", {
+        cookie: `nazar.auth-starts=30.${clock.now - 61_000}`,
+      })
+    );
+    expect(later.headers.get("location")).toContain("https://idp.example");
+  });
+
   it("keeps only the newest round trips open", async () => {
     const config = testConfig();
     const { handlers } = createAuth(config);

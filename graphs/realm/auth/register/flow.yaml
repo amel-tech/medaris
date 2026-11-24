@@ -1,0 +1,459 @@
+# Registering on the realm's own page and verifying the e-mail address, as the code does it today (status captured; the
+# code is PR #394's, read and walked on the local stack on 15 Nov 2026). The round trip is tedris's /auth/register page,
+# GET /api/auth/signin?intent=register, Keycloak's register.ftl, a POST of that form, login-verify-email.ftl, the mail
+# Keycloak sends, its link, and GET /api/auth/callback/keycloak (libs/auth, apps/keycloak-theme, libs/ui/src/giris,
+# config/keycloak).
+#
+# How Keycloak is drawn: as realm.auth.signIn draws it. Keycloak is not a domain; its pages are screens of ui.yaml, the
+# POST of register.ftl (url.registrationAction) is `invoke: { external: keycloak.registrationAction }`, and the mail it
+# sends is an effect of the step that follows (checked in Mailpit by the binding). The web edge of libs/auth that the
+# browser meets (getAuthSession, startSignIn, finishSignIn) are domain actions and are invoked as such.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - nothing has the focus when the form opens (REG-1), and after a failed check one typed character moves the focus
+#     on to the next invalid control (K1, measured here in Chromium, not only in happy-dom as the inventory had it);
+#   - the reasons under the fields are not live regions (REG-2) and the password's rule list vanishes as soon as the
+#     password has a reason of its own (REG-3);
+#   - "Kullanıcı adı zaten var." and "Bu e-posta zaten var." say whether a name or an address has an account (REG-4);
+#   - the verification page offers "Yeniden gönder" at once and refuses it for the first 30 seconds (REG-5, K14); it
+#     uses the old kit (K4), has no focus, and says "siz" where the form said "sen" (K10); every Keycloak page has one tab
+#     title (K2); the privacy link is the production address (K13).
+#   - a link opened in another browser verifies the address and offers a link to tedris's base address, with no session there
+#     (the click on it was not walked); the page that waits in the first browser has no script, so it cannot change by itself
+#     (inferred from the code, not observed) (REG-6).
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.register
+status: captured
+domain: medaris.api
+ui: realm.auth.register
+title: Register an account and verify the e-mail address
+summary: >-
+  A visitor takes "Kayıt ol" (tedris's /auth/register, which landing's "Kayıt ol" and Keşfet's invitation lead to, or the
+  link on Keycloak's sign-in form) and gets the registration form: first name, last name, gender, user name, e-mail address,
+  a password typed twice with its three rules shown live, and the box "Aydınlatma Metni’ni okudum." Pressing "Kayıt ol"
+  with something missing lists the reasons under the fields and puts the focus on the first; with everything right Keycloak
+  makes the account, sends the verification mail and shows "E-posta adresinizi doğrulayın". Opening the mail's link in the
+  same browser verifies the address and lands the person on tedris's home page, signed in. Keycloak may also say the user
+  name or the address is taken, under that field.
+scope:
+  shows: >-
+    The round trip from tedris's /auth/register to the home page: the registration form with its client checks and
+    Keycloak's two refusals, the verification page and its resend, the mail, and the two ways to open its link (the browser
+    that registered, another browser).
+  world: open
+  outOfView:
+    - "the app's own /auth/register page (its redirecting line and its button) and its error box: tedris's navigation graph and realm.auth.signInFailures; nizam and nazar have no registration page, although the realm lets their Keycloak clients show the same form (the logo's second line then says Nizam or Nazar, and the person lands in that app after the verification): not drawn, not walked"
+    - "the expired form (login-page-expired.ftl) and the error page (error.ftl): realm.auth.signInFailures; the exit handed_over.page_expired is drawn from the theme and was not reproduced on the stack"
+    - "the sign-in form that an unverified account types its credentials into: realm.auth.signIn draws it and hands over at handed_over.verify_email; this flow starts at the verification page for that way in (state signingIn)"
+    - "the text of the verification mail (button, expiry, three languages): the mail is checked for its subject and its link only; email.e2e#1 holds the template"
+    - "the link's lifetime (1 day) and what an expired or already used link shows"
+    - "the terms checkbox (termsAccepted): the realm does not ask for it (K11)"
+    - "the reveal buttons of the two password fields: each keeps one name and toggles aria-pressed"
+    - "the language of the pages: tedris passes ui_locales=tr and kc_locale=tr; en and ar exist and no app asks for them yet"
+    - "the privacy notice's own page (the link opens it in a new tab, to the production address)"
+    - "the session after the registration (libs/auth) and what the home page then shows: tedris.shell.home"
+
+context:
+  entry:
+    values: [registerPage, signInForm, signInUnverified]
+    initial: any
+    say:
+      registerPage: "they open tedris's /auth/register (landing's and Keşfet's Kayıt ol lead there)"
+      signInForm: "they took Kayıt ol on Keycloak's sign-in form"
+      signInUnverified: "they signed in on Keycloak's form with an account whose address is not verified yet (the seed's pendingEmail is one)"
+  session:
+    values: [none, usable]
+    initial: any
+    say:
+      none: "the browser holds no session"
+      usable: "the browser already holds a usable session"
+  answer:
+    values: [created, userNameTaken, emailTaken, expired]
+    initial: any
+    say:
+      created: "Keycloak accepts the form and makes the account"
+      userNameTaken: "another account has the user name they typed"
+      emailTaken: "another account has the e-mail address they typed"
+      expired: "the form's one-time code is no longer valid"
+  cooldown:
+    values: [running, over]
+    initial: any
+    say:
+      running: "less than 30 seconds since the last verification mail"
+      over: "30 seconds or more since the last verification mail"
+  device:
+    values: [sameBrowser, otherBrowser]
+    initial: any
+    say:
+      sameBrowser: "they open the mail's link in the browser they registered in"
+      otherBrowser: "they open the mail's link in another browser or on another device"
+  gender:
+    values: [none, female, male]
+    initial: none
+    say:
+      none: "no gender chosen"
+      female: "Kadın chosen"
+      male: "Erkek chosen"
+  noticeRead:
+    values: [false, true]
+    initial: false
+    say:
+      "true": "the privacy-notice box is ticked"
+      "false": "the box is not ticked"
+  fixed:
+    values: [false, true]
+    initial: false
+    say:
+      "true": "they retyped the form after a refusal"
+      "false": ""
+  verified:
+    values: [false, true]
+    initial: false
+    say:
+      "true": "the address is verified"
+      "false": "the address is not verified"
+  mails:
+    values: [none, one, two]
+    initial: none
+    say:
+      none: "no verification mail yet"
+      one: "one verification mail was sent"
+      two: "a second verification mail was sent"
+
+guards:
+  accepted: "answer == 'created' or fixed"
+  mayResend: "cooldown == 'over'"
+
+effects:
+  fills: { set: { gender: female, noticeRead: true } }
+  fixesIt: { set: { fixed: true } }
+  verificationMailed: { set: { mails: one } }
+  mailedAgain: { set: { mails: two } }
+  emailVerified: { set: { verified: true } }
+  mailedBySignIn: { set: { mails: one } }
+
+failures:
+  startingRoundTrip:
+    from: startSignIn
+    retryable: [OAuthSignin]
+    final: [SignInLimit]
+  finishingRoundTrip:
+    from: finishSignIn
+    retryable: [OAuthCallback]
+    final: [AccessDenied, Configuration]
+
+# The main story: a visitor opens /auth/register, presses "Kayıt ol" on the empty form and is told what is missing, fills
+# every field, picks Kadın, ticks the privacy box, presses "Kayıt ol", opens the mail's link in the same browser and lands
+# on the home page.
+main:
+  given: { entry: registerPage, session: none, answer: created, cooldown: running, device: sameBrowser }
+  events: [DONE, DONE, SUBMIT, FILL, SUBMIT, DONE, OPEN_MAIL_LINK, DONE]
+
+initial: openApp
+states:
+  openApp:
+    title: The person asks for the registration form
+    description: >-
+      Two ways in lead to the same form. Tedris's /auth/register page starts the round trip by itself (landing's "Kayıt ol"
+      and the invitation on Keşfet, the köşk page and the medrese page go there); Keycloak's sign-in form has a link "Kayıt ol"
+      that goes straight to the registration form, inside the round trip that is already open. A third way in skips the form:
+      a person who signs in with an account whose address was never verified (the seed's pendingEmail) is held by Keycloak on
+      the verification page, which this flow draws (realm.auth.signIn hands over to it at handed_over.verify_email).
+    source: apps/tedris/app/auth/register/page.tsx:15
+    always:
+      - { target: signingIn, guard: "entry == 'signInUnverified'", source: libs/ui/src/giris/login-form.tsx:68, say: "the sign-in form is realm.auth.signIn's; the person types their name and password there" }
+      - { target: registerForm, guard: "entry == 'signInForm'", source: apps/keycloak-theme/src/login/pages/Login.tsx:72, say: "the realm's link on the sign-in form: no app page, the form at once" }
+      - { target: appRegisterPage, say: "tedris's /auth/register" }
+
+  appRegisterPage:
+    title: Tedris's registration page reads the session and starts the round trip
+    description: >-
+      The page is AuthEntry with intent=register and callbackUrl "/" (tedris, apps/tedris/app/auth/register/page.tsx:15; nizam
+      and nazar have none). It reads GET /api/auth/session first; a usable session means someone else finished a round trip, so
+      it goes straight on to "/" (which sends a signed-in tedris person to /home), at most twice per tab in two minutes. With
+      none it starts the round trip by itself, once per tab turn, by sending the browser to GET /api/auth/signin with
+      intent=register and auto=1; for a moment it shows "Kayıt sayfasına yönlendiriliyorsunuz…" and a "Devam et" button. That
+      page is drawn by tedris's navigation graph, not by this ui.
+    source: apps/tedris/features/auth/auth-entry.tsx:72
+    invoke: { action: getAuthSession }
+    on:
+      DONE:
+        - { target: home_opened.already_signed_in, guard: "session == 'usable'", source: libs/auth/src/client/sign-in.ts:345, say: "already signed in: straight on to /" }
+        - { target: startingRoundTrip, say: "no session: the page starts the round trip" }
+
+  startingRoundTrip:
+    title: The app starts the round trip for the registration form
+    description: >-
+      GET /api/auth/signin?intent=register&callbackUrl=%2F: the cap of five starts in five minutes, the session store, Keycloak's
+      discovery document, then a 303 to Keycloak's authorization endpoint with the app's client (tedris-local on the stack),
+      PKCE S256, state, nonce, ui_locales and kc_locale (tr) and prompt=create, which makes Keycloak answer with register.ftl
+      instead of login.ftl. For intent=register the route does not skip the round trip for a browser that holds a session
+      (the page above has already sent such a browser on, so only a start from another page would meet this).
+    source: libs/auth/src/server/routes.ts:146
+    invoke: { action: startSignIn }
+    on:
+      DONE: { target: registerForm, say: "Keycloak shows the registration form" }
+      FAIL.retryable: { target: error_box.retryable, say: "Keycloak's discovery document or the session store could not be asked" }
+      FAIL.final: { target: error_box.final, say: "this browser has started five round trips in five minutes" }
+
+  signingIn:
+    title: Keycloak checks the credentials of an account that is not verified
+    description: >-
+      The sign-in form is realm.auth.signIn's (login.ftl, the app's /auth/signin before it); it is not drawn again here. The
+      person has typed the user name or the address and the password, and Keycloak accepted them, but the account's address
+      is not verified, so it holds the person on the verification page instead of redirecting to the app, and sends the
+      verification mail at once (every such sign-in sends one).
+    source: libs/ui/src/giris/login-form.tsx:68
+    invoke: { external: keycloak.loginAction }
+    on:
+      DONE: { target: verifyEmailPage, effect: [mailedBySignIn], source: config/keycloak/realms/_base.json:5, say: "Keycloak holds the account on the verification page and sends the mail" }
+
+  registerForm:
+    title: Keycloak's registration form, empty
+    description: >-
+      register.ftl on the Medaris theme: the card with the logo and the app's name under it, the heading "Kayıt ol", its
+      sentence, "* zorunlu alan", then the realm's user profile in its own order (Ad, Soyad, Cinsiyet as two radios Kadın and
+      Erkek, Kullanıcı adı, E-posta with its help line) and, after the later of the user name and the e-mail, the two password
+      fields (each with a reveal button) and under the first the three rules, then the box "Aydınlatma Metni’ni okudum." with
+      its link, "Kayıt ol", and under a rule "Hesabın var mı? Giriş yap". A native form that posts without script; its checks
+      run first in the browser (noValidate). Nothing has the focus (REG-1); the page title is the same as on every Keycloak
+      page (K2). Gender and the privacy box are required, like the rest. The privacy link goes to the production address on
+      every environment (K13) and opens in a new tab.
+    source: apps/keycloak-theme/src/login/pages/Register.tsx:97
+    by: human
+    on:
+      FILL: { target: formFilled, effect: [fills], say: "they fill every field, choose Kadın, tick the privacy box" }
+      FILL_MISMATCH: { target: formMismatched, effect: [fills], say: "they fill every field, but the second password differs from the first" }
+      SUBMIT: { target: formWithReasons, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol on the empty form: the checks list their reasons and post nothing" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  formWithReasons:
+    title: The form after a press with fields missing
+    description: >-
+      The browser's own checks found six empty text fields, no gender and an unticked box. Nothing was posted. Under each
+      field a line says why ("Lütfen bu alanı doldurun." six times, "Bir seçenek seç." under Cinsiyet, "Devam etmek için metni
+      okuduğunu onayla." under the box) and replaces its help line; the field is marked invalid. The password's rule list is
+      gone while the password has a reason (REG-3). The focus goes to Ad (the first invalid control). The lines are not live
+      regions: only the first field's is read, through aria-describedby (REG-2). The next character typed into Ad moves the
+      focus to the next invalid control (K1, measured: Soyad, then the first radio).
+    source: libs/ui/src/giris/register-form.tsx:138
+    by: human
+    on:
+      FILL: { target: formFilled, effect: [fills], source: libs/ui/src/giris/register-form.tsx:121, say: "they fill every field, choose Kadın, tick the privacy box: each reason leaves as its field changes" }
+      FILL_MISMATCH: { target: formMismatched, effect: [fills], say: "they fill every field, but the second password differs from the first" }
+      SUBMIT: { target: formWithReasons, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol again with the fields still empty: the same reasons, nothing is posted, the focus goes back to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  formFilled:
+    title: The form filled in
+    description: >-
+      Every field holds what was typed, Kadın is chosen, the box is ticked, and the three password rules each show a tick and
+      the hidden words ", karşılandı" (nobody announces the change: K8). The button is never disabled.
+    source: libs/ui/src/giris/register-form.tsx:245
+    by: human
+    on:
+      SUBMIT: { target: submitting, source: libs/ui/src/giris/register-form.tsx:177, say: "they press Kayıt ol: the checks pass and the form posts" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  formMismatched:
+    title: The form filled in, with two different passwords
+    description: >-
+      As formFilled, but "Şifre (tekrar)" holds another text than "Şifre". No reason shows yet: the check runs when the
+      button is pressed.
+    source: libs/ui/src/giris/register-form.tsx:235
+    by: human
+    on:
+      SUBMIT: { target: formWithMismatch, source: libs/ui/src/giris/register-form.tsx:170, say: "they press Kayıt ol: the repeat does not match, nothing is posted" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  formWithMismatch:
+    title: The form after a press with two different passwords
+    description: >-
+      Nothing was posted. Under "Şifre (tekrar)" the line "Şifreler eşleşmiyor. Aynı şifreyi yeniden yaz." and the field marked
+      invalid; the focus goes to it. The other fields keep what was typed (giris.e2e#8 asserts the focus on Ad, because its
+      form has other reasons too).
+    source: libs/ui/src/giris/register-form.tsx:170
+    by: human
+    on:
+      FILL: { target: formFilled, effect: [fills], say: "they type the second password again, the same as the first" }
+      SUBMIT: { target: formWithMismatch, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol again with the repeat still different: the same reason, nothing is posted" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  submitting:
+    title: Keycloak makes the account
+    description: >-
+      The form posts to url.registrationAction (firstName, lastName, gender=FEMALE|MALE, username, email, password,
+      password-confirm, privacyNoticeRead=yes, locale). While it is on its way the button is busy (aria-busy and aria-disabled,
+      never disabled) and a status line reads "Gönderiliyor". Keycloak answers with the verification page when it made the
+      account (and sent the mail), with the form again and the field's reason when the user name or the address is taken, or
+      with its expired page. This post is Keycloak's own, not an action of the domain (see the head of this file).
+    source: libs/ui/src/giris/register-form.tsx:271
+    invoke: { external: keycloak.registrationAction }
+    on:
+      DONE: { target: verifyEmailPage, guard: accepted, effect: [verificationMailed], source: config/keycloak/realms/_base.json:5, say: "Keycloak made the account and holds it on the verification page; the mail is sent" }
+      FAIL.userNameTaken: { target: userNameRefused, guard: "answer == 'userNameTaken' and not fixed", source: config/keycloak/user-profile.json:41, say: "Keycloak shows the form again with the reason under Kullanıcı adı" }
+      FAIL.emailTaken: { target: emailRefused, guard: "answer == 'emailTaken' and not fixed", source: config/keycloak/realms/_base.json:7, say: "Keycloak shows the form again with the reason under E-posta" }
+      FAIL.expired: { target: handed_over.page_expired, guard: "answer == 'expired'", say: "Keycloak says the form's code is no longer valid" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, source: apps/keycloak-theme/src/login/pages/Register.tsx:85, say: "they take Giriş yap while the post is on its way: the link is a plain <a> and stays live, the browser leaves for the sign-in form at once, and whether Keycloak made the account is not shown to them" }
+
+  userNameRefused:
+    title: The form again, the user name is taken
+    description: >-
+      Keycloak answers register.ftl again. Every field keeps what was typed, the two password fields are empty (and show their
+      rules again), and under Kullanıcı adı the line "Kullanıcı adı zaten var." replaces nothing (the field has no help line)
+      and marks it invalid. On load the first server-invalid control takes the focus. Anyone can learn this way whether a user
+      name has an account (REG-4). The line stays until that field is edited.
+    source: libs/ui/src/giris/register-form.tsx:180
+    by: human
+    on:
+      CHANGE_USER_NAME: { target: formFilled, effect: [fixesIt], say: "they change the user name and type both passwords again; the other fields, the choice and the box are as they left them" }
+      SUBMIT: { target: userNameRefused, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol before typing the passwords again: nothing is posted, the two empty password fields get \"Lütfen bu alanı doldurun.\" in place of their rules, the line under Kullanıcı adı stays, and the focus goes to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  emailRefused:
+    title: The form again, the e-mail address is taken
+    description: >-
+      As userNameRefused, with the line "Bu e-posta zaten var." under E-posta, in place of the help line "Doğrulama
+      bağlantısını bu adrese göndereceğiz.", and the focus on E-posta. Anyone can learn this way whether an address has an
+      account (REG-4).
+    source: libs/ui/src/giris/register-form.tsx:180
+    by: human
+    on:
+      CHANGE_EMAIL: { target: formFilled, effect: [fixesIt], say: "they change the address and type both passwords again; the other fields, the choice and the box are as they left them" }
+      SUBMIT: { target: emailRefused, source: libs/ui/src/giris/register-form.tsx:172, say: "they press Kayıt ol before typing the passwords again: nothing is posted, the two empty password fields get \"Lütfen bu alanı doldurun.\" in place of their rules, the line under E-posta stays, and the focus goes to the first invalid control" }
+      SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn }, say: "they take Giriş yap" }
+
+  verifyEmailPage:
+    title: The verification page, waiting for the mail
+    description: >-
+      login-verify-email.ftl (still the old kit, K4): the card with the heading "E-posta adresinizi doğrulayın", Keycloak's
+      line "Hesabınızı etkinleştirmek için e-posta adresinizi doğrulamanız gerekiyor.", the sentence that names the address the
+      mail went to, the spam hint, and under a rule "E-posta gelmedi mi? Yeniden gönder". The resend is a link that acts on a
+      GET (K14), and there is no way to change a mistyped address or to go back to sign-in. Nothing has the focus. Until the
+      link in the mail is opened the account cannot sign in: Keycloak holds it on this page. The page says "siz" where the
+      form said "sen" (K10). The page waiting here has no script and no poll, so it cannot notice when the address is verified in another browser
+      (REG-6).
+    source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:22
+    by: human
+    on:
+      RESEND:
+        - { target: resendWait, guard: "not mayResend", source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35, say: "less than 30 seconds since the last mail: Keycloak sends none and says to wait" }
+        - { target: verifyEmailPage, effect: [mailedAgain], source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35, say: "a second mail is sent and the page is shown again" }
+      OPEN_MAIL_LINK:
+        - { target: finishingRoundTrip, guard: "device == 'sameBrowser'", effect: [emailVerified], source: config/keycloak/realms/_base.json:5, say: "Keycloak verifies the address and sends the browser on to the app's callback" }
+        - { target: confirmPage, guard: "device == 'otherBrowser'", source: apps/keycloak-theme/src/login/pages/Info.tsx:68, say: "Keycloak asks the other browser to confirm before it verifies the address" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  resendWait:
+    title: The verification page, a resend refused for now
+    description: >-
+      The same page with Keycloak's alert (role alert) "Doğrulama e-postasını tekrar göndermeden önce {n} saniye
+      beklemelisiniz." in place of its first line; no mail was sent. The seconds are a snapshot, not a countdown, and the
+      alert does not take the focus (REG-5).
+    source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35
+    by: human
+    on:
+      RESEND:
+        - { target: resendWait, guard: "not mayResend", source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35, say: "still within 30 seconds of the last mail" }
+        - { target: verifyEmailPage, effect: [mailedAgain], source: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35, say: "30 seconds have passed: a second mail is sent" }
+
+  finishingRoundTrip:
+    title: The app finishes the round trip
+    description: >-
+      GET /api/auth/callback/keycloak: the flow cookie of this browser is found by the state, the code is exchanged (state,
+      nonce and PKCE verifier checked), the session is stored under a new id, the flow cookie is cleared and the browser is
+      sent on (303) to the destination the flow cookie holds, which is "/" (tedris sends a signed-in person on to /home).
+      Keycloak sends the browser here straight from the mail's link; there is no page of Keycloak's in between.
+    source: libs/auth/src/server/routes.ts:277
+    invoke: { action: finishSignIn }
+    on:
+      DONE: { target: home_opened.registered, say: "the destination is /, which sends the new talebe to the home page" }
+      FAIL.retryable: { target: error_box.retryable, say: "no round trip of this browser has this state, or the grant failed" }
+      FAIL.final: { target: error_box.final, say: "Keycloak refused the account (access_denied) or the app (invalid_client)" }
+
+  confirmPage:
+    title: Another browser is asked to confirm the address
+    description: >-
+      info.ftl with Keycloak's header "E-posta adresi doğrulaması", the sentence "{address} e-posta adresinin geçerliliğini
+      onaylayın." and one primary link "Devam et" (the action address, Info.tsx:75). Nothing is verified yet; the browser holds no
+      session of the round trip that began the registration, so Keycloak does not take the link as the registering person's
+      own.
+    source: apps/keycloak-theme/src/login/pages/Info.tsx:84
+    by: human
+    on:
+      CONFIRM: { target: verifiedPage, effect: [emailVerified], say: "they press Devam et: Keycloak verifies the address" }
+
+  verifiedPage:
+    title: The address is verified, in another browser
+    description: >-
+      info.ftl with the header "E-posta adresi doğrulandı", the sentence "Hesabın etkinleşti. Köşkleri keşfedip derslere
+      başvurabilirsin." and one primary link "Medaris’e devam et" to the client's base address (tedris's front door). This
+      browser has no session: the link does not sign anyone in (REG-6).
+    source: apps/keycloak-theme/src/login/pages/Info.tsx:93
+    by: human
+    on:
+      CONTINUE: { target: home_opened.signed_out, source: apps/keycloak-theme/src/login/pages/Info.tsx:78, say: "they take Medaris’e devam et" }
+
+  home_opened.registered:
+    type: final
+    title: The new talebe lands on tedris's home page, signed in
+    description: >-
+      The home page greets them by first name ("Selâmün aleyküm, Defne") and says they have no celse, no course and no deck
+      yet. (A person who came by the sign-in hand-over and verified the address in the same browser lands here too when the
+      sign-in named no page.) The account exists in Keycloak with the gender and the privacy notice as typed; tedrisat makes its own rows for
+      the person when the home page first reads them (a `users` row and a `user_profiles` row). tedris.shell.home draws the page.
+
+  home_opened.already_signed_in:
+    type: final
+    title: A person who is signed in is sent on to the home page
+    description: "The registration page went on at once, because a usable session was already there. tedris.shell.home draws the page."
+
+  home_opened.signed_out:
+    type: final
+    title: The other browser lands on tedris's front door, signed out
+    description: >-
+      The address is verified, but this browser holds no session of the round trip that began the registration (it never made one), so
+      the link to tedris's base address, which is all the page offers, can only show tedris's home page as a visitor, with "Giriş yap" and
+      "Kayıt ol". They sign in with the user name or the address and the password they chose (realm.auth.signIn). The browser
+      that registered still shows the verification page.
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to the sign-in form
+    description: "realm.auth.signIn draws login.ftl. The link keeps kc_locale."
+
+  handed_over.page_expired:
+    type: final
+    title: Keycloak shows its expired-page screen
+    description: "login-page-expired.ftl: realm.auth.signInFailures draws it. Not reproduced on the stack (Back and a second press did not give it)."
+
+  error_box.retryable:
+    type: final
+    title: The app's page shows its error box after a retryable failure
+    description: "OAuthSignin or OAuthCallback: the page tries once by itself, then shows Giriş sayfasına dön. realm.auth.signInFailures draws it."
+
+  error_box.final:
+    type: final
+    title: The app's page shows its error box after a failure no retry fixes
+    description: "SignInLimit, AccessDenied or Configuration: the box at once, with Ana sayfaya dön. realm.auth.signInFailures draws it."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: no-callback-before-the-address-is-verified
+    never: "state == 'finishingRoundTrip' and not verified"
+    say: "The app's callback is never reached before the address is verified: Keycloak holds the new account on the verification page."
+    source: config/keycloak/realms/_base.json:5
+  - id: the-form-posts-only-with-every-required-field
+    never: "state == 'submitting' and (gender == 'none' or not noticeRead)"
+    say: "The form never posts without a gender and the privacy-notice tick: the browser's own checks stop it and list the reasons."
+    source: libs/ui/src/giris/register-form.tsx:138
+  - id: another-browser-gets-no-session
+    never: "state == 'finishingRoundTrip' and device == 'otherBrowser'"
+    say: "A link opened in a browser that did not register verifies the address but never reaches the app's callback: that browser holds no session."
+    source: apps/keycloak-theme/src/login/pages/Info.tsx:68

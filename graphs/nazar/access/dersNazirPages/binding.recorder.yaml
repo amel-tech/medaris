@@ -1,0 +1,27 @@
+# nazar.access.dersNazirPages, the ders nazırı given recording.manage alone: what e2e course-nazirs#5 leaves after the hoca takes session.manage away
+# (a8, a9 Ders kayıtları opens; a10-a12 Celseler, Müfredat and Ders ayarları show “Bu sayfaya izniniz yok”). Hers is the one page that opens.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.recorder.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+scenarios:
+  recorder:
+    given: { held: recorder }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'recording.manage']
+        expect: 'course-nazir-grants APPLICANT_D'
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

@@ -1,0 +1,25 @@
+# common.shell.theme in nizam-web (:4001): a Medaris nazımı on Bildirimler, then Hesap. See binding.yaml for why each app has a file.
+# The toggle is in the sidebar (shell-frame.tsx:174) and, below 768 px, in the phone bar; at 1280 px one is drawn. The base signs
+# the account in at nizam, through Keycloak's real form; Bildirimler and Hesap are open to every nazım.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: common.shell.theme
+
+scenarios:
+  nizamMedarisNazim:
+    given: {}
+    as: medarisNazim
+    open: '{nizam}/bildirimler'
+    vars: { next: '{nizam}/hesap' }
+
+events:
+  OPEN_ANOTHER_PAGE: [{ goto: '{next}' }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  left: { url: 'about:blank' }
+
+nodes:
+  lightPage: { css: 'html[data-theme="light"]' }
+  darkPage: { css: 'html[data-theme="dark"]' }

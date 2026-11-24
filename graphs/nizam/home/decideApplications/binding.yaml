@@ -1,0 +1,59 @@
+# nizam.home.decideApplications on the local stack: the köşk nazımı of "Kubbealtı Köşkü" at http://localhost:4001. Three scenarios.
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/decideApplications --bind graphs/nizam/home/decideApplications/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Where the walk goes. The seeded köşk, "Süleymaniye Köşkü", holds the seed's own waiting application (TALEBE_MALE, never touched here),
+# so the walks use the seed's second köşk, "Kubbealtı Köşkü" (`seed.kosk2`), which the same account manages, has no course and shows no
+# waiting application of the seed. Each scenario makes its own course there with helpers/course.mjs (published, asking for approval, the
+# müderris as its hoca) and removes it in `teardown`; `make` removes a tag a crashed walk left, so `setup` is safe to run twice. The page
+# is opened by its address: the köşk picker's entry (frame:shell->koskHome picker) is bound to "Süleymaniye" and `/` sends the nazım to
+# whichever köşk the API lists first.
+# Spare applicants (they apply in `setup`, in this order, so the last one is the newest row and the page lists newest first): C, F, G, H.
+#   decides   the main story. "Deneme dersi nhdMain": applicantC, applicantF, applicantG and applicantH wait. The walk approves the newest
+#             (H), rejects the next with a written reason (G) and the next with none (F); applicantC still waits, so the page ends listed.
+#             It also takes the cancel and close paths of the dialog.
+#   empty     the köşk's home with no application waiting: "Bekleyen başvuru yok.", no badge. Nothing is made.
+#   locked    the Medaris nazımı (platform.kosk_edit, not kosk.manage) reads the same home: the number says one waits and the card is not
+#             drawn (HOME-6). One application is made for it to count.
+# The other readings are in the files beside this one, each its own binding because each needs an event of its own or adds no transition
+# the main file lacks: binding.gone.yaml (someone else settled the applications: FAIL.gone of both decisions), binding.barred.yaml (a ban
+# placed behind the page: FAIL.barred, HOME-1) and binding.passive.yaml (a passive course: the nazım still has the buttons, HOME-5).
+# Not bound anywhere, and why: FAIL.forbidden and FAIL.other of both decisions (nothing on the stack makes tedrisat refuse a decision the
+# page drew, short of taking the nazım's role away mid-walk, or answer with a 400 or a dropped call), `mayDecide: passive` and `mayNot`
+# (no real reader reaches them, HOME-5; the unit spec pins them), the `settled -> empty` step (a walk keeps what its scenario gives
+# through a havoc, so a scenario that starts with `approval: needed` never reaches `none`: the `empty` scenario starts there), and the
+# exits no_access and load_failed.
+# What a walk leaves that its teardown cannot undo: the notifications the decisions send to the applicants (course.mjs removes those that
+# point at the course) and the audit rows (enrollment.reject, the reads of the home), for which no route exists.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.decideApplications
+
+scenarios:
+  decides:
+    given: { approval: needed, mayDecide: may }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    vars: { course: '{nhdMain.course}', reason: 'Ön koşul sağlanmıyor.' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nhdMain, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantF, applicantG, applicantH]
+        expect: '"APPLICANT_H":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nhdMain]
+        expect: 'course remove nhdMain'
+  empty:
+    given: { approval: none, mayDecide: may }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+  locked:
+    given: { approval: needed, mayDecide: locked }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    vars: { course: '{nhdLocked.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nhdLocked, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nhdLocked]
+        expect: 'course remove nhdLocked'

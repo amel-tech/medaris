@@ -1,0 +1,118 @@
+# The screens of nazar.files.download: the file links of three pages of a course in nazar-web (Ödevler, Müfredat, Değerlendirme), the refusal page of
+# a person whose permission is gone, and the toast of a refused download. They are the table of Ödevler (features/homework/components/homework-list.tsx),
+# the editor of Müfredat (features/curriculum/components: resources-editor.tsx, lesson-resources-editor.tsx, lesson-assignment-editor.tsx, and the button
+# that unfolds a celse's details in curriculum-editor.tsx), the overview of Değerlendirme (features/evaluation/components/evaluation-board.tsx) and the
+# kit's toast that FileErrorNotice raises (features/files/components/file-error-notice.tsx; libs/ui/src/mds/toast.tsx). Everything else on those pages is
+# another flow's (flow.yaml scope.outOfView). Nothing here was seen in a browser; it is read from the code.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/nazar.json (the app reads it as `nazar.<key>`), the key
+# being the path inside it. The `composed.*` keys are NOT in any i18n file: they are what the code writes from a file's own data.
+#   composed.Files.fileName   the stored file's own name, the visible text of its link (a <bdi>)                              file-link.tsx:39
+#   composed.Files.size       the size as formatFileSize gives it in the page's language ("20 kB"), a caption beside the link   file-link.tsx:45
+# The accessible name of a file link is Files.downloadLabel ("{name} dosyasını indir"), set by aria-label; its visible text is only the file's name, so
+# the visible text is part of the name (WCAG 2.5.3 holds). The type chip ("PDF", Files.kinds.pdf) and the size are NOT inside the link.
+# The toast is the kit's own (libs/ui/src/mds/toast.tsx, Base UI): an error toast has `priority: high`, so Base UI draws it as role alertdialog, and it
+# stays until it is closed. Its close button is named by a hard-coded aria-label "Kapat" (toast.tsx:97), not by the catalog, so the node's name is a literal.
+# `changes` is not written: the flow only reads (no writing action of the domain is invoked); the one write a download makes, the audit row of a staff's
+# read of a hand-in, is tedrisat's own and never reached on a stack with no storage.
+# Samples are invented and neutral; the binding's data script (files-data.mjs) names the walk's own files and course with these very words, so that the
+# replay compares the page against them. The talebe's name is the stack's own spare account (STACK.md).
+schema: delurio-graph/0
+kind: ui
+id: nazar.files.download
+flow: nazar.files.download
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  # the catalog's own placeholders (a node's `params` maps them to the specific values below)
+  name: teslim-odevi.pdf
+  size: 20 kB
+  week: "1"
+  title: Celse 1
+  session: Hafta 1 · Celse 1
+  studentName: Tahsin Başvuran
+  submissionFileName: teslim-odevi.pdf
+  submissionFileSize: 20 kB
+  courseFileName: kaynak-listesi.pdf
+  courseFileSize: 12 kB
+  lessonFileName: celse-notlari.pdf
+  lessonFileSize: 24 kB
+  assignmentFileName: odev-kagidi.pdf
+  assignmentFileSize: 36 kB
+
+nodes:
+  # ---- Ödevler: a talebe's file ----
+  homeworkPage: { type: page, component: Page, role: main, in: [homeworkListed, homeworkForbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name and the page sets no initial focus, when it opens or when it loads again after a refusal (rule focus-not-set)
+  homeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.title }, in: [homeworkListed, homeworkForbidden], source: apps/nazar/features/homework/components/homework-page.tsx:57 } # h1
+  celseRegion: { type: page, component: Page, role: region, name: { labelledBy: celseHeading }, in: [homeworkListed], source: apps/nazar/features/homework/components/homework-list.tsx:188 } # <section aria-labelledby>, one per celse that has homework or hand-ins; the walk's course has one celse
+  celseHeading: { type: text, component: Heading, role: heading, text: { key: Homework.sessionHeading, params: { week: week, title: title } }, in: [homeworkListed], source: apps/nazar/features/homework/components/homework-list.tsx:195 } # h2
+  submissionsTable: { type: list, component: List, role: table, name: { key: Homework.caption, params: { session: session } }, in: [homeworkListed], source: apps/nazar/features/homework/components/homework-list.tsx:246 } # the caption is hidden; the table's first column is the talebe, the second "Dosyalar"
+  submissionFilesList: { type: list, component: List, role: list, name: { key: Homework.filesOf, params: { name: studentName } }, in: [homeworkListed], source: apps/nazar/features/homework/components/homework-list.tsx:117 } # <ul aria-label>, one per row that has files
+  submissionFileRow: { type: action, component: LinkButton, role: link, name: { key: Files.downloadLabel, params: { name: submissionFileName } }, text: { key: composed.Files.fileName, params: { name: submissionFileName } }, in: [homeworkListed], emits: DOWNLOAD_SUBMISSION_FILE, source: apps/nazar/features/files/components/file-link.tsx:34 } # <a class="mds-link" href="/api/files/courses/<course>/submissions/<file>"> with NO download attribute, the name only
+  submissionFileType: { type: text, component: Text, text: { key: Files.kinds.pdf }, in: [homeworkListed], source: apps/nazar/features/files/components/file-link.tsx:44 } # an outline Badge beside the link, not inside it
+  submissionFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: submissionFileSize } }, in: [homeworkListed], source: apps/nazar/features/files/components/file-link.tsx:45 }
+
+  # ---- Müfredat: the stored files of the editor ----
+  curriculumPage: { type: page, component: Page, role: main, in: [curriculumListed, lessonOpened, curriculumForbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # no name, no initial focus (rule focus-not-set)
+  curriculumTitle: { type: text, component: Heading, role: heading, text: { key: Curriculum.title }, in: [curriculumListed, lessonOpened, curriculumForbidden], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:327 } # h1; the refusal page draws the same title (curriculum-page.tsx:48)
+  resourcesRegion: { type: page, component: Page, role: region, name: { labelledBy: resourcesTitle }, in: [curriculumListed, lessonOpened], source: apps/nazar/features/curriculum/components/resources-editor.tsx:116 } # <section aria-labelledby="c-resources" data-testid="resources">
+  resourcesTitle: { type: text, component: Heading, role: heading, text: { key: Curriculum.resourcesTitle }, in: [curriculumListed, lessonOpened], source: apps/nazar/features/curriculum/components/resources-editor.tsx:122 } # h2
+  courseFileRow: { type: action, component: LinkButton, role: link, name: { key: Files.downloadLabel, params: { name: courseFileName } }, text: { key: composed.Files.fileName, params: { name: courseFileName } }, in: [curriculumListed, lessonOpened], emits: DOWNLOAD_COURSE_FILE, source: apps/nazar/features/curriculum/components/resources-editor.tsx:195 } # to /api/files/courses/<course>/resources/<resource>; the resource's own name is in a "Kaynak adı" field above it, not here
+  courseFileType: { type: text, component: Text, text: { key: Files.kinds.pdf }, in: [curriculumListed, lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:44 }
+  courseFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: courseFileSize } }, in: [curriculumListed, lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:45 }
+  detailsToggle: { type: action, component: Button, role: button, text: { key: Curriculum.detailsShow }, in: [curriculumListed], emits: OPEN_DETAILS, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:744 } # a ghost button with a chevron, aria-expanded false; the celse's details are in the page but hidden (the walk's course has one celse)
+  detailsHide: { type: action, component: Button, role: button, text: { key: Curriculum.detailsHide }, in: [lessonOpened], emits: HIDE_DETAILS, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:744 } # the same button, aria-expanded true; no catalog message names both states, so it is two nodes
+  lessonResourcesGroup: { type: page, component: Page, role: group, name: { labelledBy: lessonResourcesLegend }, in: [lessonOpened], source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:92 } # a <fieldset>
+  lessonResourcesLegend: { type: text, component: Text, text: { key: Curriculum.lessonResourcesTitle }, in: [lessonOpened], source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:93 } # a <legend>, not a heading
+  lessonFileRow: { type: action, component: LinkButton, role: link, name: { key: Files.downloadLabel, params: { name: lessonFileName } }, text: { key: composed.Files.fileName, params: { name: lessonFileName } }, in: [lessonOpened], emits: DOWNLOAD_LESSON_FILE, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:208 } # to /api/files/lessons/<celse>/resources/<resource>
+  lessonFileType: { type: text, component: Text, text: { key: Files.kinds.pdf }, in: [lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:44 }
+  lessonFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: lessonFileSize } }, in: [lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:45 }
+  assignmentGroup: { type: page, component: Page, role: group, name: { labelledBy: assignmentLegend }, in: [lessonOpened], source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:201 } # a <fieldset>
+  assignmentLegend: { type: text, component: Text, text: { key: Curriculum.assignmentTitle }, in: [lessonOpened], source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:202 } # a <legend> with a note icon
+  assignmentFilesTitle: { type: text, component: Heading, role: heading, text: { key: Curriculum.assignmentFilesTitle }, in: [lessonOpened], source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:325 } # h4, under the homework's switch, kind and description
+  assignmentFileRow: { type: action, component: LinkButton, role: link, name: { key: Files.downloadLabel, params: { name: assignmentFileName } }, text: { key: composed.Files.fileName, params: { name: assignmentFileName } }, in: [lessonOpened], emits: DOWNLOAD_ASSIGNMENT_FILE, source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:342 } # to /api/files/lessons/<celse>/assignment/<file>
+  assignmentFileType: { type: text, component: Text, text: { key: Files.kinds.pdf }, in: [lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:44 }
+  assignmentFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: assignmentFileSize } }, in: [lessonOpened], source: apps/nazar/features/files/components/file-link.tsx:45 }
+
+  # ---- Değerlendirme: "Excel indir" ----
+  evaluationPage: { type: page, component: Page, role: main, in: [evaluationListed, evaluationRefused], source: libs/ui/src/mds/app-shell.tsx:41 } # no name, no initial focus (rule focus-not-set); the same page before and after the refusal
+  evaluationTitle: { type: text, component: Heading, role: heading, text: { key: Evaluation.title }, in: [evaluationListed, evaluationRefused], source: apps/nazar/features/evaluation/components/evaluation-page.tsx:41 } # h1
+  exportLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Evaluation.download }, in: [evaluationListed, evaluationRefused], emits: EXPORT_BOARD, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:292 } # <a class="mds-btn" href="/api/files/courses/<course>/evaluations"> with a download icon, drawn only when the board has a column and a talebe; it never delivers a file (evaluation-export-invalid-path)
+  boardTable: { type: list, component: List, role: table, name: { key: Evaluation.caption }, in: [evaluationListed, evaluationRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:302 } # the overview's hidden caption
+
+  # ---- the refusal page: a permission that is gone ----
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [homeworkForbidden, curriculumForbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # ---- the toast of a refused download: an error toast, so an alertdialog that stays until it is closed ----
+  fileErrorToast: { type: alert, component: Alert, role: alertdialog, name: { key: Files.downloadErrors.title }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: noticed, source: apps/nazar/features/files/components/file-error-notice.tsx:30 } # id "file-error": a second refusal replaces the first; raised after the page is hydrated
+  reasonForbidden: { type: text, component: Text, text: { key: Files.downloadErrors.forbidden }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: "notice == 'forbidden'", source: apps/nazar/features/files/components/file-error-notice.tsx:34 }
+  reasonNotFound: { type: text, component: Text, text: { key: Files.downloadErrors.notFound }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: "notice == 'notFound'", source: apps/nazar/features/files/components/file-error-notice.tsx:34 }
+  reasonUnavailable: { type: text, component: Text, text: { key: Files.downloadErrors.unavailable }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: "notice == 'unavailable'", source: apps/nazar/features/files/components/file-error-notice.tsx:34 }
+  reasonFailed: { type: text, component: Text, text: { key: Files.downloadErrors.failed }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: "notice == 'failed'", source: apps/nazar/features/files/components/file-error-notice.tsx:34 }
+  toastClose: { type: action, component: Button, role: button, name: { literal: Kapat }, in: [homeworkListed, homeworkForbidden, curriculumListed, lessonOpened], when: noticed, emits: CLOSE_TOAST, source: libs/ui/src/mds/toast.tsx:95 } # an icon button named by a hard-coded aria-label
+
+edges:
+  - { labelledBy: [celseRegion, celseHeading] }
+  - { labelledBy: [resourcesRegion, resourcesTitle] }
+  - { labelledBy: [lessonResourcesGroup, lessonResourcesLegend] }
+  - { labelledBy: [assignmentGroup, assignmentLegend] }
+  - { triggers: [submissionFileRow, followingSubmissionFile] }
+  - { triggers: [courseFileRow, followingCourseFile] }
+  - { triggers: [lessonFileRow, followingLessonFile] }
+  - { triggers: [assignmentFileRow, followingAssignmentFile] }
+  - { triggers: [exportLink, exportingBoard] }
+
+rules:
+  - { id: evaluation-export-invalid-path, rule: "\"Excel indir\" is answered 400 INVALID_PATH on every press, and tedrisat is never called: the route asks the proxy for /courses/<id>/evaluations/export?lang=<lang> (app/api/files/courses/[courseId]/evaluations/route.ts:24) and isProxiablePath refuses any path with a `?` (libs/services/src/file-proxy/file-proxy.ts:106-112, :144-146), before the token is looked at. SEEN on the running stack with curl and no session: a followed link is a 303 to /ders/<id>/degerlendirme?fileError=notFound, a fetch() is 400 {\"code\":\"INVALID_PATH\"}. No test of the web route downloads the sheet (test/evaluation.spec.tsx:460 pins only the link's address; test/file-routes.spec.ts has no case for the route; tedrisat's own e2e, exams.e2e.spec.ts:476, downloads it from the API with the query). The domain records it as the invariant web-every-file-route-builds-a-proxiable-path. Fix: let the proxy take a query the route builds from a fixed list, or send the language as a path segment, and add a spec that reaches the proxy for real. Not in the inventory's F list." }
+  - { id: F-D1-13, rule: "A refused \"Excel indir\" is silent: Değerlendirme mounts no FileErrorNotice (evaluation-page.tsx has none; only curriculum-page.tsx:62 and homework-page.tsx:55 do), so the page loads again with nothing to say why and ?fileError=notFound stays in the address. Once the path is fixed the fix is to mount the notice; until then it would say \"Bu dosya artık yok.\" for a file nobody asked for. Fix: mount <FileErrorNotice /> in EvaluationPage after fixing the path." }
+  - { id: NFILES-1, rule: "A 403 on a file of Müfredat comes back to /ders/<id>/mufredat?fileError=forbidden, and by then the person holds none of course.edit, session.manage and week.hide, so CurriculumPage returns the refusal page before it reaches <FileErrorNotice /> (curriculum-page.tsx:44-55 against :62): no toast, and the parameter is never taken off the address, so a reload or a copied link carries it. Ödevler, which mounts the notice before its body (homework-page.tsx:55), words the same refusal. Read from the code; binding.forbidden.yaml makes it by taking the ders nazırı's grant away just before the link is followed. Fix: mount the notice above the gate, or in the course layout. Provisional id, not in the inventory." }
+  - { id: NFILES-2, rule: "A refused download is a page navigation, so the whole page loads again: on Müfredat the editor is one long form and whatever was typed and not saved (a new week, a resource's name, a celse's date) is lost without a word, and the celse's details fold again; the page has no beforeunload guard (F-C-course-a-13). On Ödevler a review dialog that is open, with the note typed in it, goes the same way, because the dialog's own file links call the same route. The focus goes to the top. This is WRT-10 of tedris, with a longer form. Not verified in a browser with typed text; read from the code (file-proxy.ts:351-370). Fix: fetch the file and raise the toast from the click, which the proxy already supports (a fetch() gets the JSON refusal). Provisional id, not in the inventory." }
+  - { id: NFILES-3, rule: "A download that works says nothing on the page: no toast, no status text, no focus move; the only sign is the browser's own saving, which a screen-reader user may not hear (the link has no download attribute on purpose, file-link.tsx:10-14). The same shape as FILES-2 of tedris. Not walked locally (no storage) and not verified with a screen reader. Fix: a line \"<dosya> indiriliyor\" in a role=status region, or a toast. Provisional id, not in the inventory." }
+  - { id: F-D1-19, rule: "Named for this flow by FLOWS.md; the finding is the deck template's silent refusal (an empty 502 behind <a download>, app/api/decks/sample/route.ts:28-32), which belongs to nazar.decks.import. No state of this flow draws it." }
+  - { id: F-C-course-a-14, rule: "Named for this flow by FLOWS.md; the finding is the upload panel's lost focus (file-upload.tsx:147-274), which belongs to nazar.curriculum.resources. No state of this flow draws it." }
+  - { id: focus-not-set, rule: "Neither opening a page nor loading it again after a refusal moves the focus: no page sets an initial focus, the toast is not focused, and a 303 resets the focus to the document. The page nodes have no `initialFocus`; the silence is not read as an omission." }
+  - { id: file-links-are-anchors, rule: "A file link is a plain anchor with no `download` attribute (file-link.tsx:10-14, 34-40): a download attribute would have the browser save whatever answers, the page a refusal redirects to included. It therefore works without JavaScript; only the toast of a refusal needs it. The sheet's link is an <a class=\"mds-btn\"> in the same way (button.tsx:117-124)." }
+  - { id: label-in-name, rule: "A file link's visible text (the stored file's name) is contained in its accessible name (\"<name> dosyasını indir\", an aria-label): WCAG 2.5.3 holds. The type chip and the size are beside the link, so the name does not carry them. Holds." }
+  - { id: error-toast-is-urgent, rule: "Unlike tedris's Sonner toast (DSC-20, CRS-13), this app's kit toast announces an error urgently (priority high, role alertdialog) and keeps it until it is closed, and its region is the kit's own. Holds. Its close button's name is a hard-coded \"Kapat\" (toast.tsx:97), not a catalog message, which the day the app gets en and ar will say Turkish." }

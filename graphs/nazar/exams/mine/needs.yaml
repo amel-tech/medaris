@@ -1,0 +1,92 @@
+# What must exist for the course team's "Sınavlarım" across courses: written needs-first on 21 November 2026 from the owner's rules for
+# online exams. Not built (MDRS-299): each course has its own Sınavlar page instead, drawn in nazar.exams.edit.
+schema: delurio-graph/0
+kind: needs
+id: nazar.exams.mine
+status: proposed
+needs:
+  - id: in-the-menu
+    need: >-
+      nazar's menu has "Sınavlarım" for a person who prepares exams for at least one course, and it opens the exams they prepare.
+    evidence:
+      - state: listed
+      - node: menuExams
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+    note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to nazar's navigation graph once the page exists."
+
+  - id: only-the-courses-they-prepare-for
+    need: >-
+      The page lists every exam, written, oral and online, of the courses where the person is a hoca, or a ders nazırı who holds the
+      grant to prepare exams. A written or oral one shows its date, its place and how many scores are entered, and opens its column in
+      Değerlendirme. A person with no such course gets no menu entry, and the page opened by its address says so.
+    evidence:
+      - state: opening
+      - state: forbidden
+      - node: forbiddenAlert
+      - node: rowPlace
+      - node: rowScores
+      - node: rowScoresLink
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+    note: "Owner, asked who prepares: \"Hoca + yetkili ders nazırı\"; asked whether written and oral exams are listed: \"Hepsi, tedris gibi\". The grant is new, granular and may be time-limited."
+
+  - id: the-status-of-each-exam
+    need: >-
+      Each exam shows its status in words: "Taslak", "<gün> <saat>'te yayında" for a scheduled one, "Yayında" while it is open, and
+      "Bitti" once it has closed.
+    evidence:
+      - state: listed
+      - node: rowStatus
+      - node: rowWhen
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+    note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
+
+  - id: what-each-row-says
+    need: >-
+      Each exam names its title and its course, its question count against the suggested 50, its length, and for an open or past one
+      how many talebe started it and how many finished.
+    evidence:
+      - state: listed
+      - node: rowQuestions
+      - node: rowTaken
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+
+  - id: filter-by-status-and-course
+    need: The list filters by status and by course, and the filter stays in the address.
+    evidence:
+      - state: listed
+      - node: statusFilter
+      - node: courseFilter
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+
+  - id: a-new-exam-starts-as-a-draft
+    need: '"Yeni sınav" asks for the course and starts a draft in the editor; nothing of it reaches a talebe.'
+    evidence:
+      - state: draft_created
+      - node: newExam
+      - node: courseDialog
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+
+  - id: each-exam-opens-where-it-is-worked-on
+    need: >-
+      A draft or a scheduled exam opens its editor. An open or past one opens the team's screens of it: who took it, the scores,
+      the topics and the questions.
+    evidence:
+      - state: exam_opened
+      - node: rowEdit
+      - node: rowResults
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+    note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+
+  - id: none-yet-says-so
+    need: With no exam, the page says "Henüz sınav yok." and offers "Yeni sınav".
+    evidence:
+      - state: empty
+      - node: emptyText
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+
+  - id: reached-from-the-course-too
+    need: A course's own pages lead to its exams, and to "Yeni sınav" for that course.
+    evidence:
+      - state: listed
+    missing: "MDRS-299: the team's Sınavlarım across courses is not built; each course's Sınavlar page lists its exams (listOnlineExams)"
+    note: An online exam is an exam celse (owner, 21 Nov 2026), so Celseler and Değerlendirme lead to it as they lead to exam celses.

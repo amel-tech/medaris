@@ -1,0 +1,345 @@
+# The author of a deck asks for it to be made public from the deck's own page (/decks/<id>, the "Genel" tab), takes the request back, asks
+# again, and takes a published deck back to private. The review itself is nizam's (nizam.moderation.reviewDeckPublication): this flow starts
+# it when a request is made and draws only what the author's page shows of the answer.
+# Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DCK-13   a REJECTED deck gets the text of a private deck and the button "Özele çek", so the author must withdraw before asking
+#            again, although the API takes a new request from a refused deck (deck-owner-overview.tsx:105-110, :213-232)
+#   DCK-23   the busy label "Yükleniyor" and the toast's close "Kapat" are constants of the kit, not catalog messages
+#   PUB-1    (new, provisional id) a 409 on a stale page draws "Bir sorun oluştu. Yeniden dene." and nothing reads the page again, so
+#            "Yeniden dene" asks again the same refused question until the page is reloaded (deck-owner-overview.tsx:68-77)
+#   PUB-2    (new, provisional id) the button is idle again before the refreshed page arrives (setPublishing(false) at :67, router.refresh()
+#            at :82): a second press in that gap is a 409 and its error toast stands beside the success one. Read from the code, not seen
+#   PUB-3    (new, provisional id) a refused request is told to the author by the badge and, with its reason, by the notification only:
+#            the deck answer carries no reason (flashcard-deck-response.dto.ts:32-36), so the page cannot say why
+#   PUB-4    (new, provisional id) the owner view knows no course deck: the hoca who wrote a course deck is offered "Yayın iste", and the
+#            API takes the request (domain invariant course-deck-staff-use-course-routes, finding deck-manage-private-reaches-course-decks)
+# What was seen and what was read: on 15 Nov 2026 the private card was looked at in Chromium on the local stack, read only, for the seeded deck "Kelime Defterim"
+# of TALEBE (the accessibility snapshot, the badge's markup, the hidden status after the button, document.activeElement). Nothing was pressed, no deck was
+# made, so every other card (pending, published, refused), the toasts, the busy state and every refusal are read from the code and the e2e inventory and are
+# marked so in the states and in ui.yaml `rules`.
+# E2E carried: decks#15 whole (a1-a5: "İsteği geri çek" makes the deck private and the card says so, "Yayın iste" asks again; its two DB assertions are the
+# binding's `effects`, read through the API, not SQL) and decks#13 in part: a1 (the h1), a2 (the badge "Yayın isteği bekliyor") and a12 (the line with the
+# request's date, matched by its pattern in the binding, not the seed's fixed date). Not carried from decks#13: a3-a11 (the counts, the progress and the six
+# sample cards, which belong to the whole "Genel" tab), a13 ("Çalış"), a14 ("Düzenle") and a15 ("Desteyi sil"), which are other flows' controls.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.publish
+status: captured
+domain: medaris.api
+ui: tedris.decks.publish
+title: Ask for a deck to be published, take the request back, take a published deck back
+summary: >-
+  A talebe opens a deck of theirs. A new deck is private ("Özel") and the card "Kimler görebilir" says so, with the button "Yayın iste".
+  Pressing it makes the API put the deck in PENDING with the time of the request; a toast says "Yayın isteği gönderildi", the badge says
+  "Yayın isteği bekliyor", the card gives the date of the request and offers "İsteği geri çek", and the Medaris reviewers find the request
+  on their list in nizam (the flow this one starts). The deck stays private until a reviewer publishes it. The author may take the request
+  back at any time ("Deste özel oldu") and ask again. When a reviewer publishes the deck the badge says "Yayında" and the button is "Özele
+  çek", which takes it back to private at once; when a reviewer refuses, the badge says "Yayın isteği reddedildi", the text is the private
+  deck's and the button is "Özele çek" too (DCK-13), so the author withdraws first and may then ask again. The page is not live: the
+  reviewer's answer reaches it when it is read again, and until then the card still says "Yayın isteği bekliyor".
+
+scope:
+  shows: the author's page of a deck as far as publication goes (the status badge, the card "Kimler görebilir" with its one button, the toasts of the two actions)
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the owner's \"Genel\" tab (the progress, the counts, the six sample cards, \"Çalış\", the tabs): tedris.decks.manageCards and tedris.decks.study; \"Düzenle\" and \"Desteyi sil\": tedris.decks.editOrDelete"
+    - "the review itself, in nizam: the list, the three sample cards and \"Bütün kartlar\", \"Yayımla\", \"Reddet\" with a reason, and the başnazım's \"Yayından kaldır\": nizam.moderation.reviewDeckPublication (this flow only has the reviewer's answer arrive: REVIEWER_APPROVES and REVIEWER_REFUSES)"
+    - "the notification the author gets for every answer (DECK_PUBLISH_RESULT, with the reason of a refusal): tedris.account.notifications and the bell of the frame"
+    - "the deck as somebody else sees it once it is public (the reader's view, the visitor's view, Keşfet's list): tedris.decks.readAndCopy, tedris.decks.visitorPublicDeck, tedris.decks.explore"
+    - "a person who is not the author, a deck that is not there or a hidden one: tedris.decks.accessRefusals; the status badges on the list Desteler: tedris.decks.browse"
+    - "a course deck, which course staff publish and delete through the course's own routes: nazar.decks.publishAndDelete"
+    - "what a reload shows once the deck was changed elsewhere (MOVED_ON): the deck's new status, which depends on what changed it; the graph draws no way out of such a card but a press (which is refused) and leaving the page"
+    - "an answer that never reaches the server (a dropped connection): attempt() turns it into the same error toast as a refusal (attempt.ts:20-27), so it is drawn as FAIL.other but cannot be made on the stack"
+
+decisions:
+  D1:
+    question: >-
+      What does the author of a refused deck see? Today the text of a private deck, no sentence about the refusal and the button "Özele
+      çek", so the author must withdraw before asking again (DCK-13).
+    recommend: >-
+      Branch on REJECTED: a sentence that says the request was refused (the reason, if the deck answer is made to carry it, PUB-3) and the
+      button "Yayın iste", which the API already takes from a refused deck (flashcard-deck.service.ts:272-278).
+    affects: [rejectedDeck, withdrawingRejected]
+  D2:
+    question: >-
+      Should a 409 on this page read the deck again? Today the page keeps the status it drew and the toast says "Yeniden dene", which cannot
+      work (PUB-1).
+    recommend: >-
+      On DECK_PUBLISH_STATE_CONFLICT call router.refresh() and say that the deck's status changed, as the course page does for its 409.
+    affects: [requesting, withdrawingPending, takingBackPublished, withdrawingRejected]
+
+context:
+  deck:
+    values: [private, pending, published, rejected]
+    initial: any
+    say:
+      private: "the deck is private and nothing was asked: the card offers \"Yayın iste\""
+      pending: "a request waits: the badge says \"Yayın isteği bekliyor\" and the card offers \"İsteği geri çek\""
+      published: "a reviewer published it: the badge says \"Yayında\" and the card offers \"Özele çek\""
+      rejected: "a reviewer refused the request: the badge says \"Yayın isteği reddedildi\" and the card offers \"Özele çek\" (DCK-13)"
+  decision:
+    values: [waiting, approved, refused]
+    initial: waiting
+    say:
+      waiting: "no reviewer has answered, or this page has been read again since"
+      approved: "a reviewer published the deck, and this page has not been read again"
+      refused: "a reviewer refused the request, and this page has not been read again"
+  moved:
+    values: [still, changed]
+    initial: still
+    say:
+      still: "the deck is as this page drew it, or the page has been read again since"
+      changed: "the deck was changed somewhere else (another tab of the author's, the başnazım taking it back) since this page was drawn, so the next press of the button is refused with a 409 and the page does not know"
+  notice:
+    values: [none, requested, withdrawn, requestFailed, withdrawFailed]
+    initial: none
+    say:
+      none: "no toast"
+      requested: "a toast says the request was sent"
+      withdrawn: "a toast says the deck became private"
+      requestFailed: "an error toast says the request could not be sent"
+      withdrawFailed: "an error toast says the request could not be taken back"
+
+guards:
+  startsPrivate: "deck == 'private'"
+  startsPending: "deck == 'pending'"
+  startsPublished: "deck == 'published'"
+  startsRejected: "deck == 'rejected'"
+  decisionWaiting: "decision == 'waiting'"
+  decisionApproved: "decision == 'approved'"
+  decisionRefused: "decision == 'refused'"
+  notMoved: "moved == 'still'"
+  isMoved: "moved == 'changed'"
+
+effects:
+  clearNotice: { set: { notice: none } }
+  toastRequested: { set: { notice: requested, moved: still } }
+  toastWithdrawn: { set: { notice: withdrawn, decision: waiting, moved: still } } # the page is read again after the answer, so nothing is stale any more
+  toastRequestFailed: { set: { notice: requestFailed } }
+  toastWithdrawFailed: { set: { notice: withdrawFailed } }
+  movedOn: { set: { moved: changed } }
+  reviewerApproves: { set: { decision: approved } }
+  reviewerRefuses: { set: { decision: refused } }
+  readAgain: { set: { decision: waiting, moved: still, notice: none } } # a reload is a new document: every toast is gone
+
+failures:
+  requesting:
+    from: requestDeckPublication
+    signedOut: [HTTP_401]
+    conflict: [DECK_PUBLISH_STATE_CONFLICT]
+    other: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+  withdrawingPending:
+    from: withdrawDeckPublication
+    signedOut: [HTTP_401]
+    conflict: [DECK_PUBLISH_STATE_CONFLICT]
+    other: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+  takingBackPublished:
+    from: withdrawDeckPublication
+    signedOut: [HTTP_401]
+    conflict: [DECK_PUBLISH_STATE_CONFLICT]
+    other: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+  withdrawingRejected:
+    from: withdrawDeckPublication
+    signedOut: [HTTP_401]
+    conflict: [DECK_PUBLISH_STATE_CONFLICT]
+    other: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+
+# The main story (decks#15 and the e2e's first half): a private deck is asked for, the request is taken back, and it is asked for again.
+main:
+  given: { deck: private }
+  events: [REQUEST, DONE, WITHDRAW, DONE, REQUEST, DONE]
+
+initial: opened
+states:
+  opened:
+    title: The author's page of a deck is read
+    source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:52"
+    description: >-
+      /decks/<id> for a signed-in person who wrote the deck (the token's sub equals the deck's authorId, deck-page-data.ts:39): the owner
+      view, whose card "Kimler görebilir" and badge follow the deck's publishStatus as the API gave it. A person who did not write the deck
+      gets the reader's view (tedris.decks.readAndCopy), a visitor the public view or the sign-in page, and a deck nobody may open the
+      not-found page (tedris.decks.accessRefusals). A step with no screen of its own: the router that picks the first card by the status.
+    always:
+      - { guard: startsPrivate, target: privateDeck }
+      - { guard: startsPending, target: pendingDeck }
+      - { guard: startsPublished, target: publishedDeck }
+      - { guard: startsRejected, target: rejectedDeck }
+
+  privateDeck:
+    title: The deck is private
+    by: human
+    goal: true
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:213
+    description: >-
+      The badge "Özel" (a padlock), the card "Kimler görebilir" with "Bu deste özel; yalnız sen görürsün. Herkese açmak için yayın iste:
+      Medaris yönetimi inceler, uygun bulursa yayımlar." and one outline button, "Yayın iste". It is the only button the status PRIVATE
+      offers (the others, "Düzenle" and "Desteyi sil", are another flow's). Every new deck starts here, whatever the create form said
+      (the API never takes a visibility). A toast of an earlier action ("Deste özel oldu", or the error toast of a refused request) may
+      still stand on the page. Where the page was drawn a while ago, the deck may have moved on since (PUB-1): the button still says "Yayın iste". Seen in Chromium
+      on the local stack (read only): the card is the first section of an unnamed <aside> (a complementary landmark), the button is followed by an empty
+      visually hidden status, and the page has one <main>; document.activeElement is the body.
+    on:
+      REQUEST: { target: requesting, effect: [clearNotice] }
+      MOVED_ON: { guard: notMoved, target: privateDeck, effect: [movedOn], say: "the deck is asked for in another tab; this page does not know", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:269 }
+      NAVIGATE: left
+
+  requesting:
+    title: Send the request
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:65
+    description: >-
+      The server action requestDeckPublication, POST /flashcard/decks/:id/publish-request with no body, through attempt(). The button is busy
+      (loading: aria-disabled and aria-busy, never disabled, so it keeps its place and the focus; a hidden status says "Yükleniyor", DCK-23)
+      and a second press is ignored (publishing is set at :62). The API moves a PRIVATE or REJECTED deck to PENDING, sets the time of the
+      request and clears the previous reviewer's answer; a deck already PENDING or PUBLISHED answers 409 DECK_PUBLISH_STATE_CONFLICT. On
+      success the toast "Yayın isteği gönderildi" (6 s) and router.refresh() draw the new status. On any failure an error toast stays until
+      it is closed, with the one text "Yayın isteği gönderilemedi" and "Bir sorun oluştu. Yeniden dene." whatever the refusal was (a 404
+      for a deck that is gone, a 409), and nothing reads the page again (PUB-1). A session that is over sends the person to sign in and
+      back to this deck (sendToSignIn), and the button stays busy until the browser leaves.
+    invoke: { action: requestDeckPublication }
+    on:
+      DONE: { guard: notMoved, target: reachesReviewers, effect: [toastRequested], say: "the API says PENDING: the toast, then the page is read again", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.conflict: { guard: isMoved, target: privateDeck, effect: [toastRequestFailed], say: "the deck was asked for already, in another tab, or published; the toast does not say so and the page is not read again (PUB-1)", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+      FAIL.other: { target: privateDeck, effect: [toastRequestFailed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+
+  reachesReviewers:
+    title: The request is on the reviewers' list in nizam
+    source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:31
+    description: >-
+      The deck is on the list "Deste yayın istekleri" of nizam (/talepler/deste-yayin-istekleri), oldest request first, for the Medaris
+      başnazımı and for a Medaris nazımı holding platform.deck_publish. Nothing is sent when the request is made: no notification and no
+      audit row (the domain action writes neither), the reviewers find it by opening the list or the count on their home page. The
+      reviewer opens the request, reads three sample cards (each read is audited as deck.private-read) and publishes or refuses it with a
+      reason; that is the flow this one starts. A step with no screen of its own.
+    always:
+      - { target: pendingDeck, say: "the request is on the list; the reviewers' flow starts", starts: { flow: nizam.moderation.reviewDeckPublication, given: { requested: "true" } } }
+
+  pendingDeck:
+    title: The request waits
+    by: human
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222
+    description: >-
+      The badge "Yayın isteği bekliyor" (a clock), the card with "Yayın isteğini {date and time} gönderdin. Medaris yönetimi inceleyip
+      yayımlayana dek deste özel kalır." (the time of the request in the page's time zone, Europe/Istanbul when none is given, with the
+      Turkish locative) and the button "İsteği geri çek". The deck is private all the while: nobody but the author reads it, and a request
+      does not stop the author editing it (tedris.decks.editOrDelete). The page is not live: when a reviewer answers, this page stays as it
+      is until it is read again, so the author may press "İsteği geri çek" on a card whose deck was published (the deck then becomes
+      private, with the toast "Deste özel oldu") or refused (the same). The answer reaches the author's bell as a notification
+      (tedris.account.notifications); the page needs a reload to show it.
+    on:
+      WITHDRAW: { target: withdrawingPending, effect: [clearNotice] }
+      MOVED_ON: { guard: notMoved, target: pendingDeck, effect: [movedOn], say: "the request is taken back in another tab, or the deck taken back after a publication; this page does not know", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:292 }
+      REVIEWER_APPROVES: { guard: "decisionWaiting and notMoved", target: pendingDeck, effect: [reviewerApproves], say: "a reviewer publishes the deck, in nizam; this page does not know", source: apps/tedrisat/src/deck-review/deck-review.service.ts:120 }
+      REVIEWER_REFUSES: { guard: "decisionWaiting and notMoved", target: pendingDeck, effect: [reviewerRefuses], say: "a reviewer refuses the request with a reason, in nizam; this page does not know", source: apps/tedrisat/src/deck-review/deck-review.service.ts:133 }
+      RELOAD:
+        - { guard: "decisionApproved and notMoved", target: publishedDeck, effect: [readAgain], say: "the page is read again and draws the published deck", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:52" }
+        - { guard: "decisionRefused and notMoved", target: rejectedDeck, effect: [readAgain], say: "the page is read again and draws the refused request", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:52" }
+      NAVIGATE: left
+
+  withdrawingPending:
+    title: Take the request back
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:66
+    description: >-
+      The server action withdrawDeckPublication, DELETE /flashcard/decks/:id/publish-request, through attempt(); the button "İsteği geri çek"
+      is busy. On a PENDING or REJECTED deck the API puts it back in PRIVATE and clears the request time and the reviewer's answer; on a
+      PUBLISHED one (the page is stale, DECISION approved) it takes the deck private at once; a deck that is PRIVATE already answers 409
+      (another tab withdrew it first). Success: the toast "Deste özel oldu" and the page is read again, which draws the private deck.
+      Failure: the error toast "İstek geri çekilemedi" and the card stays as it was (PUB-1).
+    invoke: { action: withdrawDeckPublication }
+    on:
+      DONE: { guard: notMoved, target: privateDeck, effect: [toastWithdrawn], say: "the deck is private: the toast, then the page is read again", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.conflict: { guard: isMoved, target: pendingDeck, effect: [toastWithdrawFailed], say: "the deck was private already; the toast does not say so (PUB-1)", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+      FAIL.other: { target: pendingDeck, effect: [toastWithdrawFailed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+
+  publishedDeck:
+    title: The deck is public
+    by: human
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:108
+    description: >-
+      The badge "Yayında" and "Bu deste herkese açık: Medaris yönetimi inceleyip yayımladı. İstediğin an özele çekebilirsin." with one
+      button, "Özele çek" (the same button element as the other two, label swapped). The deck is now public: isPublic is true exactly while
+      the status is PUBLISHED, and anyone signed in reads it, a visitor too (tedris.decks.visitorPublicDeck). The author is asked nothing
+      before the deck is taken back. The başnazım may also take it back, with a reason ("Yayından kaldır", in nizam), which the author
+      learns from a notification and from this page when it is read again.
+    on:
+      WITHDRAW: { target: takingBackPublished, effect: [clearNotice] }
+      MOVED_ON: { guard: notMoved, target: publishedDeck, effect: [movedOn], say: "the deck is taken back to private in another tab or by the başnazım; this page does not know", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:292 }
+      NAVIGATE: left
+
+  takingBackPublished:
+    title: Take the public deck back to private
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:66
+    description: >-
+      The same action as withdrawingPending, DELETE /flashcard/decks/:id/publish-request, on a PUBLISHED deck: it becomes PRIVATE at once,
+      isPublic false in the same write. The
+      button "Özele çek" is busy. Success: the toast "Deste özel oldu" and the private deck. A 409 means the deck was private already (the
+      başnazım took it back first).
+    invoke: { action: withdrawDeckPublication }
+    on:
+      DONE: { guard: notMoved, target: privateDeck, effect: [toastWithdrawn], say: "the deck is private: the toast, then the page is read again", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.conflict: { guard: isMoved, target: publishedDeck, effect: [toastWithdrawFailed], say: "the deck was private already; the toast does not say so (PUB-1)", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+      FAIL.other: { target: publishedDeck, effect: [toastWithdrawFailed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+
+  rejectedDeck:
+    title: The request was refused
+    by: human
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:105
+    description: >-
+      The badge "Yayın isteği reddedildi" (an error badge with a padlock), and under "Kimler görebilir" the text of a private deck, "Bu deste
+      özel; yalnız sen görürsün. Herkese açmak için yayın iste…": the catalog has no sentence for a refusal (DCK-13), and the reviewer's
+      reason is not on the page at all, only in the notification (PUB-3). The button is "Özele çek", not "Yayın iste", because everything
+      that is not PRIVATE falls into the else branch (:221-232); the author who wants to ask again presses it, the deck becomes private,
+      and then "Yayın iste" is there. The API would take a new request from a refused deck directly (flashcard-deck.service.ts:272-278).
+    on:
+      WITHDRAW: { target: withdrawingRejected, effect: [clearNotice] }
+      MOVED_ON: { guard: notMoved, target: rejectedDeck, effect: [movedOn], say: "the deck is taken back to private in another tab; this page does not know", source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:292 }
+      NAVIGATE: left
+
+  withdrawingRejected:
+    title: Take the refused deck back to private
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:66
+    description: >-
+      The same action again, on a REJECTED deck: it becomes PRIVATE and the reviewer's answer and reason are cleared. The button "Özele çek"
+      is busy. Success: the toast "Deste özel oldu" and the private deck, from which "Yayın iste" asks again. A 409 means the deck was
+      private already.
+    invoke: { action: withdrawDeckPublication }
+    on:
+      DONE: { guard: notMoved, target: privateDeck, effect: [toastWithdrawn], say: "the deck is private: the toast, then the page is read again", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.conflict: { guard: isMoved, target: rejectedDeck, effect: [toastWithdrawFailed], say: "the deck was private already; the toast does not say so (PUB-1)", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+      FAIL.other: { target: rejectedDeck, effect: [toastWithdrawFailed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68 }
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to exactly this
+      address, draws no toast, and attempt() never settles (attempt.ts:28). realm.auth.signIn takes over.
+
+assertions:
+  - id: the-stale-card-is-only-the-pending-one
+    never: "decision != 'waiting' and state not in ['pendingDeck', 'withdrawingPending', 'left', 'sent_to_sign_in']"
+    say: "only the card of a waiting request can be out of date: a reviewer's answer is not remembered on any other card, and a page read again forgets it"
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222
+  - id: a-sent-request-is-never-on-a-private-card
+    never: "state == 'privateDeck' and notice == 'requested'"
+    say: "the toast \"Yayın isteği gönderildi\" is never drawn over the private card: the page it belongs to is the pending one"
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78
+  - id: a-withdrawal-always-ends-private
+    never: "state in ['pendingDeck', 'publishedDeck', 'rejectedDeck'] and notice == 'withdrawn'"
+    say: "the toast \"Deste özel oldu\" is only ever over the private card, whichever card the withdrawal started from"
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78
+  - id: an-error-toast-belongs-to-its-own-card
+    never: "(state == 'privateDeck' and notice == 'withdrawFailed') or (state in ['pendingDeck', 'publishedDeck', 'rejectedDeck'] and notice == 'requestFailed')"
+    say: "the error toast of a request is only over the private card, and that of a withdrawal only over a card that can be withdrawn"
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68

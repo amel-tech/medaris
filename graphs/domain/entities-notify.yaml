@@ -1,0 +1,74 @@
+# I. Notifications, invitations, calendar feeds: 3 tables (inventory/domain.md section 7, I).
+# A user column holds a Keycloak sub and is no foreign key. All timestamps here are with time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  Notification: # one in-app notification for one person; the row holds no sentence, the web app words type and params in the reader's language
+    source: apps/tedrisat/src/database/schema/notification.schema.ts:22
+    required: [id, userId, type, params, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      type:
+        enum:
+          - ENROLLMENT_APPROVED
+          - ENROLLMENT_REJECTED
+          - REMOVED_FROM_COURSE
+          - COURSE_ACCESS_REMOVED
+          - SESSION_RESCHEDULED
+          - SESSION_CANCELLED
+          - SESSION_ADDED
+          - RECORDING_ADDED
+          - KOSK_APPLICATION_RESULT
+          - DECK_PUBLISH_RESULT
+          - SUBMISSION_REVIEWED
+          - EXAM_SCHEDULED
+          - EXAM_REMINDER
+          - EXAM_RESULTS_RELEASED
+          - COURSE_BAN_PLACED
+          - KOSK_BAN_PLACED
+        note: "a text column; the app list NOTIFICATION_TYPES (notification/notification-types.ts:13). SESSION_ADDED has no producer: RECORDING_ADDED, a recording becoming READY for the first time, is the one written. COURSE_BAN_PLACED and KOSK_BAN_PLACED go to the köşk's nazım and every Medaris nazım except the actor, and only when the ban has a köşk (ban/ban.repository.ts:435)"
+      targetType: { type: [string, "null"], enum: [COURSE, SESSION, DECK, KOSK, null], note: "where the notification leads; null with targetId when it leads nowhere (NOTIFICATION_TARGET_TYPES, notification-types.ts:38)" }
+      targetId: { type: [string, "null"], format: uuid, note: "no foreign key: a course, a session, a deck or a köşk by targetType" }
+      params: { type: object, additionalProperties: { type: [string, number, boolean, "null"] }, default: {}, sensitivity: personal, note: "a flat map the sentence is filled from: names and titles" }
+      readAt: { type: [string, "null"], format: date-time }
+      createdAt: { type: string, format: date-time, note: "written by the application at millisecond precision, because the list is paged on (createdAt, id) and the cursor travels as a JavaScript Date (notification/notification.repository.ts:38)" }
+    lifecycle:
+      - "none -> unread: a producer calls NotificationService.notify (notification/notification.repository.ts:38)"
+      - "unread -> read: markRead keeps the first readAt (notification/notification.repository.ts:115), markAllRead sets it on every unread row of the person (:125)"
+
+  LessonInvitation: # the last calendar invitation (iCalendar REQUEST or CANCEL) e-mailed to one talebe for one session; keeps it the same calendar event across its life
+    source: apps/tedrisat/src/database/schema/lesson-invitation.schema.ts:35
+    key: [lessonId, userId]
+    required: [lessonId, courseId, userId, sequence, startsAt, courseTitle, lessonTitle, createdAt, updatedAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: Lesson, note: "no foreign key: the row outlives its session so its CANCEL can still be sent" }
+      courseId: { type: string, format: uuid, references: Course, note: "no foreign key; kept for the CANCEL's link to the session page" }
+      userId: { type: string, format: uuid, sensitivity: personal, note: "Keycloak sub; the pair (user, lesson) is personal; invitations go only to talebe whose users.lesson_invitation_emails is true" }
+      sequence: { type: integer, note: "the iCalendar SEQUENCE of the last message; plus 1 on every REQUEST after the first and on every CANCEL (RFC 5546 section 2.1.4)" }
+      startsAt: { type: string, format: date-time, note: "what the last message said" }
+      durationMinutes: { type: [integer, "null"], note: "what the last message said" }
+      courseTitle: { type: string, sensitivity: internal }
+      lessonTitle: { type: string, sensitivity: internal }
+      cancelledAt: { type: [string, "null"], format: date-time, note: "set when a CANCEL went out; a later REQUEST clears it" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> sent: the first REQUEST inserts the row with sequence 0 (lesson-invitation/lesson-invitation.repository.ts:304)"
+      - "sent -> sent: a session whose live values differ from the stored ones is sent again with sequence + 1, conditional on the sequence read (lesson-invitation/lesson-invitation.repository.ts:311)"
+      - "sent -> cancelled: claimCancel sets cancelledAt and sequence + 1 and a CANCEL is mailed (lesson-invitation/lesson-invitation.repository.ts:326)"
+      - "cancelled -> sent: a later REQUEST for the same session clears cancelledAt"
+      - "sent | cancelled -> none: pruneOrphans deletes the row once its session is gone and the CANCEL went out, or once the time it named has passed (lesson-invitation/lesson-invitation.repository.ts:349)"
+
+  CalendarFeedToken: # one personal calendar-feed secret per user; a calendar app cannot sign in, so the feed URL carries the secret and only its SHA-256 is stored
+    source: apps/tedrisat/src/database/schema/calendar-feed.schema.ts:9
+    key: [userId]
+    required: [userId, tokenHash, createdAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      tokenHash: { type: string, unique: true, sensitivity: credential, note: "hex SHA-256 of the token; the unique constraint calendar_feed_tokens_token_hash_unique also indexes the feed route's one lookup" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> active: replaceToken inserts the hash of a new token (calendar-feed/calendar-feed.repository.ts:68)"
+      - "active -> active: regenerating overwrites the row on userId, which stops the old feed URL from working"

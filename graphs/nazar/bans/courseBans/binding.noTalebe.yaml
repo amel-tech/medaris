@@ -1,0 +1,25 @@
+# nazar.bans.courseBans, a course nobody has applied to: "Etkin yasak yok." and a "Yasakla" that is off with "Bu derste yasaklanabilecek
+# talebe yok." (cb.2 of the inventory, pinned only by apps/nazar/test/course-bans.spec.tsx).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.noTalebe.yaml --to empty --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# A course of the walk's own with no talebe and no ban; nothing else is made, so there is nothing to clear but the course.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  noTalebe:
+    given: { read: ok, list: none, roster: none, banAnswer: done, answer: done, after: none }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"cbans"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+    vars: { who: APPLICANT_E }

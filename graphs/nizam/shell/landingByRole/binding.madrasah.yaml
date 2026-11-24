@@ -1,0 +1,17 @@
+# nizam.shell.landingByRole, the başmüderris: "/" sends them to /nazar-yonlendirme, and the list holds one medrese row with the role
+# alone (no köşk, no count). It takes no transition the main file's `hoca` does not, so it is walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/shell/landingByRole \
+#     --bind graphs/nizam/shell/landingByRole/binding.madrasah.yaml --to nazarList --absent --out <dir>
+# The seeded MEDRESE_BASMUDERRIS heads "Hadis ve Siyer Medresesi" and teaches no course (seed.mjs:82), so the list is that one row
+# (assignments#1 a5). Nothing is created or removed. NOT RUN.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.landingByRole
+
+scenarios:
+  madrasah:
+    given: { address: root, person: nazarOnly, tasks: madrasah, read: ok }
+    as: basmuderris
+    open: '{nizam}/'
+    vars: { acct: MEDRESE_BASMUDERRIS, held: '"role":"MEDRESE_BASMUDERRIS"', chief: 'false' }

@@ -1,0 +1,113 @@
+# The screens of nazar.decks.siga: one deck's page (/ders/<id>/deste/<deckId>) behind, and the dialog "Sîga üretici" over it, in its two
+# steps. Read from apps/nazar/features/decks/components/{deck-detail-page,deck-detail-screen,siga-generator-dialog}.tsx and
+# features/decks/siga.ts on 15 Nov 2026. Every key without a `composed.` prefix is copied letter for letter from
+# libs/i18n/src/locales/tr/nazar.json (namespaces Decks, Shell) by script. The `composed.*` keys are text the code builds, found in no
+# message file:
+#   composed.Decks.cardsHeading            "Kartlar · {count}"          Decks.cardsTitle, " · " and the number of cards in one <h2> (deck-detail-screen.tsx:64-66)
+#   composed.Decks.siga.kipCountMazi       "Mâzî · 14 sîga"             Decks.siga.kipCount filled with Decks.siga.kipMazi (siga-generator-dialog.tsx:298-301)
+#   composed.Decks.siga.kipCountMuzari     "Muzâri · 14 sîga"           the same with Decks.siga.kipMuzari (siga-generator-dialog.tsx:307-310)
+#   composed.Decks.siga.babNameNasara      "نَصَرَ يَنْصُرُ"            the Arabic model verb of the bâb, under the select (siga.ts:91, siga-generator-dialog.tsx:279-281)
+#   composed.Decks.siga.babNameDaraba      "ضَرَبَ يَضْرِبُ"            (siga.ts:98)
+# The one message that is not the app's is `Changes.note`: no app message says what "N kartı kaydet" changes (every card is added at
+# once, a published deck shows them to the talebe, no button takes them back together), so one short, factual Turkish note is authored.
+#
+# The page behind is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it is open.
+# The numbers in the samples are the main story's: 28 cards, the 14 of one tense is a scenario's own `samples` in the binding.
+schema: delurio-graph/0
+kind: ui
+id: nazar.decks.siga
+flow: nazar.decks.siga
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  count: "28"
+  min: "3"
+  max: "5000"
+
+# Nothing in features/decks gives the page a focus on load, and nothing gives one back after the dialog is gone. The dialog passes no
+# `initialFocus`, so Base UI's own default takes the first tabbable element of the popup, which is the close icon of its header
+# (document order; not verified in a browser). It is drawn as the app's behaviour, not as its choice (rule focus-not-set).
+nodes:
+  # ---- the deck page, the dialog closed ----------------------------------------------------------------------------------------
+  deckPage: { type: page, component: Page, role: main, in: [deck, saved], source: libs/ui/src/mds/app-shell.tsx:42 } # the shell's one <main id="main">; it has no name
+  deckTitle: { type: text, component: Heading, role: heading, text: { literal: "Sîga denemesi" }, in: [deck, saved], source: apps/nazar/features/decks/components/deck-detail-page.tsx:82 } # h1, the deck's own title, with `lang="auto"`, which is not a language tag (F-D1-14); the walk's deck is named like this
+  deckState: { type: text, component: Text, text: { key: Decks.draftState }, in: [deck, saved], source: apps/nazar/features/decks/components/deck-detail-page.tsx:86 } # the deck is a draft in every walk: the talebe never see it
+  cardsHeading: { type: text, component: Heading, role: heading, text: { key: composed.Decks.cardsHeading, params: { count: cards.length } }, in: [deck, saved], when: "cards == 'some'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:64 } # h2 "Kartlar · 28"; "Kartlar · 0" while the deck holds none (not drawn)
+  sigaButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.siga.button }, in: [deck, saved], emits: OPEN_SIGA, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:68 }
+  cardsEmpty: { type: text, component: Text, text: { key: Decks.cardsEmpty }, in: [deck], when: "cards == 'none'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:79 }
+  cardsGrid: { type: list, component: List, role: list, in: [deck, saved], when: "cards == 'some'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:81 } # a <ul> of tiles; each tile has Düzenle and Sil icon buttons named alike on every tile (F-D1-25, nazar.decks.openAndFill)
+  cardTile: { type: list, component: ListItem, role: listitem, in: [deck, saved], when: "cards == 'some'", repeat: cards.items, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:83 } # the Arabic front and the Turkish back of one card; a sîga's own group is not shown on this page
+
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: Decks.siga.saved, params: { count: cards.added } }, in: [saved], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:128 } # a toast is a dialog in the "Bildirimler" live region; success closes by itself after 6 seconds
+
+  # ---- the dialog: the frame, in both steps -------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [rootStep, rootTyped, preview, saving], initialFocus: dialogClose, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:149 } # Base UI's default focus, the first tabbable (the close icon); the app chose none
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Decks.siga.title }, in: [rootStep, rootTyped, preview, saving], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:160 } # h2
+  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [rootStep, rootTyped, preview, saving], emits: CLOSE, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named by an aria-label from the primitive's hard-coded default (F-D1-24); while the save runs it stays on and does nothing
+
+  # ---- step 1: the form ---------------------------------------------------------------------------------------------------------
+  scope: { type: text, component: Text, text: { key: Decks.siga.scope }, in: [rootStep, rootTyped], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:253 }
+
+  rootField: { type: field, component: TextField, role: textbox, text: { key: Decks.siga.root }, value: { literal: "" }, in: [rootStep, rootTyped], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:266 } # lang=ar dir=rtl; the asterisk is drawn and the control carries no `required` (F-D1-03)
+  rootHelp: { type: text, component: Text, text: { key: Decks.siga.rootHelp }, in: [rootStep, rootTyped], when: "said == 'none' or said == 'kips'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:256 } # the Arabic letters sit in a Turkish line with no `lang`; the root's message replaces this line
+  rootRequired: { type: text, component: Text, text: { key: Decks.siga.rootRequired }, in: [rootStep, rootTyped], when: "said == 'required'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259 } # Field.Error: not a live region, and the focus stays on "Önizle" (SIGA-4)
+  rootLetters: { type: text, component: Text, text: { key: Decks.siga.rootLetters }, in: [rootTyped], when: "said == 'letters'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259 }
+  rootWeak: { type: text, component: Text, text: { key: Decks.siga.rootWeak }, in: [rootTyped], when: "said == 'weak'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259 }
+  rootDoubled: { type: text, component: Text, text: { key: Decks.siga.rootDoubled }, in: [rootTyped], when: "said == 'doubled'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:259 }
+
+  babSelect: { type: field, component: TextField, role: combobox, text: { key: Decks.siga.bab }, in: [rootStep, rootTyped], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:285 } # a Base UI select, six options named in Latin ("Nasara – yensuru" ... "Hasibe – yahsibu", siga.ts:87-127); the asterisk is not given to it (F-D1-03)
+  babHelpNasara: { type: text, component: Text, text: { key: composed.Decks.siga.babNameNasara }, in: [rootStep, rootTyped], when: "bab == 'nasara'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:279 } # the model verb of the chosen bâb, `lang="ar"`
+  babHelpDaraba: { type: text, component: Text, text: { key: composed.Decks.siga.babNameDaraba }, in: [rootTyped], when: "bab == 'daraba'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:279 }
+
+  kipsGroup: { type: list, component: List, role: group, name: { key: Decks.siga.kips }, in: [rootStep, rootTyped], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:294 } # a <fieldset> and its <legend>
+  kipMazi: { type: field, component: TextField, role: checkbox, text: { key: composed.Decks.siga.kipCountMazi }, checked: "kips != 'none'", in: [rootStep, rootTyped], emits: UNTICK_MAZI, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:298 }
+  kipMuzari: { type: field, component: TextField, role: checkbox, text: { key: composed.Decks.siga.kipCountMuzari }, checked: "kips == 'both'", in: [rootStep, rootTyped], emits: UNTICK_MUZARI, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:307 }
+  kipsRequired: { type: text, component: Text, text: { key: Decks.siga.kipsRequired }, in: [rootStep, rootTyped], when: "kips == 'none' and said != 'none'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:316 } # a bare <p class="mds-error"> tied to both boxes by aria-describedby and aria-invalid; not a live region (SIGA-4)
+
+  maziMeaningField: { type: field, component: TextField, role: textbox, text: { key: Decks.siga.maziMeaning }, value: { literal: "" }, in: [rootStep, rootTyped], when: "kips != 'none'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:327 } # drawn while its tense is ticked; optional here (SIGA-3)
+  maziMeaningHelp: { type: text, component: Text, text: { key: Decks.siga.maziMeaningHelp }, in: [rootStep, rootTyped], when: "kips != 'none'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:325 }
+  muzariMeaningField: { type: field, component: TextField, role: textbox, text: { key: Decks.siga.muzariMeaning }, value: { literal: "" }, in: [rootStep, rootTyped], when: "kips == 'both'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:339 }
+  muzariMeaningHelp: { type: text, component: Text, text: { key: Decks.siga.muzariMeaningHelp }, in: [rootStep, rootTyped], when: "kips == 'both'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:337 }
+
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [rootStep, rootTyped], emits: CANCEL, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:182 } # "Vazgeç" is a DialogClose: it closes and never submits
+  previewButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.siga.preview }, in: [rootStep, rootTyped], emits: PREVIEW, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:183 } # the form's submit; never disabled
+
+  # ---- step 2: the drafts ------------------------------------------------------------------------------------------------------
+  previewHint: { type: text, component: Text, text: { key: Decks.siga.previewHint }, in: [preview, saving], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:190 } # says the cards are saved as corrected; "Geri" does not keep the corrections (SIGA-5)
+  maziHeading: { type: text, component: Heading, role: heading, text: { key: Decks.siga.kipMazi }, in: [preview, saving], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:195 } # h3
+  muzariHeading: { type: text, component: Heading, role: heading, text: { key: Decks.siga.kipMuzari }, in: [preview, saving], when: "kips == 'both'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:195 } # h3
+  draftFront: { type: field, component: TextField, role: textbox, text: { key: Decks.siga.front }, in: [preview, saving], repeat: drafts, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:215 } # one per sîga, lang=ar dir=rtl, in a <fieldset> whose <legend> is the sîga ("Gâib · müfred"): 28 groups with the same two labels
+  draftMeaning: { type: field, component: TextField, role: textbox, text: { key: Decks.siga.meaning }, in: [preview, saving], repeat: drafts, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:231 }
+  lengthErrors: { type: text, component: Text, text: { key: Decks.lengthError, params: { min: limits.min, max: limits.max } }, in: [preview], when: "backs == 'flagged'", repeat: drafts, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:86 } # under every "Anlam" whose draft is too short (all 28 here); not live, and the focus stays on the button (SIGA-4)
+  failureAlert: { type: alert, component: Alert, role: alert, text: { key: Decks.failed }, in: [preview], when: "backs == 'refused'", source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:249 } # the last child of the body, below the 28 drafts, whatever the refusal was (SIGA-7); role alert, so it is announced
+  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.siga.back }, in: [preview, saving], disabledIn: [saving], emits: BACK, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:164 } # an outline button; natively disabled while the save runs
+  saveAll: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.siga.save, params: { count: drafts.length } }, in: [preview, saving], disabledIn: [saving], emits: SAVE, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:176 } # busy (aria-disabled, aria-busy) while the save runs; the number is the drafts' count
+  savingStatus: { type: status, component: Status, role: status, text: { literal: "Yükleniyor" }, in: [saving], source: libs/ui/src/mds/button.tsx:114 } # the button's hidden <output>, from a default outside the catalog (F-D1-24)
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [sigaButton, rootStep] }
+  - { triggers: [saveAll, saving] }
+  - { triggers: [backButton, rootTyped] }
+  - { returnsFocus: [dialog, sigaButton] } # Base UI returns the focus to what had it when the dialog opened; here the dialog is unmounted by its parent, not closed, so this is not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in features/decks gives the page a focus on load, nothing moves it into the first field when the dialog opens (no `initialFocus` is passed, so Base UI's default, the close icon of the header, applies; not verified) and nothing places it when the dialog closes or after a save (the dialog is unmounted by the parent; whether Base UI hands the focus back to 'Sîga üret' is not verified). Fix: pass `initialFocus` the root box, and focus the button or the cards' heading after a save." }
+  - { id: F-D1-21, rule: "`dismissible={!pending}` makes a click on the scrim close step 2 while it is idle, so a stray click throws away 28 edited drafts; every other form dialog of this part keeps the scrim inert (the form default is `dismissible` false). Esc and the close icon close it too, with no question, and the drafts and what was typed in step 1 go with them. Switching between the steps replaces the footer's buttons ('Vazgeç', 'Önizle' for 'Geri', '28 kartı kaydet'), so the focused button unmounts and the focus falls to the dialog (siga-generator-dialog.tsx:156, 161-186). Fix: drop `dismissible`, ask before closing step 2, keep the focus on the dialog title between steps." }
+  - { id: F-D1-03, rule: "`Field required` draws an `aria-hidden` asterisk on 'Kök' and 'Bâb' and the controls carry no `required` or `aria-required`, so a screen reader is never told they are required (siga-generator-dialog.tsx:254-284). Fix: pass `required` to the Input and the Select." }
+  - { id: F-D1-24, rule: "The dialog passes no `closeLabel`, so the close icon's 'Kapat' comes from the primitive's hard-coded default (dialog.tsx:64), not from the catalog; the busy save button announces 'Yükleniyor' from a default too (button.tsx:114, no `loadingLabel` at siga-generator-dialog.tsx:176). Fix: pass `Shell.close` and a `loadingLabel` from the catalog." }
+  - { id: F-D1-20, rule: "No try/catch around `createCards` in the `startTransition(async ...)` of save (siga-generator-dialog.tsx:113-134): when the browser cannot reach Next, the rejection escapes, the busy button is never cleared and nothing is said. Not verified in a browser. Fix: wrap it, and say 'Files.errors.network'." }
+  - { id: F-D1-14, rule: "The deck's title is an `<h1 lang=\"auto\">`; `auto` is not a language tag (the intent is `dir=\"auto\"`) and can confuse a screen reader's voice choice (deck-detail-page.tsx:82). Drawn on the page behind the dialog." }
+  - { id: F-B-12, rule: "The dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so `aria-describedby` points at everything inside it, in step 2 at 56 boxes. Not verified how a screen reader treats it. Fix: describe the dialog with the scope sentence or the hint only." }
+  - { id: SIGA-1, rule: "New. The dialog is given the deck's id and card type and none of its cards (deck-detail-screen.tsx:97-101), the API has no uniqueness rule on a card, and so a second run of the same root and bâb writes 28 more cards. tedris-web lays the first card of each cell in the sarf table and puts the second into the plain grid (apps/tedris/features/courses/siga-table.ts, sigaLayout), so the talebe sees every sîga twice. Fix: pass the cards, say in step 2 which sîgas the deck already holds, and leave them out unless she keeps them (D2). Not walked: the walk adds the cards once." }
+  - { id: SIGA-2, rule: "New, from the domain finding no-card-type-match. Every card is written with `type: deck.cardType` (siga-generator-dialog.tsx:117) and the generator is offered in a 'Hadis' deck too, so a hadis deck can hold conjugation cards typed HADEETH. Nothing compares the type with anything, and a PUT of the deck can later change the deck's cardType (put-deck-changes-card-type) without touching its cards. The deck page never shows the deck's type. A sîga card is recognised only by its `contentMeta` (D1). Fix: decide the type of a sîga card, and offer or refuse the generator by the deck's type." }
+  - { id: SIGA-3, rule: "New. The two meaning fields are optional in step 1 (no asterisk, no word), 'Önizle' builds 28 drafts with empty meanings, and `sigaDraftProblems` then stops the save (an emptied back is one of the problems, siga.ts:396-408): only after '28 kartı kaydet' is pressed does each 'Anlam' say 'Bu alan 3 ile 5000 karakter arasında olmalı.', 28 times, with the focus on the button and nothing announced. The person must type 28 meanings or go back. A meaning that does not end in -dı, -tı, -yor or -r is copied unchanged after every person ('O (erkek) yardım edecek', 'Ben yardım edecek'). Fix: say in step 1 that the meaning is needed, or let the back stay empty (D3)." }
+  - { id: SIGA-4, rule: "New, the family of F-D1-16 in this dialog. The root's four messages and the one under 'Kipler' show after 'Önizle', and the 28 length messages after save, as `Field.Error` or a bare `<p>` with no role and no live region (libs/ui/src/mds/field.tsx), and the focus stays on the pressed button, so a screen-reader user hears nothing after pressing it. The root's message also replaces its hint (with the example root). In step 2 the first message can be far above the button. Fix: focus the first invalid control, or give the messages `role=alert`." }
+  - { id: SIGA-5, rule: "New. 'Geri' keeps the root, the bâb, the tenses and the meanings of step 1 but drops the drafts (`setDrafts(null)`, siga-generator-dialog.tsx:168-172), and the next 'Önizle' builds every draft again from them, so a vowel or a meaning corrected in step 2 is lost without a word, while the hint above the drafts says the cards are saved as corrected. Fix: keep the drafts while the typed values are unchanged, or say that going back drops the corrections." }
+  - { id: SIGA-6, rule: "New. The footer's submit is the form's default button, so Enter in any of the 56 boxes of step 2 saves all 28 cards at once, with no question (`submit` calls `save` when there are drafts, siga-generator-dialog.tsx:137-141); a person pressing Enter to leave a corrected box writes 28 cards, which cannot be taken back together. Fix: save only from the button, or ask first." }
+  - { id: SIGA-7, rule: "New. A refused save draws one sentence, 'İşlem tamamlanamadı. Tekrar deneyin.', whatever the reason (`deckErrorKey` knows two, and only COURSE_DECK_NOT_DRAFT, which this call cannot raise, is not the generic one, decks.ts:255-258): a deck that was deleted meanwhile (DECK_NOT_FOUND) or a permission that was withdrawn (AUTHZ_FORBIDDEN) is told to try again. The line is the last child of the dialog's scrolling body, below the 28 drafts, while the focus stays on the footer's button. It is `role=alert`, so it is announced; a sighted person at the top of the list does not see it. Fix: say the reason, and place the line where the button is." }
+  - { id: drafts-are-grouped, rule: "Each draft's two boxes sit in a `<fieldset>` whose `<legend>` names the sîga ('Gâib · müfred', 'Mütekellim · maa'l-gayr'), the Arabic box is `lang=ar dir=rtl`, and the two kips are under h3 headings inside the h2 of the dialog: so the 56 boxes with two labels are told apart. Holds." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name ('Önizle', 'Geri', 'N kartı kaydet', 'Sîga üret'); the checkboxes are named by their visible label. Holds." }

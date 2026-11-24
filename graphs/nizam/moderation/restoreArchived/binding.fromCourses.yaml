@@ -1,0 +1,36 @@
+# nizam.moderation.restoreArchived on the local stack, entered from the "Arşiv" link of the köşk's Dersler (e2e archive#5): the köşk's nazımı is on Dersler of a köşk of the walk's own and follows
+# the link under its heading; the address must become /kosks/<id>/arsiv and the page is the list.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.fromCourses.yaml --to listed --out <dir>
+# NOT RUN: written without a replay. It reads only (`--to listed`), so one hidden course is enough. archive#5 clicked "Arşiv" on /kosks/<id>, which sends a köşk's nazımı on to Dersler
+# (the nav graph's `koskManage` is skipped for that reason), so the link it meets is Dersler's, `koskCourses->koskArchive` of the nav graph (`KoskCourses.archive`, a link inside <main>).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+
+scenarios:
+  fromCourses:
+    given: { view: kosk, held: courses }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'koskCourses->koskArchive' }
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/course.mjs, make, arsOne, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsOne"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsOne]
+        expect: 'hide-course arsOne'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsOne]
+        expect: 'course remove arsOne'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'

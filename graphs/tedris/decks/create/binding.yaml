@@ -1,0 +1,58 @@
+# tedris.decks.create on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantC`: a woman with
+# a full profile, no enrolment and no deck of her own, so the walk makes one deck and nothing else is touched. The other flows of the
+# decks area use applicantD, G and H, so this one takes C: no flow looks at C's decks but this one.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/create \
+#     --bind graphs/tedris/decks/create/binding.yaml [--cover transitions] [--absent] --out <dir>
+# NOT RUN in the writing phase (see walk.common.binding.yaml, which every file of this flow extends).
+#
+#   created   the main story, decks#9, #10, #11: an empty send (the name and the kind are said), the preview follows Hadis and back to
+#             Kelime, the form is filled in with the name, the description and the tags of decks#11 and sent, the new deck's page opens.
+#             Comes in the way a person does: Desteler, then the link "Deste oluştur" of its header (tedris.nav's entry
+#             decks->decksCreate, whose locator the nav binding already gives: the link is repeated by the empty state, so the first).
+#             Also covers "Vazgeç" and the breadcrumb (decks#12), whose effect checks that no deck was made.
+#   refused   the name of three emoji: the page counts six UTF-16 units and takes it, the API counts three characters and answers 400
+#             (DCKCREATE-1), the toast stands over the form with the values kept, and "Kapat" closes it. Nothing is made. This is the one
+#             refusal a walk can make locally: a 5xx or a dropped network cannot be made.
+# The three cases of what is typed that add no transition (a name that is too short, too many tags, one tag that is too long) are in
+# binding.short.yaml, binding.manyTags.yaml and binding.longTag.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.create
+
+scenarios:
+  created:
+    given: { name: valid, tags: fine }
+    as: applicantC
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksCreate' }
+    vars:
+      deckTitle: Yeni deste denemesi
+      deckName: Yeni deste denemesi
+      deckDescription: Sarf çalışması için bir deste.
+      deckTags: ' sarf , nahiv,, Sarf '
+    setup:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove
+    teardown:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove
+
+  # The API's refusal for a name the page took (DCKCREATE-1). Three emoji: "😀😀😀" is 6 UTF-16 units to the page and 3 characters to
+  # class-validator's MinLength(5), which counts a surrogate pair as one.
+  refused:
+    given: { name: astral, tags: fine }
+    as: applicantC
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksCreate' }
+    vars:
+      deckTitle: '😀😀😀'
+      deckName: '😀😀😀'
+      deckDescription: ''
+      deckTags: ''
+    setup:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove
+    teardown:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove

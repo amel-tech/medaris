@@ -1,0 +1,684 @@
+# Ders desteleri of a course in nazar-web (/ders/<id>/deste), where the course's hoca (or a ders nazırı who holds deck.manage_course)
+# opens a deck with "Deste aç", lands on its page (/ders/<id>/deste/<deckId>), adds cards, pastes a two-column batch, edits a card in
+# place and deletes one. Read from the code of PR #394 (apps/nazar/features/decks, the app's server actions and the API's
+# GET /courses/:id/decks/manage, POST /courses/:id/decks, POST /flashcard/decks/:deckId/cards, PATCH and DELETE /flashcard/cards/:id) on
+# 15 Nov 2026. Nothing here was walked: it says what the code does today, and each finding (ui.yaml `rules`) is where the code is wrong
+# for its people.
+#   - Whoever holds deck.manage_course opens a deck and becomes its author. The deck-level routes (list the cards, add cards) accept
+#     any course staff; the card routes (PATCH and DELETE /flashcard/cards/:id) authorize through the deck's author, a public deck or
+#     the shared-with rule, and know no course staff rule (flashcard.service.ts:86-101, deck-sharing.ts). So a staff member who did not
+#     write the deck adds cards and meets 404 CARD_NOT_FOUND on editing or deleting any card of it, and the page says only "İşlem
+#     tamamlanamadı. Tekrar deneyin." (OPENFILL-1; the domain's course-deck-staff-card-routes-404). The variable `author` holds that:
+#     the walk of a deck the person opened is `own`, a deck a colleague opened is `other`. Derived from the code, not run.
+#   - The card list has no "refresh": every write ends with router.refresh(), which reads the deck page again.
+#   - Counting: `cards` is none, one or many (two or more). The graph draws a delete only from `many`, so that a delete never empties
+#     the deck on the way (the empty state is drawn at the start); deleting the last card gives "Bu destede henüz kart yok" again.
+schema: delurio-graph/0
+kind: flow
+id: nazar.decks.openAndFill
+status: captured
+domain: medaris.api
+ui: nazar.decks.openAndFill
+title: Open a course deck and fill it
+summary: >-
+  The hoca opens Ders desteleri from the course menu: the course's decks as cards (or "Bu derste henüz deste yok"), "Excel'den aktar"
+  and "Deste aç". "Deste aç" asks for a title (5 to 100 characters), an optional description, the card type, an optional week and
+  "Taslak olarak kaydet"; the deck opens at once, a toast says so and the deck's own page is read: "Kartlar · n", the "Kart ekle" row
+  (Ön yüz and Arka yüz, Enter adds the card and the focus goes back to Ön yüz), a paste of two columns from Excel (a batch panel says
+  how many cards are ready and which lines are skipped, "Hepsini ekle" adds them), each card as a tile with "Düzenle" (the tile turns
+  into its two faces in place; Enter or "Kaydet" saves, Escape or "Vazgeç" leaves them as they were) and "Sil" (asks once). A person who
+  holds deck.manage_course and did not open the deck adds cards but is refused every edit and delete with the same "İşlem
+  tamamlanamadı"; a person who holds no deck.manage_course meets "Bu sayfaya izniniz yok".
+
+scope:
+  shows: >-
+    the list of the course's decks, the "Deste aç" dialog, the deck's page (its header, the "Kart ekle" row with its status line, the
+    batch panel, the cards, the edit form of a card, the confirmation of a delete) and the toasts of a new deck and a deleted card
+  world: open
+  outOfView:
+    - "the deck's settings below the cards (title, description, week, Kaydet, Yayımla and Taslağa çek, Desteyi sil with its confirmation): nazar.decks.publishAndDelete; the same part of the page is on screen in every state of the deck page and is not drawn"
+    - "Sîga üret (the generator dialog) and Excel'den aktar (the import dialog, on the list and on the deck page): nazar.decks.siga, nazar.decks.import"
+    - "what the talebe see of a published deck: tedris.course.deckTab"
+    - "a deck with a week (the Hafta select of the dialog lists the course's weeks), the card type Hadis, a description, and the other errors under the fields (a title over 100 characters, a description over 1000, a face over 5000): they have the shape of the ones drawn"
+    - "a card face shorter than 3 characters in the Kart ekle row or in the edit form: the line says 'Bu alan 3 ile 5000 karakter arasında olmalı.' in the place of 'Bu alan zorunlu.', and the tile's form shows it under the faces; only the blank case is drawn"
+    - "a paste with one ready card or with no skipped line (the same panel, '1 kart hazır' with no 'atlanacak satırlar'), a paste with a ';' (a batch in the front box only), and a second paste over a panel that is open"
+    - "a card added while a batch panel is open, and two tiles in edit at the same time: the page allows both"
+    - "the deck page when a read fails ('Ders desteleri okunamadı'), when the deck is not one of the course's (the 404 page) and when the person is refused (only an alert, no heading: F-D1-02); and the list's failed state, which draws a second h1 (F-D1-01)"
+    - "deleting the last card of a deck: the empty state again"
+    - "the phone layout, and paging: the deck page lists every card of the deck with no paging"
+
+decisions:
+  D1:
+    question: >-
+      Should a person who holds deck.manage_course be able to edit and delete the cards of a deck a colleague opened? The deck routes
+      let them read and fill it, the permission catalogue gives them deck.manage_cards on it, and the card routes' resolver answers
+      404 as if the card did not exist.
+    recommend: >-
+      Yes: let findVisibleDeckId know the course staff rule (the course's staff may see every card of the course's decks, drafts
+      included), as the deck-level routes already do. Until then the page words the refusal as "Tekrar deneyin", which can never
+      work, so it should at least say that only the deck's author may change its cards.
+    affects: [editFailed, removeFailed]
+  D2:
+    question: >-
+      Should a saved card edit say so? The tile returns to view and nothing else happens: no toast, no line ("Decks.cardSaved" is in
+      the catalog and never used).
+    recommend: >-
+      Use the status line of the "Kart ekle" row ("Kart kaydedildi") and give the focus back to the tile's "Düzenle".
+    affects: [deck]
+
+context:
+  course:
+    values: [fresh, others, closed]
+    initial: any
+    say:
+      fresh: "the course has no deck and the person holds deck.manage_course: the course's hoca, who opens the deck and becomes its author"
+      others: "the course holds one deck that a colleague opened (the hoca), and the person is a ders nazırı with deck.manage_course, who did not"
+      closed: "the person holds no deck.manage_course in the course (a ders nazırı with another grant, or none): the page refuses"
+  author:
+    values: [own, other]
+    initial: own
+    say:
+      own: "the deck on the page was opened by the person"
+      other: "the deck on the page was opened by someone else of the staff"
+  deckTitle:
+    values: [blank, typed]
+    initial: blank
+    say:
+      blank: "the Başlık of the open dialog is empty"
+      typed: "the Başlık of the open dialog holds a title"
+  box:
+    values: [off, on]
+    initial: off
+    say:
+      off: "Taslak olarak kaydet is not ticked"
+      on: "Taslak olarak kaydet is ticked"
+  deckState:
+    values: [published, draft]
+    initial: published
+    say:
+      published: "the deck on the page shows to the talebe (Yayında · talebe görünür)"
+      draft: "the deck on the page does not show to the talebe (Taslak · talebe görünmez)"
+  listed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the list of decks is empty"
+      some: "the list holds a deck"
+  faces:
+    values: [blank, typed]
+    initial: blank
+    say:
+      blank: "the Ön yüz and Arka yüz of the Kart ekle row are empty"
+      typed: "both faces of the Kart ekle row hold a valid text"
+  cards:
+    values: [none, one, many]
+    initial: none
+    say:
+      none: "the deck holds no card"
+      one: "the deck holds one card"
+      many: "the deck holds two cards or more"
+  revised:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "the open edit form holds the card's stored faces"
+      yes: "the open edit form holds a new back face"
+  last:
+    values: [nothing, created, removed]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is up"
+      created: "a toast says the deck was opened"
+      removed: "a toast says the card was deleted"
+
+
+effects:
+  clearNote: { set: { last: nothing } }
+  haveDecks: { set: { listed: some } }
+  freshDialog: { set: { deckTitle: blank, box: off, last: nothing } }
+  typedTitle: { set: { deckTitle: typed } }
+  boxOn: { set: { box: on } }
+  boxOff: { set: { box: off } }
+  # a created deck is the person's own, empty, and is the one the list holds; the page behind it is read anew
+  createdPublished: { set: { author: own, deckState: published, listed: some, cards: none, faces: blank, revised: no, last: created } }
+  createdDraft: { set: { author: own, deckState: draft, listed: some, cards: none, faces: blank, revised: no, last: created } }
+  openedOwn: { set: { author: own, faces: blank, revised: no, last: nothing } }
+  openedOther: { set: { author: other, faces: blank, revised: no, last: nothing } }
+  typedFaces: { set: { faces: typed } }
+  firstCard: { set: { cards: one, faces: blank } }
+  secondCard: { set: { cards: many, faces: blank } }
+  moreCards: { set: { faces: blank } }
+  batchDone: { set: { cards: many } }
+  openedEdit: { set: { revised: no, last: nothing } }
+  typedRevision: { set: { revised: yes } }
+  editedRevised: { set: { revised: no } }
+  editedAsIs: { set: { revised: no } }
+  removedCard: { set: { last: removed } }
+  # a refused write changes nothing the page remembers; the effect names the check that the API kept the card as it was
+  refusedEdit: { set: { revised: no } }
+  refusedRemove: { set: { last: nothing } }
+
+failures:
+  opened:
+    from: listCourseDecksForStaff
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  creating:
+    from: createCourseDeck
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, HTTP_400, VALIDATION_ERROR, COURSE_WEEK_NOT_IN_COURSE, INTERNAL_ERROR]
+  addingCard:
+    from: createCards
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [DECK_NOT_FOUND, HTTP_400, INTERNAL_ERROR]
+  addingBatch:
+    from: createCards
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [DECK_NOT_FOUND, HTTP_400, INTERNAL_ERROR]
+  savingCard:
+    from: updateCard
+    signedOut: [HTTP_401]
+    missing: [CARD_NOT_FOUND, HTTP_404]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, AUTHZ_RESOLVER_ERROR, INTERNAL_ERROR]
+  removing:
+    from: deleteCard
+    signedOut: [HTTP_401]
+    missing: [CARD_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [AUTHZ_RESOLVER_ERROR]
+
+# The story the page tells first: the hoca opens a deck, adds a card with Enter, pastes a batch (one line skipped), edits a card (Escape
+# leaves it, then a new back face is saved) and deletes a card.
+main:
+  given: { course: fresh }
+  events: [DONE, NEW_DECK, TYPE_TITLE, SUBMIT_DECK, DONE, TYPE_CARD, ADD, DONE, PASTE_BATCH, ADD_ALL, DONE, EDIT, ESCAPE, EDIT, RETYPE, SAVE, DONE, REMOVE, CONFIRM_REMOVE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: Ders desteleri is read
+    description: >-
+      The page reads, on the server and together, GET /courses/:id (the course's weeks, for the dialog's Hafta select), GET
+      /courses/:id/my-permissions and GET /courses/:id/decks/manage (the decks with their card counts, drafts included), and opens
+      only for a caller who holds deck.manage_course. Nothing is on the screen of this step: there is no loading.tsx for the route, so
+      the portal-wide skeleton stands in (F-D1-17; not verified in a browser). A caller who holds no deck.manage_course, or whose read
+      was refused, gets the refusal below (`forbidden`); a read that fails (not a refusal) draws "Ders desteleri okunamadı" with a
+      retry, and a 404 of the course is the 404 page; neither is drawn.
+    invoke: { action: listCourseDecksForStaff }
+    on:
+      DONE:
+        - { guard: "course == 'fresh'", target: emptyList, source: apps/nazar/features/decks/components/decks-page.tsx:92 }
+        - { guard: "course == 'others'", target: deckList, effect: [haveDecks], source: apps/nazar/features/decks/components/decks-page.tsx:98 }
+      FAIL.forbidden: { guard: "course == 'closed'", target: forbidden, source: apps/nazar/features/decks/components/decks-page.tsx:42 }
+      FAIL.missing: not_found
+    source: apps/nazar/features/decks/components/decks-page.tsx:31
+
+  forbidden:
+    title: Ders desteleri refuses the caller
+    description: >-
+      The page draws its h1 "Ders desteleri" and under it the neutral alert "Bu sayfaya izniniz yok" (a role=status, so it is not
+      announced when it appears; its title is a paragraph). The sidebar does not list "Ders destesi" for a person who lacks the code,
+      so this is met by an address, or by a person whose grant was taken away. The person's whole story is
+      nazar.access.dersNazirPages.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/decks-page.tsx:42
+
+  emptyList:
+    title: The course has no deck
+    description: >-
+      The h1, the summary "0 deste · 0 kart · kayıtlı n talebe görür", "Excel'den aktar" disabled with no word saying why (F-D1-15),
+      "Deste aç", and the empty state "Bu derste henüz deste yok" with "Talebelerin ezberleyeceği kartları deste olarak ekleyin.
+      Başlamak için bir deste açın." The EmptyState wraps its children in a <p> and the page puts two <p> in it (OPENFILL-3).
+      Nothing sets the focus on load. The route has no loading.tsx (F-D1-17).
+    by: human
+    goal: true
+    on:
+      NEW_DECK: { target: newDeck, effect: [freshDialog], say: "they press Deste aç" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/decks-page.tsx:92
+
+  deckList:
+    title: The list holds decks
+    description: >-
+      The same header, the summary with the real numbers, "Excel'den aktar" on, "Deste aç", and one tile for each deck (cover with its
+      initials, the title, "{n} kart · Kelime · {w}. hafta", and either "Taslak · talebe henüz görmüyor" or the mastery bar with
+      "Ezber oranı %n" twice, once visible and once as the bar's label). A tile is one link whose name is all of that
+      concatenated (F-D1-23); a draft tile has a dashed border and says "Taslak" besides. The title is a <span lang="auto">, which is
+      no language tag (F-D1-14), and no heading: the outline is the h1 only.
+    by: human
+    on:
+      NEW_DECK: { target: newDeck, effect: [freshDialog], say: "they press Deste aç" }
+      OPEN_DECK:
+        - { guard: "course == 'others'", target: deck, effect: [openedOther], say: "they open the colleague's deck", source: apps/nazar/features/decks/components/decks-page.tsx:103 }
+        - { target: deck, effect: [openedOwn], say: "they open the deck they opened", source: apps/nazar/features/decks/components/decks-page.tsx:103 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/decks-page.tsx:98
+
+  listAgain:
+    title: The list is read again
+    description: >-
+      "← Ders desteleri", or closing the dialog, shows the list: the server component reads it once more, so a deck opened a moment
+      ago is on it.
+    always:
+      - { guard: "listed == 'none'", target: emptyList }
+      - { target: deckList }
+    source: apps/nazar/features/decks/components/decks-page.tsx:30
+
+  newDeck:
+    title: The Deste aç dialog is open
+    description: >-
+      A form dialog "Deste aç" (size md) over the inert list: Başlık (help "5 ile 100 karakter arasında olmalı."), Açıklama, Kart türü
+      (Kelime), Hafta (Haftasız) and the checkbox "Taslak olarak kaydet" with "Taslak deste talebeye görünmez.", then "Vazgeç" and
+      "Deste aç". No field carries `required`: the star is aria-hidden (F-D1-03). The dialog passes no initialFocus, so the focus goes
+      to the first tabbable element, which is the header's "Kapat" (OPENFILL-2; Base UI's default, not verified in a browser). Esc,
+      "Kapat" and "Vazgeç" close it, also while a request is out; the scrim does not. The primitive's "Kapat" and "Vazgeç" are
+      hard-coded, not from the catalog (F-D1-24).
+    by: human
+    on:
+      TYPE_TITLE: { target: newDeck, effect: [typedTitle], say: "they type a title in Başlık" }
+      TOGGLE_DRAFT:
+        - { guard: "box == 'off'", target: newDeck, effect: [boxOn], say: "they tick Taslak olarak kaydet", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+        - { guard: "box == 'on'", target: newDeck, effect: [boxOff], say: "they untick it", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+      SUBMIT_DECK:
+        - { guard: "deckTitle == 'typed'", target: creating, say: "they press Deste aç with a title", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:79 }
+        - { target: newDeckProblem, say: "they press Deste aç with the title empty: nothing is sent", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:79 }
+      CANCEL: { target: listAgain, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: listAgain, say: "they press the Kapat icon" }
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:95
+
+  newDeckProblem:
+    title: Deste aç was pressed with no title
+    description: >-
+      Nothing is sent. `sent` is set, so the help line under Başlık is replaced by "Bu alan zorunlu." (a Field error with no role,
+      tied to the box by aria-describedby and aria-invalid); the focus stays on the pressed button and nothing announces the error
+      (F-D1-16). Typing a title removes the message at once, because the check runs on every render once `sent` is set. A title of
+      1 to 4 or over 100 characters says "Bu alan 5 ile 100 karakter arasında olmalı." in the same place (not drawn).
+    by: human
+    on:
+      TYPE_TITLE: { target: newDeck, effect: [typedTitle], say: "they type a title: the message goes" }
+      CANCEL: { target: listAgain, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: listAgain, say: "they press the Kapat icon" }
+      TOGGLE_DRAFT:
+        - { guard: "box == 'off'", target: newDeckProblem, effect: [boxOn], say: "they tick Taslak olarak kaydet: the message stays", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+        - { guard: "box == 'on'", target: newDeckProblem, effect: [boxOff], say: "they untick it", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+      SUBMIT_DECK: { target: newDeckProblem, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:79, say: "they press Deste aç again with the title still empty: nothing is sent, the message stays" }
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:59
+
+  creating:
+    title: The deck is on its way
+    description: >-
+      createDeck calls POST /courses/:id/decks with {title, description?, cardType: VOCABULARY, weekId?, draft} (the description and
+      the week are left out when empty). "Deste aç" is busy (aria-disabled, a hidden "Yükleniyor" from a hard-coded default, F-D1-24)
+      and the dialog can still be closed (no pending guard). A success closes the dialog, shows the toast "Deste açıldı" (6 seconds)
+      and goes to the new deck's page. A refusal keeps the dialog open with an error alert; a session that is over goes to sign-in.
+      A call that fails outright is not caught: the button stays busy (F-D1-20; not verified).
+    invoke: { action: createCourseDeck }
+    on:
+      DONE:
+        - { guard: "box == 'on'", target: deck, effect: [createdDraft], say: "the deck is a draft: the page says so", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:88 }
+        - { target: deck, effect: [createdPublished], say: "the deck shows to the talebe", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:88 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: newDeckFailed
+      FAIL.other: newDeckFailed
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:80
+
+  newDeckFailed:
+    title: The API refused the new deck
+    description: >-
+      Any refusal (the course gone, a week that is not the course's, a permission taken away) is one error Alert at the foot of the
+      dialog: "İşlem tamamlanamadı. Tekrar deneyin." It is a role=alert, so it is announced. The server's own message never reaches
+      the page.
+    by: human
+    on:
+      SUBMIT_DECK: { target: creating, say: "they press Deste aç again" }
+      CANCEL: { target: listAgain, say: "they press Vazgeç, or Esc" }
+      TOGGLE_DRAFT:
+        - { guard: "box == 'off'", target: newDeckFailed, effect: [boxOn], say: "they tick Taslak olarak kaydet", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+        - { guard: "box == 'on'", target: newDeckFailed, effect: [boxOff], say: "they untick it", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 }
+      CLOSE: { target: listAgain, say: "they press the Kapat icon" }
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:178
+
+  deck:
+    title: The deck's page
+    description: >-
+      The page of one deck: "← Ders desteleri", the deck's title as the h1 (a <h1 lang="auto">, F-D1-14) with "Yayında · talebe
+      görünür" or "Taslak · talebe görünmez" under it, "Kartlar · n" with "Sîga üret" and "Excel'den aktar", the "Kart ekle" row
+      (two boxes with no visible label, F-D1-26, and "Ekle"), a status line under it, the cards as tiles (or "Bu destede henüz kart
+      yok.", one line and no instruction: since fdc6e995 the quick-add row above it is the only action the empty deck points to), then the deck's settings. The document's title is "Ders desteleri · Medaris Nazar"
+      for every deck (OPENFILL-4). Nothing sets the focus on load. A toast "Deste açıldı", or "Kart silindi" after a delete, is up for
+      6 seconds. Each tile's two icon buttons are named just "Düzenle" and "Sil" (F-D1-25); a tile shows the Arabic front with
+      lang=ar and dir=rtl, and the back under it. This state is the page at rest: the status line holds whatever the last action
+      left (the hint "Enter ile ekleyin; Excel’den iki sütun yapıştırılabilir", or the line of the last add), so it is not drawn
+      here; `cardAdded` and `batchAdded` draw their lines. The route has no loading.tsx (F-D1-17).
+    by: human
+    goal: true
+    on:
+      TYPE_CARD: { target: deck, effect: [typedFaces], say: "they type an Ön yüz and an Arka yüz" }
+      ADD:
+        - { guard: "faces == 'typed'", target: addingCard, effect: [clearNote], say: "they press Enter in a box", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+        - { target: faceProblem, effect: [clearNote], say: "they press Enter with the boxes empty: nothing is sent", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+      PASTE_BATCH: { target: batchReady, effect: [clearNote], say: "they paste two columns with a line that is no card" }
+      PASTE_UNUSABLE: { target: batchEmpty, effect: [clearNote], say: "they paste lines of which none is a card" }
+      EDIT:
+        guard: "cards != 'none'"
+        target: editing
+        effect: [openedEdit]
+        say: "they press Düzenle on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:139
+      REMOVE:
+        guard: "cards == 'many'"
+        target: confirmRemove
+        effect: [clearNote]
+        say: "they press Sil on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:146
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/deck-detail-page.tsx:74
+
+  faceProblem:
+    title: Enter was pressed with the boxes empty
+    description: >-
+      Nothing is sent. `sent` is set: the boxes get aria-invalid and the status line, the page's one live region (aria-live=polite),
+      says "Bu alan zorunlu." in place of the hint; the focus is where it was. Typing a valid card removes the message at once.
+    by: human
+    on:
+      TYPE_CARD: { target: deck, effect: [typedFaces], say: "they type the faces: the message goes" }
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:187
+
+  addingCard:
+    title: The card is on its way
+    description: >-
+      createCard calls POST /flashcard/decks/:deckId/cards with an array of one {type: the deck's card type, contentFront,
+      contentBack}, faces trimmed. "Ekle" is busy (aria-disabled, hidden "Yükleniyor" from a hard-coded default, F-D1-24); the status
+      line is the hint again. A session that is over goes to sign-in. A call that fails outright is not caught (F-D1-20).
+    invoke: { action: createCards }
+    on:
+      DONE:
+        - { guard: "cards == 'none'", target: cardAdded, effect: [firstCard], say: "the deck's first card", source: apps/nazar/features/decks/components/card-quick-add.tsx:79 }
+        - { guard: "cards == 'one'", target: cardAdded, effect: [secondCard], say: "the deck's second card", source: apps/nazar/features/decks/components/card-quick-add.tsx:79 }
+        - { target: cardAdded, effect: [moreCards], say: "one more card", source: apps/nazar/features/decks/components/card-quick-add.tsx:79 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: addFailed
+      FAIL.other: addFailed
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:72
+
+  cardAdded:
+    title: The card is added
+    description: >-
+      Both boxes are emptied, the focus goes back to Ön yüz (card-quick-add.tsx:82; the box keeps it when Enter was pressed, and takes
+      it back from "Ekle" when that was pressed), the status line says "Kart eklendi" and the page reads the deck again: the tile is
+      on the page, "Kartlar · n" counts it. The line stays until the next add, paste or failure. From here the person does what they do
+      on the deck's page at rest; the same transitions are written here and in `batchAdded`, because the status line and the focus are
+      drawn in this state only.
+    by: human
+    on:
+      TYPE_CARD: { target: cardAdded, effect: [typedFaces], say: "they type the next card" }
+      ADD:
+        - { guard: "faces == 'typed'", target: addingCard, effect: [clearNote], say: "they press Enter in a box", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+        - { target: faceProblem, effect: [clearNote], say: "they press Enter with the boxes empty", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+      PASTE_BATCH: { target: batchReady, effect: [clearNote], say: "they paste two columns with a line that is no card" }
+      PASTE_UNUSABLE: { target: batchEmpty, effect: [clearNote], say: "they paste lines of which none is a card" }
+      EDIT:
+        guard: "cards != 'none'"
+        target: editing
+        effect: [openedEdit]
+        say: "they press Düzenle on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:139
+      REMOVE:
+        guard: "cards == 'many'"
+        target: confirmRemove
+        effect: [clearNote]
+        say: "they press Sil on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:146
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:79
+
+  addFailed:
+    title: The API refused the card
+    description: >-
+      The status line says "İşlem tamamlanamadı. Tekrar deneyin." (the live region; the boxes keep what was typed). Any refusal gives
+      the same words: the deck gone, the permission taken away, a body the API does not take.
+    by: human
+    on:
+      ADD: { target: addingCard, effect: [clearNote], say: "they press Enter again", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the boxes keep what was typed" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:74
+
+  batchReady:
+    title: A batch is ready
+    description: >-
+      A paste of text with a line break or a tab (two columns copied from Excel), or, in Ön yüz only, a ";", is not inserted: it is
+      read as one card a line, front, then the tab or the ";", then the back (the paste is cancelled and a panel appears under the
+      row). The panel says "{n} kart hazır · atlanacak satırlar: 3" (the skipped lines are named by their number in the pasted
+      text; a blank line is ignored, not skipped), with "Hepsini ekle" and "Vazgeç". The boxes are unchanged. The graph draws a
+      paste of two ready cards and one skipped line.
+    by: human
+    on:
+      ADD_ALL: { target: addingBatch, say: "they press Hepsini ekle" }
+      DROP_BATCH: { target: deck, say: "they press Vazgeç: the batch is dropped" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the batch panel stays under the row, which the graph does not draw from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the batch panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the batch is dropped with the page" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:155
+
+  batchEmpty:
+    title: The batch holds no card
+    description: >-
+      A paste of lines of which none is a valid card: the panel says "0 kart hazır · atlanacak satırlar: 1, 2", "Hepsini ekle" is
+      disabled, and "Vazgeç" drops the panel.
+    by: human
+    on:
+      DROP_BATCH: { target: deck, say: "they press Vazgeç" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the panel stays, not drawn from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:168
+
+  addingBatch:
+    title: The batch is on its way
+    description: >-
+      createCards calls POST /flashcard/decks/:deckId/cards with the array of the ready cards: all of them or none are added.
+      "Hepsini ekle" is busy and "Vazgeç" is disabled.
+    invoke: { action: createCards }
+    on:
+      DONE: { target: batchAdded, effect: [batchDone], source: apps/nazar/features/decks/components/card-quick-add.tsx:110 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: batchFailed
+      FAIL.other: batchFailed
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:104
+
+  batchAdded:
+    title: The batch is added
+    description: >-
+      The panel goes, the status line says "{n} kart eklendi" (Decks.importDone, the import dialog's message), the focus goes back to
+      Ön yüz, and the page reads the deck again: every ready card is a tile. The skipped lines are not added and are not said again.
+      As in `cardAdded`, the person goes on from here.
+    by: human
+    on:
+      TYPE_CARD: { target: batchAdded, effect: [typedFaces], say: "they type the next card" }
+      ADD:
+        - { guard: "faces == 'typed'", target: addingCard, effect: [clearNote], say: "they press Enter in a box", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+        - { target: faceProblem, effect: [clearNote], say: "they press Enter with the boxes empty", source: apps/nazar/features/decks/components/card-quick-add.tsx:65 }
+      PASTE_BATCH: { target: batchReady, effect: [clearNote], say: "they paste two columns with a line that is no card" }
+      PASTE_UNUSABLE: { target: batchEmpty, effect: [clearNote], say: "they paste lines of which none is a card" }
+      EDIT:
+        guard: "cards != 'none'"
+        target: editing
+        effect: [openedEdit]
+        say: "they press Düzenle on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:139
+      REMOVE:
+        guard: "cards == 'many'"
+        target: confirmRemove
+        effect: [clearNote]
+        say: "they press Sil on a tile"
+        source: apps/nazar/features/decks/components/card-tile.tsx:146
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:110
+
+  batchFailed:
+    title: The API refused the batch
+    description: >-
+      The panel stays and the status line says "İşlem tamamlanamadı. Tekrar deneyin." Nothing was added.
+    by: human
+    on:
+      ADD_ALL: { target: addingBatch, say: "they press Hepsini ekle again" }
+      DROP_BATCH: { target: deck, say: "they press Vazgeç" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens; the panel stays, not drawn from there" }
+      REMOVE: { guard: "cards == 'many'", target: confirmRemove, effect: [clearNote], source: apps/nazar/features/decks/components/card-tile.tsx:146, say: "they press Sil on a tile; the panel stays, not drawn from there" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the batch is dropped with the page" }
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:105
+
+  editing:
+    title: A card is open in place
+    description: >-
+      The tile turns into a form "Kartı düzenle" with its two faces (Ön yüz, Arka yüz, filled) and two icon buttons, "Vazgeç" and
+      "Kaydet"; the front box takes the focus (autoFocus). Enter saves; Escape, or "Vazgeç", puts the stored faces back and closes the
+      form. The other tiles stay as they are and can be opened too. Closing the form unmounts it, so the focus is lost (F-D1-11). A
+      face outside 3 to 5000 characters is refused in the form with "Bu alan 3 ile 5000 karakter arasında olmalı." (a bare span with
+      no role, not drawn).
+    by: human
+    on:
+      RETYPE: { target: editing, effect: [typedRevision], say: "they type a new Arka yüz" }
+      ESCAPE: { target: deck, say: "they press Escape: the stored faces stay" }
+      CANCEL_EDIT: { target: deck, say: "they press Vazgeç" }
+      SAVE: { target: savingCard, say: "they press Kaydet, or Enter" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the open form is dropped" }
+    source: apps/nazar/features/decks/components/card-tile.tsx:66
+
+  savingCard:
+    title: The card is sent
+    description: >-
+      updateCard calls PATCH /flashcard/cards/:id with {type, contentFront, contentBack} (the type is the card's own; the faces are
+      sent even when unchanged). "Vazgeç" and "Kaydet" are disabled. The card's parent deck decides who may: the deck's author
+      (OPENFILL-1: a colleague who holds deck.manage_course is answered 404 CARD_NOT_FOUND, derived from the code and not run). A
+      success returns the tile to view and reads the deck again, with no toast and no line (OPENFILL-5; "Decks.cardSaved" is
+      unused); the form unmounts and the focus is lost (F-D1-11).
+    invoke: { action: updateCard }
+    on:
+      DONE:
+        - { guard: "author == 'own' and revised == 'yes'", target: deck, effect: [editedRevised], say: "the new back face is stored", source: apps/nazar/features/decks/components/card-tile.tsx:61 }
+        - { guard: "author == 'own'", target: deck, effect: [editedAsIs], say: "the card is stored as it was sent", source: apps/nazar/features/decks/components/card-tile.tsx:61 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.missing: { guard: "author == 'other'", target: editFailed, effect: [refusedEdit], say: "the card's deck is a colleague's: the API answers as if the card were not there", source: apps/nazar/features/decks/components/card-tile.tsx:57 }
+      FAIL.forbidden: { target: editFailed, effect: [refusedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:57 }
+      FAIL.other: { target: editFailed, effect: [refusedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:57 }
+    source: apps/nazar/features/decks/components/card-tile.tsx:54
+
+  editFailed:
+    title: The API refused the edit
+    description: >-
+      The form stays open with the faces as typed and a line under them, "İşlem tamamlanamadı. Tekrar deneyin." It is a bare <span>
+      with no role and no live region: nothing is announced (F-D1-11). "Tekrar deneyin" is wrong advice when the cause is the deck's
+      author (OPENFILL-1): pressing Kaydet again is answered the same way.
+    by: human
+    on:
+      ESCAPE: { target: deck, say: "they press Escape" }
+      CANCEL_EDIT: { target: deck, say: "they press Vazgeç" }
+      SAVE: { target: savingCard, say: "they press Kaydet again" }
+      BACK: { target: listAgain, effect: [clearNote], source: apps/nazar/features/decks/components/deck-detail-page.tsx:76, say: "they press ← Ders desteleri: the open form is dropped" }
+    source: apps/nazar/features/decks/components/card-tile.tsx:100
+
+  confirmRemove:
+    title: Sil asks once
+    description: >-
+      An alertdialog "Sil" with "Bu kart silinecek. Emin misiniz?", "Vazgeç" (focused first), "Evet, sil" (destructive) and the
+      header's "Kapat"; the scrim does not close it. "Vazgeç" and "Kapat" are the primitive's hard-coded words (F-D1-24). It does not
+      say that a delete cannot be undone, or that the talebe's progress rows stay behind (the domain's progress-orphans).
+    by: human
+    on:
+      CONFIRM_REMOVE: { target: removing, say: "they press Evet, sil" }
+      CANCEL_REMOVE: { target: deck, say: "they press Vazgeç, or Esc" }
+      CLOSE_REMOVE: { target: deck, say: "they press the Kapat icon" }
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:111
+
+  removing:
+    title: The card is being deleted
+    description: >-
+      The dialog is already closed (it closes before the call). deleteCard calls DELETE /flashcard/cards/:id; every tile's "Düzenle"
+      and "Sil" are disabled while it runs. The card's parent deck decides who may, as for an edit (OPENFILL-1). A success shows the
+      toast "Kart silindi" and reads the deck again: the tile is gone and so is the focus that was on its button (F-D1-11).
+    invoke: { action: deleteCard }
+    on:
+      DONE: { guard: "author == 'own'", target: deck, effect: [removedCard], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:55 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.missing: { guard: "author == 'other'", target: removeFailed, effect: [refusedRemove], say: "the card's deck is a colleague's: the API answers as if the card were not there", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:52 }
+      FAIL.forbidden: { target: removeFailed, effect: [refusedRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:52 }
+      FAIL.other: { target: removeFailed, effect: [refusedRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:52 }
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:45
+
+  removeFailed:
+    title: The API refused the delete
+    description: >-
+      A line "İşlem tamamlanamadı. Tekrar deneyin." appears above the cards: a bare <p>, no role, no live region (F-D1-11). It stays
+      until the next delete. The tile is still there.
+    by: human
+    on:
+      REMOVE:
+        guard: "cards == 'many'"
+        target: confirmRemove
+        effect: [clearNote]
+        say: "they press Sil again"
+        source: apps/nazar/features/decks/components/card-tile.tsx:146
+      BACK: { target: listAgain, effect: [clearNote], say: "they press ← Ders desteleri" }
+      EDIT: { guard: "cards != 'none'", target: editing, effect: [openedEdit], source: apps/nazar/features/decks/components/card-tile.tsx:139, say: "they press Düzenle on a tile: its form opens" }
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:77
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of a read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    description: "The server action answered 'unauthenticated': handleUnauthenticated goes to sign-in and back, with no toast (realm.auth.sessionEnded)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-deck-needs-a-title
+    never: "state == 'creating' and deckTitle == 'blank'"
+    say: A deck is sent only with a title typed; the dialog shows "Bu alan zorunlu." instead.
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:79
+  - id: a-blank-card-is-never-sent
+    never: "state == 'addingCard' and faces == 'blank'"
+    say: A card is sent only with both faces typed; the line says "Bu alan zorunlu." instead.
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:71
+  - id: the-refused-page-opens-nothing
+    never: "course == 'closed' and state not in ['opened', 'forbidden', 'not_found', 'left']"
+    say: A person who holds no deck.manage_course gets the refusal and no list, no dialog and no deck.
+    source: apps/nazar/features/decks/components/decks-page.tsx:41
+  - id: a-card-is-edited-only-where-there-is-one
+    never: "state in ['editing', 'savingCard', 'editFailed'] and cards == 'none'"
+    say: A tile is opened in place only where the deck holds a card.
+    source: apps/nazar/features/decks/components/card-tile.tsx:139
+  - id: an-add-leaves-a-card
+    never: "state in ['cardAdded', 'batchAdded'] and cards == 'none'"
+    say: After a card or a batch is added the deck holds a card.
+    source: apps/nazar/features/decks/components/card-quick-add.tsx:79
+  - id: only-the-opener-changes-a-card
+    never: "last == 'removed' and author == 'other'"
+    say: >-
+      As the code is today, a card is deleted only from a deck the person opened; the API refuses a colleague (OPENFILL-1, the domain's
+      course-deck-staff-card-routes-404). This is the behaviour, not the wish.
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:55

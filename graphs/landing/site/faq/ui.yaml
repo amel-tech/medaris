@@ -1,0 +1,102 @@
+# The screen of landing.site.faq: the page /sss at the wide layout (768 px and up), main only. The header and the footer are
+# the navigation graph's frame (landing.nav, frame site), not drawn here. The words are Turkish literals in apps/landing
+# (landing has no i18n catalog); each key of catalog/tr.json is copied letter for letter from the literal that the `source`
+# of the node that uses it names, by a script that read apps/landing/app/[locale]/sss/page.tsx, and then every value was
+# compared with the text of the page the running site answers. One value is assembled in code: Answer.s11.p1 is the JSX
+# sentence of page.tsx:208-210 around legal.accountDeletionPath (content/legal.ts:12), written here as {path} with the
+# path in `samples`. The flow writes nothing, so there is no Changes.note.
+schema: delurio-graph/0
+kind: ui
+id: landing.site.faq
+flow: landing.site.faq
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: { path: "Aydınlatma Metni’nin 7. bölümünde yazan yollardan biriyle veri sorumlusuna yazarak" }
+
+# No `focus` and no `initialFocus`: the page sets none when it opens and a press on a question moves none (the button stays
+# where it is, the item is not remounted), so the graph says nothing of the focus anywhere (rule focus-not-set).
+
+nodes:
+  # ---- the page ----
+  page: { type: page, component: Page, role: main, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:21" }
+  title: { type: text, component: Heading, role: heading, text: { key: Page.title }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:24" } # h1
+  intro: { type: text, component: Text, text: { key: Page.intro }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:25" }
+
+  # ---- group 1: "Medaris", a section named by its h2, questions 1 to 2 ----
+  group1: { type: page, component: Page, role: region, name: { labelledBy: group1Title }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:33" } # section[aria-labelledby=g1]
+  group1Title: { type: text, component: Heading, role: heading, text: { key: Group.medaris }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:37" } # h2
+  q1Heading: { type: text, component: Heading, role: heading, text: { key: Question.s1 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q1: { type: action, component: Button, role: button, text: { key: Question.s1 }, in: [questions], emits: TOGGLE_1, source: apps/landing/components/faq-item.tsx:29 } # opens open at load (defaultOpen, sss/page.tsx:45)
+  a1p1: { type: text, component: Text, text: { key: Answer.s1.p1 }, in: [questions], when: isOpen1, source: "apps/landing/app/[locale]/sss/page.tsx:47" }
+  q2Heading: { type: text, component: Heading, role: heading, text: { key: Question.s2 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q2: { type: action, component: Button, role: button, text: { key: Question.s2 }, in: [questions], emits: TOGGLE_2, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a2p1: { type: text, component: Text, text: { key: Answer.s2.p1 }, in: [questions], when: isOpen2, source: "apps/landing/app/[locale]/sss/page.tsx:54" }
+  a2p2: { type: text, component: Text, text: { key: Answer.s2.p2 }, in: [questions], when: isOpen2, source: "apps/landing/app/[locale]/sss/page.tsx:59" }
+
+  # ---- group 2: "Kayıt ve dersler", a section named by its h2, questions 3 to 10 ----
+  group2: { type: page, component: Page, role: region, name: { labelledBy: group2Title }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:67" } # section[aria-labelledby=g2]
+  group2Title: { type: text, component: Heading, role: heading, text: { key: Group.kayit }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:71" } # h2
+  q3Heading: { type: text, component: Heading, role: heading, text: { key: Question.s3 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q3: { type: action, component: Button, role: button, text: { key: Question.s3 }, in: [questions], emits: TOGGLE_3, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a3p1: { type: text, component: Text, text: { key: Answer.s3.p1 }, in: [questions], when: isOpen3, source: "apps/landing/app/[locale]/sss/page.tsx:80" } # L9: no gender among the fields it lists; FAQ-1 is in the next paragraph
+  a3p2: { type: text, component: Text, text: { key: Answer.s3.p2 }, in: [questions], when: isOpen3, source: "apps/landing/app/[locale]/sss/page.tsx:87" } # FAQ-1: "Derse kaydol" is not the button tedris-web draws ("Kayıt ol", "Kayıt başvurusu yap" for an approval course)
+  q4Heading: { type: text, component: Heading, role: heading, text: { key: Question.s4 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q4: { type: action, component: Button, role: button, text: { key: Question.s4 }, in: [questions], emits: TOGGLE_4, source: apps/landing/components/faq-item.tsx:29 } # opens open at load (defaultOpen, sss/page.tsx:97)
+  a4p1: { type: text, component: Text, text: { key: Answer.s4.p1 }, in: [questions], when: isOpen4, source: "apps/landing/app/[locale]/sss/page.tsx:99" }
+  a4p2: { type: text, component: Text, text: { key: Answer.s4.p2 }, in: [questions], when: isOpen4, source: "apps/landing/app/[locale]/sss/page.tsx:108" }
+  q5Heading: { type: text, component: Heading, role: heading, text: { key: Question.s5 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q5: { type: action, component: Button, role: button, text: { key: Question.s5 }, in: [questions], emits: TOGGLE_5, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a5p1: { type: text, component: Text, text: { key: Answer.s5.p1 }, in: [questions], when: isOpen5, source: "apps/landing/app/[locale]/sss/page.tsx:114" }
+  q6Heading: { type: text, component: Heading, role: heading, text: { key: Question.s6 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q6: { type: action, component: Button, role: button, text: { key: Question.s6 }, in: [questions], emits: TOGGLE_6, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a6p1: { type: text, component: Text, text: { key: Answer.s6.p1 }, in: [questions], when: isOpen6, source: "apps/landing/app/[locale]/sss/page.tsx:130" }
+  a6p2: { type: text, component: Text, text: { key: Answer.s6.p2 }, in: [questions], when: isOpen6, source: "apps/landing/app/[locale]/sss/page.tsx:136" }
+  q7Heading: { type: text, component: Heading, role: heading, text: { key: Question.s7 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q7: { type: action, component: Button, role: button, text: { key: Question.s7 }, in: [questions], emits: TOGGLE_7, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a7p1: { type: text, component: Text, text: { key: Answer.s7.p1 }, in: [questions], when: isOpen7, source: "apps/landing/app/[locale]/sss/page.tsx:148" }
+  q8Heading: { type: text, component: Heading, role: heading, text: { key: Question.s8 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q8: { type: action, component: Button, role: button, text: { key: Question.s8 }, in: [questions], emits: TOGGLE_8, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a8p1: { type: text, component: Text, text: { key: Answer.s8.p1 }, in: [questions], when: isOpen8, source: "apps/landing/app/[locale]/sss/page.tsx:161" }
+  q9Heading: { type: text, component: Heading, role: heading, text: { key: Question.s9 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q9: { type: action, component: Button, role: button, text: { key: Question.s9 }, in: [questions], emits: TOGGLE_9, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a9p1: { type: text, component: Text, text: { key: Answer.s9.p1 }, in: [questions], when: isOpen9, source: "apps/landing/app/[locale]/sss/page.tsx:172" }
+  q10Heading: { type: text, component: Heading, role: heading, text: { key: Question.s10 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q10: { type: action, component: Button, role: button, text: { key: Question.s10 }, in: [questions], emits: TOGGLE_10, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a10p1: { type: text, component: Text, text: { key: Answer.s10.p1 }, in: [questions], when: isOpen10, source: "apps/landing/app/[locale]/sss/page.tsx:180" }
+  a10p2: { type: text, component: Text, text: { key: Answer.s10.p2 }, in: [questions], when: isOpen10, source: "apps/landing/app/[locale]/sss/page.tsx:186" }
+
+  # ---- group 3: "Hesap", a section named by its h2, questions 11 to 11 ----
+  group3: { type: page, component: Page, role: region, name: { labelledBy: group3Title }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:195" } # section[aria-labelledby=g3]
+  group3Title: { type: text, component: Heading, role: heading, text: { key: Group.hesap }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:199" } # h2
+  q11Heading: { type: text, component: Heading, role: heading, text: { key: Question.s11 }, in: [questions], source: apps/landing/components/faq-item.tsx:28 } # h3 around the trigger; its name is the question, the number and the chevron are aria-hidden
+  q11: { type: action, component: Button, role: button, text: { key: Question.s11 }, in: [questions], emits: TOGGLE_11, source: apps/landing/components/faq-item.tsx:29 } # aria-expanded=false at load
+  a11p1: { type: text, component: Text, text: { key: Answer.s11.p1, params: { path: path } }, in: [questions], when: isOpen11, source: "apps/landing/app/[locale]/sss/page.tsx:208" } # built from the page and content/legal.ts:12 (accountDeletionPath)
+  a11p2: { type: text, component: Text, text: { key: Answer.s11.p2 }, in: [questions], when: isOpen11, source: "apps/landing/app/[locale]/sss/page.tsx:212" }
+  privacyInAnswer: { type: action, component: LinkButton, role: link, text: { key: Answer.s11.link }, in: [questions], when: isOpen11, emits: PRIVACY_IN_ANSWER, source: "apps/landing/app/[locale]/sss/page.tsx:214" } # a plain <a href="/aydinlatma-metni"> inside the second paragraph
+
+  # ---- the aside: two cards, beside the questions (below them on a phone) ----
+  aside: { type: page, component: Page, role: complementary, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:222" } # <aside>, with no name
+  contactTitle: { type: text, component: Heading, role: heading, text: { key: Aside.contactTitle }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:225" } # h2
+  contactText: { type: text, component: Text, text: { key: Aside.contactText }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:227" }
+  contactLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Aside.contactLink }, in: [questions], emits: CONTACT, source: "apps/landing/app/[locale]/sss/page.tsx:228" } # a plain <a href="/iletisim">, outline
+  dataTitle: { type: text, component: Heading, role: heading, text: { key: Aside.dataTitle }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:237" } # h2
+  dataText: { type: text, component: Text, text: { key: Aside.dataText }, in: [questions], source: "apps/landing/app/[locale]/sss/page.tsx:239" }
+  privacyAside: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Aside.dataLink }, in: [questions], emits: PRIVACY_ASIDE, source: "apps/landing/app/[locale]/sss/page.tsx:243" } # a plain <a href="/aydinlatma-metni">, link style
+
+edges:
+  - { labelledBy: [group1, group1Title] }
+  - { labelledBy: [group2, group2Title] }
+  - { labelledBy: [group3, group3Title] }
+  - { triggers: [contactLink, contact_opened] }
+  - { triggers: [privacyAside, privacy_opened] }
+  - { triggers: [privacyInAnswer, privacy_opened] }
+
+rules:
+  - { id: L9, rule: "The answer to \"Bir derse nasıl kaydolurum?\" lists what the sign-up form asks (name, surname, username, e-mail, password and the privacy notice) and leaves out the gender choice. Gender is always asked in Medaris: the realm's user profile makes it required for every account (config/keycloak/user-profile.json:25-39, a choice of FEMALE or MALE) and the terms page says so (kullanim-sartlari/page.tsx:190-196). A visitor who follows the answer meets a required choice it did not mention. Add \"cinsiyetinizi seçin\" to the list (sss/page.tsx:81-85)." }
+  - { id: FAQ-1, rule: "The second paragraph of the same answer sends the visitor to a button \"Derse kaydol\" on the course page; tedris-web draws \"Kayıt ol\" there (CoursePage.enroll, apps/tedris/features/courses/components/course-aside.tsx:371, libs/i18n tedris.json:16) and \"Kayıt başvurusu yap\" for a course that asks for approval, and no string \"Derse kaydol\" exists in the apps. Say \"Kayıt ol\" (sss/page.tsx:88-90). Found by reading the code; not seen in a browser." }
+  - { id: L11, rule: "The eleven answers are plain divs (`div.mds-week__panel`, hidden while closed) with no role=region and no aria-labelledby, so a screen reader that lists regions finds none for them. The pattern asks for role=region labelled by the trigger once there are more than a few panels; give each panel role=\"region\" and aria-labelledby=\"{id}-b\" (faq-item.tsx:46-50)." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (no autoFocus and no focus() in sss/page.tsx or faq-item.tsx), so the page node has no `initialFocus`, and a press on a question moves none: the graph says nothing of the focus anywhere. Recorded so the silence is a fact and not an omission." }
+  - { id: state-is-the-answer, rule: "A question's open or closed state is carried by aria-expanded on its button, aria-controls naming its answer and `hidden` on the answer (faq-item.tsx:33-34,46). The graph has no key for aria-expanded, so a node draws it by being shown or not: the answer's paragraphs are `when` the question is open, and the replay checks they are visible or not there." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): each trigger's name is its question, and the number and the chevron around it are aria-hidden" }

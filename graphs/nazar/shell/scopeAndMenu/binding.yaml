@@ -1,0 +1,69 @@
+# nazar.shell.scopeAndMenu on the local stack, in a wide window: nazar-web on http://localhost:4002, 1440 x 900 (the size the e2e
+# uses; the sidebar shows from 768 px). The phone is binding.phone.yaml and four other persons each have a small file; all of them
+# extend locators.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/scopeAndMenu --bind graphs/nazar/shell/scopeAndMenu/binding.yaml \
+#     --main --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Scenario `head`: the başmüderris of "Hadis ve Siyer Medresesi" (Nuri Başmüderris), made a müderris of two courses of the walk's own
+# so that he holds a medrese and two courses and the picker is a menu (the stack's başmüderris teaches nothing, so his picker is a
+# card; the e2e seed gives him the same two courses, e2e/seed.ts:88-108). `setup` makes, through tedrisat's API as the başnazım
+# (helpers/course.mjs, which keeps each under graphs/.local/made/<tag>.json):
+#   scopeA  "Deneme dersi scopeA": a published course of the medrese with one celse tomorrow and no way in (no meeting link: the
+#           count of Celseler is 1), that asks for approval and has one application waiting from applicantH (the count of Talebeler
+#           is 1). The course the walk chooses, as the first row of Dersler (the rows are sorted by name).
+#   scopeB  "Deneme dersi scopeB": a second published course, with nothing waiting.
+# The count of Dersler on the medrese is the seeded waiting application of İsâgûcî ile Mantığa Giriş (TALEBE_MALE's, which the walk
+# never touches) and scopeA's: 2, as the e2e's fixture expects (shell#3, seed.ts expected.coursesWithApplications). `teardown` takes
+# applicantH off scopeA and deletes both courses (the API deletes everything under a course); `make` removes a tag made before, so a
+# crashed walk leaves nothing for the next one. What it cannot undo: the invitation mails the courses send to applicantH are cleared
+# by `remove` itself; nothing is written to the başmüderris's notifications.
+#
+# What the main story walks, in the e2e's words: shell#1 (the closed picker names the scope and its role; opened it lists the medrese
+# and the courses, the current one marked, with the note; Esc closes it and the focus is on the button), shell#2 (choosing a course
+# switches the menu to the course's with Genel bakış current, and choosing the medrese switches it back), shell#3 (the numbers), and
+# the cookie: after choosing the course, Bildirimler still draws the course's menu. `--cover transitions` also takes Pano, the
+# person's row and `left`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.shell.scopeAndMenu
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  head:
+    given: { opensAt: wide, who: head, counts: some }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    setup:
+      - run: [node, helpers/course.mjs, make, scopeA, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --approval, --talebe, applicantH]
+        expect: '"APPLICANT_H":"PENDING"'
+      - run: [node, helpers/course.mjs, make, scopeB, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi scopeB"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, scopeA]
+        expect: 'course remove scopeA'
+      - run: [node, helpers/course.mjs, remove, scopeB]
+        expect: 'course remove scopeB'
+
+# The person's own names, which the samples cannot say: the closed picker's name changes with the scope, and the rows are the
+# medrese and the two courses the walk made.
+nodes:
+  pickerButton: { role: button, name: '/^Kapsam değiştir: (Hadis ve Siyer Medresesi|Deneme dersi scope[AB])$/' }
+  # exactly the two courses the walk made: the picker lists only what the person holds (shell#1 a4; the e2e counts 3 rows with the medrese)
+  rowCourse: { css: '[role=menuitem][href^="/ders/"]', count: 2 }
+  courseDetail: { css: '[role=menuitem][href^="/ders/"] .mds-caption', hasText: '/^Hoca\s*·\s*Süleymaniye Köşkü$/', count: 2 }
+  currentCourseRow: { css: '[role=menuitem][href^="/ders/"][aria-current=true]', hasText: Deneme dersi scopeA }
+  # the numbers, as the walk's data makes them
+  coursesBadge: { css: '.mds-nav-item__count', hasText: '/^2\s*derste bekleyen başvuru$/', within: { role: navigation, name: Ana menü } }
+  sessionsBadge: { css: '.mds-nav-item__count', hasText: '/^1\s*katılım yolu eksik$/', within: { role: navigation, name: Ana menü } }
+  studentsBadge: { css: '.mds-nav-item__count', hasText: '/^1\s*bekleyen başvuru$/', within: { role: navigation, name: Ana menü } }
+
+# What a step leaves outside the screen, read through the API as the person: the number the page draws is the one the API counts
+# (shell#3 "the badges are the real counts"). It is attached to the roles read because no state invokes the count's own action: the
+# layout reads it on the server with the roles.
+effects:
+  getMyAssignments:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/badge-counts']
+      expect: '"coursesWithPendingApplications":2'

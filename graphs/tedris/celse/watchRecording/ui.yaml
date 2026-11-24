@@ -1,0 +1,118 @@
+# The screens of tedris.celse.watchRecording: the recording block of tedris-web's celse page (features/courses/components/session-action-card.tsx),
+# the watch page (app/courses/<id>/lessons/<id>/izle, features/courses/components/watch-view.tsx, media-player.tsx) for a talebe and for the course team,
+# and the recording the locked celse page plays (lesson-locked.tsx). The rest of the celse page (the header's badge and meta line, the pager, the
+# Müfredat popup, the agenda, the resources, the homework and the notes panel) is drawn only as far as the page's name and heading, and belongs to
+# tedris.celse.attend, tedris.celse.browseCurriculum and tedris.learn.*; the locked page's other parts belong to tedris.celse.locked.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`:
+# `SessionPage.*`, `LessonLocked.*`) or tedris-learn.json (`tedrisLearn.<key>`: `WatchPage.*`, `RecordingRelease.*`, `LessonNotes.*`), the key
+# being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are what the code writes from messages and data, with their
+# placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.WatchRecording.celseTitle     "{title}", the celse's own title as the API gives it                              session-header.tsx:58
+#   composed.WatchRecording.cardLine       the recording's day and its length ("{recordedOn} {length}", length = SessionPage.minutes)   session-action-card.tsx:286-292
+#   composed.WatchRecording.backName       WatchPage.backSr, then the course's title                                      watch-view.tsx:230-231
+#   composed.WatchRecording.facts          WatchPage.recordingBadge, " · ", the day, " · ", WatchPage.minutes              watch-page.tsx:93-99
+#   composed.WatchRecording.recordingTitle "{recording}", the recording's own title as the API gives it                    media-player.tsx:92
+#   composed.WatchRecording.frameTitle     "{recording}", the frame's title (for a Bunny frame WatchPage.bunnyFrameTitle, "Ders kaydı oynatıcısı: {recording}", which this stack cannot draw)   media-player.tsx:68
+#   composed.WatchRecording.lockedFacts    SessionPage.recordingKind, " · ", the day with its weekday, " · ", SessionPage.minutes   lesson-locked.tsx:257-267
+# `changes` is the app's own sentence for what the counter's reports (recordLessonView, the state `reporting`) change: "Bu celseyi izledin"
+# (WatchPage.watchedNote), the line under the player once the API counted the celse watched. The page says nothing before that of what
+# playing records, nor that the course page counts the progress from it (CoursePage.progressNote says so there).
+# Samples are invented and neutral; the binding gives the walk's own titles where it needs the real ones.
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.watchRecording
+flow: tedris.celse.watchRecording
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: WatchPage.watchedNote }
+samples:
+  title: Celse 1
+  recording: Birinci okuma kaydı
+  course: Deneme dersi
+  week: "1"
+  recordedOn: 5 Kasım 2026
+  date: 5 Kasım 2026
+  length: 60 dk
+  count: "60"
+  day: 18 Kasım Çarşamba
+  time: 21:00’de
+  stopped: "12:34"
+
+nodes:
+  # ---- the celse page, as far as its recording block ----
+  celsePage: { type: page, component: Page, role: main, in: [celseCard, celseHeld, celsePreparing], source: apps/tedris/features/courses/components/session-page.tsx:337 } # no name, no initial focus: nothing on the page moves the focus when it opens (rule focus-not-set)
+  celseHeading: { type: text, component: Heading, role: heading, text: { key: composed.WatchRecording.celseTitle, params: { title: title } }, in: [celseCard, celseHeld, celsePreparing], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1
+  endedBadge: { type: text, component: Text, text: { key: SessionPage.endedLabel }, in: [celseCard, celseHeld, celsePreparing], source: apps/tedris/features/courses/components/session-header.tsx:67 } # the header's badge (data-testid=session-state), on the celse's own clock
+
+  cardRegion: { type: page, component: Page, role: region, name: { labelledBy: cardTitle }, in: [celseCard], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # data-testid=session-action, data-case=recording
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.recordingTitle }, in: [celseCard], source: apps/tedris/features/courses/components/session-action-card.tsx:408 } # h2
+  heldRegion: { type: page, component: Page, role: region, name: { labelledBy: heldTitle }, in: [celseHeld], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # data-case=date; the card is named by its heading
+  heldTitle: { type: text, component: Heading, role: heading, text: { key: RecordingRelease.opens, params: { day: day, time: time } }, in: [celseHeld], source: apps/tedris/features/courses/components/session-action-card.tsx:359 } # h2: "Ders kaydı <day> <time> açılır."
+  preparingRegion: { type: page, component: Page, role: region, name: { labelledBy: preparingTitle }, in: [celsePreparing], source: apps/tedris/features/courses/components/session-action-card.tsx:396 }
+  preparingTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.recordingPreparing }, in: [celsePreparing], source: apps/tedris/features/courses/components/session-action-card.tsx:363 } # h2
+  cardKind: { type: text, component: Text, text: { key: SessionPage.recordingKind }, in: [celseCard, celseHeld, celsePreparing], source: apps/tedris/features/courses/components/session-action-card.tsx:282 } # the eyebrow, a paragraph
+  cardLine: { type: text, component: Text, text: { key: composed.WatchRecording.cardLine, params: { recordedOn: recordedOn, length: length } }, in: [celseCard], source: apps/tedris/features/courses/components/session-action-card.tsx:292 } # the recording's day and length; for a talebe the same paragraph goes on with the notes sentence
+  notesHint: { type: text, component: Text, text: { key: SessionPage.recordingNotes }, in: [celseCard], when: "viewer == 'talebe'", source: apps/tedris/features/courses/components/session-action-card.tsx:290 }
+  earlyNote: { type: text, component: Text, text: { key: RecordingRelease.early, params: { day: day, time: time } }, in: [celseCard], when: "recording == 'held'", source: apps/tedris/features/courses/components/session-action-card.tsx:295 } # the card's footnote, for the course team only; a clock icon before it
+  posterLink: { type: action, component: LinkButton, role: link, name: { key: SessionPage.watchRecording }, in: [celseCard], source: apps/tedris/features/courses/components/session-action-card.tsx:238 } # <a data-poster=recording tabindex=-1 aria-label="Kaydı izle">: a second link to the same address, out of the tab order (CLS-07)
+  watchButton: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: SessionPage.watchRecording }, in: [celseCard], emits: WATCH, source: apps/tedris/features/courses/components/session-action-card.tsx:269 } # <a href=/courses/<id>/lessons/<celse>/izle>, the primary button, a full page load
+  recordingsLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: SessionPage.recordingsGo }, in: [celseHeld, celsePreparing], emits: OPEN_RECORDINGS, source: apps/tedris/features/courses/components/session-action-card.tsx:368 } # <a href=/courses/<id>?tab=kayitlar>
+
+  # ---- the watch page ----
+  watchPage: { type: page, component: Page, role: main, in: [playerTalebe, playerTeam], source: apps/tedris/features/courses/components/watch-view.tsx:223 } # no name, no initial focus (rule focus-not-set)
+  backLink: { type: action, component: LinkButton, role: link, name: { key: composed.WatchRecording.backName, params: { course: course } }, in: [playerTalebe, playerTeam], emits: OPEN_COURSE, source: apps/tedris/features/courses/components/watch-view.tsx:225 } # a hidden "Derse dön: " before the course's title
+  watchHeading: { type: text, component: Heading, role: heading, text: { key: WatchPage.heading, params: { week: week, title: title } }, in: [playerTalebe, playerTeam], source: apps/tedris/features/courses/components/watch-view.tsx:233 } # h1
+  recordingFacts: { type: text, component: Text, text: { key: composed.WatchRecording.facts, params: { date: date, length: length } }, in: [playerTalebe, playerTeam], source: apps/tedris/features/courses/components/watch-view.tsx:158 } # the badge
+  releaseNote: { type: text, component: Text, text: { key: RecordingRelease.early, params: { day: day, time: time } }, in: [playerTeam], when: "recording == 'held'", source: apps/tedris/features/courses/components/watch-view.tsx:237 } # a clock icon and the sentence; the team's only mark of a held recording
+  detailsLink: { type: action, component: LinkButton, role: link, name: { key: WatchPage.details }, in: [playerTalebe, playerTeam], emits: OPEN_DETAILS, source: apps/tedris/features/courses/components/watch-view.tsx:249 }
+  playerRegion: { type: page, component: Page, role: region, name: { labelledBy: playerTitle }, in: [playerTalebe, playerTeam], source: apps/tedris/features/courses/components/media-player.tsx:61 }
+  playerTitle: { type: text, component: Heading, role: heading, text: { key: composed.WatchRecording.recordingTitle, params: { recording: recording } }, in: [playerTalebe, playerTeam], source: apps/tedris/features/courses/components/media-player.tsx:92 } # h2
+  playerFrame: { type: text, component: Text, name: { key: composed.WatchRecording.frameTitle, params: { recording: recording } }, in: [playerTalebe, playerTeam], when: framed, source: apps/tedris/features/courses/components/media-player.tsx:64 } # <iframe id=watch-frame>, 16:9, lazy; YouTube and Drive sandboxed, Bunny framed per its embed code; for a talebe's YouTube frame the YouTube API renames it (WATCH-1)
+  placeholder: { type: text, component: Text, text: { key: WatchPage.recordingPlaceholder }, in: [playerTalebe, playerTeam], when: "host == 'other'", source: apps/tedris/features/courses/components/media-player.tsx:74 }
+  openHost: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: WatchPage.recordingOpen }, in: [playerTalebe, playerTeam], when: "host == 'other'", emits: OPEN_HOST, source: apps/tedris/features/courses/components/media-player.tsx:78 }
+  # the counter's line (MDRS-248), the player card's body (media-player.tsx:96) under its title: for an enrolled talebe whose recording plays in YouTube's or Bunny's frame
+  watchedNote: { type: text, component: Text, text: { key: WatchPage.watchedNote }, in: [playerTalebe], when: "counts and (seen == 'watched' or line == 'counted')", source: apps/tedris/features/courses/components/watch-progress.tsx:150 } # a check icon before it; a span, not a live region (COUNTER-3)
+  resumeNote: { type: text, component: Text, text: { key: WatchPage.resumeNote, params: { time: stopped } }, in: [playerTalebe], when: offersResume, source: apps/tedris/features/courses/components/watch-progress.tsx:160 } # the position as m:ss (formatOffset)
+  resumeButton: { type: action, component: Button, role: button, intent: secondary, text: { key: WatchPage.resumeButton }, in: [playerTalebe], when: offersResume, emits: RESUME, source: apps/tedris/features/courses/components/watch-progress.tsx:162 } # outline, small; drawn only once the player has said it is ready (YouTube's API, or Bunny's `ready`); pressing it removes it (COUNTER-2) # target _blank, rel noopener noreferrer, an external-link icon
+  sidePanel: { type: page, component: Page, role: complementary, name: { key: WatchPage.sideQuestions }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:263 } # for a talebe, the column of the two panels; for the course team there is none
+  questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsHeading }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:301 } # tedris.learn.questions owns what is inside
+  questionsHeading: { type: text, component: Heading, role: heading, text: { key: WatchPage.questionsTitle }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:301 } # h2
+  notesRegion: { type: page, component: Page, role: region, name: { labelledBy: notesHeading }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:315 } # tedris.learn.notes owns what is inside
+  notesHeading: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [playerTalebe], source: apps/tedris/features/courses/components/watch-view.tsx:315 } # h2
+
+  # ---- the locked celse page, as far as the recording it plays ----
+  lockedPage: { type: page, component: Page, role: main, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:166 }
+  lockedReason: { type: text, component: Text, text: { key: LessonLocked.description.apply }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:214 } # tedris.celse.locked draws the rest of the card and its button
+  lockedPlayerRegion: { type: page, component: Page, role: region, name: { labelledBy: lockedPlayerTitle }, in: [lockedPlayer], source: apps/tedris/features/courses/components/media-player.tsx:61 }
+  lockedPlayerTitle: { type: text, component: Heading, role: heading, text: { key: composed.WatchRecording.recordingTitle, params: { recording: recording } }, in: [lockedPlayer], source: apps/tedris/features/courses/components/media-player.tsx:92 } # h2
+  lockedFrame: { type: text, component: Text, name: { key: composed.WatchRecording.frameTitle, params: { recording: recording } }, in: [lockedPlayer], when: framed, source: apps/tedris/features/courses/components/media-player.tsx:64 } # the same player card, with no id on the frame and no player API (the title stays)
+  lockedFacts: { type: text, component: Text, text: { key: composed.WatchRecording.lockedFacts, params: { day: date, length: length } }, in: [lockedPlayer], source: apps/tedris/features/courses/components/lesson-locked.tsx:257 }
+
+edges:
+  - { labelledBy: [cardRegion, cardTitle] }
+  - { labelledBy: [heldRegion, heldTitle] }
+  - { labelledBy: [preparingRegion, preparingTitle] }
+  - { labelledBy: [playerRegion, playerTitle] }
+  - { labelledBy: [questionsRegion, questionsHeading] }
+  - { labelledBy: [notesRegion, notesHeading] }
+  - { labelledBy: [lockedPlayerRegion, lockedPlayerTitle] }
+  - { triggers: [watchButton, playerTalebe] }
+
+rules:
+  - { id: focus-not-set, rule: "Neither the celse page nor the watch page moves the focus when it opens, by a link or by address: no autoFocus in session-*.tsx, watch-*.tsx, media-player.tsx or lesson-locked.tsx (read, and the focus measured on the stack: document.activeElement is the body after every load). The page nodes have no `initialFocus`; the silence is not read as an omission. The first Tab stop is the chrome (the desktop bar or the phone's Menü button)." }
+  - { id: CLS-07, rule: "The poster of the recording card is a second link named \"Kaydı izle\" to the same address as the button (session-action-card.tsx:238-246). tabIndex -1 takes it out of the tab order, not out of a screen reader's list of links, so the same destination is listed twice (measured: two links of that name in the page's accessibility tree). Fix: aria-hidden on the poster, or fold it into the button's hit area." }
+  - { id: CLS-06, rule: "On a phone the video is shown first but is third in the DOM and tab order (back link, h1, \"Celse ayrıntıları\" come before it): max-md:order-1/2/3 on the watch page's three blocks (watch-view.tsx:223-265). WCAG 1.3.2 and 2.4.3. Not walked: the replay's window is 1280 px wide. Fix: put the player first in the DOM and move the header row with CSS." }
+  - { id: CLS-09, rule: "The celse page decides what its recording block says (the link, the sentence that says when it opens, the sentence that says it is being prepared) once, on the server, from `new Date()` at render (page.tsx:49), and no client island refreshes it (session-page.tsx:116-125, 240-245). A tab left open across a release time keeps saying \"Ders kaydı <day> açılır.\" until it is read again, and the watch page's address redirects it back until then." }
+  - { id: CLS-01, rule: "A failed read of the celse, whatever the cause (a 5xx, a timeout, a refused token), is the not-found page (public-reads.ts:50-56, layout.tsx:80): a tedrisat outage on a celse reads like a celse that does not exist, with no retry. Not walked: the stack cannot make tedrisat refuse the read. Fix: throw on a status that is not 400, 403 or 404, as getCourse does." }
+  - { id: WATCH-1, rule: "A YouTube recording is framed with enablejsapi=1 for an enrolled talebe (watch-page.tsx:59-60, 87) so the notes can read the position, and youtube-player.ts then makes a YT.Player of the frame. YouTube's script sets the frame's `title` to \"YouTube video player\": measured on this stack with the script loaded, the frame the page rendered with the recording's title (\"Birinci okuma kaydı\") had that name; with www.youtube.com/iframe_api blocked it kept the recording's title, and the course team's frame (no player API) keeps it too. The frame's accessible name is then generic and the same for every recording (WCAG 4.1.2, 2.4.6). Provisional id, not in the inventory. Fix: set the title again once the player is ready, or give the frame an aria-label." }
+  - { id: WATCH-2, rule: "A READY Bunny recording that tedrisat cannot sign a player link for (the library's token key is not set, BunnyStreamClient.embedUrl answers null: course.service.ts:196-208) reaches the page as a recording with no link and no release time, which the celse page tells as \"Ders kaydı hazırlanıyor.\" and the watch page redirects: a recording that is ready and cannot be played reads as one still being prepared, for the talebe and for the course team alike. Measured on this stack with a BUNNY row written by SQL (no keys, so no signature): the celse page of a talebe said \"Ders kaydı hazırlanıyor.\" and the watch page redirected to it; a person on the course team met the same. Production has the keys, so this is what a misconfigured or expired token key would look like. Provisional id, not in the inventory. Fix: have the API answer the recording with a status the page can tell from PROCESSING, or an error the course team can see." }
+  - { id: WATCH-3, rule: "The page reads no `visibility` of the recording: a talebe, or the course team, is played an ENROLLED and a PUBLIC recording alike (grep of session-*.tsx, watch-*.tsx, media-player.tsx: none). Visibility matters only to what tedrisat sends a person who may not read the content: nothing, except the PUBLIC recording of a sample celse (course.service.ts:701-765), which the locked page then plays. That one is cut by three rules (a closed course, the platform's RECORDINGS_NEVER_PUBLIC, the köşk's recordingsNeverPublic: publicRecordingsAllowed, course.service.ts:861-871) and not by the medrese's \"Ders kayıtları herkese açılamaz\" (madrasah_settings.policy_no_public_recordings), which is stored, shown, saved with an audit row and loaded into the engine (tedrisat-authz-context.service.ts:155,224, where it would close setting.recordings_public) and asked by nothing. So a signed-in person with no seat, on a medrese's sample celse, is played a PUBLIC recording with the switch on, against the settings page's own promise (nazar.json Settings.policies.noPublicRecordings.help). The domain's own findings: recording-public-honours-medrese-policy (holds: false) and policy-no-public-recordings-inert; MDRS-207 left the guard for the recordings work and it was not wired (tedris.course.recordings carries the same finding as RECS-1 for the list). Read from the code, every consumer of the column searched; the sample celse's public recording was measured on the stack (a köşk course, no medrese): a signed-in person with no seat was played it, and the watch page's address redirected them. The medrese's switch was not switched on: that needs a medrese course of its own on a shared medrese. Provisional id, not in the inventory. Fix: ask the medrese's switch in publicRecordingsAllowed, and refuse a PUBLIC write while the engine closes setting.recordings_public." }
+  - { id: MDRS-259, rule: "visibleRecordings leaves a FAILED recording out for every caller (domain/recording.ts:176-190), so neither page shows one: a Bunny upload that could not be encoded reads as no recording at all (\"Bu celsede henüz ders kaydı yok.\"), the course team included. Needs Bunny to walk; not walked." }
+  - { id: MDRS-264, rule: "The notes read the player's position only from a YouTube frame (youtube-player.ts); beside a Bunny player, or a link that cannot be framed, the time is typed (watch-page.tsx:59-60). Open as MDRS-264 \"Notes and questions on a Bunny recording\" (a spike on whether Bunny's embed answers postMessage). Since MDRS-248 the counter does listen to a Bunny player, through Player.js over postMessage (bunny-player.ts, written from Bunny's documentation), and the notes still do not; that path was never played against Bunny's player, so the spike's question is open for it too. Needs Bunny to walk; not walked." }
+  - { id: COUNTER-1, rule: "New, provisional id, read from the code, not walked: the counter drops a report that fails (watch-progress.tsx:62-65: `if (res.success)`, `.catch(() => {})`) and says nothing, by design, because the next report carries a newer position. That holds for a lost packet and not for a refusal that every next report meets too: a talebe whose seat ended while the page was open (left from another tab, removed by the course team: 403 LESSON_VIEW_FORBIDDEN) or whose session is over (the server action answers unauthenticated, and the counter does not send them to sign in) goes on watching, believes it is counted, and the line still says \"Kaldığın yer\" from the page's first read. Fix: after a refusal that is not transient, say under the player that this watching is not being counted, and why." }
+  - { id: COUNTER-2, rule: "New, provisional id, read from the code, not walked: \"Kaldığın yerden devam et\" removes itself when pressed (setResumed, watch-progress.tsx:141, 165-169: the line is drawn again with nothing in it), so the focus that was on it falls to the page, and a keyboard or screen-reader user starts again from the top while the video plays. Fix: move the focus to the player's frame, or keep a line that says where it went." }
+  - { id: COUNTER-3, rule: "New, provisional id, read from the code, not walked: the line under the player is a plain span (watch-progress.tsx:144-176), not a status: when a report comes back with the celse counted watched, \"Kaldığın yer: 12:34\" turns into \"Bu celseyi izledin\" with no word to a screen reader. Fix: draw the line in a polite live region." }
+  - { id: iframe-not-walked, rule: "The player is a third-party frame: the replay finds the frame and its title and the page around it, and does not play the video. The YouTube frames on the stack's browser are drawn and left idle; whether YouTube answers them is not asserted." }

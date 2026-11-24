@@ -1,0 +1,47 @@
+# The refused mark of tedris.account.notifications: `--to listed` is not enough (the refusal leads back to the list), so this binding is walked by
+# `--cover transitions`, whose path takes FAIL.refused of markingOne. The talebe has opened Bildirimler and a row's menu; the rows are deleted
+# (as SQL: no route removes a notification) just before "Okundu say" is pressed, so the page, drawn before, still lists the row and the mark
+# answers 404 NOTIFICATION_NOT_FOUND. The page puts the list back and leaves the error toast "Okundu olarak işaretlenemedi.", which stays until
+# its "Kapat" is pressed. Nothing is walked in the writing phase. No `call` on markingOne here: a server action answers 200 whatever the mark
+# did, so the refusal's status (404) cannot be compared, and the held call of binding.yaml would fail the walk.
+# Scenarios: `gone` (six unread rows: markingOne is refused) and `lastGone` (one unread row: markingLast is refused).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/account/notifications \
+#     --bind graphs/tedris/account/notifications/binding.gone.yaml --cover transitions --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.account.notifications
+
+scenarios:
+  gone:
+    given: { read: ok, holds: several, pages: one, answer: failed, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '5' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, triage, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up triage APPLICANT_H 6 unread of 7'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # The same for the one row that was unread: markingLast is refused and the row is unread again, with the button enabled again.
+  lastGone:
+    given: { read: ok, holds: one, pages: one, answer: failed, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '0' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, one, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up one APPLICANT_H 1 unread of 2'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+nodes:
+  menuMarkRead:
+    before:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, gone]
+        expect: 'notifications-data gone APPLICANT_H 0 unread of 0'

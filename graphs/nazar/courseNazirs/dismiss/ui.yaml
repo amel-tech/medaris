@@ -1,0 +1,89 @@
+# The screens of nazar.courseNazirs.dismiss: the table of "Ders nazırları" (/ders/<id>/nazirlar) as far as the "Görevden al" buttons go, the
+# dialog "Görevden al" and the toasts of a dismissal. Read from apps/nazar/features/course-nazirs; the words are copied from
+# libs/i18n/src/locales/tr/nazar.json, key for key. Two messages are not in an i18n file; the catalog keeps them under `composed.` with the
+# code that builds each:
+#   composed.CourseNazirs.personName  "{name}"     the person's name in the first cell, a <bdi> (course-nazirs-table.tsx:48; the e-mail under it is not drawn)
+#   composed.Shell.buttonBusy         "Yükleniyor"  the hidden <output> of a busy button, a default of the kit (libs/ui/src/mds/button.tsx:62), not a
+#                                                    message of the app (F-D2c-13)
+# `Changes.note` is the one message authored here: no message of the app says what a dismissal changes beyond "Görev ve bütün izinleri aynı anda
+# biter." The note adds what the code does around it (no notice to the person, the no-access page, the order of dismissals, the audit row); each
+# claim is from apps/tedrisat/src/course/nazir (course-nazir.service.ts:273, course-nazir.repository.ts:450) and
+# apps/nazar/features/shell/scope.ts:206.
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseNazirs.dismiss
+flow: nazar.courseNazirs.dismiss
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Ali Örnek
+  course: Deneme Dersi
+  count: "1"
+
+# The page keeps no focus of its own on load (nothing in features/course-nazirs sets one), so the page has no `initialFocus`; the dialog's focus is
+# on "Vazgeç" (initialFocus), and after the dialog closes only `listed` says where it goes (the button that opened it). Where the opener leaves with
+# its row, or turns off, or was another row's, the graph says nothing of the focus (F-D2c-8, focus-after-the-row-goes below).
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------------------
+  nazirsPage: { type: page, component: Page, role: main, in: [listed, blocked, freed, removed, forbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.title }, in: [listed, blocked, freed, removed, forbidden], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:61 } # h1
+  pageIntro: { type: text, component: Text, text: { key: CourseNazirs.intro, params: { course: course.title } }, in: [listed, blocked, freed, removed], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:64 }
+  introAppointOnly: { type: text, component: Text, text: { key: CourseNazirs.introAppointOnly }, in: [listed, blocked, freed, removed], when: "post == 'ownAppointee'", source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:67 } # a caller who appoints only
+  appointButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.appoint }, in: [listed, blocked, freed, removed], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:439 } # opens nazar.courseNazirs.appoint's dialog; it is not part of this flow
+  nazirsTable: { type: list, component: List, role: table, name: { key: CourseNazirs.caption, params: { course: course.title } }, in: [listed, blocked, freed, removed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:149 } # the caption is visually hidden
+
+  # --- the person's row and the appointee's -------------------------------------------------------------------------------------------
+  personName: { type: text, component: Text, text: { key: composed.CourseNazirs.personName, params: { name: person.name } }, in: [listed, blocked, freed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:48 } # the row header; it is gone from the table once the person is dismissed
+  rowEdit: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.editLabel, params: { name: person.name } }, text: { key: CourseNazirs.edit }, in: [listed, blocked, freed], when: "post != 'ownAppointee'", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113 } # drawn where mayEdit is true, so not for an appointer; it starts nazar.courseNazirs.permissions
+  rowEnd: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseNazirs.endLabel, params: { name: person.name } }, text: { key: CourseNazirs.end }, in: [listed], emits: ASK, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123 } # a ghost button; the focus returns here when the dialog is closed without a dismissal
+  rowEndFreed: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseNazirs.endLabel, params: { name: person.name } }, text: { key: CourseNazirs.end }, in: [freed], emits: ASK, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123 } # the same button after the appointee has gone; kept apart so that no focus is drawn onto it
+  rowEndOff: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseNazirs.endLabel, params: { name: person.name } }, text: { key: CourseNazirs.end }, in: [blocked], disabledIn: [blocked], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131 } # natively disabled, so it is out of the tab order (CNDIS-2); aria-describedby points at the sentence below
+  endBlockedNote: { type: text, component: Text, text: { key: CourseNazirs.endBlocked, params: { count: count } }, in: [blocked], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:137 } # a <span class=mds-caption id=end-blocked-{post}>; it says how many, not who
+  appointeeName: { type: text, component: Text, text: { key: composed.CourseNazirs.personName, params: { name: appointee.name } }, in: [blocked], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:48 } # the appointee's row, further down
+  appointeeEnd: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseNazirs.endLabel, params: { name: appointee.name } }, text: { key: CourseNazirs.end }, in: [blocked], emits: ASK_APPOINTEE, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123 } # on: the appointee has appointed nobody
+  emptyLine: { type: text, component: Text, text: { key: CourseNazirs.empty }, in: [removed], when: "post != 'ownAppointee'", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:154 } # the table's one cell; an appointer's own row stays
+
+  # --- the page refuses the caller ----------------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # --- Görevden al asks once ------------------------------------------------------------------------------------------------------------
+  endDialog: { type: page, component: Page, role: dialog, name: { labelledBy: endTitle }, in: [asking, dismissing], initialFocus: endCancel, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:79 } # a Dialog form, size sm: not an alertdialog (CNDIS-1)
+  endTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dismiss.title }, in: [asking, dismissing], source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:88 } # h2; above it the course's title as an eyebrow, a value, not drawn
+  endIntro: { type: text, component: Text, text: { key: CourseNazirs.dismiss.intro, params: { name: person.name, course: course.title } }, in: [asking, dismissing], source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:103 } # the name is the row the dialog was opened from
+  endEffect: { type: text, component: Text, text: { key: CourseNazirs.dismiss.effect }, in: [asking, dismissing], source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:109 }
+  endAudit: { type: text, component: Text, text: { key: CourseNazirs.dismiss.auditNote }, in: [asking, dismissing], source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:91 }
+  endCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseNazirs.dismiss.cancel }, in: [asking, dismissing], emits: CANCEL, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:94 } # the focus starts here; while the call is on it does nothing and does not look off (CNDIS-3)
+  endConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dismiss.submit }, in: [asking, dismissing], disabledIn: [dismissing], emits: CONFIRM, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:97 } # the submit; busy (aria-disabled and aria-busy, never `disabled`) while the call is on
+  endBusy: { type: status, component: Status, role: status, text: { key: composed.Shell.buttonBusy }, in: [dismissing], source: libs/ui/src/mds/button.tsx:114 } # the <output> beside the submit, empty until it is busy; the word is the kit's (F-D2c-13)
+  endClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [asking, dismissing], emits: CLOSE, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:89 } # an icon button named only by aria-label; ignored while the call is on (CNDIS-3)
+
+  # --- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays until closed ----------------------------------
+  toastDone: { type: status, component: Status, role: dialog, name: { key: CourseNazirs.dismiss.done }, text: { key: CourseNazirs.dismiss.doneBody, params: { name: person.name, course: course.title } }, in: [listed, blocked, freed, removed], when: "last == 'dismissed'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:54 } # success: it closes by itself after six seconds; the name is the row that was dismissed, the appointee's in `freed`
+  toastHandedOn: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dismiss.failed }, text: { key: CourseNazirs.errors.hasAppointees }, in: [blocked], when: "last == 'handedOn'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 } # error: it stays until it is closed
+  toastGone: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dismiss.failed }, text: { key: CourseNazirs.errors.gone }, in: [freed, removed], when: "last == 'gone'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 } # error, although the outcome is the one the hoca wanted (CNDIS-4)
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dismiss.failed }, text: { key: Problems.actionForbidden }, in: [asking], when: "last == 'refused'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 } # the dialog stays open under it
+  toastNotYours: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dismiss.failed }, text: { key: CourseNazirs.errors.notYours }, in: [asking], when: "last == 'notYours'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dismiss.failed }, text: { key: Problems.actionGeneric }, in: [asking], when: "last == 'failed'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+
+edges:
+  - { labelledBy: [endDialog, endTitle] }
+  - { triggers: [rowEnd, asking] }
+  - { triggers: [rowEndFreed, asking] }
+  - { triggers: [appointeeEnd, asking] }
+  - { triggers: [endConfirm, dismissing] }
+  - { returnsFocus: [endDialog, rowEnd] } # Vazgeç, Esc or the close icon: the button is still on the page (Base UI; not verified). Said only for `listed`: after a dismissal the opener has gone, and from `blocked` or `freed` the focus is not drawn
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in features/course-nazirs moves the focus when the list loads, so the page has no initialFocus; the dialog's focus is on 'Vazgeç' (end-course-nazir.tsx:90, DialogClose ref) from the moment it opens (course-nazirs#11 a2)." }
+  - { id: F-D2c-8, rule: "After a dismissal the row and its 'Görevden al: {name}' button are removed (end-course-nazir.tsx:62-63 closes the dialog, router.refresh() reads the list again); no code chooses where the focus goes, and Base UI's return focus has no element to go back to, so the focus falls to the document (not verified in a browser). A refused stale dismissal turns the opener into a disabled button, which cannot take focus either. Fix: on success focus the table's caption or the next row's button (tabIndex=-1) and keep a line on the page, not only a toast of six seconds." }
+  - { id: F-D2c-13, rule: "The submit passes `loading` and no `loadingLabel` (end-course-nazir.tsx:97), so its hidden <output> says 'Yükleniyor' from the kit's own default (libs/ui/src/mds/button.tsx:62), outside the catalog; harmless while nazar is Turkish only (lib/i18n/locale.ts:12), wrong when en and ar are switched on. Fix: loadingLabel={t('Shell.loadingLabel')}." }
+  - { id: CNDIS-1, rule: "The confirmation is a `Dialog form`, so it is a role dialog; the kit says that a confirmation which waits for an answer is an AlertDialog (libs/ui/src/mds/dialog.tsx:51-52, libs/ui/src/mds/alert-dialog.tsx:31-35), and nazar.pano.decideApplications's Reddet is one. A screen reader is not told it is a confirmation. The e2e finds it as a dialog (course-nazirs#11 a2). Not in the inventory. Fix: AlertDialog with confirmLoading, as the Pano does." }
+  - { id: CNDIS-2, rule: "A row whose person appointed others has its button natively `disabled` (course-nazirs-table.tsx:131): it leaves the tab order, so a keyboard user never reaches the sentence 'Önce bu kişinin atadığı {n} ders nazırını görevden alın.' that aria-describedby points at, and the sentence says how many, never who (the hoca reads the 'Atayan' column to find them). Same family as F-D2c-10, which the inventory records for the course ban dialog. Not in the inventory for this table. Fix: aria-disabled instead of disabled, and name the appointees in the sentence." }
+  - { id: CNDIS-3, rule: "While the call is on, the dialog ignores a close (end-course-nazir.tsx:82: `if (!open && !pending)`), but Vazgeç and the close icon have no disabled state, so a press does nothing and nothing says why; only 'Görevden al' looks busy. The same as DISMISS-2 of nazar.nazirs.dismiss. Not verified in a browser. Fix: disable both while pending." }
+  - { id: CNDIS-4, rule: "A dismissal that finds the person already gone (COURSE_NAZIR_NOT_FOUND) shows an error toast, 'Görevden alınamadı' with 'Bu ders nazırı artık yok; liste yenilendi.', which stays until it is closed (end-course-nazir.tsx:66-74), although the post is gone, which is what the hoca wanted. The same as DISMISS-1 of nazar.nazirs.dismiss. Fix: tone info for this one code, as the Pano does for a decision already made." }
+  - { id: confirm-before-dismissing, rule: "The dismissal asks once, in a dialog that names the person and the course, says that the post and the permissions end together and that it is written to the audit log, with the focus on 'Vazgeç' and a scrim that does not close it (course-nazirs#11 a2). Nothing is written before 'Görevden al'. Holds." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Görevden al' in 'Görevden al: {name}', 'İzinleri düzenle' in 'İzinleri düzenle: {name}' (WCAG 2.5.3). Holds. The dialog's own submit has the visible text alone as its name, so a locator for it must be exact to tell the two apart." }
+  - { id: toast-is-the-only-word, rule: "The result of a dismissal is said by a toast (a dialog in the 'Bildirimler' live region): a success closes after six seconds, an error stays. Nothing on the page itself says who was dismissed, and the person dismissed is not told at all (tedrisat writes the audit row and no notice)." }

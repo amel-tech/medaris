@@ -1,0 +1,156 @@
+# What the three bindings of nizam.decks.koskDecks share (binding.yaml, binding.answered.yaml, binding.gone.yaml): the locators of the nodes that role and name cannot find
+# alone, the events that no node sends, the states' addresses, the held calls of the writes, and the checks of what each write leaves in the database. It has no scenario of its
+# own. nizam-web is on :4001, the köşk nazımı (`koskNazim`) is signed in through Keycloak's real form (graphs/bindings/local.nizam.binding.yaml), and the page is the seed's SECOND
+# köşk's, /kosks/{seed.kosk2}/desteler ("Kubbealtı Köşkü"), never the seed's first, whose decks and proposals are other flows' data.
+#
+# NOT RUN: the owner moved every replay to the walk phase. The file was only loaded (`replay <dir> --bind <this file's child> --emit-spec`). Every locator below is read from the code
+# and the catalog and is unverified until a walk; where the code alone leaves a doubt it says so. "From the code" everywhere.
+#
+# Samples. The page's own words that depend on data: `kosk` is the köşk's name (the seed's), `proposalTitle` and `proposalDescription` are the first proposal's (the one "Kabul et" opens
+# in a walk that answers the proposals in order), `name` is the hoca's name as the page spells it, `proposedBy` the card's "Öneren <name>". A placeholder with no sample matches any
+# text: `title`, `count`, `date`, `caption`, `cards`, `changed` are left alone, because the rows change under a walk (a deck opened, a deck hidden).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.decks.koskDecks
+
+data:
+  kd: { json: ../.local/kosk-decks.json }
+
+samples:
+  kosk: '{seed.titles.kosk2}'
+  proposalTitle: '{kd.accept.title}'
+  proposalDescription: '{kd.accept.description}'
+  name: '{kd.proposer}'
+  proposedBy: 'Öneren {kd.proposer}'
+  course: 'Deneme dersi kdecks'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The name is the walk's own, never the proposal's (the proposal's would be its title)
+  TYPE_NAME:
+    - fill: { role: textbox, name: '/^Deste adı/', value: '{newName}' }
+  CLEAR_NAME:
+    - fill: { role: textbox, name: '/^Deste adı/', value: '' }
+  # the reject dialog's field: the reason the proposer will read
+  TYPE_REASON:
+    - fill: { role: textbox, name: '/^Ret gerekçesi/', within: { role: dialog }, value: '{reason}' }
+  # click into the empty field, then Tab: the blur sets "touched" and the help turns into "Bir gerekçe yazın."
+  LEAVE_REASON:
+    - click: { role: textbox, name: '/^Ret gerekçesi/', within: { role: dialog } }
+    - key: Tab
+  # the köşk menu's "Arşiv" (the page links to the archive nowhere): the sidebar is the only <aside> that is not the form's "Kartlar sonra eklenir", which is on another page
+  OPEN_ARCHIVE:
+    - click: { role: link, name: '/^Arşiv$/', within: { css: aside } }
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # the list keeps its address through every state of its dialogs; the form page keeps /yeni, with the proposal's id when it came from one
+  list: { url: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  listUnreadable: { url: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  rejectForm: { url: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  rejectFormReady: { url: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  confirmHide: { url: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  formScratch: { url: '{nizam}/kosks/{seed.kosk2}/desteler/yeni' }
+  formProposal: { url: '{nizam}/kosks/{seed.kosk2}/desteler/yeni?oneri=*' }
+  formInvalid: { url: '{nizam}/kosks/{seed.kosk2}/desteler/yeni**' }
+  formUnreadable: { url: '{nizam}/kosks/{seed.kosk2}/desteler/yeni**' }
+  # The three writes are Server Actions: a POST to the page's own address, answered 200 whatever the API said, so `call` only holds the busy state ("Yükleniyor", the button in
+  # `disabledIn`) and the statuses of the refusals cannot be compared (an engine limit, as in nizam.decks.legacyCards). The page's own reads are GETs with a query (`?_rsc=`), which
+  # these anchored globs do not match. Not verified: that the navigation itself, or router.refresh()'s request, is not held when the call is armed.
+  submitting: { url: '{nizam}/kosks/{seed.kosk2}/desteler/yeni**', call: '{nizam}/kosks/{seed.kosk2}/desteler/yeni**' }
+  rejecting: { url: '{nizam}/kosks/{seed.kosk2}/desteler', call: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  hiding: { url: '{nizam}/kosks/{seed.kosk2}/desteler', call: '{nizam}/kosks/{seed.kosk2}/desteler' }
+  # exits with no screen of their own
+  handed_over.no_access: { text: Bu bölüm için izniniz yok }
+  handed_over.edit_cards: { url: '{nizam}/decks/*/cards' }
+  handed_over.archive: { url: '{nizam}/kosks/{seed.kosk2}/arsiv' }
+  left: { url: 'about:blank' }
+
+# What a write leaves outside the screen, read through the database as the e2e does (deck-review.e2e.ts reads `proposalRow` and `deckRow` the same way). A walk may open, refuse
+# and hide any of the page's rows (it presses the first of each), so the checks count rows of this flow's own titles and never name one.
+effects:
+  # e2e deck-review#8: a deck written by the walk, with the name it typed, is among the köşk's shown decks
+  openedFromScratch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from decks where kosk_id = '{seed.kosk2}' and title = '{newName}' and archived_at is null"]
+      expect: '"n":1'
+  # e2e deck-review#7: the proposal is ACCEPTED with the deck on it (the walk's deck bears the walk's name, not the proposal's, because the walk clears the field first)
+  openedFromProposal:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from deck_proposals where kosk_id = '{seed.kosk2}' and title like 'Deneme önerisi koskDecks%' and status = 'ACCEPTED' and deck_id is not null"]
+      expect: '"n":1'
+  # e2e deck-review#9: the proposal is REJECTED with the reason that was written
+  proposalRefused:
+    - run: [node, helpers/sql.mjs, "select status, reject_reason from deck_proposals where kosk_id = '{seed.kosk2}' and title like 'Deneme önerisi koskDecks%' and status = 'REJECTED'"]
+      expect: '"status":"REJECTED","reject_reason":"{reason}"'
+  # e2e deck-review#9: the deck is hidden, not deleted, at the köşk's level (the köşk's nazımı hid it)
+  hidden:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n, min(archived_level::text) as level from decks where kosk_id = '{seed.kosk2}' and archived_at is not null"]
+      expect: '"n":1,"level":"kosk"'
+
+# Role and name find most nodes. Below are the ones they cannot find alone: the pages' <main> (a bare role would also find the page a walk leaves for), the toasts (sonner draws a
+# list item with no role), the Alerts (a status or alert has no accessible name of its own), the cards and the table's cells, the sidebar's namesakes of the breadcrumb, and the buttons
+# of a dialog, whose words the page behind it repeats.
+nodes:
+  listPage: { testId: kosk-decks }
+  formPage: { testId: kosk-deck-form }
+  formUnreadablePage: { role: main, hasText: Köşk bilgisi okunamadı }
+  # the Alerts: a role=alert or role=status <div class=mds-alert> whose title is a paragraph inside it
+  loadFailedAlert: { role: alert, hasText: Desteler okunamadı }
+  formUnreadableAlert: { role: alert, hasText: Köşk bilgisi okunamadı }
+  proposalBanner: { css: '.mds-alert', hasText: Hoca önerisinden açılıyor }
+  visibleAlert: { css: '.mds-alert', hasText: Kimler görür }
+  # the list: counts by test id (e2e deck-review#6), the cards by theirs
+  proposalsCount: { testId: proposals-count }
+  decksCount: { testId: decks-count }
+  proposalTitle: { css: '[data-testid=proposal] h3' }
+  proposalDescription: { css: '[data-testid=proposal] p' }
+  proposalFooter: { css: '[data-testid=proposal] .mds-card__footer' }
+  # the links and buttons of a row are named after the row, so the first of each is pressed; the model has no row identity and each walk presses the first (the oldest proposal,
+  # the newest deck: the page's own order)
+  acceptLink: { role: link, name: '/önerisini kabul et$/', nth: 0 }
+  refuseButton: { role: button, name: '/önerisini reddet$/', nth: 0 }
+  editCards: { role: link, name: '/kartlarını düzenle$/', nth: 0 }
+  hideButton: { role: button, name: '/destesini gizle$/', nth: 0 }
+  # the table's cells: the row header holds the title and, under it, the caption; the other cells follow it in order (the stack layout gives them explicit roles)
+  deckName: { role: rowheader }
+  deckCaption: { css: 'tbody th .mds-caption' }
+  deckCards: { css: 'tbody td:nth-child(2)' }
+  deckChanged: { css: 'tbody td:nth-child(3)' }
+  # the form: the breadcrumb's link has a namesake in the köşk menu, and the current page's word is in the h1 too
+  breadcrumbRoot: { role: link, name: Köşk desteleri, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: '.mds-breadcrumb__current' }
+  requiredNote: { text: '/zorunlu alan/' }
+  # the dialogs: the page behind each is inert, but its buttons say the same words
+  rejectEyebrow: { css: '.mds-eyebrow', within: { role: dialog } }
+  rejectRequiredNote: { text: '/zorunlu alan/', within: { role: dialog } }
+  rejectClose: { role: button, name: Kapat, within: { role: dialog } }
+  rejectCancel: { role: button, name: '/^Vazgeç$/', within: { role: dialog } }
+  rejectSubmit: { role: button, name: '/^Reddet$/', within: { role: dialog } }
+  hideEyebrow: { css: '.mds-eyebrow', within: { role: alertdialog } }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  hideCancel: { role: button, name: '/^Vazgeç$/', within: { role: alertdialog } }
+  hideConfirm: { role: button, name: '/^Gizle$/', within: { role: alertdialog } }
+  # the busy buttons' hidden <output> ("Yükleniyor"): one beside each button
+  rejectBusy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
+  hideBusy: { role: status, hasText: Yükleniyor, within: { role: alertdialog } }
+  submitBusy: { role: status, hasText: Yükleniyor }
+  # sonner's list items hold the title and the description in two divs (data-title and data-description; not verified): found by their words. The close button of a toast is
+  # inside its <li>, which tells it from the dialogs' own "Kapat"
+  toastClose: { role: button, name: Kapat, within: { css: '[data-sonner-toast]' }, nth: 0 }
+  toastRefused: { css: '[data-sonner-toast] [data-title]', hasText: Öneri reddedildi }
+  toastRefusedBody: { css: '[data-sonner-toast] [data-description]', hasText: önerisinin gerekçesi öneren hocaya iletildi }
+  toastHidden: { css: '[data-sonner-toast] [data-title]', hasText: Deste gizlendi }
+  toastHiddenBody: { css: '[data-sonner-toast] [data-description]', hasText: köşkün arşivine taşındı }
+  toastOpened: { css: '[data-sonner-toast] [data-title]', hasText: Deste açıldı }
+  toastOpenedBody: { css: '[data-sonner-toast] [data-description]', hasText: köşk desteleri arasında; kartlarını şimdi ekleyebilirsiniz }
+  toastActionFailed: { css: '[data-sonner-toast] [data-title]', hasText: İşlem yapılamadı }
+  toastProposalAnswered: { css: '[data-sonner-toast] [data-description]', hasText: Bu öneri az önce karara bağlanmış. }
+  toastProposalGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu öneri artık yok. }
+  toastDeckGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu deste artık yok ya da zaten gizli. }
+  toastForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için izniniz yok. }
+  toastGeneric: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+  toastOpenFailed: { css: '[data-sonner-toast] [data-title]', hasText: Deste açılamadı }
+  toastOpenAnswered: { css: '[data-sonner-toast] [data-description]', hasText: Bu öneri az önce karara bağlanmış; deste açılmadı. }
+  toastOpenGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu öneri artık yok; deste açılmadı. }
+  toastOpenForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu köşkün nazımı değilsiniz. }
+  toastOpenGeneric: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }

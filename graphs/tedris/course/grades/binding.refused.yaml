@@ -1,0 +1,25 @@
+# tedris.course.grades, the page with no Notlarım: the same talebe in a course whose scope is passive (its only müderris's role rows are
+# revoked, MDRS-136), so GET /courses/:id/my-grades answers 403 GRADES_FORBIDDEN and the page draws without the tab (GRADES-2). Walk it with
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/grades --bind graphs/tedris/course/grades/binding.refused.yaml --to noGradesTab --out <dir>
+# NOT RUN in this phase (see binding.empty.yaml); a browser read by hand showed no Notlarım among the tabs and `?tab=notlarim` falling back to
+# Müfredat. `passive on` is the one use of SQL in this flow: no route takes the last müderris out of a course.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.grades
+
+scenarios:
+  passive:
+    given: { read: refused, tabParam: none, released: false, closed: false, marks: false }
+    as: applicantG
+    open: '{tedris}/courses/{grades.course}'
+    setup:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, make, bare]
+        expect: 'make bare course'
+      - run: [node, ../tedris/course/grades/grades-data.mjs, passive, 'on']
+        expect: 'passive passive'
+    teardown:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, remove]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']

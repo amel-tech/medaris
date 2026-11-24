@@ -1,0 +1,60 @@
+# nazar.archive.hideAndRestoreCourse: the page lists a course the başmüderris may restore, and something changes before she presses
+# "Geri al": someone brought it back first (FAIL.gone: 404 ARCHIVE_ITEM_NOT_FOUND, "Bu öğe artık arşivde değil. Liste yenilendi."), or the
+# köşk's nazımı hid it again at a higher kademe (FAIL.level: 403 ARCHIVE_RESTORE_LEVEL, "Bunu geri alma yetkiniz yok; ...").
+#   node apps/engine/src/cli.ts replay graphs/nazar/archive/hideAndRestoreCourse \
+#     --bind graphs/nazar/archive/hideAndRestoreCourse/binding.staleRestore.yaml --cover transitions --out <dir>
+# NOT RUN. Read only the walks that cover `FAIL.gone` and `FAIL.level`. Do NOT use --absent here: after FAIL.level the page really draws
+# the köşk's sentence on the course the model still calls restorable (`locks` is kept through the havoc), and `lockedKosk` would be
+# reported as unexpected. The events are the binding's own, as in binding.staleHide.yaml (that the replay runs them before it releases the
+# held call is not verified). The other refusals are not bound: ARCHIVE_PARENT_HIDDEN needs a hidden medrese, which would take the seeded one
+# from every other walk (nazar.archive.hideMedrese walks it on a medrese of its own), and COURSE_NOT_FOUND and HTTP_400 cannot be made.
+#
+# Data: hrcKeep and hrcGone, both hidden by the başmüderris, hrcGone last, so the first "Geri al" is hrcGone's and hrcKeep keeps the
+# list non-empty (`held` and `pages` are kept by the replay).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.archive.hideAndRestoreCourse
+
+data:
+  hrcKeep: { json: ../.local/made/hrcKeep.json }
+  hrcGone: { json: ../.local/made/hrcGone.json }
+
+events:
+  FAIL.gone:
+    - run: [node, helpers/api.mjs, basmuderris, POST, '/archive/course/{hrcGone.course}/restore']
+      expect: 'Deneme dersi hrcGone'
+  FAIL.level:
+    - run: [node, helpers/api.mjs, basmuderris, POST, '/archive/course/{hrcGone.course}/restore']
+      expect: 'Deneme dersi hrcGone'
+    - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, koskNazim, --tag, hrcGone]
+      expect: 'hide-course hrcGone'
+
+scenarios:
+  staleRestore:
+    given: { start: archive, enrolled: none, held: courses, locks: none, pages: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseArchive' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hrcKeep, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcKeep"'
+      - run: [node, helpers/course.mjs, make, hrcGone, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcGone"'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcKeep]
+        expect: 'hide-course hrcKeep'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcGone]
+        expect: 'hide-course hrcGone'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hrcGone]
+        expect: 'course remove hrcGone'
+      - run: [node, helpers/course.mjs, remove, hrcKeep]
+        expect: 'course remove hrcKeep'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi hrc%'"]
+        expect: '"n":0'
+
+nodes:
+  # one course is restorable and one is not, so the counts are small and the weeks tab is empty
+  tabAll: { role: link, name: '/^Tümü\d+$/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabCourse: { role: link, name: '/^Dersler\d+$/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabWeeks: { role: link, name: Haftalar ve celseler0, within: { role: navigation, name: Arşivdeki öğe türleri } }

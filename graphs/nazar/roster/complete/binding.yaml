@@ -1,0 +1,65 @@
+# nazar.roster.complete on the local stack: Talebeler (/ders/<id>/talebeler) of a course that the walk makes, as its müderris, Hamdi
+# Müderris, at http://localhost:4002.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/roster/complete \
+#     --bind graphs/nazar/roster/complete/binding.yaml [--cover transitions] [--absent] --out <dir>
+# NOT RUN: written without a replay (the owner's word: the first walks are a later phase). It was only loaded (`replay ... --emit-spec`).
+# Every behaviour below is from the code; none was seen in a browser.
+#
+# The data. No seeded course is touched. `setup` makes "Deneme dersi rosCom" with helpers/course.mjs: a published course in the seed's
+# second köşk (Kubbealtı Köşkü, which no seeded flow reads), one week of two celses, taking anyone, the müderris as its one hoca, and
+# twelve talebe who each apply to it through the API and are enrolled at once: the eight spare ones (applicantA to H, "Aylin" to "Rıza
+# Başvuran") and four of the stack's own people who hold no role in a course (Nazlı Talebe, Kemal Talebe, Fikret Misafir and Selma
+# Medaris Nazımı). Twelve, so that "Daha fazla göster" is there (ten are shown) and stays after one is completed (eleven are left).
+# `teardown` has them leave and deletes the course as the başnazım (helpers/course.mjs remove: it also clears the celse invitation mails the
+# course sent them, and the notifications that point at it, which is the one SQL write there), and then counts that no course of this
+# walk is left. `make` removes a tag a crashed walk left, so `setup` is safe to run twice. What it cannot undo: the audit row of the
+# course's deletion, which no route removes. A completion mails the talebe the CANCEL of the celse invitations (subject "İptal: <course> —
+# Celse n"), and `remove` clears the mails of the course by that phrase.
+# No other flow of the batch may use the twelve accounts at the same time: every replay takes the lock for its whole run.
+#
+# The walk. `completes` is the main story: Başvurular, Kayıtlı, the sort twice, "Daha fazla göster", a search by e-mail and by name, the
+# completion of the one the name finds (Esma Başvuran), Tamamlayanlar, the reopening, Kayıtlı again. It is the only scenario here that
+# changes the roster; the others are in files of their own (a scenario that adds no new transition is walked only through its own file):
+#   binding.decider.yaml   the ders nazırı who holds enrollment.decide only: the lists and no button
+#   binding.bare.yaml      the ders nazırı who holds nothing: the page says no access
+#   binding.gone.yaml      FAIL.gone: the seat is removed after the page showed it (ENROLLMENT_STATE_CONFLICT, 409)
+#   binding.refused.yaml   FAIL.forbidden: the grant is taken away after the page showed the button (AUTHZ_FORBIDDEN, 403)
+# Not bound, with the reason (each is drawn in the flow):
+#   reader: down           the stack has no way to make the API fail for one account, so `loadFailed` and `RETRY` are not walked
+#   FAIL.missing           the layout answers a missing course with the 404 page before the page reads anything
+#   FAIL.barred           'Yeniden aç' on a barred talebe: a ban notifies every köşk nazım and Medaris nazım with a notification that points at
+#                          the köşk, which no route removes and course.mjs does not clear; a lifted ban row stays too (bans.course_id is no
+#                          foreign key). Walking it would leave data other walks read. The refusal is covered by the API's own specs.
+#   FAIL.forbidden in `reopening`   see binding.refused.yaml: the walk would need a completion that the same file's `before` forbids
+#   FAIL.other             COURSE_NOT_FOUND, VALIDATION_ERROR and HTTP_400 cannot come from the buttons the page draws
+#   the plain branch of FAIL.gone in `completing` (gonePlain) and FAIL.gone in `reopening`
+#                          binding.gone.yaml walks the `searched` branch (goneSearched) only: its `before` removes the one talebe the search finds, and the
+#                          shortest walk to the plain branch presses the first row. In `reopening` a seat that has moved cannot be made to: a completed
+#                          seat is not removable (removeEnrollment takes an ENROLLED one only) and reopening an ENROLLED seat returns the row
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.complete
+
+scenarios:
+  completes:
+    given: { reader: team }
+    as: muderris
+    open: '{nazar}/ders/{rc.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosCom, --weeks, '1', --lessons, '2', --talebe, 'applicantA,applicantB,applicantC,applicantD,applicantE,applicantF,applicantG,applicantH,talebe,talebeMale,other,medarisNazim']
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'ENROLLED'"]
+        expect: '"n":12'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosCom]
+        expect: 'course remove rosCom'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi rosCom%'"]
+        expect: '"n":0'
+
+# The server action is a POST to the page's own address; it is held while the busy row is checked (the buttons off, the busy button's
+# hidden "Yükleniyor"), and answers 200, which is not compared with a refusal's status.
+states:
+  completing: { call: '{nazar}/ders/*/talebeler' }
+  reopening: { call: '{nazar}/ders/*/talebeler' }

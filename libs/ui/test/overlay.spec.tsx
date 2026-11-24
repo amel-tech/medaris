@@ -140,6 +140,37 @@ describe("Dialog", () => {
     await key(document.activeElement ?? body(), "Escape");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("dismissDisabled: the close button, Vazgeç and Esc are off while a call runs", async () => {
+    const onOpenChange = vi.fn();
+    await render(
+      <Dialog
+        open
+        form
+        title="Kopyala"
+        onOpenChange={onOpenChange}
+        dismissDisabled
+        footer={<DialogClose disabled />}
+      >
+        x
+      </Dialog>
+    );
+    await settle();
+    const close = body().querySelector(
+      ".mds-dialog__close"
+    ) as HTMLButtonElement;
+    const cancel = body().querySelector(
+      ".mds-dialog__footer button"
+    ) as HTMLButtonElement;
+    expect(close.disabled).toBe(true);
+    expect(cancel.disabled).toBe(true);
+    await click(close);
+    await click(cancel);
+    await key(document.activeElement ?? body(), "Escape");
+    await settle(60);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(body().querySelector(".mds-dialog")).not.toBeNull();
+  });
 });
 
 describe("AlertDialog", () => {
@@ -192,6 +223,39 @@ describe("AlertDialog", () => {
     expect(confirm.disabled).toBe(true);
     await click(confirm);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("dismissDisabled: Vazgeç, the close button and Esc are off while the call runs", async () => {
+    const onOpenChange = vi.fn();
+    await render(
+      <AlertDialog
+        open
+        title="Dersten ayrıl"
+        confirmLabel="Dersten ayrıl"
+        onOpenChange={onOpenChange}
+        confirmLoading
+        dismissDisabled
+        onConfirm={() => {}}
+      >
+        x
+      </AlertDialog>
+    );
+    await settle();
+    const popup = body().querySelector(".mds-dialog") as HTMLElement;
+    const close = popup.querySelector(
+      ".mds-dialog__close"
+    ) as HTMLButtonElement;
+    const cancel = popup.querySelector(
+      ".mds-dialog__footer button"
+    ) as HTMLButtonElement;
+    expect(cancel.textContent).toBe("Vazgeç");
+    expect(cancel.disabled).toBe(true);
+    expect(close.disabled).toBe(true);
+    await click(cancel);
+    await click(close);
+    await key(document.activeElement ?? body(), "Escape");
+    await settle(60);
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("opens from its trigger", async () => {

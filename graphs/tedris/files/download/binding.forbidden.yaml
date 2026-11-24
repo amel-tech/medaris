@@ -1,0 +1,68 @@
+# The 403 walks of tedris.files.download: the walk's talebe is taken off the course just before a file link is followed, so the page, drawn
+# while they still held a seat, still lists the link and the route answers 403 AUTHZ_FORBIDDEN, which the 303 turns into ?fileError=forbidden.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/tedris/files/download \
+#     --bind graphs/tedris/files/download/binding.forbidden.yaml --to namesOnly --to celse_locked --out <dir>
+#
+# NOT RUN in the writing phase. The course is the walk's own (see binding.yaml): leaving it touches no seeded course. Taking the seat away
+# is `helpers/leave.mjs applicantG <course>` (DELETE /courses/<id>/enrollment as that account), run as the `before` of the link, so it
+# happens after the page was checked and before the click. Both scenarios end where the course page and the celse page really end:
+#   courseForbidden  the course page comes back as the page of a person with no seat (names only), with the toast "Bu dosyayı indirme iznin yok."
+#   celseForbidden   the celse page comes back as the locked card, with NO toast and ?fileError=forbidden still in the address (FILES-1)
+# The three file links each get the hook, and only the one a scenario presses runs it; the hook is idempotent (leaving twice says `none`).
+schema: delurio-graph/0
+kind: binding
+extends: files.common.binding.yaml
+flow: tedris.files.download
+
+scenarios:
+  courseForbidden:
+    given: { view: courseSeat, answer: forbidden }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, filesdl, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS, --talebe, applicantG]
+        expect: '"tag":"filesdl"'
+      - run: [node, ../tedris/files/download/files-data.mjs, up]
+        expect: 'files-data up'
+    teardown:
+      - run: [node, ../tedris/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, filesdl]
+        expect: 'course remove filesdl'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+
+  celseForbidden:
+    given: { view: celseSeat, answer: forbidden }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    setup:
+      - run: [node, helpers/course.mjs, make, filesdl, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS, --talebe, applicantG]
+        expect: '"tag":"filesdl"'
+      - run: [node, ../tedris/files/download/files-data.mjs, up]
+        expect: 'files-data up'
+    teardown:
+      - run: [node, ../tedris/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, filesdl]
+        expect: 'course remove filesdl'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+
+nodes:
+  courseFileRow:
+    before:
+      - run: [node, helpers/leave.mjs, applicantG, '{made.course}']
+        expect: leave
+  ownFileRow:
+    before:
+      - run: [node, helpers/leave.mjs, applicantG, '{made.course}']
+        expect: leave
+  assignmentFileRow:
+    before:
+      - run: [node, helpers/leave.mjs, applicantG, '{made.course}']
+        expect: leave

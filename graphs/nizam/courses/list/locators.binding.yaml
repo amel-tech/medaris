@@ -1,0 +1,143 @@
+# What the bindings of nizam.courses.list share: the data they read, the events no node sends, each state's address, where role and name
+# cannot find a node of Dersler, and the checks of what a hide and a restore leave outside the screen. It carries no scenario, so it is not
+# walked by itself; each file below makes its own köşk and removes it:
+#   binding.yaml               the köşk's nazımı (KOSK_NAZIM) of a köşk of the walk's own: five courses, two of them hidden (one by the nazım, one by the
+#                              başnazım). The main story: every tab, hide (cancel once, then confirm), Gizli, restore (kosk-view.e2e.ts#6-#9)
+#   binding.chief.yaml         the same köşk as the başnazım: every hidden course has "Geri al", none has the sentence
+#   binding.empty.yaml         a köşk with no course: "Henüz ders yok."
+#   binding.staleHide.yaml     the course is hidden by someone else, or deleted, after the window opened (FAIL.already, FAIL.other of the hide)
+#   binding.staleRestore.yaml  the başnazım brings the course back and hides it again (FAIL.level) or only brings it back (FAIL.notHidden)
+#   binding.restoreGone.yaml   the course is deleted after the page listed it (FAIL.other of the restore)
+#   binding.parentHidden.yaml  the medrese's başmüderris hid the medrese, and with it the course: Geri al is refused (FAIL.parentHidden)
+#   binding.locked.yaml        the only hidden course is Medaris yönetimi's: the sentence and no button (`held` locked)
+#   binding.refused.yaml       another köşk's address and an address no köşk has: the screen that says "Bu bölüm için izniniz yok"
+# Two scenarios must not share a `given`, and a scenario that adds no transition is never chosen by `--cover transitions` beside the first,
+# so each of the files above is its own to walk.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/kosks, libs/ui/src/mds and libs/ui/src/components/sonner.tsx) and is unverified until a walk. Where the walk may need
+# a fix, a comment says so. The walks do not enter through nizam.nav: the data is in a köşk of the walk's own, which is not the köşk the nav
+# binding's `kosk` sample opens, so `open` names its address (the nav's own replay walks the entry `koskNazim` takes to Dersler).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.list
+
+# a wide window, so that the table is drawn as a table and not as the phone's stacked cards
+browser: { width: 1440, height: 900 }
+
+# What `setup` makes is read from the files helpers/course.mjs and ./data.mjs write (graphs/.local/made/<tag>.json); each binding declares the
+# sources it uses under `data`: `ncl` is the köşk, `nclm` the medrese that holds a hosting right in it, `nclx` another köşk, the others are
+# courses (`{nclOwn.course}`). A tag is not the start of another, so removing one never clears another's mails.
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  DISMISS: [{ key: Escape }] # Esc closes the window; the dialog is focused, so the key goes to it
+
+# `refused` and `not_found` are bound only in binding.refused.yaml (their whole story is nizam.shell.noAccessAndNotFound's), and `rowsFailed` needs
+# the roster to fail while the köşk reads, which the stack cannot be made to do. The two writes are Next server actions: a POST to the page's own
+# address, held while the busy state is checked (the page's own reads are GETs with a query, so the glob, which is anchored, matches only the
+# POST). A server action answers 200 on that address, whatever the API said, so a walk through FAIL.<class> reports "HTTP 200" for the status it
+# compares: an engine limit, not the app. `public_page_opened` opens a new tab and is not bound.
+states:
+  listed: { url: '{nizam}/kosks/*/dersler' }
+  listedHidden: { url: '{nizam}/kosks/*/dersler' }
+  empty: { url: '{nizam}/kosks/*/dersler' }
+  hiding: { call: '{nizam}/kosks/*/dersler' }
+  restoring: { call: '{nizam}/kosks/*/dersler' }
+  # an exit has no nodes, so its address is all the replay can check
+  course_overview_opened: { url: '{nizam}/kosks/*/courses/*' }
+  curriculum_opened: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  muderris_dialog_opened: { url: '{nizam}/kosks/*/dersler' } # the window opens over the same page
+  course_viewed_in_tedris: { url: '{tedris}/courses/*' }
+  course_new_opened: { url: '{nizam}/kosks/*/courses/new' }
+  applications_opened: { url: '{nizam}/kosks/*/basvurular' }
+  hosting_opened: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  nazims_opened: { url: '{nizam}/kosks/*/ayarlar/nazimlar' }
+  archive_opened: { url: '{nizam}/kosks/*/arsiv' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by a word of its own.
+# Name matching of a role is a substring unless it is a pattern, so the names that are a part of another ("Dersler", "Gizle") are patterns. The
+# walk's courses are "Deneme dersi ncl..." and the page lists newest first, so the walk creates its own course last: the first "Gizle", the first
+# "Geri al" and the first row are its own, and a repeated node is pressed on its first item. The numbers are the data's: five courses (Yayında 2,
+# Taslak 1, Gizli 2), the card of waiting applications at 1 and falling to 0 while the course that holds it is hidden, one medrese, one nazım.
+nodes:
+  main: { role: main, hasText: Bütün dersler }
+  title: { role: heading, name: '/^Dersler$/' }
+  subtitle: { css: header p, hasText: '/ · Listelerde görünür$/' }
+  publicPage: { role: link, name: '/^Köşk sayfasını gör/', within: { role: main } }
+  openCourse: { role: link, name: '/^Ders aç$/', within: { role: main } }
+  # each Stat is a caption and a value in two spans of one card, and the link: the value is found inside the card that holds the caption
+  applicationsLabel: { css: .mds-stat .mds-caption, hasText: Bekleyen başvuru }
+  applicationsNumber: { css: .mds-stat__value, hasText: '/^[01]$/', within: { css: .mds-stat, hasText: Bekleyen başvuru } }
+  applicationsLink: { role: link, name: Başvurulara git, within: { role: main } }
+  hostingLabel: { css: .mds-stat .mds-caption, hasText: Barındırma hakkı olan medrese }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^1$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  hostingLink: { role: link, name: Barındırma haklarını gör, within: { role: main } }
+  nazimsLabel: { css: .mds-stat .mds-caption, hasText: '/^Köşk nazımı$/' }
+  nazimsNumber: { css: .mds-stat__value, hasText: '/^1$/', within: { css: .mds-stat, hasText: '/^Köşk nazımı/' } }
+  nazimsLink: { role: link, name: Köşk nazımlarını gör, within: { role: main } }
+  # the sidebar has an "Arşiv" link of its own
+  archiveLink: { role: link, name: '/^Arşiv$/', within: { role: main } }
+  # a tab's name is its label and its count run together (NCL-3)
+  tabAll: { role: tab, name: '/^Tümü5$/' }
+  tabPublished: { role: tab, name: '/^Yayında[12]$/' }
+  tabDraft: { role: tab, name: '/^Taslak1$/' }
+  tabHidden: { role: tab, name: '/^Gizli[23]$/' }
+  # the rows: a title is a link in the row header; a hidden row's Durum cell holds the word with a glyph
+  rowTitle: { css: 'tbody th a' }
+  statusHidden: { css: tbody td, hasText: '/^Gizli$/' }
+  chipPending: { css: tbody .mds-badge, hasText: '/^\d+ onay bekliyor$/' }
+  ownEdit: { role: link, name: '/^Düzenle: Deneme dersi nclOwn$/' }
+  ownHocas: { role: button, name: '/^Hocaları düzenle: Deneme dersi nclOwn$/' }
+  ownHide: { role: button, name: '/^Gizle: Deneme dersi nclOwn$/' }
+  medreseView: { role: link, name: '/^Dersi gör: Deneme dersi nclMed$/' }
+  medreseHide: { role: button, name: '/^Gizle: Deneme dersi nclMed$/' }
+  # the two that are never drawn, pinned to the rows that must lack them (kosk-view.e2e.ts#8): a medrese's course has no Düzenle, a hidden one no Gizle
+  medreseEdit: { role: link, name: '/^Düzenle: Deneme dersi nclMed$/' }
+  hiddenHide: { role: button, name: '/^Gizle: Deneme dersi nclHid$/' }
+  restoreButton: { role: button, name: '/^Geri al: Deneme dersi ncl\w+$/' }
+  rowRestore: { role: button, name: '/^Geri al: Deneme dersi ncl\w+$/', nth: 0 }
+  restoreBusy: { css: 'tbody output', hasText: Yükleniyor }
+  lockedNote: { css: 'tbody td .mds-caption', hasText: Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir. }
+  # the window (the eyebrow is a <p class=mds-eyebrow> above the title; the close button of a toast is also "Kapat")
+  hideEyebrow: { css: '[role=alertdialog] .mds-eyebrow', hasText: Deneme dersi nclOwn }
+  hideBody: { css: '[role=alertdialog] p', hasText: talebelerden ve ziyaretçilerden gizlenecek; ders her listeden çıkar. }
+  hideWay: { css: '[role=alertdialog] p', hasText: Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz. }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  hideCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  hideConfirm: { role: button, name: '/^Gizle$/', within: { role: alertdialog } }
+  hideBusy: { css: output, hasText: Yükleniyor, within: { role: alertdialog } } # the <output> of the busy button
+  # sonner's toast has no role: found by its own attributes and its words; a title and a description are two lines (data-title, data-description)
+  toastHidden: { css: '[data-sonner-toast] [data-title]', hasText: Ders gizlendi }
+  toastHiddenBody: { css: '[data-sonner-toast] [data-description]', hasText: artık hiçbir listede görünmüyor. }
+  toastHideFailed: { css: '[data-sonner-toast] [data-title]', hasText: Ders gizlenemedi }
+  toastHideFailedBody: { css: '[data-sonner-toast] [data-description]', hasText: Bir şeyler ters gitti. Biraz sonra yeniden deneyin. }
+  toastRestored: { css: '[data-sonner-toast] [data-title]', hasText: Ders geri alındı }
+  toastRestoredBody: { css: '[data-sonner-toast] [data-description]', hasText: yeniden listelerde. }
+  toastRestoreFailed: { css: '[data-sonner-toast] [data-title]', hasText: Ders geri alınamadı }
+  toastRestoreLevel: { css: '[data-sonner-toast] [data-description]', hasText: Bu dersi daha üst bir kademe gizledi }
+  toastRestoreParentHidden: { css: '[data-sonner-toast] [data-description]', hasText: Dersin medresesi ya da köşkü hâlâ gizli }
+  toastRestoreFailedBody: { css: '[data-sonner-toast] [data-description]', hasText: Bir şeyler ters gitti. Biraz sonra yeniden deneyin. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a step leaves outside the screen, read through the database and the API (kosk-view.e2e.ts#9). A file that makes other data
+# overrides the key it needs.
+effects:
+  # kosk-view.e2e.ts#9: Vazgeç leaves the course shown
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{nclOwn.course}'"]
+      expect: '"shown":true'
+  # kosk-view.e2e.ts#9: the course is stamped hidden, the audit record names it once, and the roster lists it Gizli
+  hideCourse:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from courses where id = '{nclOwn.course}'"]
+      expect: '"hidden":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.hide' and entity_id = '{nclOwn.course}'"]
+      expect: '"n":1'
+  # kosk-view.e2e.ts#9: the course is shown again and the restore is on the record
+  restoreCourse:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{nclOwn.course}'"]
+      expect: '"shown":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.restore' and entity_id = '{nclOwn.course}'"]
+      expect: '"n":1'

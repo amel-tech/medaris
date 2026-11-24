@@ -1,0 +1,109 @@
+# What the walks of nazar.bans.review share: the page's locators, its states, the events no node sends, and the one check of what a read leaves
+# outside the screen. It has no scenario: binding.yaml (the main walk and the three that differ in what the page finds) and
+# binding.staffRow.yaml (a ban on a person who now runs the course, finding ban-staff-check-gaps) extend it and add theirs. Separate files
+# because a walk takes the first scenario of a file whose `given` fits, and two scenarios must not share a `given`.
+#
+# NOT RUN: the graphs were written without a replay (the owner's word: replays come once, after every graph is written). Every locator
+# below comes from the code (apps/nazar/features/bans, libs/ui/src/mds) and the catalog, and is unverified until a walk.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/bans/review \
+#     --bind graphs/nazar/bans/review/binding.yaml --cover transitions --out <dir>
+#
+# What the walk reads and what it makes: nothing on this page writes. The data is the five invented people (six with the lifted
+# medrese-wide ban) and their bans that `setup` makes in tedrisat's database through ./bans-data.mjs and `teardown` removes; SQL because
+# no route makes a `users` row for a person who never signed in, none writes a ban "26 hours ago", and no seeded account may place a ban at
+# the Medaris kademe locally (see the header of bans-data.mjs). Not one of the stack's accounts is barred, so no other walk meets a ban.
+#
+# Not walked, with the reason:
+#   - FAIL.forbidden is walked as the seeded nazır, who holds no code (scenario `refused` of binding.yaml); the same refusal on all ten of
+#     the medrese's pages is nazar.access.medreseNazirRefused.
+#   - FAIL.missing (not_found): the layout answers a medrese the person holds no seat in with /erisim-yok before this page reads anything,
+#     and the stack deletes no medrese.
+#   - FAIL.unreadable (loadFailed, RETRY): nothing on the stack makes tedrisat fail a read.
+#   - The courses side read failing (the filter keeps only its two fixed choices): same reason; the unit spec apps/nazar/test/bans.spec.tsx
+#     ("keeps the list when only the courses cannot be read") holds it.
+#   - `call` is not used on `reading`: a tab is a plain link (a full page load, on which `call` would hang the walk) and the scope filter's
+#     soft navigation is an RSC request whose status cannot be compared.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.bans.review
+
+events:
+  # the scope filter is Base UI's Select: its trigger is a combobox named "Kapsam", its choices are options in a popup
+  PICK_ALL:
+    - { click: { role: combobox, name: Kapsam } }
+    - { click: { role: option, name: '/^Bütün kapsamlar$/' } }
+  PICK_MEDRESE:
+    - { click: { role: combobox, name: Kapsam } }
+    - { click: { role: option, name: '/^Medrese düzeyi$/' } }
+  PICK_COURSE:
+    - { click: { role: combobox, name: Kapsam } }
+    - { click: { role: option, name: '{course}' } }
+  TYPE_NAME:
+    - { fill: { role: searchbox, name: Kişi ara, value: '{typed}' } }
+  CLEAR_NAME:
+    - { fill: { role: searchbox, name: Kişi ara, value: '' } }
+  NAVIGATE:
+    - { goto: 'about:blank' }
+
+states:
+  listed: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  empty: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  noMatch: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  forbidden: { url: '{nazar}/medrese/*/yasaklamalar**' } # not walked: see the header
+  loadFailed: { url: '{nazar}/medrese/*/yasaklamalar**' } # not walked
+  # the two dialogs open on the page: the address does not change
+  handed_over.ban: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  handed_over.decide: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node. The title, the intro, the notice, the filters, the tables and their column headers, the empty line and
+# the clear button are found from the graph (role and name, or the exact text); what is bound here is what sits in a paragraph with another
+# message, what is data, what shares its words with another element, and what must be counted.
+nodes:
+  # the page the walk leaves for (Tedris, another medrese page) also has a <main>
+  bansPage: { role: main, hasText: Yasaklamalar }
+  bansTitle: { role: heading, name: '/^Yasaklamalar$/', within: { role: main } } # the sidebar's "Yasaklamalar" is a link, not a heading
+  banButton: { role: button, name: '/^Yasakla$/', within: { role: main } } # "Yasakla" alone: not "Yasağı kaldır: …" and not "Medreseden de yasakla: …"
+  kademeNotice: { role: status, hasText: 'Yasağı, koyan kademe ya da üstü kaldırır' }
+  # the refusal is a status with its title inside it
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # the tab's name is its text and its count together, "Etkin 4"; the count is a span inside the link
+  tabActive: { role: link, name: '/^Etkin/', within: { role: navigation, name: Yasak durumu } }
+  tabLifted: { role: link, name: '/^Kaldırılan/', within: { role: navigation, name: Yasak durumu } }
+  tabActiveCount: { css: 'nav[aria-label="Yasak durumu"] a:first-of-type .mds-tab__count', hasText: '{active}' }
+  tabLiftedCount: { css: 'nav[aria-label="Yasak durumu"] a:last-of-type .mds-tab__count', hasText: '{lifted}' }
+  # the row's cells, by their place in the row: person (th), scope, reason, placed by, when, then the actions or the lifter
+  rowPerson: { role: rowheader, hasText: Yasaklı }
+  rowScopeCourse: { role: cell, hasText: '/^Ders/' }
+  rowScopeMadrasah: { role: cell, hasText: '/^Medrese/' }
+  rowCourse: { css: '[data-testid=bans] tbody td:nth-child(2) bdi', hasText: '/^(Bina ve İzhar Şerhi|İsâgûcî ile Mantığa Giriş)$/' }
+  rowMadrasahScope: { css: '[data-testid=bans] tbody td:nth-child(2) bdi', hasText: '/bütün dersleri$/' }
+  rowExtendedFrom: { css: '[data-testid=bans] tbody td:nth-child(2) bdi', hasText: '/dersinden genişletildi$/' }
+  rowReason: { css: '[data-testid=bans] tbody td:nth-child(3) bdi' }
+  rowBannedBy: { css: '[data-testid=bans] tbody td:nth-child(4) bdi' }
+  rowRoleYou: { css: '[data-testid=bans] tbody td:nth-child(4) .mds-caption', hasText: (siz) }
+  rowRoleMedaris: { css: '[data-testid=bans] tbody td:nth-child(4) .mds-caption', hasText: Medaris nazımı }
+  rowRoleKosk: { css: '[data-testid=bans] tbody td:nth-child(4) .mds-caption', hasText: Köşk nazımı }
+  rowWhen: { css: '[data-testid=bans] tbody td:nth-child(5) time' }
+  # the two badges are the only .mds-badge in the table
+  badgeNew: { css: '[data-testid=bans] tbody .mds-badge', hasText: '/^Yeni$/' }
+  badgePermanent: { css: '[data-testid=bans] tbody .mds-badge', hasText: Kalıcı yasak talebi bekliyor }
+  # a row's buttons carry the person's name in their accessible name; every person of this walk is "<name> Yasaklı"
+  lift: { role: button, name: '/^Yasağı kaldır: .+ Yasaklı$/' }
+  escalate: { role: button, name: '/^Medreseden de yasakla: .+ Yasaklı$/' }
+  permanent: { role: button, name: '/^Kalıcı yasak talebi aç: .+ Yasaklı$/' }
+  platformNote: { testId: lift-note, hasText: Bu yasağı yalnız Medaris yönetimi kaldırabilir. }
+  higherNote: { testId: lift-note, hasText: Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir. }
+  # the Kaldırılan tab's last column: who, when, why
+  rowLiftedBy: { css: '[data-testid=bans] tbody td:nth-child(6) bdi:not(.mds-caption)' }
+  rowLiftedWhen: { css: '[data-testid=bans] tbody td:nth-child(6) time' }
+  rowLiftReason: { css: '[data-testid=bans] tbody td:nth-child(6) bdi.mds-caption' }
+
+# What a read leaves outside the screen: the API's own answer for the başmüderris, which says what the walk's data is. It checks the premise of
+# each scenario (the two counts of the tabs) against the API, as the account itself; helpers/api.mjs only reads.
+effects:
+  listMadrasahBans:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/bans']
+      expect: '"activeCount":{active},"liftedCount":{lifted}'

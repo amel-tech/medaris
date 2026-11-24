@@ -1,0 +1,159 @@
+# The screens of nizam.nazims.editPermissions: the page "Medaris nazımları" (/medaris-nazimlari) with the edited person's row, the dialog "İzinleri
+# düzenle" over it, the group select's open list, and the toasts of a save. Read from apps/nizam/features/permissions/components/{nazims-view,
+# permissions-dialog,permission-boxes}.tsx, apps/nizam/app/medaris-nazimlari/page.tsx, libs/ui/src/mds/{dialog,field,select,checkbox,button,table}.tsx
+# and libs/ui/src/components/sonner.tsx on 15 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nizam.json (namespaces NazimsPage,
+# PermissionsDialog, PermissionsPage, PermissionCatalog). Nothing was seen in a browser: every node is "from the code" until the walk phase.
+#
+# What the graph draws of a form of 19 boxes. The platform catalog has 19 codes in five sections; the graph draws five, the ones the walk meets:
+# "Medrese aç ve başmüderrisini seç" (a single permission the walk never changes), "Desteyi herkese yayımla" (a single permission, ticked and unticked),
+# and "Denetim kaydını oku" and "Pasif kapsamları yönet" (the two codes of the walk's group: ticked, locked and saying "Gruptan gelir." while the group is
+# chosen, free and unticked with "Grup yok"). The other fourteen are boxes like them; `world: open` leaves them out. The group's two boxes are one node each
+# whose `checked` follows the select; that they are also disabled while the group is chosen is said here and not drawn (a node has no `disabled` that
+# follows a variable), and the summary and the help lines are separate nodes.
+#
+# Composed text (not in any i18n file), each a value the page puts in a place with no message of its own:
+#   composed.Row.person       the <bdi> of the person's name in the table (nazims-view.tsx:74)
+#   composed.Row.email        her address, a <bdi dir=ltr> (nazims-view.tsx:78)
+#   composed.Row.group        the badge's group name, which is followed by the visually hidden word "grubu" (NazimsPage.groupSuffix) (nazims-view.tsx:104)
+#   composed.Row.singles      the single permissions of the "İzinler ve gruplar" cell: the short sentences joined with ", ", after a group beginning with
+#                             "ve " (NazimsPage.andPermissions); with no group, the plain list (nazims-view.tsx:118-122)
+#   composed.Row.endDate      the day of the end, formatDay(locale, zone), no hour (nazims-view.tsx:140, present.ts:34)
+#   composed.Row.giver        the <bdi> of who appointed (nazims-view.tsx:160)
+#   composed.Dialog.person    the person's name in the dialog's card (permissions-dialog.tsx:207)
+#   composed.Dialog.email     her address, a <bdi dir=ltr> (permissions-dialog.tsx:211)
+#   composed.Group.name       the name of the walk's group, in the select's list (permissions-dialog.tsx:242)
+#   composed.Button.loading   the busy button's hidden "Yükleniyor", a default of libs/ui/src/mds/button.tsx:62, in no catalog (F-UI-W1-3)
+# The one message that is authored here is `Changes.note`: no message of the app says what saving the permissions changes; the dialog's only note is the
+# audit sentence (PermissionsDialog.auditNote) and the toast says "güncellendi".
+#
+# Samples: the replay reads the binding's samples (the person's name and address, the giver, the group, the days) and matches any text where it has none.
+schema: delurio-graph/0
+kind: ui
+id: nizam.nazims.editPermissions
+flow: nizam.nazims.editPermissions
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note } # the one authored message of this catalog
+samples:
+  name: Salih Başvuran
+  email: e2e-basvuran-d@medaris.test
+  giver: Vedat Başnazım
+  by: Vedat Başnazım
+  date: 15 Kasım 2026
+  group: Deneme grubu epDialog
+  moment: 5 Aralık 2026 18:00
+  endDate: 5 Aralık 2026
+  count: "20"
+  list: Medrese aç, Desteyi herkese yayımla
+  fromGroup: "2"
+  extra: "2"
+
+# The page sets no focus when it loads (nothing in features/permissions does; FocusHeading is not used on this page), so the page node has no
+# `initialFocus` and there is no `focus` (rule focus-not-set). The dialog passes no initialFocus either (permissions-dialog.tsx:178-198), so Base UI's
+# default applies: the header's close icon, the first thing it can focus (F-W2-12); not verified in a browser.
+nodes:
+  # --- the page (a dialog makes it inert, so it is drawn only where no dialog is open) ----------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [loadFailed, listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:198 } # the shell's one <main id="main">; it has no name
+  title: { type: text, component: Heading, role: heading, text: { key: NazimsPage.title }, in: [loadFailed, listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:205 } # h1
+  intro: { type: text, component: Text, text: { key: NazimsPage.intro }, in: [loadFailed, listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:206 }
+  appointButton: { type: action, component: Button, role: button, intent: secondary, text: { key: NazimsPage.appoint }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:208 } # nizam.nazims.appoint; natively disabled when the catalog or the groups did not load
+  sectionHeading: { type: text, component: Heading, role: heading, text: { key: NazimsPage.heading }, in: [loadFailed, listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:219 } # h2 "Görevde"
+  count: { type: text, component: Text, text: { key: NazimsPage.count, params: { count: nazims.count } }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:223 } # "{n} kişi": the seeded Medaris nazımı and the walk's person
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: NazimsPage.loadFailedTitle }, text: { key: NazimsPage.loadFailed }, in: [loadFailed], source: apps/nizam/features/permissions/components/nazims-view.tsx:229 } # an error Alert is announced (libs/ui/src/mds/alert.tsx:23)
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: NazimsPage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/permissions/components/nazims-view.tsx:231 }
+
+  # --- the table, the person's row --------------------------------------------------------------------------------------------------------------
+  table: { type: list, component: List, role: table, name: { key: NazimsPage.caption }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:236 } # the caption is hidden; the table lists every person in office, the seeded one first (oldest appointment first)
+  rowPerson: { type: text, component: Text, text: { key: composed.Row.person, params: { name: nazim.name } }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:74 }
+  rowEmail: { type: text, component: Text, text: { key: composed.Row.email, params: { email: nazim.email } }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:78 }
+  rowGroup: { type: text, component: Text, text: { key: composed.Row.group, params: { group: nazim.group } }, in: [listed], when: "heldGroup == 'chosen'", source: apps/nizam/features/permissions/components/nazims-view.tsx:103 } # a secondary Badge with a key icon; "grubu" follows, visually hidden
+  rowSingles: { type: text, component: Text, text: { key: composed.Row.singles, params: { list: nazim.singles } }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:118 } # a caption, data-testid=single-permissions: "ve Medrese aç, Desteyi herkese yayımla" after a group, the plain list without one; the list follows the box 'Desteyi herkese yayımla'
+  rowEnd: { type: text, component: Text, text: { key: composed.Row.endDate, params: { endDate: nazim.endDate } }, in: [listed], when: "heldEnd == 'ahead'", source: apps/nizam/features/permissions/components/nazims-view.tsx:142 } # the day only, no hour (the same as CNP-2 of nazar's ders nazırları table)
+  rowDaysLeft: { type: text, component: Text, text: { key: NazimsPage.daysLeft, params: { count: nazim.daysLeft } }, in: [listed], when: "heldEnd == 'ahead'", source: apps/nizam/features/permissions/components/nazims-view.tsx:144 } # data-testid=days-left; drawn within 30 days of the end; "Bugün bitiyor" on the day itself (not drawn)
+  rowForever: { type: text, component: Text, text: { key: NazimsPage.never }, in: [listed], when: "heldEnd == 'none'", source: apps/nizam/features/permissions/components/nazims-view.tsx:138 } # "Süresiz"
+  rowGiver: { type: text, component: Text, text: { key: composed.Row.giver, params: { giver: nazim.giver } }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:160 } # who appointed, with the day under it
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: NazimsPage.editLabel, params: { name: nazim.name } }, text: { key: NazimsPage.edit }, in: [listed], emits: OPEN_EDIT, source: apps/nizam/features/permissions/components/nazims-view.tsx:176 } # on every row, whatever the person holds; natively disabled when the catalog or the groups did not load; with no name the label is "İzinleri düzenle: " (F-W2-11)
+  dismissButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: NazimsPage.dismissLabel, params: { name: nazim.name } }, text: { key: NazimsPage.dismiss }, in: [listed], source: apps/nizam/features/permissions/components/nazims-view.tsx:185 } # nizam.nazims.dismiss
+
+  # --- the toasts: sonner's, in its own region over the page and the dialog (a toast of a refusal is raised while the dialog is open) ------------
+  toastSaved: { type: status, component: Status, text: { key: PermissionsDialog.saved }, in: [listed], when: "toast == 'saved'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:163 } # closes by itself after 6 seconds (libs/ui/src/components/sonner.tsx:15)
+  toastSavedBody: { type: status, component: Status, text: { key: PermissionsDialog.savedBody, params: { name: nazim.name } }, in: [listed], when: "toast == 'saved'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:164 }
+  toastFailedTitle: { type: status, component: Status, text: { key: PermissionsDialog.failed }, in: [editing, formBlocked, choosingGroup, listed], when: "toast != 'none' and toast != 'saved'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:156 } # an error toast stays until closed (sonner.tsx:44, duration infinite); over the dialog it is the only word that the save failed (F-X-4)
+  toastGone: { type: status, component: Status, text: { key: PermissionsPage.errors.nazimNotFound }, in: [editing, formBlocked, choosingGroup, listed], when: "toast == 'gone'", source: apps/nizam/features/permissions/present.ts:354 }
+  toastGroupGone: { type: status, component: Status, text: { key: PermissionsPage.errors.groupNotFound }, in: [editing, formBlocked, choosingGroup, listed], when: "toast == 'groupGone'", source: apps/nizam/features/permissions/present.ts:350 }
+  toastExpiry: { type: status, component: Status, text: { key: PermissionsPage.errors.expiryInvalid }, in: [editing, formBlocked, choosingGroup, listed], when: "toast == 'expiry'", source: apps/nizam/features/permissions/present.ts:356 }
+  toastForbidden: { type: status, component: Status, text: { key: PermissionsPage.errors.forbidden }, in: [editing, formBlocked, choosingGroup, listed], when: "toast == 'forbidden'", source: apps/nizam/features/permissions/present.ts:361 }
+  toastFailedGeneric: { type: status, component: Status, text: { key: PermissionsPage.errors.generic }, in: [editing, formBlocked, choosingGroup, listed], when: "toast == 'failed'", source: apps/nizam/features/permissions/present.ts:370 }
+
+  # --- the dialog "İzinleri düzenle" ---------------------------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [editing, formBlocked, choosingGroup, saving], initialFocus: closeIcon, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:178 } # a modal form dialog; the scrim does not close it; described by its whole body (F-W2-13); initial focus from the code, not verified (F-W2-12)
+  dialogEyebrow: { type: text, component: Text, text: { key: PermissionsDialog.eyebrow }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:186 } # "Platform"
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: PermissionsDialog.titleEdit }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:187 } # the same words as the row's button
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: PermissionsDialog.close }, in: [editing, formBlocked, choosingGroup, saving], emits: CLOSE, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label; while a save runs it stays on and does nothing (permissions-dialog.tsx:181)
+  personName: { type: text, component: Text, text: { key: composed.Dialog.person, params: { name: nazim.name } }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:207 }
+  personEmail: { type: text, component: Text, text: { key: composed.Dialog.email, params: { email: nazim.email } }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:211 }
+  cardLine: { type: text, component: Text, text: { key: PermissionsDialog.cardLine, params: { by: nazim.giver, date: nazim.date } }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:216 } # "Medaris nazımı · Veren: {giver} · {date}"
+
+  # Hazır izin grubu: the kit's Select inside a Field
+  groupSelect: { type: field, component: TextField, role: combobox, name: { key: PermissionsDialog.groupLabel }, in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], emits: OPEN_GROUP_LIST, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:229 } # a button with role combobox that shows the group chosen or "Grup yok"; that Base UI names it with the Field's label is not verified (the e2e finds it by role alone)
+  groupHelp: { type: text, component: Text, text: { key: PermissionsDialog.groupHelp }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:228 }
+  editGroupsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PermissionsDialog.editGroups }, in: [editing, formBlocked, choosingGroup, saving], emits: OPEN_GROUPS_PAGE, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246 } # a plain <a href="/izin-gruplari"> in the dialog: it loads the page anew and drops what was typed
+  groupList: { type: list, component: List, role: listbox, in: [choosingGroup], source: libs/ui/src/mds/select.tsx:80 } # the open list, in a portal over the dialog; it has no name of its own
+  optionNone: { type: list, component: ListItem, role: option, text: { key: PermissionsDialog.noGroup }, checked: "group == 'none'", in: [choosingGroup], emits: CHOOSE_NO_GROUP, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:241 }
+  optionGroup: { type: list, component: ListItem, role: option, text: { key: composed.Group.name, params: { group: group.name } }, checked: "group == 'chosen'", in: [choosingGroup], emits: CHOOSE_GROUP, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:242 } # one option for each platform group the page read; the walk's is drawn
+
+  # İzinler: the boxes in their sections (a <section aria-labelledby> with an h4 each, two columns on a wide window)
+  permissionsHeading: { type: text, component: Heading, role: heading, text: { key: PermissionsDialog.permissionsHeading }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:268 } # h3
+  sectionMadrasahs: { type: text, component: Heading, role: heading, text: { key: PermissionCatalog.sections.madrasahs }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:59 } # h4
+  permMadrasah: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.permissions.platform_madrasah_create.title }, checked: true, in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 } # held as a single permission, ticked and free; the graph never changes it, so a save never empties the seat
+  sectionRequests: { type: text, component: Heading, role: heading, text: { key: PermissionCatalog.sections.requests }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:59 }
+  permDeck: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.permissions.platform_deck_publish.title }, checked: "deck == 'ticked'", in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], emits: TOGGLE_DECK, source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 }
+  deckHelp: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_deck_publish.help }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:72 } # the box's aria-describedby
+  sectionAudit: { type: text, component: Heading, role: heading, text: { key: PermissionCatalog.sections.audit }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:59 }
+  permAudit: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.permissions.platform_audit_read.title }, checked: "group == 'chosen'", in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 } # a code of the walk's group: ticked and DISABLED while the group is chosen (`disabled={disabled || fromGroup}`), free and unticked without it
+  auditHelp: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_audit_read.help }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'none'", source: apps/nizam/features/permissions/components/permission-boxes.tsx:72 }
+  auditFromGroup: { type: text, component: Text, text: { key: PermissionsDialog.fromGroup }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'chosen'", source: apps/nizam/features/permissions/components/permission-boxes.tsx:72 } # "Gruptan gelir." in place of the help, once under each locked box
+  permInactive: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.permissions.platform_inactive_scopes_manage.title }, checked: "group == 'chosen'", in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 }
+  inactiveHelp: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_inactive_scopes_manage.help }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'none'", source: apps/nizam/features/permissions/components/permission-boxes.tsx:72 }
+  inactiveFromGroup: { type: text, component: Text, text: { key: PermissionsDialog.fromGroup }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'chosen'", source: apps/nizam/features/permissions/components/permission-boxes.tsx:72 }
+
+  # Bitiş tarihi ve saati
+  endField: { type: field, native: datetime-local, component: TextField, text: { key: PermissionsDialog.endLabel }, in: [editing, formBlocked, choosingGroup, saving], disabledIn: [saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:301 } # <input type=datetime-local name=end>: no role in the accessibility tree, so it is found by its label; it holds the end the person holds on the başnazım's clock, or nothing
+  endHelpDated: { type: text, component: Text, text: { key: PermissionsDialog.endHelpAssignment, params: { moment: seat.endMoment } }, in: [editing, formBlocked, choosingGroup, saving], when: "seat == 'dated' and not endWrong", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:284 } # the error replaces the help line (libs/ui/src/mds/field.tsx:50)
+  endHelpForever: { type: text, component: Text, text: { key: PermissionsDialog.endHelpNone }, in: [editing, formBlocked, choosingGroup, saving], when: "seat == 'forever' and not endWrong", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:287 }
+  endPastMessage: { type: text, component: Text, text: { key: PermissionsDialog.endPast }, in: [formBlocked, choosingGroup], when: "end == 'past'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:292 } # a Field.Error: no role, not live, the focus stays in the field (F-UI-W3-1); it follows the field as it is typed
+  endBeyondMessage: { type: text, component: Text, text: { key: PermissionsDialog.endAfterAssignment, params: { moment: seat.endMoment } }, in: [formBlocked, choosingGroup], when: "end == 'beyond'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:294 }
+  auditNote: { type: text, component: Text, text: { key: PermissionsDialog.auditNote }, in: [editing, formBlocked, choosingGroup, saving], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:313 }
+
+  # the footer
+  summaryGroup: { type: text, component: Text, text: { key: PermissionsDialog.summaryGroup, params: { fromGroup: form.fromGroup, extra: form.extra } }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'chosen'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:171 } # a <p class=mds-dialog__meta>, not a live region: a person who ticks a box hears nothing of the new count (the same as CNP-4 of nazar's ders nazırı dialog); "Gruptan 2 izin ve 2 ek izin", "... 1 ek izin" with the deck box unticked
+  summaryPlain: { type: text, component: Text, text: { key: PermissionsDialog.summaryPlain, params: { extra: form.extra } }, in: [editing, formBlocked, choosingGroup, saving], when: "group == 'none'", source: apps/nizam/features/permissions/components/permissions-dialog.tsx:175 } # "2 izin" with the deck box ticked and no group, "1 izin" without
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [saving], source: libs/ui/src/mds/button.tsx:113 } # the hidden <output> beside the busy button; "Yükleniyor" is a default of the component, outside the catalog (F-UI-W1-3)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: PermissionsDialog.cancel }, in: [editing, formBlocked, choosingGroup, saving], emits: CANCEL, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:192 } # while a save runs it looks live and does nothing (permissions-dialog.tsx:181)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: PermissionsDialog.save }, in: [editing, formBlocked, choosingGroup, saving], disabledIn: [formBlocked, saving], emits: SAVE, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:193 } # natively disabled while the end is wrong (the reason is under the field); busy (aria-disabled, not disabled) while it saves
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [editButton, editing] }
+  - { triggers: [groupSelect, choosingGroup] }
+  - { triggers: [save, saving] }
+  - { returnsFocus: [dialog, editButton] } # Vazgeç, Esc, the close icon and a save that worked: the row's button stays mounted (the table keys rows by user id), so Base UI gives the focus back to it; not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no focus when it loads. The dialog passes no `initialFocus` (permissions-dialog.tsx:178-198), so Base UI's default applies. The graph draws the close icon as the dialog's `initialFocus`, which is what the header order gives (libs/ui/src/mds/dialog.tsx:100-104); not verified in a browser." }
+  - { id: F-W2-12, rule: "The dialog opens on the header's close icon and not on the work: PermissionsDialog passes no `initialFocus` (permissions-dialog.tsx:178), unlike most dialogs of the app. Fix: pass the select's trigger (edit mode) or the e-mail picker (appoint mode). Not verified in a browser." }
+  - { id: F-W2-13, rule: "libs/ui/src/mds/dialog.tsx:107-116 makes BaseDialog.Description wrap the whole body, so aria-describedby is the entire form: the card, the select, 19 checkboxes with their help lines, the end field and the note. A screen reader may read all of it on open. Fix: describe the dialog by the intro line only. Not verified with one." }
+  - { id: F-W2-11, rule: "A row's buttons are named with the person ('İzinleri düzenle: {name}', 'Görevden al: {name}') but a person with no name gets an empty name after the colon (nazims-view.tsx:180, `n.user.name ?? ''`). Fix: fall back to the address or 'Adı bilinmiyor'. Not drawn: the walk's person has a name." }
+  - { id: F-W2-7, rule: "permissions.e2e.ts#6, #7 and #8 (which this flow takes over) use the seed's fixed expiry 2026-12-31T20:59:59Z and assertion strings built on it (permissions.e2e.ts:127, 397, 403): after 2026-12-31 the seeded appointment is lapsed and they fail. This flow does not copy them: its walk appoints a seat of its own with an end twenty days ahead, and the strings come from the seat's own end." }
+  - { id: F-UI-W3-1, rule: "Field's error element has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-52): 'Bitiş zamanı şu andan sonra olmalı.' and 'Bitiş zamanı atamanın bitişinden (...) sonra olamaz.' appear in place of the help line as the end is typed and are read only if the focus moves to them, which it does not. 'Kaydet' goes natively disabled at the same time (permissions-dialog.tsx:193), so a screen-reader user who types a wrong end finds a dead button and no word. Fix: role=alert on the error, or aria-live on the line." }
+  - { id: F-X-4, rule: "A refused or failed save is told only by a toast while the dialog stays open (permissions-dialog.tsx:156-160, an error toast with an infinite duration); inside the dialog nothing says the save failed, and whether a toast raised under a modal Base UI dialog is exposed to assistive technology (the toaster is a sibling portal) is not known from the code. Fix: an Alert (error) inside the dialog body with the sentence. Not verified with a screen reader." }
+  - { id: EPERM-1, rule: "New. A refusal reads nothing again: `onSaved` runs only on success (permissions-dialog.tsx:155-167), and revalidatePath only on success (actions.ts:109-111). After MEDARIS_NAZIM_NOT_FOUND ('Bu kişi artık Medaris nazımı değil.') the dialog stays open on a person who is gone, with 'Kaydet' on, and the row stays in the table until a reload; after PERMISSION_GROUP_NOT_FOUND ('Bu grup artık yok.') the select still lists the deleted group (the groups were read with the page, page.tsx:25-29) and the same save is refused the same way. Compare nazar's ders nazırı dialog, which closes and reads again (CNP-1 there). Fix: read again after these two refusals, and close the dialog when the person is gone." }
+  - { id: EPERM-2, rule: "New. 'Kaydet' with the same group, the same permissions and the same end is sent all the same (canSave has no 'changed' test, permissions-dialog.tsx:134) and the toast says 'İzinler kaydedildi' / '{name} için izinler güncellendi.' although the API's planGrants finds nothing to do and writes no audit row (permission-admin.repository.ts, applyGrants). The başnazım is told something was updated that was not. Fix: close with no call and no toast when the form equals what the person holds, or say 'Değişiklik yok'." }
+  - { id: EPERM-3, rule: "New. The end's 'now' is the moment the dialog opened (`setNow(new Date())` in the open effect, permissions-dialog.tsx:92), and the appointment's end is the one the page read. A dialog left open past the end that was typed, or over an appointment shortened meanwhile, is checked by the page against stale facts; the server then refuses with GRANT_EXPIRY_INVALID and the toast says only 'Bitiş tarihi geçmişte ya da atamanın bitişinden sonra.', which does not say which. Fix: say which, and read the appointment again." }
+  - { id: EPERM-4, rule: "The table's end cell prints the day only ('5 Aralık 2026', formatDay, present.ts:34) while the dialog edits the day and the hour and the permissions end at that hour; the hour is visible only in the dialog's help line (and its field). The same as CNP-2 of nazar's table. Fix: print the hour in the cell." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'İzinleri düzenle' in 'İzinleri düzenle: {name}', 'Görevden al' in 'Görevden al: {name}' (WCAG 2.5.3). Holds." }
+  - { id: closing-asks-nothing, rule: "Vazgeç, the close icon and Esc drop the form with no question; the scrim does not close it, so a stray click loses nothing. 'İzin gruplarını düzenle' is a plain link: following it drops the form with no question too. While a save runs the three buttons do nothing (permissions-dialog.tsx:181)." }
+  - { id: the-end-is-an-instant, rule: "The end goes out as an instant (resolveEnd, libs/utils/src/end-instant.ts:141), `expiresAt: new Date(endIso)`, or null, never as a basic-format date, so the domain's grant-end-is-an-instant finding is not reachable from this dialog. A value equal to the held one goes back as the stored instant, so an end such as 23:59:59 does not drift." }
+  - { id: toast-is-the-only-word, rule: "The result of a save is said by a toast: 6 seconds for a success, until closed for an error. Nothing on the page says what changed except the row itself." }

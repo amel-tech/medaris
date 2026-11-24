@@ -1,0 +1,317 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.decks.koskDecks
+status: proposed
+summary: >-
+  What must exist for a köşk's nazımı to open, answer and hide the köşk's decks on /kosks/<id>/desteler and
+  /kosks/<id>/desteler/yeni. Nothing is planned for these pages (FLOWS.md names no planned item for this flow), so the Linear key
+  of a missing need is `none`. No replay has been run (the owner moved every replay to the walk phase), so no `walked` entry names
+  one: a need is walked only where an e2e check of apps/nizam/e2e/deck-review.e2e.ts asserts it (the file's own numbering: #6 the
+  counts, #7 Kabul et and the form filled in, #8 the empty name and a deck from nothing, #9 Reddet with a reason, Gizle and the
+  archive, #10 the refusal of a person who is no nazım, which nizam.shell.noAccessAndNotFound carries). None of these checks is
+  stale.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, Linear key `none`): edit-the-cards-on-the-design-system, the-proposer-is-told-of-an-acceptance, a-stale-proposal-link-says-so, a-failed-read-explains-itself,
+# a-failed-write-is-told-where-it-happens, the-focus-follows-an-answer, the-hide-dialog-says-who-can-undo-it, a-proposal-card-says-its-card-type, the-edit-link-says-its-words,
+# the-page-links-to-the-archive, hiding-is-audited
+# unwalked (code, no e2e and no replay yet): edit-a-decks-cards, a-long-list-is-paged, an-answer-is-given-once, the-first-read-failing-is-told-by-the-page
+
+needs:
+  - id: see-the-decks-and-the-waiting-proposals
+    need: >-
+      The köşk's nazımı sees the decks the köşk shares, each with its type and number of cards, and above them the proposals the
+      hocas made, oldest first, each with who proposed it, for which course and when, and how many wait. Where none waits the
+      block is not there; where no deck exists the table says so.
+    evidence:
+      - state: list
+      - node: listTitle
+      - node: listIntro
+      - node: proposalsRegion
+      - node: proposalsCount
+      - node: proposalTitle
+      - node: proposalDescription
+      - node: proposalFooter
+      - node: decksRegion
+      - node: decksCount
+      - node: decksTable
+      - node: deckName
+      - node: deckCaption
+      - node: deckCards
+      - node: deckChanged
+      - node: emptyDecks
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:68
+      - source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:50
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 — the köşk's decks come with the count of proposals waiting (criteria 1 and 2)"
+
+  - id: open-a-deck-from-nothing
+    need: >-
+      The nazım opens a deck for the köşk's talebe from a name, an optional description and the kind of its cards (vocabulary or
+      hadith); it is theirs to fill, the page tells them it is open, and the table lists it with its type.
+    evidence:
+      - node: openLink
+      - state: openingForm
+      - state: formScratch
+      - node: nameFieldEmpty
+      - node: descFieldEmpty
+      - node: kindGroup
+      - node: kindVocabulary
+      - node: kindHadeeth
+      - node: visibleAlert
+      - node: submitButton
+      - state: submitting
+      - state: afterOpen
+      - node: toastOpened
+      - node: toastOpenedBody
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:89
+      - source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/35 — an empty name is refused before anything is sent; a deck from scratch is listed (criteria 2 and 5)"
+
+  - id: a-deck-needs-a-name
+    need: >-
+      A deck is never sent with an empty or blank name: the person is told on the field, in words, that it needs one, the focus
+      goes to the field, and nothing is made.
+    evidence:
+      - state: formInvalid
+      - node: nameField
+      - node: nameError
+      - node: nameFieldFilled
+      - source: apps/nizam/features/deck-review/present.ts:181
+      - source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/35 — an empty name is refused before anything is sent; a deck from scratch is listed (criteria 2 and 5)"
+
+  - id: open-a-deck-from-a-proposal
+    need: >-
+      The nazım answers a proposal with "Kabul et": the form opens filled in with the proposal's name, description and kind, says
+      whose proposal it is, lets them change it, and opening the deck accepts the proposal in the same step, so the proposal
+      leaves the waiting ones and the deck is listed.
+    evidence:
+      - node: acceptLink
+      - state: openingForm
+      - state: formProposal
+      - node: proposalBanner
+      - node: proposalBannerText
+      - node: nameFieldFilled
+      - node: descFieldFilled
+      - node: kindHadeeth
+      - state: submitting
+      - state: afterOpenProposal
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:89
+      - source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:53"
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 and 35 — Kabul et opens the form filled in, Desteyi aç lists the deck and drops the proposal (criteria 3 and 4)"
+
+  - id: refuse-a-proposal-with-a-reason
+    need: >-
+      The nazım refuses a proposal only with a reason, which the hoca who proposed it reads in their notifications; the proposal
+      leaves the waiting ones and the page says it was refused.
+    evidence:
+      - node: refuseButton
+      - state: rejectForm
+      - state: rejectFormReady
+      - node: reasonField
+      - node: reasonRequired
+      - node: rejectSubmit
+      - state: rejecting
+      - state: afterReject
+      - node: toastRefused
+      - node: toastRefusedBody
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:126
+      - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:65
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves the deck to the archive (criteria 4 and 5)"
+
+  - id: hide-a-deck-after-asking
+    need: >-
+      The nazım hides a deck from the köşk's talebe after being asked and told that nothing is deleted; the deck leaves the table
+      and the page says it moved to the archive.
+    evidence:
+      - node: hideButton
+      - state: confirmHide
+      - node: hideDialog
+      - node: hideBody
+      - node: hideConfirm
+      - state: hiding
+      - state: afterHide
+      - node: toastHidden
+      - node: toastHiddenBody
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:146
+      - source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:154
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves the deck to the archive (criteria 4 and 5)"
+
+  - id: find-a-hidden-deck-in-the-archive
+    need: >-
+      A deck that was hidden is found in the köşk's archive, with who hid it, and brought back from there
+      (nizam.moderation.restoreArchived).
+    evidence:
+      - state: handed_over.archive
+      - source: apps/nizam/lib/shell-nav.ts:253
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves the deck to the archive (criteria 4 and 5)"
+
+  - id: the-page-links-to-the-archive
+    need: >-
+      The page that hides a deck, and the message that says it was hidden, lead to the archive where it now is, so the person does
+      not have to look for the menu entry.
+    missing: no Linear issue
+    note: >-
+      Drawn on the state handed_over.archive and on the nodes toastHidden, toastHiddenBody and hideBody, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: only-a-nazim-may-open-it
+    need: >-
+      A person who is no nazım of the köşk reads neither its decks nor its proposals and writes nothing: the page says "Bu bölüm
+      için izniniz yok", the same for a köşk that is not there.
+    evidence:
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:68
+      - source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:34"
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/30 and 35 — a person who is no nazım gets the 'Bu bölüm için izniniz yok' screen (criteria 6)"
+
+  - id: edit-a-decks-cards
+    need: The nazım adds and changes the cards of a deck the köşk shares, from the page that lists it, one by one or from a file.
+    evidence:
+      - node: editCards
+      - state: handed_over.edit_cards
+      - source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221
+      - source: "apps/nizam/app/decks/[id]/cards/page.tsx:4"
+
+  - id: edit-the-cards-on-the-design-system
+    need: >-
+      The cards of a köşk deck are edited on a page of the design system under the deck's own address, with a title, Turkish
+      words, named buttons and a check that the deck belongs to this köşk, and not on the legacy page that lists every public deck
+      beside the nazım's own (D1).
+    missing: no Linear issue
+    note: >-
+      Drawn on the state handed_over.edit_cards and on the node editCards, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-proposer-is-told-of-an-acceptance
+    need: >-
+      The hoca who proposed a deck is told, in their notifications, when the nazım accepts it, naming the deck, as they are told
+      when it is refused and why (D3).
+    missing: no Linear issue
+    note: >-
+      Drawn on the states submitting and afterOpen and on the nodes toastOpened and toastOpenedBody, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-stale-proposal-link-says-so
+    need: >-
+      A nazım who follows "Kabul et" always gets the proposal they chose: a proposal that was answered or deleted meanwhile is
+      told to be no longer waiting, with a way back to the list, and a proposal that lies beyond the first twelve of the list
+      opens its own form. Nobody meets an empty form that looks like the proposal's (KDECK-1).
+    missing: no Linear issue; findings KDECK-1
+    note: >-
+      Drawn on the states openingForm and formScratch, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-answer-is-given-once
+    need: >-
+      A proposal is answered once: a second answer, from another nazım or another tab, is told that it was answered meanwhile, the
+      row leaves, and nothing is written twice; a deck that is hidden already is told the same way.
+    evidence:
+      - state: rejecting
+      - state: hiding
+      - state: submitting
+      - node: toastProposalAnswered
+      - node: toastProposalGone
+      - node: toastDeckGone
+      - node: toastOpenAnswered
+      - node: toastOpenGone
+      - source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:134
+      - source: apps/tedrisat/src/deck-review/deck-review.repository.ts:513
+
+  - id: a-failed-read-explains-itself
+    need: >-
+      When the köşk and its decks cannot be read the page says so, offers to try again, and does not offer what cannot be done
+      meanwhile (no disabled button without a word of why) (F-W5-9, D2).
+    missing: no Linear issue; findings F-W5-9
+    note: >-
+      Drawn on the states listUnreadable and formUnreadable and on the nodes loadFailedAlert, loadFailedText, retry, openDisabled,
+      formUnreadableAlert and formRetry, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-first-read-failing-is-told-by-the-page
+    need: >-
+      A first read that fails (the server down, a 5xx) is neither the refusal nor the empty page: it draws the warning "Desteler
+      okunamadı" with "Yeniden dene", and the same on the form page.
+    evidence:
+      - state: listUnreadable
+      - node: loadFailedAlert
+      - node: retry
+      - state: formUnreadable
+      - node: formUnreadableAlert
+      - node: formRetry
+      - source: apps/nizam/features/deck-review/components/load-failed.tsx:18
+
+  - id: a-failed-write-is-told-where-it-happens
+    need: >-
+      A write that is refused or fails is told inside the dialog or the form where the person pressed, in words they can act on,
+      announced to a screen reader, and not only by a toast that stays in another part of the page (F-W5-3).
+    missing: no Linear issue; findings F-W5-3
+    note: >-
+      Drawn on the states rejectFormReady, confirmHide, formScratch and formProposal and on the nodes toastActionFailed,
+      toastForbidden, toastGeneric, toastOpenFailed, toastOpenForbidden and toastOpenGeneric, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-focus-follows-an-answer
+    need: >-
+      After a proposal is answered, a deck hidden or a deck opened, the focus goes to the next card or row, or to the section's
+      heading, and what happened is said where the person is, not only by a toast of six seconds (F-W5-5, KDECK-4).
+    missing: no Linear issue; findings F-W5-5, KDECK-4
+    note: >-
+      Drawn on the nodes rejectDialog, hideDialog, refuseButton, hideButton, toastRefused, toastHidden and toastOpened, which the
+      code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-hide-dialog-says-who-can-undo-it
+    need: >-
+      The window that asks whether to hide a deck says who can bring it back: the köşk's nazımı for what they hid, the başnazım
+      alone for what the başnazım hid (KDECK-3).
+    missing: no Linear issue; findings KDECK-3
+    note: >-
+      Drawn on the nodes hideDialog and hideBody, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-proposal-card-says-its-card-type
+    need: >-
+      A proposal's card says whether it proposes a vocabulary or a hadith deck, so the nazım need not open the form to know
+      (KDECK-5).
+    missing: no Linear issue; findings KDECK-5
+    note: >-
+      Drawn on the nodes proposalTitle, proposalDescription and proposalFooter, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-edit-link-says-its-words
+    need: >-
+      The link that leads to a deck's cards carries the words it shows in its accessible name, so that a person who speaks to
+      their computer reaches it by what they read (KDECK-6, WCAG 2.5.3).
+    missing: no Linear issue; findings KDECK-6
+    note: >-
+      Drawn on the node editCards, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-long-list-is-paged
+    need: >-
+      A köşk with more than twelve decks or twelve waiting proposals shows twelve of each and the rest on "Daha fazla göster",
+      with the totals in the headings.
+    evidence:
+      - node: proposalsCount
+      - node: decksCount
+      - source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:93
+      - source: apps/nizam/features/deck-review/present.ts:28
+
+  - id: hiding-is-audited
+    need: >-
+      Hiding a köşk's deck is written to the audit log with who did it and at which level, as hiding a course, a week or a session
+      is (the domain's kosk-deck-hide-no-audit).
+    missing: no Linear issue
+    note: >-
+      Drawn on the states hiding and afterHide, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

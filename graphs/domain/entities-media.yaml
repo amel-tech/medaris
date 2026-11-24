@@ -1,0 +1,67 @@
+# Recordings and file storage (domain.md section 7, D). `created_at` and `updated_at` of LessonRecording are timestamps WITHOUT
+# time zone; the other tables use timestamps with time zone.
+# A user column holds a Keycloak sub and is no foreign key (invariant data-user-columns-hold-a-sub): it is marked `note: "Keycloak sub"`.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  LessonRecording: # at most one recording per session: a pasted link (YOUTUBE, DRIVE, OTHER) or a video in the Medaris Bunny Stream library (BUNNY)
+    source: apps/tedrisat/src/database/schema/course.schema.ts:427
+    required: [id, lessonId, title, provider, visibility, status, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, unique: true, references: Lesson, note: "on delete restrict; the unique index makes it one recording per session" }
+      title: { type: string }
+      provider: { enum: [YOUTUBE, DRIVE, OTHER, BUNNY], default: OTHER, note: "BUNNY was added by migration 0053" }
+      url: { type: [string, "null"], note: "course content; null for BUNNY, and null while PROCESSING. The player link of a BUNNY recording is built and signed at read time (6 hours by default) and never stored" }
+      durationMinutes: { type: [integer, "null"] }
+      recordedAt: { type: [string, "null"], format: date-time }
+      visibility: { enum: [PUBLIC, ENROLLED], default: ENROLLED, note: "capped by the köşk's recordingsNeverPublic, the medrese's policyNoPublicRecordings (not read by the course code), the platform policy RECORDINGS_NEVER_PUBLIC and the course's isClosed" }
+      status: { enum: [PROCESSING, READY, FAILED], default: PROCESSING, note: "FAILED was added by migration 0053; a FAILED recording is listed to no one" }
+      bunnyVideoId: { type: [string, "null"], unique: true, sensitivity: internal, note: "BUNNY only; never sent to a client; one Bunny video can be the recording of one session only" }
+      uploadExpiresAt: { type: [string, "null"], format: date-time, note: "BUNNY only" }
+      notifiedAt: { type: [string, "null"], format: date-time, note: "when the talebe were told RECORDING_ADDED; claimed once by whichever of the write, the encoding poll or the release poll gets there first (migration 0057 set it for READY recordings)" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    # Check lesson_recordings_provider_columns: BUNNY needs bunnyVideoId and uploadExpiresAt set and url null; every other provider needs both null and
+    # (url set or status PROCESSING). It compares provider::text, because Postgres refuses a freshly added enum literal in the same transaction.
+    lifecycle:
+      - "none -> processing: a Bunny upload starts PROCESSING (recording.repository.ts:483; audit recording.upload_start); a replacement upload is allowed over a link, over a FAILED upload, or with replaceVideo (course/domain/recording.ts:57-67)"
+      - "none -> ready: a pasted link is created READY at once (recording.repository.ts:932; audit recording.add)"
+      - "processing -> ready: the encoding poll sees Bunny's status FINISHED (4) or JIT playlists created (8); conditional on still PROCESSING and the same video id (settleBunnyUpload)"
+      - "processing -> failed: the poll sees ERROR (5) or UPLOAD_FAILED (6), the video gone from the library, or CREATED (0) after uploadExpiresAt"
+      - "failed -> ready: a FAILED Bunny recording may be replaced by a pasted link, or retried through the upload route"
+      - "ready -> ready: patching a link sets READY again (audit recording.update); the talebe see it only when READY, the session has begun and Lesson.recordingAvailableAt has passed"
+
+  BunnyVideoRemoval: # the queue of Bunny videos that left their recording and wait to be deleted from the library
+    source: apps/tedrisat/src/database/schema/course.schema.ts:472
+    key: [videoId]
+    required: [videoId, recordingId, queuedBy, queuedAt, attempts]
+    fields:
+      videoId: { type: string, sensitivity: internal }
+      recordingId: { type: string, format: uuid, note: "no foreign key: the row outlives a deleted recording" }
+      replacedByVideoId: { type: [string, "null"], sensitivity: internal }
+      queuedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      queuedAt: { type: string, format: date-time }
+      attempts: { type: integer, default: 0 }
+      lastAttemptAt: { type: [string, "null"], format: date-time }
+    lifecycle:
+      - "none -> queued: a Bunny video leaves its recording (replaced by an upload, a pasted link or a FAILED upload), in the same transaction (recording.repository.ts:249, onConflictDoNothing)"
+      - "queued -> queued: the encoding poll tries the deletion (20 per pass, least recently tried first) once the upload that replaced it is over, and bumps attempts on a refusal (:757)"
+      - "queued -> none: Bunny deleted the video, audit recording.video_delete; a video that a recording holds again is never deleted"
+
+  StorageDeletion: # objects in file storage that no row points at any more, waiting to be removed (MDRS-287)
+    source: apps/tedrisat/src/database/schema/storage.schema.ts:23
+    key: [storageKey]
+    required: [storageKey, reason, dueAt, attempts, createdAt]
+    fields:
+      storageKey: { type: string, sensitivity: internal }
+      reason: { enum: [resource.remove, course.purge, lesson.purge, submission.file_delete, submission.review_file_delete, assignment.delete, assignment.file_delete, upload.failed, upload.unclaimed], note: "DeletionReason (storage/storage-deletions.ts:11-20)" }
+      dueAt: { type: string, format: date-time }
+      attempts: { type: integer, default: 0 }
+      lastError: { type: [string, "null"] }
+      createdAt: { type: string, format: date-time }
+    # An index on dueAt.
+    lifecycle:
+      - "none -> due: an upload first writes a row due in one hour (UPLOAD_CLAIM_WINDOW_MS); every dropped last reference writes a row in the same transaction"
+      - "due -> none: the transaction that stores the file's row claims the reservation (claimUpload), or the sweep deletes the object, retrying with a backoff of at most 6 hours (storage-deletion.service.ts:128-165); there is no sweep without storage"

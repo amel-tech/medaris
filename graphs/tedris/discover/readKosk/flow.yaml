@@ -1,0 +1,294 @@
+# A köşk's page in tedris-web (/kosks/<id>, app/kosks/[koskId]/page.tsx and features/courses/components/kosk-page.tsx), read from the
+# code of the branch (the tree of PR #394) on 15 Nov 2026 and looked at on the local stack. Nothing here is approved.
+#   - What it draws: the three reads the page makes (the köşk, its courses, its decks), the page for a visitor, for a signed-in person
+#     the köşk does not know, for one with only an application waiting, and for one who belongs to it; an unlisted köşk; a köşk with no
+#     course; the not-found page; the box that says a read failed; and every way on (a course, a medrese, a deck, Keşfet, sign in,
+#     register).
+#   - The follow button is drawn as a node and a transition; what it does is tedris.discover.followKosk.
+#   - Findings it carries: DSC-09 (a: the failed-read box has no heading and no way back), DSC-12 (a course's cover label, when it has
+#     one), DSC-19 (the loading state says nothing), F-4 (the domain's: person ids on the public köşk reads), and one of its own,
+#     proposed as READKOSK-1 (the not-found state of this address has no <main>). DSC-01 and DSC-02 are the follow button's and belong
+#     to tedris.discover.followKosk. DSC-11 is on Derslerim (my-courses-page.tsx), not on this page.
+#   - F-4, checked on the page: tedrisat answers a signed-in caller the creator's id (ownerId) and every nazım's id (managerIds) on
+#     GET /kosks/{id} (the domain's invariant kosk-person-ids-stay-off-public-reads holds: false). The page reads that answer on the
+#     server and keeps only the manager's NAME (managerName) for its text; the served HTML (the document and its RSC payload) for a
+#     visitor, a stranger and a member holds neither id, and no client component is handed the köşk (FollowButton gets the id, the name
+#     and the flag). So the leak is in the API and does not reach this page. Replay: the effect `getKosk` of the binding reads the
+#     same answer the page read.
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.readKosk
+status: captured
+domain: medaris.api
+ui: tedris.discover.readKosk
+title: Read a köşk page
+summary: >-
+  A person opens a köşk's address (from Keşfet, a course, a medrese, a notification or a shared link) and reads who it is: its name, the
+  number of courses, "Köşk nazımı" and the nazım's name when the köşk has one, and its description. Under "Dersler" every course the
+  köşk shows is a card with the medrese that opened it, its hocas and its next celse; a person who has a seat in a course wears the
+  badge of it. A person the köşk knows (a seat that is ENROLLED or COMPLETED, a müderris, a nazım) also reads "Köşk desteleri"; a
+  visitor reads, under the courses, the line that invites them to sign in or register, and has no follow button. An unlisted köşk is
+  opened by its link and is marked "Liste dışı"; a visitor who follows that link meets the same page as for a köşk that does not exist.
+  The page leads on to a course, a medrese, a deck and Keşfet. When the köşk or its courses cannot be read a box says so and offers
+  to try again; when only the decks cannot be read the block is left out without a word.
+source: apps/tedris/app/kosks/[koskId]/page.tsx:36
+
+scope:
+  shows: the köşk page from the three reads to what it shows each kind of reader, the two other pages it can become (not found, read failed), and every link that leaves it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame: the bar, the phone menu, the footer (tedris.shell.frame)"
+    - "what the follow button does when it is pressed: the flip, the refresh and the toast of a refusal (tedris.discover.followKosk)"
+    - "the pages it leads to: the course page (tedris.course.*), the medrese page (tedris.discover.readMadrasah), a deck (tedris.decks.readAndCopy), Keşfet (tedris.discover.browse), Keycloak (realm.auth.signIn, realm.auth.register)"
+    - "the not-found page's own story: its HTTP status (200 here, because loading.tsx has already streamed the shell; the page carries noindex) and the system pages (tedris.shell.systemPages); drawn here only as far as this address shows it"
+    - "the köşk's nazım, who opens the same page and gets the köşk's draft courses on the shelf as well (listKoskCourses), and a hidden köşk, which opens only for its nazım and the Medaris management (nizam.moderation.*); neither is one of the readers drawn"
+    - "the imam's star after a hoca, which shows only among more than one hoca of a course, and the unvan before a hoca's name"
+    - "the browser tab's title: \"<köşk> · Tedris\", or only \"Tedris\" for an unlisted köşk because the metadata is read with no token (intro-metadata.ts:26, public-reads.ts:58)"
+    - "the loading skeleton while the reads run (app/kosks/[koskId]/loading.tsx; DSC-19)"
+    - "the phone layout, where the breadcrumb shows only its parent as a back link"
+
+decisions:
+  D1:
+    question: >-
+      Should the köşk's nazım, who gets the köşk's draft courses on this shelf, find them marked as drafts, and should the course count
+      ("{count} ders") agree with the shelf?
+    recommend: >-
+      Yes: the count is the published, shown courses (getKosk's courseCount) and the nazım's shelf can hold more cards than it, with no
+      mark on the draft ones. Mark a draft card ("Taslak") the way Hesap marks its course rows.
+    affects: [koskShown]
+
+context:
+  viewer:
+    values: [visitor, stranger, applicant, memberEmpty, memberDecks]
+    initial: any
+    say:
+      visitor: "nobody is signed in"
+      stranger: "a signed-in person with no seat in any of the köşk's courses, so the köşk does not know them"
+      applicant: "a signed-in person whose only seats here are applications still waiting (PENDING): they wear the badge \"Onay bekliyor\" and are still not known to the köşk's decks"
+      memberEmpty: "a signed-in person with a seat that is ENROLLED or COMPLETED in one of the köşk's courses, and the köşk has no deck yet"
+      memberDecks: "the same person, and the köşk has at least one deck"
+  answer:
+    values: [listed, unlisted, unknown, koskUnreadable, coursesUnreadable, decksUnreadable]
+    initial: any
+    say:
+      listed: "the address is of a listed, shown köşk and every read answers"
+      unlisted: "the address is of an unlisted köşk (isPrivate) and every read answers; only a signed-in person is let in"
+      unknown: "no such köşk: an unknown id, a malformed one, or a hidden köşk the person may not open"
+      koskUnreadable: "the read of the köşk fails with anything but \"no such köşk\" (a 5xx, a network error)"
+      coursesUnreadable: "the köşk answers and the read of its courses fails"
+      decksUnreadable: "the köşk and its courses answer and the read of the decks fails"
+  shelf:
+    values: [courses, none]
+    initial: any
+    say:
+      courses: "the köşk shows at least one course"
+      none: "the köşk shows no course"
+  manager:
+    values: [named, none]
+    initial: any
+    say:
+      named: "the köşk has a live nazım, so the API gives a manager's name"
+      none: "the köşk has no live nazım, so no name"
+  about:
+    values: [written, none]
+    initial: any
+    say:
+      written: "the köşk has a description"
+      none: "the köşk has no description"
+
+guards:
+  signedIn: "viewer != 'visitor'"
+  isVisitor: "viewer == 'visitor'"
+  seated: "viewer == 'applicant' or viewer == 'memberEmpty' or viewer == 'memberDecks'"
+  member: "viewer == 'memberEmpty' or viewer == 'memberDecks'"
+  hidden: "answer == 'unknown' or (answer == 'unlisted' and viewer == 'visitor')"
+  koskDown: "answer == 'koskUnreadable'"
+  coursesDown: "answer == 'coursesUnreadable'"
+  decksDown: "answer == 'decksUnreadable'"
+  koskAnswered: "not hidden and not koskDown"
+  deckBlock: "member and not decksDown"
+  deckCards: "deckBlock and viewer == 'memberDecks'"
+  deckNone: "deckBlock and viewer == 'memberEmpty'"
+  hasCourses: "shelf == 'courses'"
+  noCourses: "shelf == 'none'"
+  hasManager: "manager == 'named'"
+  hasAbout: "about == 'written'"
+  isUnlisted: "answer == 'unlisted'"
+
+effects:
+  again: { havoc: [answer] } # "Yeniden dene" asks again, and the answer may differ
+
+failures:
+  readingKosk: { from: getKosk, missing: [KOSK_NOT_FOUND, HTTP_400], unreadable: [] }
+  readingCourses: { from: listKoskCourses, unreadable: [] }
+  readingDecks: { from: listKoskDecks, unreadable: [] }
+# `missing` is what getKosk (actions/index.ts:31-48) takes for "no such köşk": a 400, a 403 or a 404 (the domain lists no 403 for it).
+# `unreadable` of the other two stands for any answer at all but 200: getKoskCourses throws on every one, a 404 included (index.ts:51-65),
+# and getKoskDecks answers null on every one (public-reads.ts:177), which the page draws as no block.
+
+# The main story: a talebe the köşk knows opens its page, reads it, and opens the first course.
+main:
+  given: { viewer: memberEmpty, answer: listed, shelf: courses, manager: named, about: written }
+  events: [DONE, DONE, DONE, OPEN_COURSE]
+
+initial: readingKosk
+states:
+  readingKosk:
+    title: Read the köşk
+    description: >-
+      The page's server side asks tedrisat for the köşk with the viewer's token, or with none for a visitor. A 400, a 403 or a 404 is "no such
+      köşk" (an unlisted köşk is a 404 to a caller with no token, and so is a hidden one to anyone who may not open it); any other failure
+      is not an answer about the köşk and is thrown. The signed-in caller's answer carries ownerId and managerIds, the creator's and every
+      nazım's id (F-4), which the page does not use.
+    includes: ["the köşk with its name, description, number of courses, manager's name and whether it is unlisted"]
+    source: apps/tedris/features/courses/actions/index.ts:35
+    invoke: { action: getKosk }
+    on:
+      DONE: { guard: koskAnswered, target: readingCourses, source: "apps/tedris/app/kosks/[koskId]/page.tsx:52", say: "the köşk exists and this person may see it, so the page goes on to its courses" }
+      FAIL.missing: { guard: hidden, target: notFound, source: "apps/tedris/app/kosks/[koskId]/page.tsx:46", say: "the answer is \"no such köşk\", which an unlisted köşk is to a visitor, so the page calls notFound()" }
+      FAIL.unreadable: { guard: koskDown, target: loadFailed, source: "apps/tedris/app/kosks/[koskId]/page.tsx:41", say: "the read threw, so the page draws the failed-read box and not the generic error page" }
+
+  readingCourses:
+    title: Read the köşk's courses
+    description: >-
+      The köşk's shelf as the caller may see it: the published, shown courses, each with the caller's own seat (null for a visitor or with no
+      seat), the medrese that opened it, its hocas and its next celse. The page asks for it, for the decks and for the sign-in at once
+      (Promise.all); the graph draws them one after the other. A failure here is not an empty shelf: it is thrown.
+    includes: ["each course with its title, cover, the caller's own seat, medrese, hocas, whether it is in person, and its next celse"]
+    source: apps/tedris/features/courses/actions/index.ts:51
+    invoke: { action: listKoskCourses }
+    on:
+      DONE: { guard: "not coursesDown", target: askingDecks, source: "apps/tedris/app/kosks/[koskId]/page.tsx:54", say: "the shelf came" }
+      FAIL.unreadable: { guard: coursesDown, target: loadFailed, source: "apps/tedris/features/courses/actions/index.ts:60", say: "an empty shelf would read as a köşk with no course, so the read throws and the page says it could not read the köşk" }
+
+  askingDecks:
+    title: See whether the decks are asked for
+    description: classification only; a visitor's decks are not read at all (no call is made), a signed-in person's are
+    source: apps/tedris/features/courses/public-reads.ts:176
+    always:
+      - { guard: isVisitor, target: koskShown, say: "no token, so no deck read and no deck block" }
+      - { target: readingDecks, say: "a signed-in person: the köşk's decks are asked for" }
+
+  readingDecks:
+    title: Read the köşk's decks
+    description: >-
+      The public, unarchived decks of the köşk and whether the caller belongs to it. A caller who does not belong gets accessible false and
+      no deck, never an error; a failed read is null, and the page leaves the block out.
+    includes: ["accessible, and each deck with its title, its number of cards and whether it is in the caller's collection"]
+    source: apps/tedris/features/courses/public-reads.ts:177
+    invoke: { action: listKoskDecks }
+    on:
+      DONE: { guard: "not decksDown", target: koskShown, source: apps/tedris/features/courses/public-reads.ts:177, say: "the answer says whether the block is drawn and with what" }
+      FAIL.unreadable: { guard: decksDown, target: koskShown, source: apps/tedris/features/courses/public-reads.ts:177, say: "the read failed and the page says nothing: the block is left out, as it is for someone the köşk does not know" }
+
+  koskShown:
+    title: The köşk page
+    by: human
+    goal: true
+    description: >-
+      The page: the way back to Keşfet, the köşk's name, the number of its courses, "Liste dışı" when it is unlisted, the nazım's name, the
+      follow button for a signed-in person, the description, "Dersler" with a card per course (or "Bu köşk henüz ders açmadı."), the line
+      that invites a visitor, and for a person the köşk knows "Köşk desteleri" (cards, or "Bu köşkün henüz destesi yok."). The badge of a
+      seat sits beside a course's title: "Devam ediyor", "Onay bekliyor" or "Tamamlandı". A card names the medrese that opened the course
+      as a link, "Yüz yüze" when the course is in person, the hocas, and "Sonraki celse <day and clock>" or "Planlı celse yok". Findings:
+      DSC-12 (a cover with a label prints it before the title; the seed's courses have none), F-4 (see the header), and DSC-01, DSC-02
+      on the follow button (tedris.discover.followKosk). The page has no heading of its own for the decks' empty state beyond "Köşk desteleri".
+    source: apps/tedris/features/courses/components/kosk-page.tsx:135
+    on:
+      OPEN_COURSE:
+        guard: hasCourses
+        target: course_opened
+        source: apps/tedris/features/courses/components/kosk-page.tsx:75
+        say: "the title of a course card is a link to the course page, which a visitor reads too"
+      OPEN_MADRASAH:
+        guard: hasCourses
+        target: madrasah_opened
+        source: apps/tedris/features/courses/components/kosk-page.tsx:116
+        say: "a course a medrese opened names the medrese as a link to its page"
+      OPEN_DECK:
+        guard: deckCards
+        target: deck_opened
+        source: apps/tedris/features/courses/components/kosk-page.tsx:259
+        say: "a deck card is a link to the deck, drawn only for a person the köşk knows"
+      OPEN_DISCOVER:
+        target: discover_opened
+        source: apps/tedris/features/courses/components/kosk-page.tsx:156
+        say: "the breadcrumb's \"Keşfet\" goes back to the list (a full page load)"
+      FOLLOW:
+        guard: signedIn
+        target: koskShown
+        starts: { flow: tedris.discover.followKosk }
+        source: apps/tedris/features/courses/components/kosk-page.tsx:183
+        say: "the button flips at once and the server is asked; the page stays, and what follows is tedris.discover.followKosk's story"
+      SIGN_IN:
+        guard: isVisitor
+        target: sign_in_opened
+        source: apps/tedris/components/anonymous-invite.tsx:41
+        say: "the link \"giriş yap\" in the invitation goes to the sign-in page with this köşk as the place to come back to"
+      REGISTER:
+        guard: isVisitor
+        target: register_opened
+        source: apps/tedris/components/anonymous-invite.tsx:46
+        say: "the link \"kayıt ol\" in the same sentence goes to registration"
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  notFound:
+    title: Sayfa bulunamadı
+    by: human
+    description: >-
+      The app's not-found page, drawn in place of the köşk: the heading, one sentence and a link home ("/home" for a signed-in person,
+      "/" for a visitor, which ends on Keşfet). It is the answer for an unknown or malformed id, for a hidden köşk the person may not open
+      and, for a visitor, for an unlisted one. The HTTP status stays 200 (the shell is streamed before notFound() runs; the page carries
+      noindex). Because /kosks counts as a segment that owns its <main> (tab-view/index.tsx:12-22), the not-found section has no <main> around it
+      (READKOSK-1).
+    source: apps/tedris/app/not-found.tsx:5
+    on:
+      GO_HOME: { target: home_opened, say: "\"Ana sayfaya dön\" goes home" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  loadFailed:
+    title: The köşk could not be read
+    by: human
+    description: >-
+      A box in the page: "Köşk yüklenemedi", one sentence and a "Yeniden dene" link to the same address, under a page with no heading and no
+      breadcrumb (the breadcrumb is given one item and draws nothing: DSC-09 a). The answer for a failed read of the köşk or of its courses,
+      never for a missing köşk.
+    source: apps/tedris/features/courses/components/kosk-page.tsx:293
+    on:
+      RETRY: { target: readingKosk, effect: [again], say: "the link is the page's own address, so the reads run again" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  course_opened: { type: final, title: A course page opens }
+  madrasah_opened: { type: final, title: A medrese page opens }
+  deck_opened: { type: final, title: A deck opens }
+  discover_opened: { type: final, title: Keşfet opens }
+  sign_in_opened: { type: final, title: The sign-in page opens }
+  register_opened: { type: final, title: The registration page opens }
+  home_opened: { type: final, title: The home page opens }
+  left: { type: final, title: The person leaves the köşk page, leavesPage: true }
+
+assertions:
+  - id: unlisted-is-nobodys-for-a-visitor
+    never: "state == 'koskShown' and answer == 'unlisted' and viewer == 'visitor'"
+    say: "A visitor never reads an unlisted köşk: they get the not-found page, the same as for a köşk that does not exist"
+    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:160
+  - id: decks-are-for-the-signed-in
+    never: "state == 'readingDecks' and viewer == 'visitor'"
+    say: "The decks are asked for only when there is a token: a visitor's page makes no deck read"
+    source: apps/tedris/features/courses/public-reads.ts:176
+  - id: not-found-only-for-no-such-kosk
+    never: "state == 'notFound' and not hidden"
+    say: "The not-found page is the answer for \"no such köşk\" only, never for a read that failed"
+    source: "apps/tedris/app/kosks/[koskId]/page.tsx:46"
+  - id: failed-box-only-after-a-failed-read
+    never: "state == 'loadFailed' and not koskDown and not coursesDown"
+    say: "The box that says the köşk could not be read is drawn only after the köşk or its courses failed to read"
+    source: "apps/tedris/app/kosks/[koskId]/page.tsx:41"
+  - id: a-failed-shelf-is-not-an-empty-one
+    never: "state == 'koskShown' and answer == 'coursesUnreadable'"
+    say: "A shelf that could not be read is never drawn as a köşk with no course"
+    source: apps/tedris/features/courses/actions/index.ts:60
+  - id: an-unreadable-kosk-is-not-a-missing-one
+    never: "state == 'notFound' and (answer == 'koskUnreadable' or answer == 'coursesUnreadable')"
+    say: "An outage is never told as \"Sayfa bulunamadı\""
+    source: apps/tedris/features/courses/actions/index.ts:44

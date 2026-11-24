@@ -1,0 +1,169 @@
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.signOut
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story, never from what the pages do today; a finding the flow touches is
+  a need with `missing: none` where the code does not meet it (its id is in the need). Missing (no code, or code that does not
+  meet the need; no Linear key yet): tell-the-person-when-sign-out-cannot-start, nazar-asks-before-signing-out,
+  a-sign-out-page-has-its-own-title, focus-starts-on-the-question, nothing-cancels-a-sign-out-in-flight Not walked by a replay on
+  the local stack (the e2e checks named are the only walk): other-apps-learn-at-once (no Valkey, and Keycloak's call to the apps
+  is refused on this stack), keycloak-asks-when-it-has-no-hint (needs a session store that cannot be read),
+  cancel-keeps-the-session (the replay's CANCEL transitions are for the next walk phase), sign-out-when-the-session-already-ended
+  (scenario tedrisNoSession is bound and was not walked)
+
+needs:
+  - id: ask-before-signing-out
+    need: >-
+      A person who presses "Çıkış yap" on Hesap in tedris or nizam is asked once, on a page of its own with a way back, before
+      anything ends; nothing signs them out on a plain GET or on another site's say-so.
+    evidence:
+      - state: confirmPage
+      - source: apps/tedris/features/auth/sign-out-confirm.tsx:19
+      - source: apps/nizam/features/auth/sign-out-confirm.tsx:21
+      - source: libs/auth/src/server/routes.ts:351
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "Hesap leads to it, 'Vazgeç' keeps the session, 'Çıkış yap' ends it"
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış yap' asks 'Çıkış yapılsın mı?'; Vazgeç keeps the session, Çıkış yap ends it"
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — 'Çıkış yap' asks once, then ends the session and returns to sign-in; a protected page then asks for sign-in (criterion 5)"
+      - scenario: tedrisFromHesap
+      - scenario: nizamFromHesap
+
+  - id: cancel-keeps-the-session
+    need: >-
+      "Vazgeç" leaves the person signed in and takes them back to the page they came from (to the app's home when there is none,
+      and in nazar to their own landing); while a sign-out is on its way it cannot be pressed.
+    evidence:
+      - state: confirmPage
+      - state: kept_session.previous_page
+      - state: kept_session.home
+      - state: kept_session.landing
+      - source: apps/tedris/features/auth/sign-out-confirm.tsx:39
+      - source: apps/nizam/features/auth/sign-out-confirm.tsx:32
+      - source: apps/nazar/features/auth/sign-out-confirm.tsx:39
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "Hesap leads to it, 'Vazgeç' keeps the session, 'Çıkış yap' ends it"
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış yap' asks 'Çıkış yapılsın mı?'; Vazgeç keeps the session, Çıkış yap ends it"
+      - test: apps/nazar/e2e/auth-pages.e2e.ts
+        name: "the sign-out page asks first and does not sign out by itself"
+
+  - id: end-the-session-here-and-at-keycloak
+    need: >-
+      Confirming ends the app's own session and Keycloak's single sign-on session, with no page of Keycloak's in between, so that
+      the next sign-in asks for the password again, and the browser comes back to the app in the person's language.
+    evidence:
+      - state: signingOut
+      - state: endingAtKeycloak
+      - source: libs/auth/src/server/routes.ts:351
+      - source: libs/auth/src/client/sign-out.ts:41
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "Hesap leads to it, 'Vazgeç' keeps the session, 'Çıkış yap' ends it"
+      - test: apps/tedris/e2e/profile.e2e.ts
+        name: "Hesap: the calendar card leads to the subscription page and 'Çıkış yap' ends the session"
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — 'Çıkış yap' asks once, then ends the session and returns to sign-in; a protected page then asks for sign-in (criterion 5)"
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the sign-out card has the sentence and no confirmation window; the button ends both sessions and the back button does not return to the page"
+      - scenario: tedrisFromHesap
+      - scenario: nizamFromHesap
+      - scenario: nazarDirectButton
+
+  - id: land-on-a-page-that-works-for-a-visitor
+    need: >-
+      After signing out the person lands where a signed-out person can act: tedris's Keşfet, nizam's "Hoş geldiniz" with a way to
+      sign in, and in nazar, which has no public page, Keycloak's login form.
+    evidence:
+      - state: atAppRoot
+      - state: signed_out.discover
+      - state: signed_out.welcome
+      - state: handed_over.sign_in
+      - source: apps/tedris/app/page.tsx:13
+      - source: "apps/nizam/app/(home)/page.tsx:23"
+      - source: apps/nazar/app/page.tsx:13
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış yap' asks 'Çıkış yapılsın mı?'; Vazgeç keeps the session, Çıkış yap ends it"
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the sign-out card has the sentence and no confirmation window; the button ends both sessions and the back button does not return to the page"
+      - scenario: tedrisFromHesap
+      - scenario: nizamFromHesap
+      - scenario: nazarDirectButton
+
+  - id: sign-out-when-the-session-already-ended
+    need: >-
+      A person who presses "Çıkış yap" after their session has ended (in another tab, or by expiry) is signed out cleanly and
+      lands on the visitor's page, with nothing sent to Keycloak.
+    evidence:
+      - state: start
+      - state: signingOut
+      - state: atAppRoot
+      - source: libs/auth/src/server/routes.ts:386
+
+  - id: other-apps-learn-at-once
+    need: >-
+      When a person signs out of one app, Keycloak tells every other app that holds a session under the same single sign-on
+      session, and each ends it at once, not within a minute; a call that fails never stops the person's own sign-out.
+    evidence:
+      - state: tellingApps
+      - source: libs/auth/src/server/routes.ts:463
+      - test: libs/auth/test/valkey-store.e2e.spec.ts
+        name: "ends every session of an IdP session, and remembers a logout token's jti once"
+      - test: libs/auth/test/valkey-store.e2e.spec.ts
+        name: "removes a signed-out session with its index entries"
+
+  - id: keycloak-asks-when-it-has-no-hint
+    need: >-
+      When the app cannot send the ID token (its session store cannot be read), Keycloak asks first, on a page in the Medaris
+      theme and in the person's language, and neither choice leaves the person half signed out without knowing.
+    evidence:
+      - state: keycloakAsks
+      - source: apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:11
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "logout confirm has its confirm button and a cancel"
+
+  - id: tell-the-person-when-sign-out-cannot-start
+    need: >-
+      If the sign-out cannot start (SHL-13), the person is told in words and can press again; today tedris puts the error in the
+      console only and nizam and nazar do not catch it.
+    missing: no Linear issue; findings SHL-13
+    note: >-
+      Drawn on the state signingOut, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: nazar-asks-before-signing-out
+    need: >-
+      Nazar asks before it signs out, as tedris and nizam do (F-E-18, decision D1): its two "Çıkış yap" buttons lead to the
+      confirmation page it already has, and the page is no longer reachable only by its address.
+    missing: no Linear issue; findings F-E-18
+    note: >-
+      Drawn on the states start and confirmPage, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-sign-out-page-has-its-own-title
+    need: >-
+      Each page of this flow, the three confirmation pages and Keycloak's, has a tab title that says what it is (SHL-01, F-E-23,
+      F-P0-3, K2), not the app's name or "sign in".
+    missing: no Linear issue; findings SHL-01, F-E-23, F-P0-3
+    note: >-
+      Drawn on the states confirmPage and keycloakAsks, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-starts-on-the-question
+    need: >-
+      When a confirmation page opens, the keyboard focus is on its title or on its confirm button, so a keyboard or screen-reader
+      user does not start before the logo (focus-not-set).
+    missing: no Linear issue; findings focus-not-set
+    note: >-
+      Drawn on the states confirmPage and keycloakAsks, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: nothing-cancels-a-sign-out-in-flight
+    need: >-
+      While a sign-out is on its way, nothing on the page can start another navigation: nazar's "Vazgeç" is disabled as tedris's
+      and nizam's are (SOUT-1).
+    missing: no Linear issue; findings SOUT-1
+    note: >-
+      Drawn on the state signingOut, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

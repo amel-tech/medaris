@@ -1,0 +1,159 @@
+# The screens of tedris.account.profile: tedris-web's Hesap (/account, app/account/page.tsx) as it draws the cards of
+# features/account/components/account-settings.tsx (Kişisel bilgiler, Bağlı uygulamalar, Saat dilimi, Takvim and the sign-out card),
+# the two lists of the time-zone select, the toasts of the three saves and the box that takes the cards' place when GET /me fails.
+# The roles section under them is tedris.account.rolesOverview's; the card "Herkese açık profil" is not drawn (the switch
+# PUBLIC_PROFILE_ENABLED is false, availability.ts:14). Read from the code of the branch on 15 Nov 2026; nothing here was looked at in
+# a browser, and every note "from the code" says so.
+#
+# Words: every `AccountPage.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.AccountPage`), and
+# every `AccountProfile.*` and `PublicProfile.*` key from libs/i18n/src/locales/tr/tedris-account.json (read as
+# `tedrisAccount.AccountProfile.*`, through lib/i18n/loose.ts); the key is the path inside that file, the root removed. Three kinds of
+# text are not in an i18n file:
+#   composed.AccountProfile.givenNameValue / familyNameValue / emailValue   what the three boxes hold when the page opens: GET /me's
+#                                                                          givenName, familyName and email (page.tsx:46-48)
+#   composed.Toast.close  "Kapat"   the toast's close button, written in the kit (libs/ui/src/mds/toast.tsx:97, ACC-23)
+#   Changes.note          the one message of this catalog that is not the app's. The flow writes with three actions of one route
+#                         and the app has a sentence for each (nameSaved, zoneSaved, invitationsOn/Off) but none that says what
+#                         the page changes as a whole, so the note joins what its own help lines already say (nameHelp,
+#                         timeZoneHelp, invitationsHelp): who sees the name, what the zone decides, what the switch stops.
+# Samples are invented and neutral; the three that name the account are overridden by each scenario of the binding.
+schema: delurio-graph/0
+kind: ui
+id: tedris.account.profile
+flow: tedris.account.profile
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  givenName: Rıza
+  familyName: Başvuran
+  email: basvuran@example.test
+changes: { key: Changes.note }
+
+nodes:
+  # ---- Hesap's own frame ----
+  accountPage: { type: page, component: Page, role: main, in: [account, savingName, savingZone, savingInvitations, profileUnreadable], source: apps/tedris/app/account/page.tsx:37 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.pageTitle }, in: [account, savingName, savingZone, savingInvitations, profileUnreadable], source: apps/tedris/app/account/page.tsx:39 } # h1
+  subtitle: { type: text, component: Text, text: { key: AccountPage.pageSubtitle }, in: [account, savingName, savingZone, savingInvitations, profileUnreadable], source: apps/tedris/app/account/page.tsx:40 } # the plain one: the person holds no role (a role's subtitle is tedris.account.rolesOverview's)
+
+  # ---- the card "Kişisel bilgiler" ----
+  personalTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.personalTitle }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:131 } # h2 of a Card, which is a <div>: no landmark
+  requiredNote: { type: text, component: Text, text: { key: AccountProfile.requiredNote }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:133 }
+
+  givenNameField: { type: field, component: TextField, role: textbox, text: { key: AccountProfile.givenName }, value: { key: composed.AccountProfile.givenNameValue, params: { givenName: givenName } }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:140 } # required, autocomplete given-name, no maxLength (ACC-21); the form is noValidate; the asterisk of the label is decorative
+  givenNameError: { type: text, component: Text, text: { key: AccountProfile.givenNameRequired }, in: [account, savingName, savingZone, savingInvitations], when: "said == 'givenRequired'", source: apps/tedris/features/account/components/account-settings.tsx:138 } # Base UI's Field.Error: no role and no live region, the box is aria-invalid; it stays after the person types (ACC-02)
+  familyNameField: { type: field, component: TextField, role: textbox, text: { key: AccountProfile.familyName }, value: { key: composed.AccountProfile.familyNameValue, params: { familyName: familyName } }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:153 }
+  familyNameError: { type: text, component: Text, text: { key: AccountProfile.familyNameRequired }, in: [account, savingName, savingZone, savingInvitations], when: "said == 'familyRequired'", source: apps/tedris/features/account/components/account-settings.tsx:151 }
+  nameHelp: { type: text, component: Text, text: { key: AccountProfile.nameHelp }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:162 } # a <p> under the two boxes, not tied to them: it says who sees the name
+
+  emailField: { type: field, component: TextField, role: textbox, text: { key: AccountProfile.email }, value: { key: composed.AccountProfile.emailValue, params: { email: email } }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:164 } # type=email, readOnly, with a lock icon that is aria-hidden; the graph has no key for read-only
+  emailHelp: { type: text, component: Text, text: { key: AccountProfile.emailHelp }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:163 } # "Salt okunur. Hesabına kayıtlı adres; buradan değiştirilemez." and nothing says where it can be changed (HESAP-2)
+
+  genderFemale: { type: field, component: TextField, role: textbox, text: { key: PublicProfile.gender }, value: { key: PublicProfile.female }, in: [account, savingName, savingZone, savingInvitations], when: "gender == 'female'", source: apps/tedris/features/account/components/account-settings.tsx:75 } # readOnly, name=gender: tedrisat's copy of the account's gender; the box's value is the word, found by it
+  genderMale: { type: field, component: TextField, role: textbox, text: { key: PublicProfile.gender }, value: { key: PublicProfile.male }, in: [account, savingName, savingZone, savingInvitations], when: "gender == 'male'", source: apps/tedris/features/account/components/account-settings.tsx:75 }
+  genderNone: { type: field, component: TextField, role: textbox, text: { key: PublicProfile.gender }, value: { key: AccountProfile.genderUnknown }, in: [account, savingName, savingZone, savingInvitations], when: "gender == 'unknown'", source: apps/tedris/features/account/components/account-settings.tsx:62 } # the copy is empty: 'Belirtilmemiş'
+  genderHelpKnown: { type: text, component: Text, text: { key: PublicProfile.genderFromAccountHelp }, in: [account, savingName, savingZone, savingInvitations], when: genderKnown, source: apps/tedris/features/account/components/account-settings.tsx:71 }
+  genderHelpNone: { type: text, component: Text, text: { key: AccountProfile.genderUnknownHelp }, in: [account, savingName, savingZone, savingInvitations], when: "gender == 'unknown'", source: apps/tedris/features/account/components/account-settings.tsx:71 }
+  genderChangeLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PublicProfile.genderChange }, in: [account, savingName, savingZone, savingInvitations], when: genderKnown, emits: CHANGE_GENDER, source: apps/tedris/features/account/components/account-settings.tsx:85 } # an <a> to /api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Faccount&locale=tr, same tab; its name is the one word, which says neither what it changes nor that it leaves the app (ACC-09, HESAP-2)
+  genderAddLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountProfile.genderAdd }, in: [account, savingName, savingZone, savingInvitations], when: "gender == 'unknown'", emits: CHANGE_GENDER, source: apps/tedris/features/account/components/account-settings.tsx:85 }
+
+  saveName: { type: action, component: Button, role: button, intent: confirm, text: { key: AccountProfile.save }, in: [account, savingName, savingZone, savingInvitations], disabledIn: [savingName], emits: SAVE_NAME, duringStep: true, source: apps/tedris/features/account/components/account-settings.tsx:175 } # type=submit; busy is aria-disabled and aria-busy, never `disabled`, so the focus survives. Its `pending` is the card's own: live while the zone or the switch saves, and the name's call waits behind that one
+  savingStatus: { type: status, component: Status, role: status, text: { key: AccountProfile.saving }, in: [savingName], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the button; empty the rest of the time
+
+  # ---- the card "Bağlı uygulamalar" ----
+  connectedTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.connectedTitle }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:358 } # h2
+  connectedText: { type: text, component: Text, text: { key: AccountProfile.connectedText }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:360 }
+  connectedLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountProfile.connectedManage }, in: [account, savingName, savingZone, savingInvitations], emits: OPEN_CONNECTED, source: apps/tedris/features/account/components/account-settings.tsx:361 } # an <a> to <KEYCLOAK_ISSUER>/account/applications, same tab
+
+  # ---- the card "Saat dilimi" ----
+  timeTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.timeTitle }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:236 } # h2
+  zoneField: { type: field, component: TextField, role: combobox, text: { key: AccountProfile.timeZone }, in: [account, savingName, savingZone, savingInvitations], disabledIn: [savingZone], emits: OPEN_ZONES, duringStep: true, source: apps/tedris/features/account/components/account-settings.tsx:239 } # the kit's Select, a button with role combobox, id account-time-zone, aria-label "Saat dilimi"; its visible words are the zone chosen, which the graph does not draw. Disabled while a zone is saved (account-settings.tsx:245), so a second zone is never saved over the first, and the focus it had falls to the document, as ACC-10 on the switch; live while the name or the switch saves, when it opens at once and that save's answer lands under it
+  zoneHelp: { type: text, component: Text, text: { key: AccountProfile.timeZoneHelp }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:238 }
+  zoneOtherField: { type: field, component: TextField, role: combobox, text: { key: AccountProfile.otherZone }, in: [account, savingName, savingZone, savingInvitations], when: "zoneBox == 'shown'", disabledIn: [savingZone], emits: OPEN_LISTED, duringStep: true, source: apps/tedris/features/account/components/account-settings.tsx:250 } # id account-time-zone-other; drawn only while the first list holds 'Diğer…'; it appears with no announcement and no focus move (ACC-20). Disabled while a zone is saved, as the first list (account-settings.tsx:259)
+  zoneOtherHelp: { type: text, component: Text, text: { key: AccountProfile.otherZoneHelp }, in: [account, savingName, savingZone, savingInvitations], when: "zoneBox == 'shown'", source: apps/tedris/features/account/components/account-settings.tsx:249 }
+
+  # ---- the card "Takvim" ----
+  calendarTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.calendarTitle }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:307 } # h2
+  calendarName: { type: text, component: Text, text: { key: AccountProfile.calendarName }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:313 }
+  calendarText: { type: text, component: Text, text: { key: AccountProfile.calendarText }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:314 }
+  calendarLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountProfile.calendarManage }, in: [account, savingName, savingZone, savingInvitations], emits: OPEN_CALENDAR, source: apps/tedris/features/account/components/account-settings.tsx:317 } # an <a> to /account/calendar, same tab
+  invitationSwitch: { type: field, component: TextField, role: switch, text: { key: AccountProfile.invitationsLabel }, checked: "invitations == 'on'", in: [account, savingName, savingZone, savingInvitations], disabledIn: [savingInvitations], emits: TOGGLE_INVITATIONS, duringStep: true, source: apps/tedris/features/account/components/account-settings.tsx:321 } # Base UI's Switch inside its own <label>, named by aria-labelledby; natively disabled while its own save is out (ACC-10), live while the name or the zone saves: it flips at once and its call waits behind that one
+  invitationsHelp: { type: text, component: Text, text: { key: AccountProfile.invitationsHelp }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:323 } # the switch's description, by aria-describedby
+
+  # ---- the sign-out card ----
+  signOutTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.signOutTitle }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:374 } # h2, visually hidden (mds-visually-hidden) but in the tree
+  signOutText: { type: text, component: Text, text: { key: AccountProfile.signOutText }, in: [account, savingName, savingZone, savingInvitations], source: apps/tedris/features/account/components/account-settings.tsx:375 }
+  signOutLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountProfile.signOut }, in: [account, savingName, savingZone, savingInvitations], emits: SIGN_OUT, source: apps/tedris/features/account/components/account-settings.tsx:376 } # an <a> to /auth/signout, same tab: the confirmation page, nothing ends here
+
+  # ---- the toasts of a save (the kit's Toaster, Base UI): a success is a dialog and goes by itself, an error is an alertdialog and stays ----
+  toastNameSaved: { type: status, component: Status, role: dialog, name: { labelledBy: nameSavedTitle }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'nameSaved'", source: libs/ui/src/mds/toast.tsx:77 }
+  nameSavedTitle: { type: text, component: Text, text: { key: AccountProfile.nameSaved }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'nameSaved'", source: apps/tedris/features/account/components/account-settings.tsx:119 } # a <p>; a success toast has a title and no description
+  toastZoneSaved: { type: status, component: Status, role: dialog, name: { labelledBy: zoneSavedTitle }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'zoneSaved'", source: libs/ui/src/mds/toast.tsx:77 }
+  zoneSavedTitle: { type: text, component: Text, text: { key: AccountProfile.zoneSaved }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'zoneSaved'", source: apps/tedris/features/account/components/account-settings.tsx:213 }
+  toastInvitationsOn: { type: status, component: Status, role: dialog, name: { labelledBy: invitationsOnTitle }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'invitationsOn'", source: libs/ui/src/mds/toast.tsx:77 }
+  invitationsOnTitle: { type: text, component: Text, text: { key: AccountProfile.invitationsOn }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'invitationsOn'", source: apps/tedris/features/account/components/account-settings.tsx:292 }
+  toastInvitationsOff: { type: status, component: Status, role: dialog, name: { labelledBy: invitationsOffTitle }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'invitationsOff'", source: libs/ui/src/mds/toast.tsx:77 }
+  invitationsOffTitle: { type: text, component: Text, text: { key: AccountProfile.invitationsOff }, in: [account, savingName, savingZone, savingInvitations], when: "toast == 'invitationsOff'", source: apps/tedris/features/account/components/account-settings.tsx:292 }
+
+  toastNameFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: nameFailedTitle }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'nameFailed'", source: libs/ui/src/mds/toast.tsx:77 } # Base UI gives a high-priority toast the role alertdialog and aria-hidden until it is focused, and announces it through the viewport's own role=alert (not verified with a screen reader); its region is named "Bildirimler" by the kit
+  nameFailedTitle: { type: text, component: Text, text: { key: AccountProfile.nameFailed }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'nameFailed'", source: apps/tedris/features/account/components/account-settings.tsx:123 }
+  nameFailedHint: { type: text, component: Text, text: { key: AccountProfile.errorHint }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'nameFailed'", source: apps/tedris/features/account/components/account-settings.tsx:124 }
+  toastZoneFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: zoneFailedTitle }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'zoneFailed'", source: libs/ui/src/mds/toast.tsx:77 }
+  zoneFailedTitle: { type: text, component: Text, text: { key: AccountProfile.zoneFailed }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'zoneFailed'", source: apps/tedris/features/account/components/account-settings.tsx:221 }
+  zoneFailedHint: { type: text, component: Text, text: { key: AccountProfile.errorHint }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'zoneFailed'", source: apps/tedris/features/account/components/account-settings.tsx:222 }
+  toastInvitationsFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: invitationsFailedTitle }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'invitationsFailed'", source: libs/ui/src/mds/toast.tsx:77 }
+  invitationsFailedTitle: { type: text, component: Text, text: { key: AccountProfile.invitationsFailed }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'invitationsFailed'", source: apps/tedris/features/account/components/account-settings.tsx:299 }
+  invitationsFailedHint: { type: text, component: Text, text: { key: AccountProfile.errorHint }, in: [account, savingName, savingZone, savingInvitations], when: "alert == 'invitationsFailed'", source: apps/tedris/features/account/components/account-settings.tsx:300 }
+  alertClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [account, savingName, savingZone, savingInvitations], when: alerting, emits: CLOSE_ALERT, duringStep: true, source: libs/ui/src/mds/toast.tsx:95 } # an icon only, aria-hidden with its toast until it is focused; its name is written in the kit (ACC-23). Live during a save; drawn as closing the alert after the answer, so where the save is refused the graph closes the new error toast, while the app closed the older one
+
+  # ---- the first list, open (the kit's Select popup, Base UI; modal by default, so only the list is drawn: not verified in a browser) ----
+  zoneList: { type: list, component: List, role: listbox, in: [choosingZone], source: libs/ui/src/mds/select.tsx:79 } # no name of its own
+  optIstanbul: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.istanbul }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:15 }
+  optBerlin: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.berlin }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:16 }
+  optAmsterdam: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.amsterdam }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:17 }
+  optBrussels: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.brussels }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:18 }
+  optParis: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.paris }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:19 }
+  optVienna: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.vienna }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:20 }
+  optLondon: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.london }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:21 }
+  optNewYork: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.newYork }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:22 }
+  optOther: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.other }, in: [choosingZone], source: apps/tedris/features/account/components/account-settings.tsx:197 } # "Diğer…", the ninth: it saves nothing
+
+  # ---- the second list, open: every zone the runtime lists, none drawn as a node ----
+  listedZones: { type: list, component: List, role: listbox, in: [choosingListed], source: libs/ui/src/mds/select.tsx:79 } # about four hundred options named by the zone with its underscores as spaces ("Asia/Tokyo"); the e2e names none
+
+  # ---- the box that takes the cards' place when GET /me fails ----
+  profileFailedBox: { type: page, component: Page, role: region, name: { labelledBy: profileFailedTitle }, in: [profileUnreadable], source: apps/tedris/app/account/page.tsx:55 } # SystemState shell draws a <section aria-labelledby>
+  profileFailedTitle: { type: text, component: Heading, role: heading, text: { key: AccountProfile.profileFailedTitle }, in: [profileUnreadable], source: apps/tedris/app/account/page.tsx:55 } # h2
+  profileFailedText: { type: text, component: Text, text: { key: AccountProfile.profileFailed }, in: [profileUnreadable], source: apps/tedris/app/account/page.tsx:56 } # no retry control: the sentence says to try later (HESAP-1)
+
+edges:
+  - { labelledBy: [profileFailedBox, profileFailedTitle] }
+  - { labelledBy: [toastNameSaved, nameSavedTitle] }
+  - { labelledBy: [toastZoneSaved, zoneSavedTitle] }
+  - { labelledBy: [toastInvitationsOn, invitationsOnTitle] }
+  - { labelledBy: [toastInvitationsOff, invitationsOffTitle] }
+  - { labelledBy: [toastNameFailed, nameFailedTitle] }
+  - { labelledBy: [toastZoneFailed, zoneFailedTitle] }
+  - { labelledBy: [toastInvitationsFailed, invitationsFailedTitle] }
+  - { triggers: [saveName, savingName] }
+  - { triggers: [zoneField, choosingZone] }
+  - { triggers: [zoneOtherField, choosingListed] }
+  - { triggers: [invitationSwitch, savingInvitations] }
+
+rules:
+  - { id: focus-not-set, rule: "Hesap sets no initial focus (no autoFocus and no focus() in features/account or app/account), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens or after a save. Recorded so the silence is not read as an omission. From the code, not looked at in a browser." }
+  - { id: ACC-02, rule: "a blank name draws 'Adını yaz.' or 'Soyadını yaz.' as a Field error with no role and no live region (account-settings.tsx:107-112,135-160; Base UI's Field.Error has none), the focus stays on Kaydet instead of going to the first invalid box, and the line is not cleared when the person types: only the next press of Kaydet clears it. A screen-reader user who presses Kaydet hears nothing. Fix: focus the first invalid box, clear its line in onChange, or give the lines role=alert." }
+  - { id: ACC-07, rule: "'Adın ve soyadın kaydedildi.' is true only for tedrisat's own copy (user_profiles, written by PATCH /me, user.service.ts:69-93): the name in the bars and in Ana sayfa's greeting comes from the sign-in token and does not change, so the person sees the old name next to a success message; and the Keycloak form that 'Değiştir' opens from this same page holds the sign-in names too (HESAP-2). Decision D2. Fix: read the bars' name from GET /me, or say in the toast that the name seen elsewhere changes at the next sign-in." }
+  - { id: ACC-09, rule: "the link 'Değiştir' (or 'Ekle') has no name that says what it changes when it is read in a list of links: it relies on the read-only field above it (account-settings.tsx:77-86). It also leaves the app for Keycloak with no warning. Fix: aria-label 'Cinsiyetini hesabında değiştir'." }
+  - { id: ACC-10, rule: "the invitation switch is natively disabled while its save is out (account-settings.tsx:325, Base UI sets aria-disabled and takes it out of the tab order), so the focused switch loses the keyboard focus for the length of the call; the kit's own Button avoids this on purpose with aria-disabled (button.tsx:29,82). From the code: the browser's behaviour is not verified. Fix: use aria-disabled or readOnly for the busy state." }
+  - { id: ACC-12, rule: "no try/catch around the three server actions (account-settings.tsx:113-127,206-225,282-303): when the browser cannot reach Next at all, the promise rejects; inside a transition (the name and the zone) React hands it to the error boundary, which replaces the page with app/error.tsx, and in the switch's chain (a .then without a .catch) nothing is drawn and the switch stays flipped. The page draws 'could not be saved' only for a refusal the server answered. From the code. Fix: wrap each call and treat a rejection as a refusal (the rollback and the same error toast)." }
+  - { id: ACC-16, rule: "the e2e check profile#1 expects an input[name=language] holding 'Türkçe' and read-only (profile.e2e.ts:80-85); the page has no such field (account-settings.tsx draws givenName, familyName, email and the gender; test/account-profile.spec.ts:137 asserts the field is absent), so that check cannot pass. The graph draws what the code does and carries the rest of profile#1. Fix: delete the two assertions and the title's 'language' (and the unused AccountProfile.language and languageHelp keys)." }
+  - { id: ACC-19, rule: "the tab title is 'Hesap' with no ' | Tedris' suffix, where the calendar page's is 'Takvim aboneliği | Tedris' (app/account/page.tsx:14-17). A title is not a node; recorded because it is this page's." }
+  - { id: ACC-20, rule: "choosing 'Diğer…' reveals the second list with no announcement and no focus move, and the zone stays as it was until one is chosen there, so a keyboard user who stops at 'Diğer…' sees the first list say 'Diğer…' while the stored zone is still the old preset (account-settings.tsx:184-262). From the code. Fix: move the focus to the new list, or keep it in the tree with an aria-live help line." }
+  - { id: ACC-21, rule: "the two name boxes have no maxLength although tedrisat refuses a name over 100 characters (update-me.dto.ts:22-45), and the refusal is told as the one error toast 'Adın ve soyadın kaydedilemedi.' with 'Sunucu isteği tamamlayamadı.', which names neither the box nor the limit. Fix: maxLength={100} on both boxes." }
+  - { id: ACC-23, rule: "the toasts' close button is named 'Kapat' and their region 'Bildirimler' by constants of the kit (libs/ui/src/mds/toast.tsx:97,127), not by catalog messages; the region's name is also the notifications page's and the bell's. Latent while tr is the only locale a screen can show; the same finding as ADDCAL-2 and LEAVE-2." }
+  - { id: HESAP-1, rule: "new, provisional id. When GET /me fails, page.tsx:44-58 draws only the box 'Hesabın yüklenemedi' in place of the whole of AccountSettings: the name form, the e-mail and gender lines, Bağlı uygulamalar, Saat dilimi, Takvim with its switch and the sign-out card, although the last four take no data from GET /me (the nav writer's finding). The box has no button to try again, and 'Çıkış yap' is nowhere else in tedris (the phone sheet and the bar have none, the legacy menu is hidden), so a signed-in person whose profile cannot be read reaches the confirmation page only by typing /auth/signout. From the code, not looked at in a browser: the stack has no way to make GET /me fail. Fix: draw the sign-out card and the two link cards outside the `profile ?` branch, and give the box a 'Yeniden dene' (decision D1)." }
+  - { id: HESAP-2, rule: "new, provisional id. The only door from Hesap to Keycloak's profile page is the link under the gender, named 'Değiştir' or 'Ekle', and that page edits more than the gender: the realm lets the person edit firstName, lastName, gender and e-mail (config/keycloak/user-profile.json:11,22,37,56, permissions.edit user), and the form draws Ad, Soyad, the two gender radios, E-posta and the notice (realm.auth.profileUpdate). Hesap says none of it: the e-mail line says 'buradan değiştirilemez' with no pointer to where it can be, the gender's help line mentions only the gender, and the names a person types in Hesap's own boxes are another copy than the names on that form (ACC-07). A person can therefore hold two names and change the address without the page ever telling them. From the code, the realm's file and realm.auth.profileUpdate's own reading; not looked at in a browser. Fix: name the link for what it opens and say under the e-mail line where it is changed (decision D3)." }
+  - { id: unreadable-input-500, rule: "the domain's finding of PATCH /me: a body whose givenName or familyName is null passes validation (IsOptional lets null through) and user.service.ts:75 calls trim on it, answering 500 INTERNAL_ERROR instead of 400 (invariant unreadable-input-is-a-400, holds: false). Hesap cannot send it: validateName (profile-model.ts:96-104) stops a blank or whitespace name before the call, and the trimmed strings are never null. Recorded here because this is the page that calls the route; the fix is the API's." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): every box's label is its name, the three links and the button carry their own words; the time-zone combobox is named 'Saat dilimi' (aria-label) while its visible words are the zone chosen, as every Select of the kit is" }

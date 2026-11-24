@@ -1,0 +1,375 @@
+# The settings of one course deck in nazar-web (/ders/<id>/deste/<deckId>), read by the course's hoca: the title and the week, "Yayımla" and
+# "Taslağa çek", and "Desteyi sil" behind its confirmation. Read from the code of PR #394 (apps/nazar/features/decks/components/deck-settings.tsx and
+# deck-detail-page.tsx, the actions in features/decks/actions.ts, the API's PATCH and DELETE /courses/:id/decks/:deckId in
+# apps/tedrisat/src/flashcard/course-decks.controller.ts). It says what the code does today. The cards, the quick-add row and the two card dialogs are on
+# the same page and belong to nazar.decks.openAndFill, .import and .siga; the talebe's side of a published deck is tedris.course.deckTab.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   F-D1-16  (inventory) a refused form is told in Field.Error with no alert role, and the focus stays on "Kaydet"
+#   F-D1-17  (inventory) neither deck route has a loading.tsx, so the portal-wide full-shell skeleton draws while the page is read
+#   F-D1-24  (inventory) the delete dialog's "Vazgeç" and "Kapat" and the busy "Yükleniyor" are hard-coded defaults of the kit
+#   DECKPD-1 (new) "Kaydet" re-sends the draft flag the form remembered from when it opened: after "Yayımla" or "Taslağa çek", the next "Kaydet" (even with
+#            nothing typed) flips the deck back, under the toast "Kaydedildi"
+#   DECKPD-2 (new) after COURSE_DECK_NOT_DRAFT the page is not read again: it still says "Taslak" and offers "Yayımla", under an alert that says "önce taslağa
+#            çekin", until the person reloads
+#   DECKPD-3 (new) "Yayımla", "Taslağa çek" and "Desteyi sil" are `disabled` while a write runs, where the kit says a busy button is aria-disabled so that focus
+#            survives; only "Kaydet" is busy (not verified in a browser)
+#   DECKPD-4 (new) a write on a deck someone else deleted is told as "İşlem tamamlanamadı. Tekrar deneyin.", an advice that cannot work
+#   cited, written in other flows: F-D1-02 (the forbidden deck page has no heading), F-D1-03 (the title's asterisk is decoration), F-D1-14 (lang="auto" on
+#   the h1), F-D1-20 (no try/catch around the server action)
+# E2E carried: none (the inventory names none for Deste; the one spec is test/decks.spec.ts, the pure rules, and nothing renders DeckSettings).
+schema: delurio-graph/0
+kind: flow
+id: nazar.decks.publishAndDelete
+status: captured
+domain: medaris.api
+ui: nazar.decks.publishAndDelete
+title: Publish, take back, retitle or delete a course deck
+summary: >-
+  The hoca opens one deck of her course and reads its settings under the cards: the title, the description and the week, "Kaydet", and one button that says
+  "Yayımla" while the deck is a draft and "Taslağa çek" once it is published. "Yayımla" shows the deck to the course's enrolled talebe at once and
+  "Taslağa çek" takes it from them again (their progress is kept); neither asks, and a toast says what happened. "Kaydet" sends only what changed, after a
+  length check on the title. A draft deck also shows "Desteyi sil", which asks once in an alertdialog and then deletes the deck with its cards and returns to
+  the list with a toast; a published deck shows a line that says it cannot be deleted and to take it back first. The API refuses the delete of a published
+  deck with 409 COURSE_DECK_NOT_DRAFT, which the page can meet only when someone else published the deck behind its back. "Kaydet" has a fault: the form
+  remembers the deck's draft flag from when the page opened and sends it again, so a save after "Yayımla" takes the deck away from the talebe (DECKPD-1).
+
+scope:
+  shows: >-
+    one deck's page as far as its settings go: the header with the deck's state, the settings form, "Yayımla" and "Taslağa çek", the delete help and the
+    confirmation, the failure alerts, the toasts, and the list the delete returns to
+  world: open
+  outOfView:
+    - "the deck's cards, the quick-add row, 'Sîga üret' and 'Excel'den aktar': nazar.decks.openAndFill, nazar.decks.import, nazar.decks.siga"
+    - "the list of the course's decks and its 'Deste aç' dialog, beyond the toast and heading this flow's delete lands on: nazar.decks.openAndFill"
+    - "the talebe's side, the tab 'Ders destesi' that lists only published decks: tedris.course.deckTab; this flow's replay reads it through the API as a talebe"
+    - "the description field's own error (more than 1000 characters) and a saved description: the title and the week stand for the form"
+    - "saving or typing in the form while someone has published the deck behind the page: the model offers only 'Yayımla', 'Desteyi sil' and the way out there"
+    - "the read that fails with no refusal (a 5xx): the page draws 'Ders desteleri okunamadı' with a retry; not an API refusal, so it is not drawn here"
+    - "a deck the course does not hold, or a course that is not there: Next's not-found page"
+    - "the generic deck route DELETE /flashcard/decks/:id, which lets the course's staff delete a published deck at once (the domain's finding deck-manage-private-reaches-course-decks); no screen calls it"
+    - "a ders nazırı who holds only deck.manage_course meets the same page: nazar.access.dersNazirPages"
+
+decisions:
+  D1:
+    question: >-
+      Should "Taslağa çek" ask first? It takes the deck away from every enrolled talebe at once, while "Desteyi sil" asks. The talebe's progress is kept and the
+      change is one press to undo, so the two are not alike; but the toast ("Taslak · talebe görünmez") is the only word, and it does not say the progress stays.
+    recommend: >-
+      Leave it without a question, and say in the toast that the progress is kept. A question would be one more for a change that can be undone.
+    affects: [unpublishing]
+
+context:
+  access:
+    values: [granted, refused]
+    initial: any
+    say:
+      granted: "the reader holds deck.manage_course in the course: the hoca, the başmüderris of the medrese, the köşk's nazım, or a ders nazırı granted it"
+      refused: "the reader holds no deck code in the course (a ders nazırı granted nothing): the API answers 403"
+  opens:
+    values: [draft, published]
+    initial: any
+    say:
+      draft: "the deck is a draft when its page opens: 'Yayımla' and 'Desteyi sil' are drawn"
+      published: "the deck is published when its page opens: 'Taslağa çek' and the line that says it cannot be deleted are drawn"
+  deck:
+    values: [draft, published]
+    initial: draft
+    say:
+      draft: "the page draws the deck as a draft"
+      published: "the page draws the deck as published"
+  typed:
+    values: [nothing, valid, short]
+    initial: nothing
+    say:
+      nothing: "the form holds what the deck holds (no title or week typed since the page was read or saved)"
+      valid: "a new title of five to a hundred characters and a week are typed"
+      short: "a title shorter than five characters is typed"
+  sent:
+    values: [unsent, sent]
+    initial: unsent
+    say:
+      unsent: "'Kaydet' has not been pressed on this page yet, so the form shows no error"
+      sent: "'Kaydet' has been pressed once: from then on the form shows the title's error as soon as it is there (deck-settings.tsx:74, :104)"
+  behind:
+    values: [nothing, published, removed]
+    initial: nothing
+    say:
+      nothing: "the deck is as the page draws it"
+      published: "someone else published the draft behind the page: the page still draws a draft"
+      removed: "someone else deleted the deck behind the page"
+  alert:
+    values: [none, notDraft, failed]
+    initial: none
+    say:
+      none: "no failure is shown under the form"
+      notDraft: "the API refused the delete with COURSE_DECK_NOT_DRAFT: 'Yayımlanmış deste silinemez. Önce taslağa çekin.'"
+      failed: "any other refusal: 'İşlem tamamlanamadı. Tekrar deneyin.'"
+  last:
+    values: [nothing, saved, published, unpublished, deleted]
+    initial: nothing
+    say:
+      nothing: "no write has been made in this visit, or its toast is gone"
+      saved: "a save just went through: the toast 'Kaydedildi'"
+      published: "a publish just went through: the toast 'Yayında · talebe görünür'"
+      unpublished: "a take-back just went through: the toast 'Taslak · talebe görünmez'"
+      deleted: "the deck was just deleted: the toast 'Deste silindi' on the list"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  # the start of every write (deck-settings.tsx:57-59, :88-91): the failure under the form is cleared at once
+  pressed: { set: { last: nothing, alert: none } }
+  typedValid: { set: { typed: valid } }
+  typedShort: { set: { typed: short } }
+  sentOnce: { set: { sent: sent } }
+  openedPublished: { set: { deck: published } }
+  publishedBehind: { set: { behind: published } }
+  removedBehind: { set: { behind: removed } }
+  # a save that carried a new title and week: the form holds what the deck holds again
+  savedTyped: { set: { last: saved, typed: nothing } }
+  # a save that carried only the remembered draft flag (DECKPD-1): nothing was typed, the toast is the same
+  savedStale: { set: { last: saved } }
+  # DECKPD-1: the draft flag the form remembered went to the API, so the deck takes the other state
+  backToDraft: { set: { deck: draft } }
+  backToPublished: { set: { deck: published } }
+  # the page is read again after a write, so what someone did behind it is seen
+  nowPublished: { set: { deck: published, last: published, behind: nothing } }
+  nowDraft: { set: { deck: draft, last: unpublished } }
+  deletedHere: { set: { last: deleted } }
+  refused: { set: { alert: notDraft } }
+  failed: { set: { alert: failed } }
+
+failures:
+  opened:
+    from: listCourseDecksForStaff
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  saving:
+    from: updateCourseDeck
+    signedOut: [HTTP_401]
+    failed: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, DECK_NOT_FOUND, COURSE_WEEK_NOT_IN_COURSE, VALIDATION_ERROR, HTTP_400, INTERNAL_ERROR]
+  publishing:
+    from: updateCourseDeck
+    signedOut: [HTTP_401]
+    failed: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, DECK_NOT_FOUND, HTTP_400, INTERNAL_ERROR]
+  unpublishing:
+    from: updateCourseDeck
+    signedOut: [HTTP_401]
+    failed: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, DECK_NOT_FOUND, HTTP_400, INTERNAL_ERROR]
+  deleting:
+    from: deleteCourseDeck
+    signedOut: [HTTP_401]
+    notDraft: [COURSE_DECK_NOT_DRAFT]
+    failed: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, DECK_NOT_FOUND, HTTP_400]
+
+# The story the page tells first: a draft deck is retitled and put in a week, published, taken back, and then deleted after the question.
+main:
+  given: { opens: draft, access: granted }
+  events: [DONE, EDIT, SAVE, DONE, PUBLISH, DONE, UNPUBLISH, DONE, DELETE, CONFIRM_DELETE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The deck's page is read
+    description: >-
+      The page reads the course, the person's permissions, the course's decks for its staff (GET /courses/:id/decks/manage, the one the failures name) and the
+      deck's cards, and draws nothing of its own until they are back: neither deck route has a loading.tsx, so Next draws the portal-wide skeleton, a whole
+      shell of its own under the real one (F-D1-17, not verified visually). A person who holds deck.manage_course in the course reads on; one who does not meets
+      the forbidden alert; a course that is not there, a deck that is not among the course's decks, or a cards read that answers 404 is Next's not-found page.
+      Any other failed read draws "Ders desteleri okunamadı" with a retry (not drawn here: it is not a refusal of the API's). Nothing is on the screen of this step.
+    invoke: { action: listCourseDecksForStaff }
+    on:
+      DONE:
+        - { guard: "access == 'granted' and opens == 'draft'", target: draft, source: apps/nazar/features/decks/components/deck-detail-page.tsx:60 }
+        - { guard: "access == 'granted'", target: published, effect: [openedPublished], source: apps/nazar/features/decks/components/deck-detail-page.tsx:60 }
+      FAIL.forbidden: { guard: "access == 'refused'", target: forbidden, source: apps/nazar/features/decks/components/deck-detail-page.tsx:53 }
+      FAIL.missing: not_found
+    source: apps/nazar/features/decks/components/deck-detail-page.tsx:33
+
+  forbidden:
+    title: The deck page is refused
+    description: >-
+      The shell stays and the page draws only an alert, "Bu sayfaya izniniz yok", with no heading of its own and no way back to the list (F-D1-02: the list page
+      draws its h1 before the same alert, this one does not). Nothing else of the deck is on the screen.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/decks/components/deck-detail-page.tsx:53
+
+  draft:
+    title: A draft deck's settings
+    description: >-
+      The header says "Taslak · talebe görünmez" and the settings under the cards offer the form, "Kaydet", "Yayımla" and, under a help line ("Taslak deste ve
+      kartları silinir. Bu işlem geri alınamaz."), "Desteyi sil". Typing is local until "Kaydet": nothing is sent, and the title is checked only once "Kaydet"
+      has been pressed (then on every keystroke: F-D1-16 is that the error is a Field.Error with no alert role and the focus stays on "Kaydet", so a screen-reader
+      user hears nothing). "Kaydet" with nothing typed sends nothing and says nothing. A failure of an earlier write may be under the form (`alert`) and the
+      toast of the last one is up for six seconds (`last`). `behind` is what someone else did to the deck after the page was read: a draft published behind the
+      page is still drawn as a draft with its delete button, which is how the API's refusal is reached (the model offers only 'Yayımla', 'Desteyi sil' and the
+      way out then). DECKPD-1 reaches this state too: after "Taslağa çek" the form still remembers the deck as published, so "Kaydet" publishes it again.
+    by: human
+    goal: true
+    on:
+      EDIT: { guard: "behind != 'published'", target: draft, effect: [typedValid], say: "they type a new title and pick a week", source: apps/nazar/features/decks/components/deck-settings.tsx:118 }
+      EDIT_SHORT: { guard: "behind != 'published'", target: draft, effect: [typedShort], say: "they type a title of fewer than five characters", source: apps/nazar/features/decks/components/deck-settings.tsx:118 }
+      SAVE:
+        - { guard: "behind != 'published' and typed == 'short'", target: draft, effect: [sentOnce], say: "the title is too short: the error appears under it and nothing is sent", source: apps/nazar/features/decks/components/deck-settings.tsx:75 }
+        - { guard: "behind != 'published' and (typed == 'valid' or opens != deck)", target: saving, effect: [pressed, sentOnce], say: "something differs from the deck: a new title or week, or (DECKPD-1) the draft flag the form remembers", source: apps/nazar/features/decks/components/deck-settings.tsx:77 }
+        - { guard: "behind != 'published'", target: draft, effect: [sentOnce], say: "nothing differs from the deck: nothing is sent", source: apps/nazar/features/decks/components/deck-settings.tsx:77 }
+      PUBLISH: { target: publishing, effect: [pressed], say: "they press Yayımla", source: apps/nazar/features/decks/components/deck-settings.tsx:81 }
+      DELETE: { target: confirmDelete, say: "they press Desteyi sil", source: apps/nazar/features/decks/components/deck-settings.tsx:182 }
+      PUBLISHED_ELSEWHERE: { guard: "behind == 'nothing'", target: draft, effect: [publishedBehind], say: "a colleague publishes this deck while the page stays open", source: apps/tedrisat/src/flashcard/course-deck.service.ts:116 }
+      REMOVED_ELSEWHERE: { guard: "behind == 'nothing'", target: draft, effect: [removedBehind], say: "a colleague deletes this deck while the page stays open", source: apps/tedrisat/src/flashcard/course-deck.service.ts:134 }
+      BACK: { target: decks_listed, effect: [clearNote], say: "they follow '← Ders desteleri'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:173
+
+  published:
+    title: A published deck's settings
+    description: >-
+      The header says "Yayında · talebe görünür", the form and "Kaydet" are the same, the button now says "Taslağa çek", and in place of "Desteyi sil" and its
+      help the page shows a line: "Yayımlanmış deste silinemez; önce taslağa çekin." The talebe of the course see the deck in their tab while this is drawn.
+      DECKPD-1 reaches this state too: after "Yayımla" the form still remembers the deck as a draft, so "Kaydet" (with a title typed or not) takes the deck back
+      to a draft.
+    by: human
+    goal: true
+    on:
+      EDIT: { target: published, effect: [typedValid], say: "they type a new title and pick a week", source: apps/nazar/features/decks/components/deck-settings.tsx:118 }
+      EDIT_SHORT: { target: published, effect: [typedShort], say: "they type a title of fewer than five characters", source: apps/nazar/features/decks/components/deck-settings.tsx:118 }
+      SAVE:
+        - { guard: "typed == 'short'", target: published, effect: [sentOnce], say: "the title is too short: the error appears under it and nothing is sent", source: apps/nazar/features/decks/components/deck-settings.tsx:75 }
+        - { guard: "typed == 'valid' or opens != deck", target: saving, effect: [pressed, sentOnce], say: "something differs from the deck: a new title or week, or (DECKPD-1) the draft flag the form remembers", source: apps/nazar/features/decks/components/deck-settings.tsx:77 }
+        - { target: published, effect: [sentOnce], say: "nothing differs from the deck: nothing is sent", source: apps/nazar/features/decks/components/deck-settings.tsx:77 }
+      UNPUBLISH: { target: unpublishing, effect: [pressed], say: "they press Taslağa çek", source: apps/nazar/features/decks/components/deck-settings.tsx:81 }
+      BACK: { target: decks_listed, effect: [clearNote], say: "they follow '← Ders desteleri'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:188
+
+  saving:
+    title: The settings are being saved
+    description: >-
+      updateDeck calls PATCH /courses/:id/decks/:deckId with only the keys that differ from the deck: the typed title and week, and, when the form's remembered
+      draft flag differs from the deck's, `draft` as well (DECKPD-1: after "Yayımla" or "Taslağa çek" it always does, and the flag it sends is the old one, so the
+      save puts the deck back). "Kaydet" is busy ("Yükleniyor" from the kit's hard-coded default, F-D1-24) and the two buttons beside it are disabled (DECKPD-3).
+      On success the toast says "Kaydedildi" whatever the save also did to the deck, and the page is read again. A deck deleted behind the page answers
+      DECK_NOT_FOUND, told as "İşlem tamamlanamadı. Tekrar deneyin."
+    invoke: { action: updateCourseDeck }
+    on:
+      DONE:
+        - { guard: "behind == 'nothing' and typed == 'valid' and opens == deck", target: settled, effect: [savedTyped], source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+        - { guard: "behind == 'nothing' and typed == 'valid' and opens == 'draft' and deck == 'published'", target: settled, effect: [savedTyped, backToDraft], say: "DECKPD-1: the deck was published here and the form remembers a draft: the save also takes it from the talebe", source: apps/nazar/features/decks/components/deck-settings.tsx:76 }
+        - { guard: "behind == 'nothing' and typed == 'valid' and opens == 'published' and deck == 'draft'", target: settled, effect: [savedTyped, backToPublished], say: "DECKPD-1: the deck was taken back here and the form remembers it published: the save also shows it to the talebe again", source: apps/nazar/features/decks/components/deck-settings.tsx:76 }
+        - { guard: "behind == 'nothing' and typed == 'nothing' and opens == 'draft' and deck == 'published'", target: settled, effect: [savedStale, backToDraft], say: "DECKPD-1 with nothing typed: the save sends only the old draft flag", source: apps/nazar/features/decks/components/deck-settings.tsx:76 }
+        - { guard: "behind == 'nothing' and typed == 'nothing' and opens == 'published' and deck == 'draft'", target: settled, effect: [savedStale, backToPublished], say: "DECKPD-1 with nothing typed: the save sends only the old draft flag", source: apps/nazar/features/decks/components/deck-settings.tsx:76 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: "behind == 'removed'", target: settled, effect: [failed], source: apps/nazar/features/decks/decks.ts:255 }
+    source: apps/nazar/features/decks/actions.ts:70
+
+  publishing:
+    title: The deck is being published
+    description: >-
+      updateDeck calls PATCH /courses/:id/decks/:deckId with {draft: false}: the course's enrolled talebe see the deck at once, in their tab and on the deck's
+      address. "Kaydet" is busy and "Yayımla" and "Desteyi sil" are disabled (DECKPD-3). On success the toast says "Yayında · talebe görünür" and the page is read
+      again, which also catches up with anything someone else did to the deck.
+    invoke: { action: updateCourseDeck }
+    on:
+      DONE: { guard: "behind != 'removed'", target: settled, effect: [nowPublished], source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: "behind == 'removed'", target: settled, effect: [failed], source: apps/nazar/features/decks/decks.ts:255 }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:81
+
+  unpublishing:
+    title: The deck is being taken back
+    description: >-
+      updateDeck calls PATCH /courses/:id/decks/:deckId with {draft: true}: the deck leaves the talebe's tab at once and their progress stays (the API keeps it).
+      Nothing asked first (decision D1). On success the toast says "Taslak · talebe görünmez" and the page is read again. No stack condition makes this write
+      fail from this page, so FAIL.failed has no guard.
+    invoke: { action: updateCourseDeck }
+    on:
+      DONE: { target: settled, effect: [nowDraft], source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { target: settled, effect: [failed], source: apps/nazar/features/decks/decks.ts:255 }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:81
+
+  confirmDelete:
+    title: Desteyi sil asks once
+    description: >-
+      An alertdialog, "Desteyi sil", says "Taslak deste ve kartları silinir. Bu işlem geri alınamaz." and offers "Vazgeç" and "Desteyi sil". Focus starts on
+      "Vazgeç"; the scrim does not close it. Its "Vazgeç" and its close icon "Kapat" are the kit's hard-coded defaults, because the dialog passes no labels from the
+      catalog (F-D1-24). Cancelling or closing it hands the focus back to the page's "Desteyi sil" (Base UI; not verified). Only a deck the page draws as a draft
+      reaches it.
+    by: human
+    on:
+      CONFIRM_DELETE: { target: deleting, effect: [pressed], say: "they press Desteyi sil in the dialog", source: apps/nazar/features/decks/components/deck-settings.tsx:88 }
+      CANCEL: { target: draft, say: "they press Vazgeç, or Esc", source: apps/nazar/features/decks/components/deck-settings.tsx:196 }
+      CLOSE: { target: draft, say: "they press the close icon", source: apps/nazar/features/decks/components/deck-settings.tsx:196 }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:194
+
+  deleting:
+    title: The deck is being deleted
+    description: >-
+      The dialog is already closed (it closes before the call). deleteDeck calls DELETE /courses/:id/decks/:deckId, which deletes the deck with its cards while
+      it is a draft. "Kaydet" is busy and "Yayımla" and "Desteyi sil" are disabled (DECKPD-3). On success the toast says "Deste silindi" and the page is replaced by
+      the list of the course's decks. A deck someone published behind the page is refused with 409 COURSE_DECK_NOT_DRAFT, told as "Yayımlanmış deste silinemez.
+      Önce taslağa çekin."; one someone deleted behind the page answers DECK_NOT_FOUND, told as "İşlem tamamlanamadı. Tekrar deneyin."
+    invoke: { action: deleteCourseDeck }
+    on:
+      DONE: { guard: "behind == 'nothing'", target: decks_listed, effect: [deletedHere], source: apps/nazar/features/decks/components/deck-settings.tsx:99 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.notDraft: { guard: "behind == 'published'", target: settled, effect: [refused], say: "the page is not read again (DECKPD-2)", source: apps/nazar/features/decks/decks.ts:256 }
+      FAIL.failed: { guard: "behind == 'removed'", target: settled, effect: [failed], source: apps/nazar/features/decks/decks.ts:257 }
+    source: apps/nazar/features/decks/actions.ts:90
+
+  settled:
+    title: The page is as the last write left it
+    description: >-
+      After a success the page reads the server components again (router.refresh) and the header, the button and the delete block follow the deck; after a failure
+      it does not, and the failure alert stands under the form. The state is only the way back to the draft or the published screen.
+    always:
+      - { guard: "deck == 'draft'", target: draft }
+      - { target: published }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:68
+
+  decks_listed:
+    title: The list of the course's decks
+    type: final
+    description: >-
+      The page the course's decks are listed on (nazar.decks.openAndFill draws it): "← Ders desteleri" leads here, and so does a delete, which brings the toast
+      "Deste silindi" with it (the stale-toast rule keeps a toast fired after the press; libs/ui/src/hooks/use-dismiss-stale-toasts.ts). The deck is not on the list.
+    source: apps/nazar/features/decks/components/decks-page.tsx:78
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": handleUnauthenticated sends the person to sign in and back to this address, with no toast. realm.auth.signIn takes over.
+
+  not_found:
+    title: The deck or the course is not there
+    type: final
+    leavesPage: true
+    description: "A 404 of the course or the cards read, or a deck that is not among the course's decks, is Next's not-found page (deck-detail-page.tsx:61, lib/tedrisat-read.ts)."
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-draft-is-deleted-from-the-page
+    never: "(state == 'confirmDelete' or state == 'deleting') and deck == 'published'"
+    say: The page offers the delete of a deck only while it draws the deck as a draft.
+    source: apps/nazar/features/decks/components/deck-settings.tsx:173
+  - id: publish-only-from-a-draft
+    never: "state == 'publishing' and deck == 'published'"
+    say: "\"Yayımla\" is drawn only for a deck the page draws as a draft."
+    source: apps/nazar/features/decks/components/deck-settings.tsx:169
+  - id: take-back-only-from-a-published-deck
+    never: "state == 'unpublishing' and deck == 'draft'"
+    say: "\"Taslağa çek\" is drawn only for a deck the page draws as published."
+    source: apps/nazar/features/decks/components/deck-settings.tsx:169
+  - id: the-refusal-needs-someone-behind
+    never: "alert == 'notDraft' and behind == 'nothing'"
+    say: The refusal that a published deck cannot be deleted is shown only after someone else published the deck behind the page, because the page never offers the delete of a deck it draws as published.
+    source: apps/nazar/features/decks/decks.ts:256

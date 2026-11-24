@@ -80,14 +80,7 @@
     "meetingNotAdded": "Toplantı bağlantısı henüz eklenmedi.",
     "inPersonBadge": "Yüz yüze",
     "progressLabel": "Ders ilerlemen",
-    "progressNote": "İlerlemeni sen girersin; dersi tamamladığını ders kadrosu onaylar.",
-    "updateProgress": "İlerlemeni güncelle",
-    "progressField": "İlerleme (yüzde)",
-    "progressHelp": "0 ile 100 arasında bir tam sayı.",
-    "progressInvalid": "0 ile 100 arasında bir tam sayı yaz.",
-    "progressSave": "Kaydet",
-    "progressSaved": "İlerlemen güncellendi.",
-    "progressCancel": "Vazgeç",
+    "progressNote": "İzlediğin celselerden kendiliğinden hesaplanır; dersi tamamladığını ders kadrosu onaylar.",
     "statusInProgress": "Devam ediyor",
     "statusCompleted": "Tamamlandı",
     "revokedTitle": "Bu derse erişimin kaldırıldı.",
@@ -107,6 +100,8 @@
     "lessonCurrent": "Sıradaki",
     "lessonCurrentLive": "Sıradaki · Şu an canlı",
     "cancelledBadge": "İptal edildi",
+    "cancelNoteMore": "Notun tamamı",
+    "cancelNoteLess": "Notu kısalt",
     "sampleHeading": "Örnek celse",
     "sampleMark": "Örnek celse",
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",
@@ -177,6 +172,25 @@
     "assignmentBadge": "Ödev",
     "assignmentPending": "Ödev teslim edilmedi",
     "assignmentsPending": "{count} ödev teslim edilmedi",
+    "tabGrades": "Notlarım",
+    "examBadge": "Sınav",
+    "retakeBadge": "Telafi",
+    "examCountdown": "{count, plural, =0 {Bugün} =1 {Yarın} other {# gün kaldı}}",
+    "gradesExams": "Sınavlar",
+    "gradesMemorizations": "Ezberler",
+    "gradesEmpty": "Henüz sınav ya da ezber yok.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "Sonuç henüz açıklanmadı",
+    "gradesNotEntered": "Girilmedi",
+    "gradesAbsent": "Girmedi",
+    "gradesPending": "Bekliyor",
+    "gradesFull": "Tam",
+    "gradesIncomplete": "Eksik",
+    "gradesNotRecited": "Vermedi",
+    "gradesWeek": "{week}. hafta",
+    "watchedBadge": "İzlendi",
+    "watchedPercent": "%{percent} izlendi",
+    "watchedUntil": "Kaldığın yer {time}",
     "tabSarf": "Sarf",
     "sarfLoading": "Sarf tabloları yükleniyor…",
     "sarfFailed": "Sarf tabloları yüklenemedi.",
@@ -498,7 +512,9 @@
       "SESSION_CANCELLED": {
         "title": "Celse iptal edildi",
         "body": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi.",
-        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}."
+        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}.",
+        "bodyReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Hocanın notu: {reason}",
+        "bodyMakeupReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}. Hocanın notu: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "Celse saati değişti",
@@ -546,10 +562,25 @@
         "title": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} proposal_rejected {Deste öneriniz reddedildi} other {Deste yayın isteği reddedildi}}",
         "body": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}}",
         "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "Sınav planlandı",
+        "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
+      },
+      "EXAM_REMINDER": {
+        "title": "Yaklaşan sınav",
+        "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "Sınav sonucun açıklandı",
+        "body": "{courseTitle} dersinin sınav sonucunu Notlarım’da görebilirsin."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "Yazılı",
+    "examOral": "Şifahi",
+    "examMaxScore": "Tam puan {max}",
     "breadcrumb": "Sayfa yolu",
     "week": "Hafta {number}",
     "joinLabel": "Canlı ders",
@@ -571,6 +602,7 @@
     "minuteUnit": "dk",
     "cancelledTitle": "Bu celse iptal edildi",
     "replacement": "Telafi celsesi: <when>{time}</when>.",
+    "cancelNote": "Hocanın notu: {note}",
     "replacementGo": "Telafi celsesine git",
     "agendaTitle": "Gündem",
     "agendaZone": "Saatler {zone} saatiyle.",
@@ -627,6 +659,7 @@
     "resourcesCourse": "Ders geneli",
     "rowRecording": "Kayıt var",
     "download": " (indirilir)",
+    "examMultipleChoice": "Çoktan seçmeli",
     "glossaryLink": "Dersin lügati"
   },
   "AccountPage": {
@@ -707,7 +740,8 @@
       "deck_manage_course": "Ders destesini aç ve düzenle",
       "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
-      "permission_group_define": "İzin grubu tanımla"
+      "permission_group_define": "İzin grubu tanımla",
+      "exam_zeroth_read": "Çoktan seçmeli sınavlarda sıfırıncı soruya verilen cevapları toplu oku"
     },
     "permissionNotes": {
       "course_manage_all": "İçerik okumaların denetim kaydına yazılır.",
@@ -790,7 +824,11 @@
     "accountLabel": "Hesabım: {name}",
     "notifications": "Bildirimler",
     "homeLabel": "Medaris Tedris, ana sayfa",
-    "liveIntro": "{course} celsesi şu an canlı."
+    "liveIntro": "{course} celsesi şu an canlı.",
+    "exams": "Sınavlarım",
+    "examOpenIntro": "{course} sınavı şu an açık.",
+    "examPage": "Sınav sayfası",
+    "examEnter": "Sınava gir"
   },
   "SchedulePage": {
     "pageTitle": "Programım",
@@ -820,7 +858,10 @@
     "empty": "Bu yedi günde celsen yok.",
     "loadErrorTitle": "Programın yüklenemedi",
     "loadError": "Celselerin şu an okunamadı.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "exam": "Sınav",
+    "examOpen": "Sınav açık",
+    "examEnter": "Sınava gir"
   },
   "Decks": {
     "title": "Desteler",

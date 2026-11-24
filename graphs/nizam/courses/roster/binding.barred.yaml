@@ -1,0 +1,58 @@
+# nizam.courses.roster where a completed talebe is barred: Dilek Başvuran (applicantG) completed the course and the köşk's nazım barred her from it, so
+# Tamamlayanlar lists her with the badge "Yasaklı · Bu ders", "Yeniden aç" and "Yasağı kaldır". Pressing "Yeniden aç" is answered with 403 BAN_ACTIVE and the
+# toast "İşlem tamamlanamadı" carries the API's English sentence "You are barred from this course" (NROS-4, the twin of ROSCOM-2); "Yasağı kaldır" opens the lift
+# dialog, which is nizam.moderation.banStudent's (`handed_over.lift`).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/courses/roster \
+#     --bind graphs/nizam/courses/roster/binding.barred.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the world is made, and taken away. `setup` makes the same course and four talebe as binding.yaml (see its header), then the köşk's nazım completes Dilek's
+# seat (PATCH /courses/:id/enrollments/:userId, {status: COMPLETED}) and bars her from the course (POST /courses/:id/bans, scope COURSE, reason "Deneme yasağı
+# rosternizam"). A ban is a record that outlives its course and no route deletes one, and the course's own `remove` has the talebe leave first (a barred, completed
+# talebe cannot), so `setup` and `teardown` delete the rows this walk made by their reason (SQL, the one write here with no API) BEFORE the course is removed, and
+# the notifications COURSE_BAN_PLACED that went to the köşk's nazım and the Medaris nazım (they point at the köşk, so `course.mjs remove` does not clear them); the
+# COURSE_ACCESS_REMOVED of the barred talebe points at the course and goes with it. The audit row ban.create stays.
+# This file is walked under `--cover transitions`: the first row of Kayıtlı is Betül Başvuran, whom the removal of the story takes out; every other step is
+# the one of binding.yaml's story. The completion of a talebe is not drawn in this world (the flow's `mayComplete` needs `held == 'none'`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.roster
+
+scenarios:
+  barred:
+    given: { read: ok, held: barred, size: short }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseOverview->courseStudents' }
+    setup:
+      # a crashed walk's ban, found by its reason, not by the old course (whose file may be missing)
+      - run: [node, helpers/sql.mjs, "delete from bans where reason = 'Deneme yasağı rosternizam'"]
+        expect: '"rows":'
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD,applicantE,applicantG']
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/api.mjs, applicantC, PUT, '/courses/{made.course}/progress', '{"progress":40}']
+        expect: '"progress":40'
+      - run: [node, helpers/api.mjs, koskNazim, PATCH, '/courses/{made.course}/enrollments/{secret.E2E_APPLICANT_G_SUB}', '{"status":"COMPLETED"}']
+        expect: '"status":"COMPLETED"'
+      - run: [node, helpers/api.mjs, koskNazim, POST, '/courses/{made.course}/bans', '{"userId":"{secret.E2E_APPLICANT_G_SUB}","scope":"COURSE","reason":"Deneme yasağı rosternizam"}']
+        expect: '"scope":"COURSE"'
+    teardown:
+      # the ban goes first, so that applicantG is no longer barred when the course's remove has the talebe leave
+      - run: [node, helpers/sql.mjs, "delete from bans where reason = 'Deneme yasağı rosternizam'"]
+        expect: '"rows":'
+      - run: [node, helpers/sql.mjs, "delete from notifications where type = 'COURSE_BAN_PLACED' and params->>'courseTitle' = 'Deneme dersi rosternizam'"]
+        expect: '"rows":'
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    vars:
+      reason: '  Dört celsedir haber vermeden katılmıyor.  '
+      reasonSaved: Dört celsedir haber vermeden katılmıyor.
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı

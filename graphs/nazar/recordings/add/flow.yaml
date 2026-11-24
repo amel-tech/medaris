@@ -1,0 +1,494 @@
+# Ders kayıtları of a course in nazar-web (/ders/<id>/kayitlar), read by a hoca (or a ders nazırı granted recording.manage): the list of
+# the course's celses by week with the recording each holds, the link form that adds or edits one, the one-click "Yayını kayıt olarak
+# ekle", and "Kayıt erişimi" (when talebe may watch). Read from the code of PR #394 (apps/nazar/features/recordings, the API's
+# createLessonRecording, updateRecording, setLessonRecordingAvailability and listCourseLiveStreams) on 15 Nov 2026. Nothing here was
+# seen in a browser; what the code does is drawn, and where it is wrong for its people the finding is named. It says what the code does
+# today:
+#   - A recording is a link, never a file: tedrisat reads the host (YouTube, Google Drive, a Bunny player link of Medaris's own library,
+#     anything else https) and stores it READY at once. A celse holds one recording; a second is refused (RECORDING_EXISTS).
+#   - "Kayıt ekle" is on every celse with no recording, one still ahead included (its recording then opens at its start). A hoca who holds
+#     recording.upload as well as recording.manage sees two tabs and the dialog opens on "Bunny’ye yükle"; the link form is the second tab.
+#     That upload is nazar.recordings.upload; this flow starts at the tab "Bağlantı yapıştır". A ders nazırı granted recording.manage alone
+#     gets the link form with no tabs.
+#   - The medrese's policy "Ders kayıtları herkese açılamaz" is not read anywhere on the write side or by this page's switch (RECADD-1).
+#   - The talebe's side is tedris.course.recordings and tedris.celse.watchRecording; this flow starts neither.
+#   - The write of "when talebe may watch it" is one call (PUT /lessons/:id/recording-availability) from "Değiştir", and it rides with the
+#     link's write (POST or PATCH) when the choice changed; Celseler offers the same dialog (nazar.sessions.manage).
+schema: delurio-graph/0
+kind: flow
+id: nazar.recordings.add
+status: captured
+domain: medaris.api
+ui: nazar.recordings.add
+title: Add a recording link and say when talebe may watch it
+summary: >-
+  A hoca opens Ders kayıtları: the course's celses, a table for each week, newest first, with the recording each holds (its title, where it
+  lives, "Hazır", who may watch it, when it opens). On a celse with no recording she presses "Kayıt ekle", gives the recording a title,
+  pastes its https link (the platform is read from the address), says whether everyone may watch it ("Herkese açık") or only the course's
+  talebe, and chooses "Hazır olunca hemen" or a date and time; "Kaydı ekle" makes the recording and the dialog closes with a toast. On a
+  finished celse whose YouTube stream she set, one click ("Yayını kayıt olarak ekle") adds the stream's link as its recording. "Düzenle"
+  renames a recording, changes its link or visibility, and "Değiştir" changes when talebe may watch it with or without a recording. A form
+  with a problem says so under the field and sends nothing; a link tedrisat cannot store, a refusal or a failure is a toast and the dialog
+  stays; a celse that was recorded or cancelled meanwhile is a toast, the dialog closes and the page is read again. A person who holds
+  neither recording code meets "Bu sayfaya izniniz yok".
+
+scope:
+  shows: >-
+    Ders kayıtları for a holder of recording.manage: the list, "Kayıt ekle" and "Kaydı düzenle" with the link form, "Yayını kayıt olarak ekle",
+    "Kayıt erişimi", the page's refusal, its failed-read box, the toasts of each write and the sidebar entry
+  world: open
+  outOfView:
+    - "uploading a video to Bunny, the tab 'Bunny’ye yükle', 'Devam et' and the 'Hazırlanıyor' state (nazar.recordings.upload); locally the Bunny keys are unset, so the upload answers BUNNY_STREAM_NOT_CONFIGURED"
+    - "what the talebe see and watch: tedris.course.recordings, tedris.celse.watchRecording, and the celse page's own recording block (tedris.celse.attend)"
+    - "Celseler, where the same 'Kayıt erişimi' dialog is also offered, and where the celse's meeting link and its YouTube stream are set (nazar.sessions.manage)"
+    - "a closed course: the 'Herkese açık' switch is off and locked with 'Kapalı derste kayıtlar herkese açılmaz.' (recordings.ts:487-493); a recording already public can still be closed"
+    - "a time typed before a celse that is still ahead starts: 'Celse {when} başlıyor; kayıt ondan önce açılamaz.' (Recordings.release.errors.beforeSession); the walk's celse is finished, and for it an earlier time is a past one"
+    - "a ders nazırı holding recording.manage and session.live_link but not recording.upload: the dialog has no tabs and the stream button is there; the graph's `manager` has no session.live_link and the `hoca` has all three"
+    - "the loading skeleton while the reads run (loading.tsx), the retry that works, and a recording that is PROCESSING or FAILED (a Bunny upload)"
+    - "the page refresh every 10 seconds while a Bunny upload is prepared (use-refresh-while.ts); the page's refresh after a write is drawn as the list again"
+
+decisions:
+  D1:
+    question: >-
+      Should the medrese's policy "Ders kayıtları herkese açılamaz" stop a hoca from making a recording public? The settings page promises it
+      ("Açıkken hiçbir kayıt herkese açık yapılamaz ve YouTube’a yüklenemez"), the platform's and the köşk's switches are read for visitors, the
+      "Herkese açık" switch is locked for a closed course, and nothing asks setting.recordings_public on the write or on this page.
+    recommend: >-
+      Yes. Give the page the medrese's policy and lock the switch with a reason (as for a closed course), and refuse a PUBLIC write while
+      setting.recordings_public is closed, in createLessonRecording and updateRecording. The list's own fix is tedris.course.recordings D1.
+    affects: [addForm, editForm]
+  D2:
+    question: >-
+      Should a recording be removable? No route deletes or hides one: a wrong link can only be replaced (the archive lists no recordings), and
+      a recording cannot be taken back from the talebe who were told of it.
+    recommend: >-
+      Leave it until the owner decides; MDRS-260 (Bunny video deletion on replace and remove) is the nearest planned work and assumes the
+      question is answered.
+    affects: [listed, editForm]
+
+context:
+  caller:
+    values: [hoca, manager, outsider]
+    initial: any
+    say:
+      hoca: "she holds recording.manage, recording.upload and session.live_link in the course: a müderris of it, or the başmüderris of its medrese (a köşk nazımı holds them too and has no scope in nazar-web)"
+      manager: "she holds recording.manage alone: a ders nazırı the müderris granted it; the link form has no tabs and the stream button is not drawn"
+      outsider: "she holds neither recording.manage nor recording.upload: a ders nazırı with no grant, a medrese nazırı with none"
+  rows:
+    values: [none, bare, mixed]
+    initial: any
+    say:
+      none: "the course has no celse to list (no live celse, or all cancelled)"
+      bare: "celses are listed and none holds a recording; some have begun and some are ahead"
+      mixed: "celses are listed and some hold a recording, some do not"
+  stream:
+    values: [offered, absent]
+    initial: any
+    say:
+      offered: "a finished celse with no recording has a stream link the page could read (the hoca holds session.live_link), so 'Yayını kayıt olarak ekle' is drawn on it"
+      absent: "no celse has one"
+  fields:
+    values: [valid, titleEmpty, notHttps]
+    initial: any
+    say:
+      valid: "the title and the link are right: a YouTube watch link"
+      titleEmpty: "the title is cleared"
+      notHttps: "the link does not start with https://"
+  release:
+    values: [ready, later, empty, past]
+    initial: any
+    say:
+      ready: "the person leaves 'Hazır olunca hemen' as it is"
+      later: "they choose 'Şu tarih ve saatte' and type a time ahead, after the celse started"
+      empty: "they choose 'Şu tarih ve saatte' and type nothing"
+      past: "they choose 'Şu tarih ve saatte' and type a time that has passed"
+  answer:
+    values: [saved, moved, linkInvalid, refused, failed]
+    initial: any
+    say:
+      saved: "tedrisat takes the add (the link form's or the stream's)"
+      moved: "the celse was recorded, cancelled or removed meanwhile: RECORDING_EXISTS, LESSON_CANCELLED or LESSON_NOT_FOUND"
+      linkInvalid: "tedrisat cannot store the link: RECORDING_LINK_INVALID with a reason (for a YouTube address that names no video: youtube-no-video)"
+      refused: "the caller lost recording.manage meanwhile: AUTHZ_FORBIDDEN"
+      failed: "anything else: a body the API refuses (VALIDATION_ERROR) or a course that is gone (COURSE_NOT_FOUND)"
+  editAnswer:
+    values: [saved, moved, linkInvalid, refused, failed]
+    initial: any
+    say:
+      saved: "tedrisat takes the edit"
+      moved: "the recording or its celse is gone: RECORDING_NOT_FOUND"
+      linkInvalid: "tedrisat cannot store the new link: RECORDING_LINK_INVALID"
+      refused: "the caller lost recording.manage meanwhile: AUTHZ_FORBIDDEN"
+      failed: "anything else: VALIDATION_ERROR or COURSE_NOT_FOUND"
+  releaseAnswer:
+    values: [saved, gone, refused, failed]
+    initial: any
+    say:
+      saved: "tedrisat takes the time"
+      gone: "the celse is gone: LESSON_NOT_FOUND"
+      refused: "the caller lost recording.manage meanwhile: AUTHZ_FORBIDDEN"
+      failed: "anything else: VALIDATION_ERROR or COURSE_NOT_FOUND"
+  typed: { values: [false, true], initial: false } # the person changed what the dialog held (title, link)
+  picked: { values: [false, true], initial: false } # the person chose 'Şu tarih ve saatte'
+  said: { values: [false, true], initial: false } # the person pressed the submit with a problem: the Field errors show
+  isPublic: { values: [false, true], initial: false } # 'Herkese açık' was pressed in this dialog (off to start with, for a new recording)
+  added: { values: [false, true], initial: false } # a recording was added in this visit, so a row holds one
+  streamed: { values: [false, true], initial: false } # the stream was added as a recording in this visit
+  last: { values: [nothing, added, saved, fromStream, releasedAt, moved, linkInvalid, refused, failed, releaseGone, releaseRefused, releaseFailed], initial: nothing } # the toast of the last write
+
+guards:
+  canAdd: "rows == 'bare' or rows == 'mixed'"
+  hasRecording: "rows == 'mixed' or added or streamed"
+  streamRow: "caller == 'hoca' and stream == 'offered' and not streamed"
+  titleOrLinkWrong: "typed and fields != 'valid'"
+  releaseWrong: "picked and (release == 'empty' or release == 'past')"
+  addWrong: "not typed or titleOrLinkWrong or releaseWrong"
+  editWrong: "titleOrLinkWrong or releaseWrong"
+  untouched: "not typed and not picked and not isPublic"
+
+effects:
+  opening: { set: { typed: false, picked: false, said: false, isPublic: false, last: nothing } }
+  clearNote: { set: { last: nothing } }
+  filledIn: { set: { typed: true } }
+  releasePicked: { set: { picked: true } }
+  said: { set: { said: true } }
+  madePublic: { set: { isPublic: true } }
+  madePrivate: { set: { isPublic: false } }
+  recordAdded: { set: { added: true, last: added } }
+  recordSaved: { set: { last: saved } }
+  streamAdded: { set: { streamed: true, last: fromStream } }
+  releasedAt: { set: { last: releasedAt } }
+  movedToast: { set: { last: moved } }
+  recordedMeanwhile: { set: { last: moved, added: true } } # RECORDING_EXISTS: someone else recorded the celse, so the list read again has a recording on it
+  linkInvalidToast: { set: { last: linkInvalid } }
+  refusedToast: { set: { last: refused } }
+  failedToast: { set: { last: failed } }
+  releaseGoneToast: { set: { last: releaseGone } }
+  releaseRefusedToast: { set: { last: releaseRefused } }
+  releaseFailedToast: { set: { last: releaseFailed } }
+
+failures:
+  opened:
+    from: listCourseRecordings
+    missing: [COURSE_NOT_FOUND]
+    failed: [HTTP_400]
+  adding:
+    from: createLessonRecording
+    moved: [RECORDING_EXISTS, LESSON_CANCELLED, LESSON_NOT_FOUND]
+    linkInvalid: [RECORDING_LINK_INVALID]
+    refused: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+  saving:
+    from: updateRecording
+    moved: [RECORDING_NOT_FOUND]
+    linkInvalid: [RECORDING_LINK_INVALID]
+    refused: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+  addingStream:
+    from: createLessonRecording
+    moved: [RECORDING_EXISTS, LESSON_CANCELLED, LESSON_NOT_FOUND]
+    linkInvalid: [RECORDING_LINK_INVALID]
+    refused: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+  releasing:
+    from: setLessonRecordingAvailability
+    gone: [LESSON_NOT_FOUND]
+    refused: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+
+# The story the page tells first: the hoca opens Ders kayıtları, presses "Kayıt ekle" on a finished celse, goes to the link tab, fills in the
+# title and link, and adds the recording.
+main:
+  given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+  events: [DONE, ADD, CHOOSE_LINK, FILL_IN, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The page reads the course, what she holds and its recordings
+    description: >-
+      The page's server side reads three things together: the course (GET /courses/:id), what the caller holds in it (GET
+      /courses/:id/my-permissions) and the course's recordings (GET /courses/:id/recordings, which lists every recording that is not FAILED to
+      a holder of course.view_details); and, for a holder of recording.manage and session.live_link, the stream links (GET
+      /courses/:id/live-streams) for the one-click button. The page opens for a holder of recording.manage or recording.upload; a person who
+      holds neither, or whose read was refused (403), meets "Bu sayfaya izniniz yok" under the h1. A 404 of any read is the 404 page; any
+      other failure is the retry box, and is never worded as "no access". Nothing is on the screen of this step.
+    invoke: { action: listCourseRecordings }
+    on:
+      DONE:
+        - { guard: "caller == 'outsider'", target: forbidden, source: apps/nazar/features/account/course-permissions.ts:86, say: "she holds neither recording code: the page's own gate refuses" }
+        - { guard: "rows == 'none'", target: empty, source: apps/nazar/features/recordings/components/recordings-table.tsx:395, say: "no celse is listed: the info alert" }
+        - { target: listed }
+      FAIL.missing: not_found
+      FAIL.failed: loadFailed
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:43
+
+  forbidden:
+    title: The page refuses her
+    by: human
+    description: >-
+      The h1 and the subtitle stay, with the sidebar, and an alert says "Bu sayfaya izniniz yok" with the sentence under it; the note about
+      uploading, the list and every button are left out. The same page is what a ders nazırı without a grant meets (nazar.access.dersNazirPages).
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:94
+
+  loadFailed:
+    title: A read failed
+    by: human
+    description: >-
+      One of the three reads failed with anything but a 403 or a 404: "Ders kayıtları okunamadı" with "Yeniden dene", under the h1. The box
+      is a second h1 on the page (F-L-16). The stack cannot make a read fail, so this state is not walked.
+    on:
+      RETRY: { target: opened, say: "they press Yeniden dene: the server reads the page again" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:95
+
+  empty:
+    title: The course has no celse to list
+    by: human
+    description: >-
+      The info alert "Bu derste henüz celse yok" says to plan celses first, on Celseler. A celse that is not LIVE or is cancelled is listed
+      only if it holds a recording, and a week with nothing to list is left out. The note about uploading is still there; there is no table
+      and no summary.
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:395
+
+  listed:
+    title: The weeks are listed
+    by: human
+    goal: true
+    description: >-
+      The page: the h1, the subtitle, one note ("Bir celsenin videosunu buradan Medaris’in video kütüphanesine (Bunny) yükleyin…" for a holder of
+      recording.upload, "Burada yükleme yoktur…" for recording.manage alone), the summary ("{recorded} celsenin kaydı var, {missing} celsenin
+      yok."), and for each week a table with its caption (hidden): Celse, Kayıt, Durum, Görünürlük, Erişim, İşlemler. A celse that holds a
+      recording shows its title, its provider chip (YouTube, Google Drive) or its host, "Aç", "Hazır", the visibility badge and when talebe may
+      watch it, and "Düzenle"; one that holds none says "Kayıt yok" (or "Celse henüz yapılmadı" while ahead) with "Kayıt ekle", and, for a finished
+      celse with a stream, "Yayını kayıt olarak ekle" and a caption. "Değiştir" is on every row. Findings read here: F-C-course-a-22 ("Aç"
+      opens a new tab and does not say so), F-C-course-a-28 (the busy and placeholder texts outside the catalog), F-C-course-a-29 (empty
+      cells are hidden from a screen reader), F-C-course-a-25 (focus after a dialog closes), RECADD-1 and RECADD-2. A toast of the last write
+      stands for a few seconds (`last`); an error toast stays. The model always leaves one celse with no recording (the walk's course has four).
+    on:
+      ADD:
+        - { guard: "caller == 'hoca'", target: addUpload, effect: [opening], source: apps/nazar/features/recordings/components/recording-dialog.tsx:173, say: "she presses 'Kayıt ekle' on a celse: with both codes the dialog opens on the upload tab" }
+        - { guard: "caller == 'manager'", target: addForm, effect: [opening], source: apps/nazar/features/recordings/components/recording-dialog.tsx:171, say: "she presses 'Kayıt ekle': with recording.manage alone the dialog is the link form" }
+      ADD_STREAM: { guard: streamRow, target: addingStream, effect: [clearNote], source: apps/nazar/features/recordings/components/recordings-table.tsx:380, say: "she presses 'Yayını kayıt olarak ekle' on a finished celse with its stream" }
+      EDIT: { guard: hasRecording, target: editForm, effect: [opening], source: apps/nazar/features/recordings/components/recordings-table.tsx:340, say: "she presses 'Düzenle' on a celse that holds a recording" }
+      CHANGE_ACCESS: { target: releaseForm, effect: [opening], source: apps/nazar/features/recordings/components/recordings-table.tsx:172, say: "she presses 'Değiştir' under 'Erişim', on any celse" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:393
+
+  addUpload:
+    title: 'Kayıt ekle opens on the upload tab'
+    by: human
+    description: >-
+      For a hoca who holds both recording.upload and recording.manage the dialog "Kayıt ekle" (eyebrow: the celse's title) opens on the tab
+      "Bunny’ye yükle" with its footer "Vazgeç" and "Yükle". The title field, the "Herkese açık" switch and "Talebe kaydı ne zaman izlesin" are
+      below the tabs and the same on both. The file field, "Yükle" and the upload's states are nazar.recordings.upload; here she chooses the
+      other tab (RECADD-3: it is the same every time). The focus starts on the close icon (Base UI's first stop).
+    on:
+      CHOOSE_LINK: { target: addForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır'" }
+      CANCEL: { target: listed, say: "she presses Vazgeç, Esc or the close icon" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      # The switch sits under both tabs (recording-dialog.tsx:617): turned here, it is what the upload or the link form sends.
+      TOGGLE_PUBLIC:
+        - { guard: isPublic, target: addUpload, effect: [madePrivate], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' off again" }
+        - { target: addUpload, effect: [madePublic], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' on: everyone may watch it, unless the course is closed or the platform or the köşk says otherwise" }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:173
+
+  addForm:
+    title: The link form of a new recording
+    by: human
+    description: >-
+      The dialog "Kayıt ekle" on its link form: "Başlık" (starts as "{celse} kaydı", at most 200 characters), "Bağlantı" (empty; its label gains the
+      platform's chip, "YouTube" or "Google Drive", once an address of one is typed), the switch "Herkese açık" (off; nothing locks it for a medrese
+      whose policy forbids public recordings: RECADD-1), and "Talebe kaydı ne zaman izlesin" with "Hazır olunca hemen" selected and "Şu tarih ve
+      saatte" (the date and time boxes appear then, on the course's clock). The submit "Kaydı ekle" is always on. Pressing it with a problem
+      sends nothing and says so under the field: "Bağlantıyı yapıştırın." (nothing pasted), "Başlığı yazın.", "Bağlantı https:// ile başlamalı…",
+      or for the time "Tarihi ve saati yazın." / "İleri bir tarih ve saat seçin."; the Field errors are not announced and the focus stays on the
+      button (rule field-errors-not-announced). Esc, the close icon and Vazgeç close it and lose what was typed.
+    on:
+      FILL_IN: { target: addForm, effect: [filledIn], source: apps/nazar/features/recordings/components/recording-dialog.tsx:586, say: "she types the title and pastes the link" }
+      SET_RELEASE:
+        guard: "release != 'ready' and not picked"
+        target: addForm
+        effect: [releasePicked]
+        source: apps/nazar/features/recordings/components/release-fields.tsx:55
+        say: "she chooses 'Şu tarih ve saatte' and types a date and a time (or none)"
+      TOGGLE_PUBLIC:
+        - { guard: isPublic, target: addForm, effect: [madePrivate], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' off again" }
+        - { target: addForm, effect: [madePublic], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' on: everyone may watch it, unless the course is closed or the platform or the köşk says otherwise" }
+      SUBMIT:
+        - { guard: addWrong, target: addForm, effect: [said], source: apps/nazar/features/recordings/components/recording-dialog.tsx:320, say: "she presses 'Kaydı ekle' with a problem: nothing is sent and the errors show" }
+        - { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:336, say: "she presses 'Kaydı ekle'" }
+      CANCEL: { target: listed, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon: what was typed is lost" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      CHOOSE_LINK: { target: addForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': it is the tab already shown, nothing changes" }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:552
+
+  adding:
+    title: The recording is being added
+    description: >-
+      The server action addRecording calls POST /lessons/:id/recordings with the title, the link (trimmed, https), the visibility (PUBLIC or
+      ENROLLED) and, only when the choice changed, the time the course's talebe may watch it. The link is read by its host and nothing is
+      called: a YouTube address is stored as https://www.youtube.com/watch?v=<id>; an address that names no video is refused. The recording is
+      READY at once and the celse's enrolled talebe are told "Kayıt eklendi" once it is released (now, or at the time chosen). "Kaydı ekle" is
+      busy and the fields are off; Esc, the close icon and Vazgeç do nothing and say nothing (F-C-course-a-26). On success a toast says it, the
+      dialog closes and the page is read again. RECORDING_EXISTS, LESSON_CANCELLED and LESSON_NOT_FOUND close the dialog, read the page again
+      and say so in an error toast; a link tedrisat cannot store, a refusal or any other failure is an error toast and the dialog stays.
+    invoke: { action: createLessonRecording }
+    on:
+      DONE: { guard: "answer == 'saved'", target: listed, effect: [recordAdded], source: apps/nazar/features/recordings/components/recording-dialog.tsx:353, say: "the toast 'Kayıt eklendi' names the celse; the row now holds the recording" }
+      FAIL.moved: { guard: "answer == 'moved'", target: listed, effect: [recordedMeanwhile], source: apps/nazar/features/recordings/components/recording-dialog.tsx:347, say: "the error toast says it, the dialog closes and the list is read again: another person's recording is on the row" }
+      FAIL.linkInvalid: { guard: "answer == 'linkInvalid'", target: addForm, effect: [linkInvalidToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "the error toast says what is wrong with the link (a YouTube address that names no video, a foreign Bunny library…); the dialog stays" }
+      FAIL.refused: { guard: "answer == 'refused'", target: addForm, effect: [refusedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: addForm, effect: [failedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "an error toast, 'Başlığı ve https bağlantısını denetleyip yeniden deneyin.' or the general sentence; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (recording-dialog.tsx:556): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
+      CHOOSE_LINK: { target: adding, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': the tabs ignore a press while the write runs (:597)" }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:331
+
+  editForm:
+    title: The link form of a recording
+    by: human
+    description: >-
+      The dialog "Kaydı düzenle" opens on the link form with what the recording holds: its title, its link, the switch as its visibility, and
+      "Talebe kaydı ne zaman izlesin" as its celse holds it (the walk's celse holds none, so "Hazır olunca hemen"). A hoca who also holds
+      recording.upload sees the two tabs, on the link (the upload there replaces the link or the video). The submit is "Kaydet". Nothing changed
+      closes the dialog with no call and no toast; only the keys that changed are sent. The same problems as when adding are said under the fields
+      (the link is never empty here: it starts full). Esc, the close icon and Vazgeç close it.
+    on:
+      FILL_IN_EDIT: { target: editForm, effect: [filledIn], source: apps/nazar/features/recordings/components/recording-dialog.tsx:586, say: "she changes the title (and pastes a link: the same one, or another)" }
+      SET_RELEASE:
+        guard: "release != 'ready' and not picked"
+        target: editForm
+        effect: [releasePicked]
+        source: apps/nazar/features/recordings/components/release-fields.tsx:55
+        say: "she chooses 'Şu tarih ve saatte' and types a date and a time (or none)"
+      TOGGLE_PUBLIC:
+        - { guard: isPublic, target: editForm, effect: [madePrivate], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she turns 'Herkese açık' back to what the recording had" }
+        - { target: editForm, effect: [madePublic], source: apps/nazar/features/recordings/components/recording-dialog.tsx:626, say: "she changes 'Herkese açık'" }
+      SUBMIT:
+        - { guard: untouched, target: listed, source: apps/nazar/features/recordings/components/recording-dialog.tsx:326, say: "she presses 'Kaydet' having changed nothing: the dialog closes, nothing is sent and no toast says anything" }
+        - { guard: editWrong, target: editForm, effect: [said], source: apps/nazar/features/recordings/components/recording-dialog.tsx:320, say: "she presses 'Kaydet' with a problem: nothing is sent and the errors show" }
+        - { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:333, say: "she presses 'Kaydet'" }
+      CANCEL: { target: listed, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+      CHOOSE_LINK: { target: editForm, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': it is the tab already shown, nothing changes" }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:160
+
+  saving:
+    title: The recording is being changed
+    description: >-
+      The server action changeRecording calls PATCH /recordings/:id with only the keys that changed (the title, a new link, the visibility, the
+      time talebe may watch it). A new link is read as when adding and is READY, over a Bunny video too. The audit row is recording.update. A
+      success is the toast "Kayıt kaydedildi" with the new title; RECORDING_NOT_FOUND closes the dialog and reads the page again; a link
+      tedrisat cannot store, a refusal or a failure is an error toast and the dialog stays.
+    invoke: { action: updateRecording }
+    on:
+      DONE: { guard: "editAnswer == 'saved'", target: listed, effect: [recordSaved], source: apps/nazar/features/recordings/components/recording-dialog.tsx:353, say: "the toast 'Kayıt kaydedildi' names the new title" }
+      FAIL.moved: { guard: "editAnswer == 'moved'", target: listed, effect: [movedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:347, say: "the recording or its celse is gone: the error toast says so, the dialog closes and the list is read again" }
+      FAIL.linkInvalid: { guard: "editAnswer == 'linkInvalid'", target: editForm, effect: [linkInvalidToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "the error toast says what is wrong with the link; the dialog stays" }
+      FAIL.refused: { guard: "editAnswer == 'refused'", target: editForm, effect: [refusedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
+      FAIL.failed: { guard: "editAnswer == 'failed'", target: editForm, effect: [failedToast], source: apps/nazar/features/recordings/components/recording-dialog.tsx:339, say: "an error toast; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (recording-dialog.tsx:556): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:556, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
+      CHOOSE_LINK: { target: saving, source: apps/nazar/features/recordings/components/recording-dialog.tsx:597, say: "she presses 'Bağlantı yapıştır': the tabs ignore a press while the write runs (:597)" }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:333
+
+  addingStream:
+    title: The stream is being added as the recording
+    description: >-
+      The server action addRecording calls POST /lessons/:id/recordings with the title "{celse} kaydı", the stream's link and the visibility
+      ENROLLED: the same route as the link form, so the same answers. The stream's own link (set on Celseler, normalised to
+      https://www.youtube.com/live/<id>) is stored as the YouTube video and is READY at once, though it plays only when YouTube has archived the
+      stream (RECADD-2). That row's button is busy ("Yükleniyor" from the Button's default) and the other rows' stream buttons are off. On success a
+      toast says it and the caption on the row goes; the dialogs are not involved.
+    invoke: { action: createLessonRecording }
+    on:
+      DONE: { guard: "answer == 'saved'", target: listed, effect: [streamAdded], source: apps/nazar/features/recordings/components/recordings-table.tsx:121, say: "the toast 'Yayın kayıt olarak eklendi' says it plays when YouTube has archived the stream" }
+      FAIL.moved: { guard: "answer == 'moved'", target: listed, effect: [recordedMeanwhile], source: apps/nazar/features/recordings/components/recordings-table.tsx:136, say: "the error toast says it and the list is read again" }
+      FAIL.linkInvalid: { guard: "answer == 'linkInvalid'", target: listed, effect: [linkInvalidToast], source: apps/nazar/features/recordings/components/recordings-table.tsx:131, say: "the stream's link cannot be stored: the error toast says why" }
+      FAIL.refused: { guard: "answer == 'refused'", target: listed, effect: [refusedToast], source: apps/nazar/features/recordings/components/recordings-table.tsx:131, say: "'Bunu yapma izniniz yok.' in an error toast" }
+      FAIL.failed: { guard: "answer == 'failed'", target: listed, effect: [failedToast], source: apps/nazar/features/recordings/components/recordings-table.tsx:131, say: "an error toast" }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:113
+
+  releaseForm:
+    title: When talebe may watch it
+    by: human
+    description: >-
+      The dialog "Kayıt erişimi" (eyebrow: the celse's title; from Celseler the long date, F-C-course-a-27) holds one question, "Talebe kaydı ne
+      zaman izlesin": "Hazır olunca hemen" and "Şu tarih ve saatte" with the date and time of the course's clock; "Kaydet" is always on. It
+      works on a celse with no recording too: the time is kept on the celse. Nothing changed closes the dialog without a call. A time that is
+      not typed or has passed is refused under the field, and nothing is sent; a recording never opens before its celse starts, whatever is
+      typed.
+    on:
+      SET_RELEASE:
+        guard: "release != 'ready' and not picked"
+        target: releaseForm
+        effect: [releasePicked]
+        source: apps/nazar/features/recordings/components/release-fields.tsx:55
+        say: "she chooses 'Şu tarih ve saatte' and types a date and a time (or none)"
+      SUBMIT:
+        - { guard: "not picked", target: listed, source: apps/nazar/features/recordings/components/release-dialog.tsx:67, say: "she presses 'Kaydet' having changed nothing: the dialog closes with no call" }
+        - { guard: releaseWrong, target: releaseForm, effect: [said], source: apps/nazar/features/recordings/components/release-dialog.tsx:63, say: "the time is empty or has passed: it is said under the field and nothing is sent" }
+        - { target: releasing, source: apps/nazar/features/recordings/components/release-dialog.tsx:72, say: "she presses 'Kaydet'" }
+      CANCEL: { target: listed, source: apps/nazar/features/recordings/components/release-dialog.tsx:112, say: "she presses Vazgeç, Esc or the close icon" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/release-dialog.tsx:109
+
+  releasing:
+    title: The time is being saved
+    description: >-
+      The server action setRecordingAvailability calls PUT /lessons/:id/recording-availability with the time as an ISO instant, or null for "as
+      soon as it is ready". The time is kept on the celse (so it outlives a replaced recording) and the course's version does not change. A
+      recording this opens now is announced to the talebe now; one it holds back is announced at its time. The answer is the toast "Kayıt erişimi
+      kaydedildi" with "{celse} celsesinin kaydı talebeye {when} açılır."; LESSON_NOT_FOUND closes the dialog and reads the page again; a
+      refusal or a failure is an error toast and the dialog stays.
+    invoke: { action: setLessonRecordingAvailability }
+    on:
+      DONE: { guard: "releaseAnswer == 'saved'", target: listed, effect: [releasedAt], source: apps/nazar/features/recordings/components/release-dialog.tsx:90, say: "the toast says when the celse's recording opens; the row's 'Erişim' says it too" }
+      FAIL.gone: { guard: "releaseAnswer == 'gone'", target: listed, effect: [releaseGoneToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:84, say: "the celse is gone: the error toast says so, the dialog closes and the list is read again" }
+      FAIL.refused: { guard: "releaseAnswer == 'refused'", target: releaseForm, effect: [releaseRefusedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "'Bunu yapma izniniz yok.' in an error toast; the dialog stays" }
+      FAIL.failed: { guard: "releaseAnswer == 'failed'", target: releaseForm, effect: [releaseFailedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "an error toast, 'Açılış zamanı okunamadı…' or the general sentence; the dialog stays" }
+      # The dialog drops every way of closing while `pending` (release-dialog.tsx:112): the press changes nothing and the write runs on.
+      # Written as a transition back to this state, as a transition here always names a target.
+      CANCEL: { target: releasing, source: apps/nazar/features/recordings/components/release-dialog.tsx:112, say: "she presses Vazgeç, Esc or the close icon while the write runs: nothing happens and nothing says so (F-C-course-a-26)" }
+    source: apps/nazar/features/recordings/components/release-dialog.tsx:72
+
+  not_found:
+    title: The course is not there
+    type: final
+    leavesPage: true
+    description: "A 404 of a read is the portal's 404 page, outside the shell (apps/nazar/lib/tedrisat-read.ts:46)."
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-holders-of-a-code-write
+    never: "state in ['addUpload', 'addForm', 'adding', 'editForm', 'saving', 'releaseForm', 'releasing', 'addingStream'] and caller == 'outsider'"
+    say: Only a person who holds recording.manage or recording.upload gets past the page's gate to a form or a write.
+    source: apps/nazar/features/account/course-permissions.ts:86
+  - id: the-upload-tab-is-the-hocas
+    never: "state == 'addUpload' and caller != 'hoca'"
+    say: The dialog opens on the upload tab only for a person who holds recording.upload as well as recording.manage.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:173
+  - id: a-wrong-form-is-not-sent
+    never: "(state == 'adding' and addWrong) or (state == 'saving' and editWrong) or (state == 'releasing' and (releaseWrong or not picked))"
+    say: A form with a problem under a field sends nothing, and an unchanged release dialog sends nothing.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:320
+  - id: an-unchanged-edit-sends-nothing
+    never: "state == 'saving' and untouched"
+    say: An edit that changed nothing closes without a call.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:326
+  - id: the-stream-needs-a-hoca-and-a-stream
+    never: "state == 'addingStream' and not streamRow"
+    say: The one-click add exists only for a holder of session.live_link on a celse whose stream the page could read, and only once.
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:372

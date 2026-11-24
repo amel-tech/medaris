@@ -1,0 +1,72 @@
+# The screens of tedris.session.registerInPerson: the card "Yüz yüze katılım" on the celse page of tedris-web (/courses/<course>/lessons/<celse>).
+# PLANNED, NOT BUILT (MDRS-284): the card, its buttons and its toasts do not exist; they carry no `source`. The page they sit on does, and
+# so do the nodes of it that the card sits beside (the page, the card of the celse, its eyebrow "Yüz yüze" and its line "Bu celse yüz yüze
+# yapılır. ..."), which carry the real `source` that tedris.celse.attend gives them; they are drawn here only so the new card has its place.
+# Where it sits: a region of its own right after the celse's card, before the exam block, in the same column. This is the graph's
+# proposal, not a decision (a "Kaydı eklenirse burada yayımlanır" line above it keeps saying what it says today).
+#
+# Words. Copied from libs/i18n/src/locales/tr/tedris.json, letter for letter, with the key kept: SessionPage.inPersonKind, SessionPage.inPersonText,
+# CoursePage.pendingApproval, CoursePage.pendingSubmitted, CoursePage.withdrawRequest, CoursePage.withdrawn, CoursePage.actionFailed. The
+# course application's own words are reused where the registration is the same act (waiting, taking back, the toast that fails). New words are
+# `planned.InPerson.*`, Turkish only, listed in the report for review; `Changes.note` is the one authored message (no app message says what
+# registering changes). Nothing here asks the person for their gender: it is the profile's, and the card names it only in "{gender} kontenjanı doldu."
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.session.registerInPerson
+flow: tedris.session.registerInPerson
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  gender: Kadın
+  when: "bugün 10:02’de"
+
+nodes:
+  # --- the celse page that exists, only as far as the card sits beside it ---------------------------------------------------------------
+  celsePage: { type: page, component: Page, role: main, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing], source: apps/tedris/features/courses/components/session-page.tsx:337 } # exists; no name and no initial focus (rule focus-not-set)
+  sessionCard: { type: page, component: Page, role: region, name: { key: SessionPage.inPersonText }, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # exists; the celse of this flow is one held in person with no link and no stream, so the card is named by its in-person line
+  eyebrowInPerson: { type: text, component: Text, text: { key: SessionPage.inPersonKind }, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing], source: apps/tedris/features/courses/components/session-action-card.tsx:339 } # exists: "Yüz yüze" with a users icon
+  headingInPerson: { type: text, component: Heading, role: heading, text: { key: SessionPage.inPersonText }, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing], source: apps/tedris/features/courses/components/session-action-card.tsx:382 } # exists; h2. It names the recording, not the room, and not the seats (tedris.celse.attend, rule in-person-names-no-place)
+
+  # --- the new card ------------------------------------------------------------------------------------------------------------------
+  registerRegion: { type: page, component: Page, role: region, name: { labelledBy: registerTitle }, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing] }
+  registerTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPerson.title }, in: [applyCard, registering, full, pending, withdrawing, seat, genderMissing] } # h2, like the card of the celse above it
+
+  applyNote: { type: text, component: Text, text: { key: planned.InPerson.applyNote }, in: [applyCard, registering] } # says seats are kept apart and given at approval; no count and no total
+  applyButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.InPerson.apply }, in: [applyCard, registering], disabledIn: [registering], emits: APPLY } # busy while the call runs, as the course's apply button is
+
+  pendingBadge: { type: text, component: Text, text: { key: CoursePage.pendingApproval }, in: [pending, withdrawing], when: fromApplication } # the course application's own word
+  pendingSubmitted: { type: text, component: Text, text: { key: CoursePage.pendingSubmitted, params: { when: when } }, in: [pending, withdrawing], when: fromApplication } # "Başvurun {when} ders kadrosuna iletildi. Onaylandığında bildirim alırsın." reused as it is
+  withdrawButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.withdrawRequest }, in: [pending, withdrawing], when: fromApplication, disabledIn: [withdrawing], emits: WITHDRAW } # asks nothing first, as withdrawing a course application does
+
+  seatBadge: { type: text, component: Text, text: { key: planned.InPerson.seatGiven }, in: [seat, withdrawing], when: "not fromApplication" }
+  seatLine: { type: text, component: Text, text: { key: planned.InPerson.seatLine }, in: [seat, withdrawing], when: "not fromApplication" }
+  releaseButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.InPerson.release }, in: [seat, withdrawing], when: "not fromApplication", disabledIn: [withdrawing], emits: RELEASE } # asks nothing first (decision D4)
+
+  fullText: { type: text, component: Text, text: { key: planned.InPerson.full, params: { gender: profile.gender } }, in: [full] } # names the talebe's OWN gender only; no count, no other gender, no waiting list (decision D1)
+
+  noGenderText: { type: text, component: Text, text: { key: planned.InPerson.noGender }, in: [genderMissing] }
+  addGenderLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.InPerson.addGender }, in: [genderMissing], emits: OPEN_ACCOUNT } # to /account, whose gender row says "Belirtilmemiş" with "Ekle" (tedris.account.profile)
+
+  # --- the toasts (Sonner, as on the course page: a status with no role) ----------------------------------------------------------------
+  toastWithdrawn: { type: status, component: Status, text: { key: CoursePage.withdrawn }, in: [applyCard, full], when: "notice == 'withdrawn'" }
+  toastReleased: { type: status, component: Status, text: { key: planned.InPerson.released }, in: [applyCard], when: "notice == 'released'" }
+  toastQuotaFull: { type: status, component: Status, text: { key: planned.InPerson.quotaFull, params: { gender: profile.gender } }, in: [full], when: "notice == 'quotaFull'" }
+  toastFailed: { type: status, component: Status, text: { key: CoursePage.actionFailed }, in: [applyCard, pending, seat], when: "notice == 'failed'" }
+
+edges:
+  - { labelledBy: [registerRegion, registerTitle] }
+  - { triggers: [applyButton, registering] }
+  - { triggers: [withdrawButton, withdrawing] }
+  - { triggers: [releaseButton, withdrawing] }
+  - { triggers: [addGenderLink, account_opened] }
+
+rules:
+  - { id: focus-not-set, rule: "The celse page sets no initial focus (apps/tedris/features/courses/components/session-*.tsx: no autoFocus, no focus()), so the page node has no `initialFocus` and the graph says nothing of the focus when the card opens." }
+  - { id: focus-after-apply, rule: "Proposal, not drawn: when \"Yüz yüze başvur\" is pressed the button goes and the waiting card comes, and the focus must not fall to the document (the course's own apply card loses it: CRS-05 of tedris.course.apply). The recommended place is \"Başvuruyu geri çek\", and \"Yüz yüze başvur\" again after a withdrawal. Not drawn as `focus`, because the graph would then also claim a focus on page load." }
+  - { id: gender-never-typed, rule: "The card has no field for the gender. It is the account's, mirrored from the token (user-sync.service.ts:75), and the application takes it from there; the one place a person meets it is the refusal's link to Hesap. Gender separation is given: the quota is always two counts and the gender is always set." }
+  - { id: two-counts-never-shown-together, rule: "The talebe is told only that their own gender's quota is full. Neither the other gender's count nor a total is drawn here: both are the team's page (nazar.sessions.inPersonSeats)." }
+  - { id: planned-words, rule: "Every key `planned.InPerson.*` and `Changes.note` is a proposal for the owner to review; the keys of the course application (CoursePage.*) are the app's own." }

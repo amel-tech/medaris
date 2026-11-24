@@ -127,5 +127,9 @@
       "dependsOn": ["db:generate"],
       "cache": false
     }
+  },
+  "affected": {
+    "//": "Nx 24's `nx affected -t` runs only the tasks whose inputs a change reaches, where Nx 23 ran every listed target of each affected project. `legacy: true` keeps the Nx 23 selection that CI's affected job and tools/ci/assert-affected-isolation.mjs were built on (set by nx's 24-0-0-enable-legacy-affected migration). NX_LEGACY_AFFECTED overrides it for a single run.",
+    "legacy": true
   }
 }

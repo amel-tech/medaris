@@ -7,22 +7,25 @@ Five pieces of work on one branch (`feat/emsile-sarf-engine`), so that a müderr
 | # | Piece | nazar-web | tedris-web | tedrisat |
 | --- | --- | --- | --- | --- |
 | 1 | `@medaris/sarf`, the sarf engine | — | — | — |
-| 2 | Sarf tablosu | `/ders/[dersId]/sarf` | "Sarf" tab of the course page | `course_sarf_roots`, migration 0069 |
-| 3 | Ders tahtası | `/ders/[dersId]/celseler/[celseId]/tahta` | session page, read-only | `lesson_boards`, `lesson_board_files`, migration 0070 |
-| 4 | Lügat | `/ders/[dersId]/lugat` | "Lügat" tab of the course page | `course_terms`, migration 0071 |
-| 5 | Ders notu | `/ders/[dersId]/celseler/[celseId]/not` | session page, above the board | `lesson_teacher_notes`, migration 0072 |
+| 2 | Sarf tablosu | `/ders/[dersId]/sarf` | "Sarf" tab of the course page | `course_sarf_roots` |
+| 3 | Ders tahtası | `/ders/[dersId]/celseler/[celseId]/tahta` | session page, read-only | `lesson_boards`, `lesson_board_files` |
+| 4 | Lügat | `/ders/[dersId]/lugat` | "Lügat" tab of the course page | `course_terms` |
+| 5 | Ders notu | `/ders/[dersId]/celseler/[celseId]/not` | session page, above the board | `lesson_teacher_notes` |
 
 `libs/sarf` is `scope:shared` and carries no `platform:*` tag, so both web apps import it. It takes a three-letter sâlim root and a bâb and gives the 24 sîgas of the Emsile-i Muhtelife with every çekim.
 
-Each of the four tables hangs off a course or a lesson with `ON DELETE RESTRICT`, so every purge that deletes a course, a week or a session names it: `src/course/course-purge.ts` and the two purge branches of `src/archive/archive.repository.ts`. Each has a hand-written rollback in `src/database/rollbacks/`.
+All five tables are made by one migration, `0081_emsile_teacher_material.sql`, with one hand-written rollback in `src/database/rollbacks/`. The branch was cut at `a0248bb4` and first carried them as 0069 to 0072; `main` took those four numbers for other work in the meantime, so when `main` was merged in the four were replaced by one generated on top of `main`'s 0080. Nothing had applied the old four outside a developer's machine.
+
+Each table hangs off a course or a lesson with `ON DELETE RESTRICT`, so every purge that deletes a course, a week or a session names it: `purgeCourses` and `deleteSession` in `src/course/course-purge.ts`, and the two purge branches of `src/archive/archive.repository.ts`.
 
 ## Measured
 
-- `apps/tedrisat`, whole suite, on the branch: 217 files, 3777 tests, all passing (`pnpm exec vitest run`, 192 s). The new e2e specs in it: `course-sarf` 8 tests, `lesson-board` 11, `course-term` 8, `lesson-teacher-note` 10.
+- `apps/tedrisat`, whole suite, after `main` (`0ee675e3`) was merged in: 238 files, 3957 tests, all passing, inside `nx run-many -t test`. Before the merge, on the branch alone: 217 files, 3777 tests, all passing (`pnpm exec vitest run`, 192 s). The new e2e specs in it: `course-sarf` 8 tests, `lesson-board` 11, `course-term` 8, `lesson-teacher-note` 10.
 - `libs/sarf`: 5 files, 145 tests. `libs/utils`: 8 files, 133 tests.
-- The gate, each target run on its own with `--skip-nx-cache`: `typecheck` 19 projects, `test` 15 projects, `build` 8 projects, `lint` 19 projects, `module-boundaries` 19 projects, all green.
-- `pnpm assert:openapi-fresh`: 225 paths, identical to what the exporter writes. `node tools/ci/assert-release-config.mjs`: 7 components, chain intact.
-- The route inventory snapshot (`test/e2e/__snapshots__/authz-route-inventory.txt`) grew by 13 lines across the branch.
+- The gate after the merge, each target run on its own with `--skip-nx-cache`, as Nx counted its tasks: `typecheck` 21, `build` 17, `lint` 19, `module-boundaries` 19, and `test` over 15 projects, all green.
+- `pnpm assert:openapi-fresh`: 265 paths, identical to what the exporter writes. `node tools/ci/assert-release-config.mjs`: 7 components, chain intact.
+- The route inventory snapshot (`test/e2e/__snapshots__/authz-route-inventory.txt`) is 13 lines longer than `main`'s.
+- `pnpm run security-check`: no high or critical advisory brought in. The lesson board's canvas first brought seven, all high and all through `@excalidraw/excalidraw`'s exact declarations of `nanoid` (3.3.3 and, through `mermaid-to-excalidraw`, 4.0.2) and its `lodash-es` 4.17.21. Three overrides in `pnpm-workspace.yaml` close them, with their removal condition written beside them. nazar-web and tedris-web were built and tested again after the overrides; the canvas itself was not opened in a browser.
 
 Two runs of the gate did not pass on the first attempt, neither for a reason in this branch:
 

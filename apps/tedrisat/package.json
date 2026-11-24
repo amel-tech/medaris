@@ -1,6 +1,6 @@
 {
   "name": "@medaris/tedrisat",
-  "version": "0.2.13",
+  "version": "0.2.21",
   "description": "",
   "author": "",
   "private": true,
@@ -40,7 +40,7 @@
     "@nestjs/swagger": "catalog:",
     "@nestjs/throttler": "catalog:",
     "@opentelemetry/auto-instrumentations-node": "catalog:",
-    "@opentelemetry/exporter-trace-otlp-grpc": "catalog:",
+    "@opentelemetry/exporter-trace-otlp-proto": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",

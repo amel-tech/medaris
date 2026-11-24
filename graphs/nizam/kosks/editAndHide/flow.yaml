@@ -1,0 +1,297 @@
+# Köşk ayarları, Genel (/kosks/<id>/ayarlar) in nizam-web and the "Köşkü gizle" it holds, read from the code of PR #394's branch on
+# 15 Nov 2026 (apps/nizam/features/kosks/components/{kosk-settings,hide-kosk-dialog,kosks-directory}.tsx, features/kosks/admin-present.ts,
+# apps/tedrisat/src/kosk, apps/tedrisat/src/platform-policy). Nothing here was seen in a browser; every state is "from the code".
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Kaydet" is not a dead button: it is on as soon as one field differs, and an empty name is refused on the page (no request) with
+#     "Bir ad yazın." under the field, once the person has pressed it. The error is not a live region and the focus stays on "Kaydet"
+#     (F-W3-13, F-UI-W3-1, F-X-2).
+#   - A köşk nazımı can untick "Kayıt her zaman onaylı" or "Ders kayıtları herkese açılamaz" while the platform policy of the same
+#     name is on. The box accepts it, the save is refused with 409 PLATFORM_POLICY_LOCKED, and the toast says "Ayarlar kaydedilemedi"
+#     with the generic "Bir şeyler ters gitti." (F-W3-3). The başnazım is never refused: the service skips the check for him.
+#   - After a successful save "Kaydet" turns off while it has the focus; the only word is a toast of 6 seconds (F-W3-edit-1).
+#   - "Köşkü gizle" opens an alertdialog whose "Vazgeç" has the focus. "Vazgeç" and the close icon do nothing while the call runs
+#     and are not disabled (F-W3-hide-1). A success leaves the page for /kosks, the unfiltered list, where the köşk reads "Gizli" with a
+#     "Geri al" for whoever hid it; the page the person was on is gone, and so is the button that had the focus (F-W3-hide-2).
+#   - The page never reads whether the köşk is already hidden: a nazım who opens the settings of a hidden köşk sees the same page and
+#     the same button, and "Gizle" answers "Bu köşk zaten gizli." (F-W3-hide-3).
+#   - The tab and the history entry say "Köşk ayarları" for every köşk (F-W3-9).
+#
+# The cover is a group of four radios (Lâciverd, Bordo, Zümrüt, Mürekkep), not a file input: there is no image upload on this page, so
+# there is nothing here the replay cannot drive.
+schema: delurio-graph/0
+kind: flow
+id: nizam.kosks.editAndHide
+status: captured
+domain: medaris.api
+ui: nizam.kosks.editAndHide
+title: Edit a köşk's settings and hide it
+summary: >-
+  A köşk's nazımı (or the başnazım, or a Medaris nazımı holding platform.kosk_edit) opens the köşk's settings and changes its name,
+  tags, cover colour, description, "Listelerde gösterme" and its two policies. "Kaydet" sends only what changed and "Vazgeç" puts the
+  saved values back; a name that is empty or one character is refused on the page, before any request, once "Kaydet" is pressed.
+  A köşk nazımı cannot switch off a policy that Medaris yönetimi has switched on for the platform: the server refuses and the page says
+  only that something went wrong. Then the nazım hides the köşk: an alertdialog asks first, "Gizle" hides it and its courses from every
+  list (nothing is deleted), and the page lands on the Köşkler list, where the köşk reads "Gizli" and the nazım, who hid it, can bring
+  it back.
+
+scope:
+  shows: >-
+    the settings page of one köşk, its save and reset, the refusal of a locked platform policy, the hide confirmation and the list the
+    person lands on
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the other two tabs of the settings, Köşk nazımları and Barındırma hakları: nizam.kosks.nazims, nizam.hosting.grantAndRevoke"
+    - "another köşk's settings, or a köşk that is not there: the page is the 'Bu bölüm için izniniz yok' screen (kosks#11): nizam.shell.noAccessAndNotFound, nizam.kosks.nazims"
+    - "the page when tedrisat cannot be read: an error Alert with 'Yeniden dene' (KoskSettingsUnavailable)"
+    - "the Köşkler list's own tabs, filters, search and 'Geri al': nizam.kosks.browse; this flow draws only the row of the köşk that was hidden"
+    - "bringing the köşk back, and what the başnazım does with a köşk Medaris yönetimi hid: nizam.kosks.browse, nizam.kosks.manage"
+    - "a Medaris nazımı holding platform.kosk_edit: the page and the calls are the same as the nazım's, including the platform lock; his menu has no entry here and he opens the address"
+    - "an ended session: both server calls send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the e-mail and notification effects of hiding: none are sent; the 5-minute invitation sweep cancels the lost celses' invitations later"
+
+decisions:
+  D1:
+    question: >-
+      Should the settings page say that a policy is locked by Medaris yönetimi, before the nazım tries to switch it off? Today the
+      box accepts the click, the save is refused with 409 PLATFORM_POLICY_LOCKED, and the toast says only "Bir şeyler ters gitti".
+      The catalog already has a sentence for it, "Bu ayar platform politikasıyla kapalı." (KoskApplicationsPage.errors.locked), used
+      elsewhere.
+    recommend: >-
+      Map PLATFORM_POLICY_LOCKED to that sentence in KoskSettings.errors, and draw a locked box as ticked and disabled with the reason
+      beside it, so that the person is told before they press. A köşk whose own value is off while the platform's is on also reads
+      "off" today, though the rule is in force; showing it ticked would be honest.
+    affects: [formDirty, saving]
+  D2:
+    question: >-
+      Where should the person land after hiding? The page goes to /kosks, the unfiltered list; the story that asked for this flow says
+      "under Gizli". The köşk is in the list with its status, but a nazım of several köşks must find it among the others.
+    recommend: >-
+      Go to /kosks?durum=gizli, so the hidden köşk is the first thing in the list and the tab says where it went.
+    affects: [hidden]
+
+context:
+  # Case variables: what the world is. The walk's scenario gives each one; none is changed by a transition.
+  world:
+    values: [free, locked, chiefOverrides, gone, forbidden, failed]
+    initial: any
+    say:
+      free: "the köşk's two policies are off, nothing above it locks them, and the person is its nazım: every save is accepted"
+      locked: "the köşk's 'Ders kayıtları herkese açılamaz' is on and Medaris yönetimi has switched the same platform policy on: the nazım's attempt to switch it off is refused (409)"
+      chiefOverrides: "the same lock, but the one who edits is the başnazım: no platform policy refuses him, so the save is accepted"
+      gone: "the köşk is deleted between opening the page and pressing 'Kaydet' (404)"
+      forbidden: "the person's right to edit the köşk is withdrawn in between (403)"
+      failed: "any other failure: the body is refused, the server does not answer"
+  hideAnswer:
+    values: [hidden, alreadyHidden, gone, forbidden, failed]
+    initial: any
+    say:
+      hidden: "the köşk is hidden"
+      alreadyHidden: "the köşk was hidden already (by another nazım, or by Medaris yönetimi) before 'Gizle' was pressed (409)"
+      gone: "the köşk is deleted meanwhile (404)"
+      forbidden: "the person's right is withdrawn meanwhile (403)"
+      failed: "any other failure"
+  # Shown-state variables: what the screen remembers.
+  dirty: { values: [true, false], initial: false } # some field differs from the saved köşk: "Kaydet" and "Vazgeç" are on
+  fields: { values: [valid, noName, shortName, manyTags], initial: valid } # what the form holds that "Kaydet" would refuse
+  said: { values: [none, noName, shortName, manyTags], initial: none } # which refusal the page says under a field
+  saved: { values: [true, false], initial: false } # a save was accepted in this visit (the form is the saved köşk again)
+  cover: { values: [laciverd, bordo, zumrut, murekkep], initial: laciverd }
+  unlisted: { values: [true, false], initial: false }
+  approval: { values: [true, false], initial: false } # "Kayıt her zaman onaylı"
+  recordings: { values: [true, false], initial: false } # "Ders kayıtları herkese açılamaz"
+  toast: { values: [none, saved, generic, gone, forbidden], initial: none }
+  hideToast: { values: [none, alreadyHidden, gone, forbidden, generic], initial: none }
+
+guards:
+  # world's `locked` and `chiefOverrides` are the two that start with the recordings policy on in the köşk itself
+  ruled: "world in ['locked', 'chiefOverrides']"
+  # the two that the server accepts: a refusal needs the lock, and the lock needs a nazım
+  accepted: "world in ['free', 'chiefOverrides']"
+  # after an accepted save the visit is over as far as editing goes: the walk goes on to hide or leaves
+  editable: "not saved"
+
+effects:
+  startRuled: { set: { recordings: true } }
+  editedAll: { set: { dirty: true, fields: valid, said: none, cover: bordo, unlisted: true, approval: true, recordings: true } }
+  untickedRecordings: { set: { dirty: true, recordings: false } }
+  clearedName: { set: { dirty: true, fields: noName } }
+  oneCharacterName: { set: { dirty: true, fields: shortName } }
+  tooManyTags: { set: { dirty: true, fields: manyTags } }
+  corrected: { set: { dirty: true, fields: valid, said: none } }
+  saidNoName: { set: { said: noName } }
+  saidShortName: { set: { said: shortName } }
+  saidManyTags: { set: { said: manyTags } }
+  resetPlain: { set: { dirty: false, fields: valid, said: none, cover: laciverd, unlisted: false, approval: false, recordings: false } }
+  resetRuled: { set: { dirty: false, fields: valid, said: none, cover: laciverd, unlisted: false, approval: false, recordings: true } }
+  savedOk: { set: { dirty: false, saved: true, fields: valid, said: none, toast: saved } }
+  toastGeneric: { set: { toast: generic } }
+  toastGone: { set: { toast: gone } }
+  toastForbidden: { set: { toast: forbidden } }
+  clearHideToast: { set: { hideToast: none } }
+  hideToastAlready: { set: { hideToast: alreadyHidden } }
+  hideToastGone: { set: { hideToast: gone } }
+  hideToastForbidden: { set: { hideToast: forbidden } }
+  hideToastGeneric: { set: { hideToast: generic } }
+
+failures:
+  saving:
+    from: updateKosk
+    locked: [PLATFORM_POLICY_LOCKED]
+    gone: [KOSK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  hiding:
+    from: hideKosk
+    alreadyHidden: [KOSK_ALREADY_HIDDEN]
+    gone: [KOSK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: []
+
+# The story the page tells first, and e2e kosks#7 to #9: the nazım changes everything the form has, saves, then hides the köşk.
+main:
+  given: { world: free, hideAnswer: hidden }
+  events: [FILL_IN, SUBMIT, DONE, HIDE, CONFIRM_HIDE, DONE]
+
+initial: start
+states:
+  start:
+    title: The settings page opens
+    description: >-
+      The page reads the köşk, its nazımlar (which asks the same right as the edit does: a 403 or 404 there is the 'Bu bölüm için
+      izniniz yok' screen, not drawn here) and its hosting rights (only for the tab's number). The form starts as the köşk is. In the
+      locked branch the köşk already has "Ders kayıtları herkese açılamaz" on.
+    source: apps/nizam/app/kosks/[id]/ayarlar/page.tsx:34
+    always:
+      - { guard: ruled, target: form, effect: [startRuled], source: apps/nizam/features/kosks/admin-present.ts:328, say: "the köşk has the recordings policy on: its box is ticked" }
+      - { target: form, source: apps/nizam/features/kosks/admin-present.ts:322, say: "both policies are off: the form is the köşk as it is" }
+
+  settle:
+    title: Is anything changed?
+    description: >-
+      Not a screen: after every change to the form, "Kaydet" and "Vazgeç" are on or off. They are on while at least one field differs
+      from the köşk as it was last saved (`isDirty`: the changed fields, name and description compared trimmed, tags as the list they
+      become).
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:62
+    always:
+      - { guard: dirty, target: formDirty, say: "something differs from the saved köşk: both buttons are on" }
+      - { target: form, say: "nothing differs: both buttons are off" }
+
+  form:
+    title: The settings, nothing changed
+    by: human
+    description: >-
+      The page: the title, the intro that names the köşk, the three links (Genel is the page, Köşk nazımları and Barındırma hakları
+      carry their numbers), "Köşk bilgileri" (Ad, Kısa ad, Etiketler, Kapak, Açıklama), "Görünürlük", "Politikalar", "Vazgeç" and
+      "Kaydet", and the card "Köşkü gizle". "Kaydet" and "Vazgeç" are natively disabled until a field differs. "Kısa ad" is read-only
+      and focusable: Medaris yönetimi changes it. The page sets no initial focus, so a keyboard user starts from the top (focus-not-set).
+      After an accepted save this is also the state the page is in, with the toast "Ayarlar kaydedildi", and the form is the saved
+      köşk. After a refused save and "Vazgeç" it keeps the error toast, which stays until it is closed. A policy that Medaris yönetimi
+      has switched on is not shown as on here unless the köşk has it on too (F-W3-3).
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:129
+    on:
+      FILL_IN: { guard: "not ruled and editable", target: settle, effect: [editedAll], source: apps/nizam/features/kosks/components/kosk-settings.tsx:152, say: "they change the name, tags and description, choose Bordo, tick 'Listelerde gösterme' and both policies" }
+      UNTICK: { guard: "ruled and editable", target: settle, effect: [untickedRecordings], source: apps/nizam/features/kosks/components/kosk-settings.tsx:241, say: "they untick 'Ders kayıtları herkese açılamaz', which the köşk has on: the box accepts it, whatever the platform says (F-W3-3)" }
+      CLEAR_NAME: { guard: editable, target: settle, effect: [clearedName], source: apps/nizam/features/kosks/components/kosk-settings.tsx:152, say: "they empty 'Ad'" }
+      SHORT_NAME: { guard: editable, target: settle, effect: [oneCharacterName], source: apps/nizam/features/kosks/components/kosk-settings.tsx:152, say: "they leave one character in 'Ad'" }
+      MANY_TAGS: { guard: editable, target: settle, effect: [tooManyTags], source: apps/nizam/features/kosks/components/kosk-settings.tsx:173, say: "they write more than ten tags" }
+      HIDE: { target: confirmHide, source: apps/nizam/features/kosks/components/kosk-settings.tsx:277, say: "they press 'Köşkü gizle': the confirmation opens" }
+      NAVIGATE: { target: left, say: "they follow a tab, the menu or the address bar" }
+
+  formDirty:
+    title: The settings, something changed
+    by: human
+    description: >-
+      The same page with "Kaydet" and "Vazgeç" on. "Kaydet" is never blocked by a field: pressed with a name of fewer than two
+      characters or more than ten tags, it sends nothing, shows the message under the field and keeps the focus on itself
+      (F-W3-13, F-UI-W3-1); `sent` stays on afterwards, so the message follows the field as it is edited. Pressed with a valid form it
+      sends only the fields that changed (`settingsPayload`). "Vazgeç" puts the saved values back and takes the messages away; it does
+      not take away an error toast.
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:259
+    on:
+      SUBMIT:
+        - { guard: "fields == 'valid'", target: saving, source: apps/nizam/features/kosks/components/kosk-settings.tsx:73, say: "they press 'Kaydet'" }
+        - { guard: "fields == 'noName'", target: settle, effect: [saidNoName], source: apps/nizam/features/kosks/components/kosk-settings.tsx:69, say: "they press 'Kaydet' with 'Ad' empty: 'Bir ad yazın.' appears under it and nothing is sent" }
+        - { guard: "fields == 'shortName'", target: settle, effect: [saidShortName], source: apps/nizam/features/kosks/components/kosk-settings.tsx:69, say: "'Ad en az 2 karakter olmalı.' appears under 'Ad' and nothing is sent" }
+        - { guard: "fields == 'manyTags'", target: settle, effect: [saidManyTags], source: apps/nizam/features/kosks/components/kosk-settings.tsx:69, say: "'En çok 10 etiket yazılabilir.' appears under 'Etiketler' and nothing is sent" }
+      CORRECT: { guard: "fields != 'valid'", target: settle, effect: [corrected], source: apps/nizam/features/kosks/components/kosk-settings.tsx:152, say: "they write a name and the tags the form allows: the message goes" }
+      RESET:
+        - { guard: ruled, target: settle, effect: [resetRuled], source: apps/nizam/features/kosks/components/kosk-settings.tsx:252, say: "Vazgeç: every field is the saved köşk again, the recordings box ticked as it was, the messages gone, both buttons off" }
+        - { target: settle, effect: [resetPlain], source: apps/nizam/features/kosks/components/kosk-settings.tsx:252, say: "Vazgeç: every field is the saved köşk again, the messages gone, both buttons off" }
+      HIDE: { target: confirmHide, source: apps/nizam/features/kosks/components/kosk-settings.tsx:277, say: "they press 'Köşkü gizle' without saving: what they typed stays behind the dialog" }
+      NAVIGATE: { target: left, say: "they follow a tab, the menu or the address bar: what they typed is lost, nothing asks (not verified)" }
+
+  saving:
+    title: The settings are being saved
+    description: >-
+      The server action updateKosk, PATCH /kosks/:id with the changed fields. The fields, the radios and the boxes are disabled,
+      "Kaydet" is busy (aria-disabled, aria-busy and a hidden status that says "Yükleniyor" from the button's own default: F-UI-W1-3)
+      and "Vazgeç" is off; "Köşkü gizle" stays on and is not drawn here. An accepted save re-seeds the form from the answer, says so in
+      a toast of 6 seconds and reads the page again. A refusal is a toast that stays until it is closed, and the form stays as it was
+      typed. The 409 of a locked platform policy is told as the generic sentence (F-W3-3); the başnazım is never refused it
+      (kosk.service.ts:235). A köşk that is gone is answered 404 by the guard (byExistingKosk) before the service looks at any policy.
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:74
+    invoke: { action: updateKosk }
+    on:
+      DONE: { guard: accepted, target: settle, effect: [savedOk], source: apps/nizam/features/kosks/components/kosk-settings.tsx:84, say: "the köşk is saved: the toast 'Ayarlar kaydedildi' names it, the form is the saved köşk, 'Kaydet' goes off while it has the focus (F-W3-edit-1)" }
+      FAIL.locked: { guard: "world == 'locked'", target: settle, effect: [toastGeneric], source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:67, say: "409 PLATFORM_POLICY_LOCKED: the toast 'Ayarlar kaydedilemedi' says 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' and nothing says why (F-W3-3)" }
+      FAIL.gone: { guard: "world == 'gone'", target: settle, effect: [toastGone], source: apps/nizam/features/kosks/admin-present.ts:423, say: "404: the toast says 'Bu köşk artık yok.'; the page stays" }
+      FAIL.forbidden: { guard: "world == 'forbidden'", target: settle, effect: [toastForbidden], source: apps/nizam/features/kosks/admin-present.ts:425, say: "403: the toast says 'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "world == 'failed'", target: settle, effect: [toastGeneric], source: apps/nizam/features/kosks/admin-present.ts:436, say: "any other refusal, or no answer: the generic sentence" }
+      NAVIGATE: { target: left, say: "they follow a tab or the menu while it saves; the call goes on" }
+
+  confirmHide:
+    title: Köşkü gizle asks once
+    description: >-
+      An alertdialog titled "Köşkü gizle", with the köşk's name above the title, says who loses sight of the köşk ("{ad} talebelerden,
+      hocalardan, medreselerden ve ziyaretçilerden gizlenecek; köşk ve bütün dersleri her listeden çıkar.") and the way back ("Hiçbir şey
+      silinmez. Köşkü siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir."). The focus starts on "Vazgeç"; the scrim
+      does not close it; Escape and the close icon do. "Gizle" is the primary button, not a destructive one. After a refusal the
+      dialog stays open with a toast over it. Cancelling hands the focus back to "Köşkü gizle" (Base UI; not verified). The köşk is
+      named as the form was last saved: after a save, the new name.
+    by: human
+    source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57
+    on:
+      CONFIRM_HIDE: { target: hiding, effect: [clearHideToast], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:68, say: "they press 'Gizle'" }
+      CANCEL: { target: settle, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:59, say: "Vazgeç, the close icon or Escape: nothing is hidden and the page is as it was, typed values included" }
+      NAVIGATE: { target: left, say: "they leave by the address bar or the browser's back button" }
+
+  hiding:
+    title: The köşk is being hidden
+    description: >-
+      The server action hideKosk, POST /kosks/:id/hide (kosk.manage of the köşk, or platform.kosk_edit, or the başnazım). The köşk and
+      its courses leave every list and answer 404 to everyone but its nazımlar and the people above; nothing is deleted; the level
+      the caller acts at is recorded (a nazım hides at the köşk level, so the nazım may bring it back) and an audit row `kosk.hide` is
+      written. "Gizle" is busy; "Vazgeç" and the close icon stay on and do nothing while the call runs (F-W3-hide-1).
+    source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:39
+    invoke: { action: hideKosk }
+    on:
+      DONE: { guard: "hideAnswer == 'hidden'", target: hidden, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:49, say: "the toast 'Köşk gizlendi' names it, the dialog closes and the page goes to /kosks" }
+      FAIL.alreadyHidden: { guard: "hideAnswer == 'alreadyHidden'", target: confirmHide, effect: [hideToastAlready], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:43, say: "409: the toast 'Köşk gizlenemedi' says 'Bu köşk zaten gizli.'; the dialog stays open" }
+      FAIL.gone: { guard: "hideAnswer == 'gone'", target: confirmHide, effect: [hideToastGone], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:43, say: "404: 'Bu köşk artık yok.'" }
+      FAIL.forbidden: { guard: "hideAnswer == 'forbidden'", target: confirmHide, effect: [hideToastForbidden], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:43, say: "403: 'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "hideAnswer == 'failed'", target: confirmHide, effect: [hideToastGeneric], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:43, say: "anything else: 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+      NAVIGATE: { target: left, say: "they leave by the address bar while it runs; the call goes on" }
+
+  hidden:
+    type: final
+    title: The köşk is hidden and the person is on the Köşkler list
+    description: >-
+      /kosks, the unfiltered list ("Tümü": the page does not ask for ?durum=gizli, D2). The toast "Köşk gizlendi" is up for 6
+      seconds. The köşk's row reads "Gizli" with its eye-off glyph and "{tarih} beri"; a köşk nazımı sees only their own köşks, and
+      because they hid it themselves the row has "Geri al: {ad}". A köşk the nazım cannot restore (Medaris yönetimi hid it) would show
+      who hid it instead; the list is nizam.kosks.browse's. The button that had the focus is gone with the page, so the focus is on
+      nothing (F-W3-hide-2). The nazım's menu has no link to this list, so after hiding is the one way a nazım gets there without typing
+      the address.
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:289
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: only-a-valid-form-is-sent, never: "state == 'saving' and fields != 'valid'", say: "Nothing is sent while the name or the tags are wrong: the page says so under the field instead", source: apps/nizam/features/kosks/components/kosk-settings.tsx:69 }
+  - { id: nothing-changed-nothing-sent, never: "state == 'saving' and not dirty", say: "'Kaydet' is off until a field differs, so an unchanged form is never sent", source: apps/nizam/features/kosks/components/kosk-settings.tsx:259 }
+  - { id: the-chief-is-never-locked, never: "world == 'chiefOverrides' and toast in ['generic', 'gone', 'forbidden']", say: "A platform policy never refuses the başnazım: the service skips the check for him", source: apps/tedrisat/src/kosk/kosk.service.ts:235 }
+  - { id: hidden-only-by-a-confirmed-answer, never: "state == 'hidden' and hideAnswer != 'hidden'", say: "The page lands on the list only when the server hid the köşk", source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:49 }

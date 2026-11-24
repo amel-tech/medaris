@@ -1,0 +1,206 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.discover.visitorPath
+status: proposed
+summary: >-
+  What must exist for a person with no account to look around tedris-web and be asked to sign in or register from the page they
+  like: tedris.discover.visitorPath. Each need is what the product must do, from the flow's story; none is read off what the page
+  does today. No planned feature (P-nn) of planned.md is this page's: the language switch (P-21, MDRS-295) is tedris.shell.frame's
+  and the address of a medrese by its handle (P-22, MDRS-294) is tedris.discover.readMadrasah's. Missing (no code, or code that
+  says otherwise): registration-returns-to-the-page, medrese-notice-is-true, programme-names-a-week-once,
+  sample-row-does-not-say-completed, loading-is-heard. Unwalked (code, and neither an e2e nor a passed replay): none. Two needs
+  rest on a weak walk and say so: register-from-the-page has only anonymous#7, which awaits /realms/ and so cannot tell the
+  registration form from the login form (E2E-P-06); REGISTER is bound but not on the main story, so no replay of it has passed.
+  closed-content-stays-out-of-the-page has the e2e that reads the page HTML, which a graph cannot.
+
+needs:
+  - id: read-without-an-account
+    need: >-
+      A person with no account reads Keşfet, a köşk, a medrese and a course's introduction, and is not sent to sign in to do so.
+    evidence:
+      - state: discover
+      - state: kosk
+      - state: madrasah
+      - state: course
+      - source: apps/tedris/lib/public-paths.ts:15
+      - source: apps/tedris/lib/public-paths.ts:30
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "opens with no account and lists the köşks without a follow button"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "goes to the köşk page without signing in"
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "sees the page, the programme with its locked weeks, and is asked to sign in"
+      - scenario: fullIntro
+    note: anonymous.e2e.ts anonymous#1, anonymous#5
+
+  - id: no-follow-and-no-application-for-a-visitor
+    need: >-
+      A visitor is not offered the follow button, the way to ask for a köşk, a köşk's decks, or a talebe's tabs of a course, and
+      is invited to sign in or register in their place.
+    evidence:
+      - state: discover
+      - state: kosk
+      - state: course
+      - state: recordings
+      - source: apps/tedris/features/discover/components/kosk-card.tsx:39
+      - source: apps/tedris/features/discover/components/discover-page.tsx:203
+      - source: apps/tedris/features/courses/components/kosk-page.tsx:183
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "opens with no account and lists the köşks without a follow button"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "invites the visitor to sign in or register instead of offering a köşk application"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "shows the köşk, its manager and its published courses, with no follow button and no decks"
+      - scenario: fullIntro
+    note: |-
+      anonymous.e2e.ts anonymous#1, anonymous#4, anonymous#10
+      fullIntro: with --absent: every node behind `signedIn` is checked not to be there
+
+  - id: sign-in-comes-back-to-the-page
+    need: >-
+      From any page a visitor reads, "giriş yap" signs them in and brings them back to that page, with the filters of Keşfet kept.
+    evidence:
+      - state: handed_over.sign_in
+      - source: apps/tedris/lib/invite-hrefs.ts:10
+      - source: apps/tedris/features/courses/components/course-aside.tsx:348
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "invites the visitor to sign in or register instead of offering a köşk application"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "brings the visitor back to Keşfet after 'giriş yap'"
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "'giriş yap' leads to the sign-in, which hands over to Keycloak"
+      - scenario: fullIntro
+    note: |-
+      anonymous.e2e.ts anonymous#4 (the href), anonymous#8 (back on Keşfet)
+      course.e2e.ts course#4 (ends on the sign-in page; it does not check the way back)
+      fullIntro: up to Keycloak's address; the way back is realm.auth.signIn's scenario tedrisSignInLink
+
+  - id: register-from-the-page
+    need: From any page a visitor reads, "kayıt ol" opens the registration form.
+    evidence:
+      - state: handed_over.register
+      - source: apps/tedris/lib/invite-hrefs.ts:11
+      - source: apps/tedris/features/courses/components/course-aside.tsx:354
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "sends 'kayıt ol' to Keycloak's registration form"
+    note: "anonymous.e2e.ts anonymous#7 (it awaits only /realms/, so a login form passes it too: E2E-P-06)"
+
+  - id: registration-returns-to-the-page
+    need: >-
+      A visitor who registers from a course's page comes back to that course once the account is made, as one who signs in does.
+    missing: >-
+      no Linear issue; decision D1 of the flow; registration carries no callbackUrl today and ends on Ana sayfa
+      (lib/invite-hrefs.ts:11)
+    note: >-
+      Drawn on the state handed_over.register, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: course-programme-is-open-and-its-content-locked
+    need: >-
+      A visitor reads a course's whole programme (every week, every celse's day and length) and sees which weeks are locked and
+      why, and what stays out of the page: the meeting links and the closed celses' agenda and source.
+    evidence:
+      - state: course
+      - source: apps/tedris/features/courses/components/course-programme.tsx:243
+      - source: apps/tedris/features/courses/components/course-aside.tsx:194
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "sees the page, the programme with its locked weeks, and is asked to sign in"
+      - scenario: fullIntro
+    note: course.e2e.ts course#1 (a2-a9; a10, the page HTML holds no meeting URL, is not walkable in a graph)
+
+  - id: sample-celse-is-open-to-everyone
+    need: >-
+      One celse a course marks as its sample is open to anyone, with its agenda and its source, and nothing else of the course's
+      celses is.
+    evidence:
+      - state: course
+      - state: recordings
+      - source: apps/tedris/features/courses/components/course-page.tsx:507
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "shows the sample session with its agenda and source, and hides the closed one"
+      - scenario: fullIntro
+    note: >-
+      course.e2e.ts course#2 (a1-a3; a4-a11, the closed celse absent from the HTML and the API JSON, are not walkable in a graph)
+
+  - id: public-recordings-are-listed
+    need: A visitor sees the recordings a course made public, each as a link to its host, and no others.
+    evidence:
+      - state: recordings
+      - source: apps/tedrisat/src/course/lesson.controller.ts:257
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:297
+      - scenario: fullIntro
+    note: >-
+      fullIntro: the tab with one public recording; "no others" is the API's (anonymous#20's neighbour, not an e2e of recordings)
+
+  - id: resource-names-without-links
+    need: >-
+      A visitor reads the names of a course's resources and is told who opens them; the resources' links and files are not theirs.
+    evidence:
+      - state: course
+      - state: recordings
+      - source: apps/tedris/features/courses/components/course-resources.tsx:201
+      - scenario: fullIntro
+
+  - id: medrese-notice-is-true
+    need: A medrese's page tells a visitor that enrolment is by approval only for a medrese whose policy says so.
+    missing: "VISIT-1: the sentence is drawn for every medrese (madrasah-page.tsx:199); no Linear issue yet; decision D2"
+    note: >-
+      Drawn on the state madrasah, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: programme-names-a-week-once
+    need: A week whose title only repeats its number is named once in the programme, as the recordings tab already does.
+    missing: "VISIT-2: no Linear issue yet"
+    note: >-
+      Drawn on the state course, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: sample-row-does-not-say-completed
+    need: A visitor is not told they completed the sample celse once it is over; the row says it is over, or nothing.
+    missing: "VISIT-3: no Linear issue yet"
+    note: >-
+      Drawn on the state course, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: loading-is-heard
+    need: While Keşfet, a köşk, a medrese or a course loads, assistive technology says so.
+    missing: DSC-19 and CRS-08, no Linear issue
+    note: >-
+      Drawn on the states discover, kosk, madrasah and course, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: closed-content-stays-out-of-the-page
+    need: >-
+      The pages a visitor reads carry no meeting link, no stream and nothing of a closed celse beyond its place in the programme.
+    evidence:
+      - state: course
+      - state: recordings
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "sees the page, the programme with its locked weeks, and is asked to sign in"
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "shows the sample session with its agenda and source, and hides the closed one"
+    note: >-
+      course.e2e.ts course#1 (a10), course#2 (a4, a5): they read the page HTML and the API JSON; this graph cannot, so the replay
+      does not carry them
+
+  - id: an-unlisted-course-opens-by-its-link
+    need: >-
+      A course its team keeps off every list can be shared by its link: a visitor who follows it is asked to sign in and brought back
+      to it, and nothing on the way says whether such a course exists.
+    evidence:
+      - source: apps/tedris/features/courses/load-course.ts:31
+      - source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:190
+      - test: apps/tedris/test/load-course.spec.ts
+        name: "sends a signed-out visitor to sign in and back, as an unlisted course needs"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "answers a caller with no token as not found, as a missing course"
+      - test: apps/tedrisat/test/e2e/public-pages.e2e.spec.ts
+        name: "opens to a signed-in caller by its link, still without content"
+    missing: >-
+      not drawn yet: MDRS-248's unlisted course (#401) is in the code and in no state of this flow, which reaches a course only from a list; the code exists and the specs named cover it
+    note: |-
+      The course segment's layout sends the visitor to /auth/signin with the course as callbackUrl (loadCourseOrLeave,
+      load-course.ts:26-34) because the API answers a caller with no token as for a missing course (the anonymous resolver,
+      tedrisat-role-resolver.service.ts:190). Drawing it needs an entry by address, which this flow has not got. Not walked.

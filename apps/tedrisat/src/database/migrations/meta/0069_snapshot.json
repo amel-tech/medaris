@@ -1,9 +1,154 @@
 {
-  "id": "a09afc45-ce84-4bff-991a-a66abd6f1e73",
+  "id": "5d433af7-31a0-45f9-be89-792176c8a1fe",
   "prevId": "6fb279e9-08d1-4546-b908-e27989217372",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.appeals": {
+      "name": "appeals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "madrasah_id": {
+          "name": "madrasah_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_request_id": {
+          "name": "course_request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decision_note": {
+          "name": "decision_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "appeals_course_request_uq": {
+          "name": "appeals_course_request_uq",
+          "columns": [
+            {
+              "expression": "course_request_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "appeals_status_idx": {
+          "name": "appeals_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "appeals_madrasah_id_madrasahs_id_fk": {
+          "name": "appeals_madrasah_id_madrasahs_id_fk",
+          "tableFrom": "appeals",
+          "tableTo": "madrasahs",
+          "columnsFrom": [
+            "madrasah_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "appeals_course_request_id_course_requests_id_fk": {
+          "name": "appeals_course_request_id_course_requests_id_fk",
+          "tableFrom": "appeals",
+          "tableTo": "course_requests",
+          "columnsFrom": [
+            "course_request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "appeals_reason_length": {
+          "name": "appeals_reason_length",
+          "value": "char_length(\"appeals\".\"reason\") <= 1000"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.audit_log": {
       "name": "audit_log",
       "schema": "",
@@ -581,123 +726,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.course_sarf_roots": {
-      "name": "course_sarf_roots",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "course_id": {
-          "name": "course_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kok": {
-          "name": "kok",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bab": {
-          "name": "bab",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "mastar": {
-          "name": "mastar",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "masdar_vezin": {
-          "name": "masdar_vezin",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "course_sarf_roots_course_kok_bab_idx": {
-          "name": "course_sarf_roots_course_kok_bab_idx",
-          "columns": [
-            {
-              "expression": "course_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "kok",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bab",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "course_sarf_roots_course_id_courses_id_fk": {
-          "name": "course_sarf_roots_course_id_courses_id_fk",
-          "tableFrom": "course_sarf_roots",
-          "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "course_sarf_roots_bab_known": {
-          "name": "course_sarf_roots_bab_known",
-          "value": "\"course_sarf_roots\".\"bab\" in ('nasara', 'daraba', 'fataha', 'semia', 'hasune', 'hasibe')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.bunny_video_removals": {

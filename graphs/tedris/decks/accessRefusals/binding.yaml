@@ -1,0 +1,66 @@
+# tedris.decks.accessRefusals on the local stack (graphs/README.md, "The stack and the bindings"): a deck page opened by its address as two of
+# the seeded people, who open nothing else.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/accessRefusals --bind graphs/tedris/decks/accessRefusals/binding.yaml --absent --out <dir>
+#   ... --to forbiddenShown     the reader of a shared deck on its cards page
+# The hidden deck and the missing id are the two other files, binding.hidden.yaml and binding.missing.yaml: a scenario with the same
+# `given` as an earlier one in a file is never taken, and these two reach the same screen as `privateDeck` (notFound), so a walk takes
+# them only from a file of their own.
+#
+# What each scenario is, and what the stack gives it (STACK.md; the seed's two decks):
+#   privateDeck      (the main story) OTHER opens TALEBE's private deck "Kelime Defterim" (seed.decks.own) at /decks/<id>/cards. OTHER has no
+#                    role, no enrolment and no deck of their own to speak of, and the deck is private, so the API answers 404 and the page is
+#                    "Sayfa bulunamadı"; "Ana sayfaya dön" goes to /home. `setup` asks the API the same question as OTHER and expects its 404
+#                    DECK_NOT_FOUND, so the walk starts from a measured fact, not an assumed one.
+#   sharedDeck       TALEBE opens the course deck "Sarf Kavramları" (seed.decks.course, written by the müderris, is_public false) at
+#                    /decks/<id>/cards. TALEBE is enrolled in the course, so the API gives the deck and the page is "Bu sayfayı göremezsin"
+#                    with the sentence that calls the deck public (DCK-14). `setup` expects the API's 200 with "isPublic":false.
+#   ownDeck          TALEBE opens their own deck at /decks/<id>/edit and gets it (the exit owner_page_opened). Bound for the transition walk.
+#   readerOnDeckPage TALEBE opens the course deck's own page and gets the reader's view (the exit reader_page_opened). Bound for the
+#                    transition walk.
+# Not bound, so the replay cannot reach them (reported): `public` (the stack seeds no public deck; making one needs a publication request
+# the Medaris başnazım answers, a flow of its own), `refused` (no 403 can be made: see the state `unavailable`) and the stale cases.
+# Nothing is created, changed or removed: the walk only reads. The four scenarios leave the stack as they found it, so there is no `teardown`.
+# `call` is not used on any state: the read is server-side, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.accessRefusals
+
+scenarios:
+  privateDeck:
+    given: { deck: private, address: cards }
+    as: other
+    open: '{tedris}/decks/{seed.decks.own}/cards'
+    vars: { deckId: '{seed.decks.own}' }
+    setup:
+      - run: [node, helpers/api.mjs, other, GET, '/flashcard/decks/{deckId}', --any]
+        expect: '"code":"DECK_NOT_FOUND"'
+  sharedDeck:
+    given: { deck: shared, address: cards }
+    as: talebe
+    open: '{tedris}/decks/{seed.decks.course}/cards'
+    vars: { deckId: '{seed.decks.course}' }
+    setup:
+      - run: [node, helpers/api.mjs, talebe, GET, '/flashcard/decks/{deckId}', --any]
+        expect: '"isPublic":false'
+  ownDeck:
+    given: { deck: own, address: edit }
+    as: talebe
+    open: '{tedris}/decks/{seed.decks.own}/edit'
+    vars: { deckId: '{seed.decks.own}' }
+  readerOnDeckPage:
+    given: { deck: shared, address: deck }
+    as: talebe
+    open: '{tedris}/decks/{seed.decks.course}'
+    vars: { deckId: '{seed.decks.course}' }
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  home_opened: { url: '{tedris}/home' }
+  deck_page_opened: { url: '{tedris}/decks/{deckId}' }
+  decks_page_opened: { url: '{tedris}/decks' }
+  owner_page_opened: { url: '{tedris}/decks/{seed.decks.own}/edit' }
+  reader_page_opened: { url: '{tedris}/decks/{seed.decks.course}' }
+  left: { url: '{tedris}/notifications' }

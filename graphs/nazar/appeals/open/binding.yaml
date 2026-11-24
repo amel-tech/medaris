@@ -1,0 +1,144 @@
+# nazar.appeals.open on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/appeals/open --bind graphs/nazar/appeals/open/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). What is written here comes from the code and the
+# catalog; every locator, every command and every account fact below is unverified until a walk.
+#
+# This file walks what needs no race: the main story (`appeals`), the empty line (`empty`) and the refused reader (`refused`). The answers of
+# a race (APPEAL_EXISTS, APPEAL_REQUEST_NOT_REJECTED, APPEAL_REQUEST_NOT_FOUND, AUTHZ_FORBIDDEN) are in refusals.binding.yaml, which extends this
+# file and drops the `call` of `sending`: a Next server action answers 200 on the page's own address whatever it decided, so the replay's
+# comparison of a FAIL class with the call's HTTP status cannot pass there (SPEC.md section 7, the `call` of a state). Here the call is
+# used only to hold the busy state, and it is made in this file's one walk through `sending` (the main story).
+#
+# The walk makes its own data and leaves the seed alone. `setup` and `teardown` run ./requests.mjs (a helper of this folder, through tedrisat's
+# HTTP API and the shared helpers/lib.mjs): the başmüderris sends a course request to the seed's köşk, "Süleymaniye Köşkü", and its nazım refuses
+# it with a reason, so İtirazlar lists "Deneme dersi appeals-open" with "İtiraz aç". The helper writes graphs/.local/made/appeals-open.json, which
+# this file reads as the data source `made` ({made.title}, {made.kosk}, {made.rejectReason}), and removes both in `teardown`. What it cannot undo:
+# the audit rows (course_request.create and .reject, appeal.create). The one SQL it uses is the removal of the request, because no route
+# deletes one (the appeal goes with it by cascade). The medrese is expected to hold no other refused request: nazar.shell.errorStates reads
+# the same page and expects its empty line, so every other writer who makes a request here removes it again.
+#
+# e2e carried: shell#4 (apps/nazar/e2e/shell.e2e.ts:192) a1, the menu's İtirazlar leads to /itirazlar (the `appeals` scenario enters through the
+# nav graph's entry frame:medrese->medreseAppeals and the address must become the page's route), and a2, the h1 "İtirazlar" (node appealsTitle).
+# Not carried: a3, which expects the shared placeholder that İtirazlar replaced (F-B-14, F-L-4, stale), and a4, the entry's aria-current, which the
+# graph has no way to say.
+#
+# Not bound, each with its reason:
+#   - `read: missing` (FAIL.missing, the not_found exit): the medrese's layout answers an unknown medrese with the 404 page before this page
+#     reads anything, so an unknown address does not walk this page's own branch; nazar.shell.errorStates walks the 404 page.
+#   - the failed read "İtirazlar okunamadı": nazar.shell.errorStates (it holds the read with its own throttle helper).
+#   - `answer: failed`: the server must fail without a code (the medrese gone, or the API down); the local stack cannot be made to on request.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.appeals.open
+
+data:
+  made: { json: ../.local/made/appeals-open.json }
+
+# every scenario's setup writes the made file (the words of the walk's request, with no request behind them where none is wanted), so
+# these read in all of them, and a locator below may use {made.title} in a state where no row is drawn (--absent looks for it there too)
+samples:
+  title: '{made.title}'
+  kosk: '{made.kosk}'
+  rejectReason: '{made.rejectReason}'
+  required: zorunlu alan
+
+scenarios:
+  # The main story from the menu: İtirazlar, "İtiraz aç" on the refused request, a reason, "Gönder", the row reads "Bekliyor". The path of
+  # `--cover transitions` from this start also walks the empty field that is left (formTouched), Vazgeç, and the way out through the menu.
+  appeals:
+    given: { rejected: true, read: served, answer: sent }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseAppeals' }
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up]
+        expect: 'ready: Deneme dersi appeals-open REJECTED'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+    vars:
+      reason: Dersin hocası ve programı hazır; köşkün gerekçesini yeniden değerlendirmenizi rica ederiz.
+      meanwhile: none # nothing happens elsewhere; refusals.binding.yaml's walks say otherwise
+
+  # No köşk refused a request of the medrese: the empty line. `--alone` fails the setup if some other writer's refused request is in the way.
+  empty:
+    given: { rejected: false, read: served, answer: sent }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up, --none, --alone]
+        expect: 'ready: none'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+
+  # A medrese nazır the seed gave no grant opens the page and is refused by the API: "Bu sayfaya izniniz yok" under the heading. `nazir revoke`
+  # makes sure no earlier walk left the grant (the PUT replaces what the nazır held, and the seed gives none).
+  refused:
+    given: { rejected: false, read: refused, answer: sent }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up, --none]
+        expect: 'ready: none'
+      - run: [node, ../nazar/appeals/open/requests.mjs, nazir, revoke]
+        expect: 'nazir revoke'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE:
+    - fill: { role: textbox, name: Gerekçe, value: '{reason}' }
+  # leaving the empty field: Tab from the textarea (it has the focus, the dialog starts there) goes to Vazgeç
+  LEAVE_FIELD:
+    - key: Tab
+  # Vazgeç, the close icon and Escape all send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: İtiraz aç } }
+  # the menu's "Dersler" (its name carries a number and a hidden label, so it is found by its beginning)
+  NAVIGATE:
+    - click: { role: link, name: '/^Dersler/', within: { role: navigation, name: Ana menü } }
+
+states:
+  # the decision is a Next server action: a POST to the page's own address, held while the busy dialog is checked
+  sending: { call: '{nazar}/medrese/*/itirazlar' }
+  # the exit with no screen of its own is checked by its address
+  left: { url: '{nazar}/medrese/*/dersler' }
+
+# Where role and name cannot find a node, or would find the wrong one.
+nodes:
+  # the shell's one <main>; any other page of the app has one too, so it is told apart by the words under the heading
+  appealsPage: { role: main, hasText: Köşkün reddettiği ders talepleri }
+  # the caption is also the table's hidden <caption>, so the paragraph is found by where it is
+  appealsCaption: { css: 'header p', hasText: Köşkün reddettiği ders talepleri }
+  # the sidebar's entry (the heading and the dialog's title say the same word)
+  menuAppeals: { role: link, name: İtirazlar, within: { role: navigation, name: Ana menü } }
+  # the badges of this walk's own row: other rows of the list may say Yok too
+  statusNone: { text: Yok, within: { role: row, hasText: '{made.title}' } }
+  statusPending: { text: Bekliyor, within: { role: row, hasText: '{made.title}' } }
+  # the request's title is also the row header behind the dialog, so the eyebrow is found by its class
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: '{made.title}' }
+  # "Kapat" is also the name of a toast's close button
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: İtiraz aç } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the busy button's hidden <output>
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog, name: İtiraz aç } }
+  # the five error toasts share one title ("İtiraz gönderilemedi") and one role, and the graph shows one of them at a time, so each is found by
+  # its own sentence: with role and name alone the nodes that are absent would find the one that is shown
+  toastExists: { role: alertdialog, hasText: Bu talebe zaten itiraz edildi. }
+  toastNotRejected: { role: alertdialog, hasText: Bu talep artık reddedilmiş değil. }
+  toastGone: { role: alertdialog, hasText: Bu talep artık yok. }
+  toastForbidden: { role: alertdialog, hasText: Bu işlem için izniniz yok. }
+  toastFailed: { role: alertdialog, hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+
+# What an appeal leaves outside the screen, read through the database as the walk's own row.
+effects:
+  createMadrasahAppeal:
+    - run: [node, helpers/sql.mjs, "select a.status from appeals a join course_requests c on c.id = a.course_request_id where c.title = '{made.title}'"]
+      expect: '"status":"PENDING"'
+    - run: [node, helpers/sql.mjs, "select action from audit_log where action = 'appeal.create' and details->>'title' = '{made.title}'"]
+      expect: 'appeal.create'

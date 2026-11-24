@@ -1,0 +1,17 @@
+{
+  "loginProfileTitle": "Profilini tamamla",
+  "loginProfileSubtitle": "Hesabında eksik bilgi var. Tamamladığında kaldığın yerden devam edersin.",
+  "requiredFields": "* zorunlu alan",
+  "gender": "Cinsiyet",
+  "genderFemale": "Kadın",
+  "genderMale": "Erkek",
+  "email": "E-posta",
+  "error-user-attribute-required": "Lütfen bu alanı doldurun.",
+  "privacyNoticeRead": "{0}’ni okudum.",
+  "privacyNoticeLinkLabel": "Aydınlatma Metni",
+  "updateProfileSubmit": "Kaydet ve devam et",
+  "doCancel": "Vazgeç",
+  "firstName": "Ad",
+  "lastName": "Soyad",
+  "Changes.note": "Kaydettiğinde profil bilgilerin Medaris hesabına yazılır ve kaldığın yerden devam edersin."
+}

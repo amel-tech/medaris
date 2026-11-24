@@ -1,0 +1,334 @@
+# What a person meets when the session behind a page they have open ends, as the code does it today (status captured; the code is
+# PR #394's): libs/auth (proxy.ts, renewal.ts, reads.ts, client/session-context.ts, client/unauthenticated.ts) and tedris's own
+# sendToSignIn. The page is tedris's, and so is the person: a talebe on a celse of a course they are enrolled in (a protected page, with
+# the "Notlarım" panel that writes) or on Keşfet (a page a visitor may read too).
+#
+# What "ended" means here. Four things take a session away, and a person cannot tell them apart on the page:
+#   - Keycloak ended the single sign-on session: a sign-out in another Medaris app, an administrator, or too long idle. Keycloak then
+#     posts a back-channel logout to each client of the session (the clients' backchannel.logout.url, session required). With the
+#     session in Valkey (WEB__AUTH_STORE_URL) the app finds the session by its `sid`, deletes it and answers 200: its next request is
+#     the sign-in gate. With the session sealed in the browser's cookie (no store: local development, and the dev stack as the README
+#     describes it) there is nothing to look it up in and the answer is 501 (routes.ts:508); the app then notices only when it next asks
+#     Keycloak, which libs/auth's proxy does at most once a minute per session (renewal.ts:196-205, SESSION_CHECK_INTERVAL_MS 60 s).
+#     Locally the call does not even arrive: Keycloak's log says "KC-SERVICES0057: Logout for client 'tedris-local' failed: ... Connect to
+#     host.docker.internal:4000 [host.docker.internal/172.17.0.1] failed: Connection refused" (the clients' local backchannel.logout.url
+#     is that address; the dev servers do not answer on the docker bridge). STACK.md says the apps answer 501; the log says nothing
+#     reaches them. Either way the app is told nothing here, and the Valkey side (200) cannot be walked locally.
+#   - The access token ran out (5 minutes) and the refresh Keycloak is asked for is refused (renewal.ts:171-194): the proxy ends the
+#     session. One Keycloak could not answer keeps the session while its access token is still usable.
+#   - Keycloak still holds the session but tedrisat refuses the access token it issued (a wrong audience, clock skew, a session ended
+#     within the last minute): the session stands in the app and the API says 401 (`reauth`).
+#   - A visitor's cookie is gone (the browser cleared it): nothing here, it is a visitor from the start.
+# The flow draws the first and the third; the second reaches the same screens a minute or so later than the first and the fourth is
+# not a case of "ended". What the app has not noticed yet, the page still does: in cookie mode a write in that first minute goes
+# through with the access token the page holds (it is valid for up to five minutes, tedrisat reads it locally) and saves. The flow draws
+# that (`appKnows`, `store`): it is why the replay lets a minute pass (MINUTE_PASSES, binding.yaml) before it presses the button.
+#
+# Where this flow stops. The sign-in itself is realm.auth.signIn: this flow ends in an exit named handed_over.* where that flow
+# begins (the app's /auth/signin page with the page as callbackUrl, or Keycloak's form), the app's error box
+# (realm.auth.signInFailures) and the person closing the page.
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.sessionEnded
+status: captured
+domain: medaris.api
+ui: realm.auth.sessionEnded
+title: Keep working after the session ended
+summary: >-
+  A signed-in talebe has a page open when the session behind it ends. The page does not change: nothing tells them. They find out
+  when the tab is shown again (the app reads the session and reloads the page), when they follow a link, or when they press a
+  button that writes. A protected page sends them to sign-in with the page as the address to come back to; a page a visitor may read
+  renders again as a visitor's; a write that finds the session over sends them to Keycloak's form at once, with no error text, and
+  the text they had typed in the panel is lost. When tedrisat refused the token instead, they are sent for new tokens (reauth) and,
+  as Keycloak still knows them, come back to the same page.
+scope:
+  shows: >-
+    One page of tedris of each kind (a celse with its Notlarım panel, and Keşfet), the three ways the end is noticed (the tab shown
+    again, a link followed, a write pressed) and the two ends (the session over at Keycloak, the token refused by the API).
+  world: open
+  outOfView:
+    - "nazar and nizam: the same libs/auth code with other pages and words. nazar has no public page, so every nazar page goes to sign-in; nizam's public pages are / and the auth pages. nazar's notifications list starts the sign-in and then still opens the notification's address (F-E-21, nazar.notifications.inbox)."
+    - "the sign-in round trip after the hand-over: the app's /auth/signin page, Keycloak's form, the callback and the landing on the page they asked for (realm.auth.signIn)"
+    - "the app's error box when the round trip fails again (realm.auth.signInFailures); tedris and nazar write it differently"
+    - "a sign-out the person asked for in this app (realm.auth.signOut)"
+    - "the same account signed in as someone else in another tab: the session read says the account changed and the page reloads in the same way; it then renders for the new person"
+    - "a session store (Valkey) that cannot be asked: the session read answers 503 and the page stays as it is (drawn as FAIL.unavailable); a protected page then ends on the app's error page"
+    - "a note the panel refuses for other reasons (403 not enrolled, 400, a network failure): tedris.learn.notes"
+    - "an empty note: the panel says so itself (Not boş olamaz.) before any call, and nothing is sent"
+    - "the other panels that write on a celse (questions, homework) and the app's other write buttons: they all call sendToSignIn the same way (tedris.learn.*)"
+    - "an access token that ran out and could not be refreshed because Keycloak did not answer: the session is kept until the token is spent, then ends as in the first case"
+    - "the other apps of the same Keycloak session: the same back-channel call goes to each (nizam, nazar), and the sign-out that causes it is realm.auth.signOut's; this flow draws only the call the open page's own app receives"
+    - "the back-channel call's other answers: 400 for a token that fails a check or was used before, 503 when Keycloak's keys or the store cannot be reached (Keycloak logs them; the person sees nothing)"
+
+context:
+  page:
+    values: [protectedPage, publicPage]
+    initial: any
+    say:
+      protectedPage: "the page they have open needs a session: a celse of a course they are enrolled in, with its Notlarım panel"
+      publicPage: "the page they have open is one a visitor may read too: Keşfet"
+  cause:
+    values: [none, ended, refused]
+    initial: none
+    say:
+      none: "the session behind the page is alive"
+      ended: "Keycloak has ended the session behind the page: a sign-out in another Medaris app, an administrator, or too long idle"
+      refused: "the session stands in the app, but tedrisat refuses the access token it holds"
+  draft:
+    values: [empty, typed]
+    initial: empty
+    say:
+      empty: "the note field is empty"
+      typed: "they have typed a note and not saved it"
+  store:
+    values: [cookie, valkey]
+    initial: any
+    say:
+      cookie: "the app keeps the session sealed in the browser's cookie (no WEB__AUTH_STORE_URL: local development, and any deploy without a store)"
+      valkey: "the app keeps the session in Valkey, and the cookie only names it (WEB__AUTH_STORE_URL set)"
+  appKnows:
+    values: [notYet, known]
+    initial: notYet
+    say:
+      notYet: "the app has not asked Keycloak since the end: its next request still takes the session as good"
+      known: "the app's next request finds the session over"
+
+guards:
+  endedSession: "cause == 'ended'"
+  endedAndKnown: "cause == 'ended' and appKnows == 'known'"
+  endedNotYetKnown: "cause == 'ended' and appKnows == 'notYet'"
+  refusedToken: "cause == 'refused'"
+  onProtectedPage: "page == 'protectedPage'"
+  draftTyped: "draft == 'typed'"
+
+effects:
+  typesNote: { set: { draft: typed } }
+  savesNote: { set: { draft: empty } }
+  appLearns: { set: { appKnows: known } }
+  endsAtKeycloak: { set: { cause: ended } }
+  refusedByApi: { set: { cause: refused } }
+
+failures:
+  keycloakCallsBack:
+    from: receiveBackchannelLogout
+    unsupported: [unsupported]
+  readingSession:
+    from: getAuthSession
+    unavailable: [temporarily_unavailable]
+  saving:
+    from: createLessonNote
+    # no refusal of tedrisat's own: the Server Action answers { kind: "unauthenticated" } when there is no token and when
+    # tedrisat answers 401 (authenticated-action.ts:69, reads.ts:211), so the failure has no code
+    unauthenticated: []
+  startingSignIn:
+    from: startSignIn
+    retryable: [OAuthSignin]
+    final: [SignInLimit]
+
+main:
+  given: { page: protectedPage, store: cookie }
+  events: [TYPE_NOTE, SESSION_ENDED, FAIL.unsupported, MINUTE_PASSES, ADD_NOTE, FAIL.unauthenticated, DONE]
+
+initial: pageOpen
+states:
+  pageOpen:
+    title: A signed-in page is open
+    description: >-
+      The talebe has a page open and the session behind it is alive. A celse page (protected) has the Notlarım panel: a field "Not"
+      and the button "Notu ekle"; Keşfet (public) has its heading. The top bar is the signed-in one: Ana sayfa, Keşfet, Derslerim,
+      Programım, Desteler, the bell and the account link. The page keeps its session in the browser's cookie and, on tedris's root
+      layout, a SessionProvider holds who is signed in (client-providers.tsx:37). Neither page sets an initial focus. Keycloak ending
+      the session, or tedrisat starting to refuse the token, happens outside the page: the page draws exactly what it drew.
+    source: libs/auth/src/client/session-context.ts:72
+    on:
+      TYPE_NOTE: { target: pageOpen, guard: onProtectedPage, effect: [typesNote], say: "they type a note in the Not field and do not save it yet" }
+      SESSION_ENDED: { target: keycloakCallsBack, effect: [endsAtKeycloak], say: "Keycloak ends the session: a sign-out in another app, an administrator, or too long idle" }
+      TOKEN_REFUSED: { target: staleSession, guard: onProtectedPage, effect: [refusedByApi], say: "tedrisat starts answering 401 to the access token the session holds" }
+      ADD_NOTE:
+        - { target: pageOpen, guard: "onProtectedPage and draftTyped", effect: [savesNote], source: apps/tedris/features/courses/components/lesson-notes.tsx:329, say: "they press Notu ekle while the session is alive: the note is saved and the field is empty again (the save is tedris.learn.notes's, not drawn here)" }
+        - { target: pageOpen, guard: onProtectedPage, source: apps/tedris/features/courses/components/lesson-notes.tsx:332, say: "they press Notu ekle with the field empty: the panel says \"Not boş olamaz.\" and saves nothing (tedris.learn.notes)" }
+      FOLLOW_LINK: { target: courses_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the session is alive: /my-courses opens" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  keycloakCallsBack:
+    title: Keycloak tells the app the session ended
+    description: >-
+      Keycloak posts a signed logout_token to the app's /api/auth/backchannel-logout (OIDC Back-Channel Logout 1.0). The app checks the
+      token (signature, issuer, audience, age, that it names a sid or a sub, that it carries no nonce, that its jti is new), and with a
+      session store deletes every session of this app behind that Keycloak session and answers 200 (the app knows from now on). With the
+      session in the cookie there is nothing to look a session up in: a valid token is answered 501 so that Keycloak's log says this app
+      did not end its session, and nothing changes in the page or the cookie (routes.ts:506-514). Not seen by the person in either case.
+      On this stack the call never arrives (see the head of this file), so the 200 cannot be walked and not even the 501 is seen.
+    source: libs/auth/src/server/routes.ts:463
+    invoke: { action: receiveBackchannelLogout }
+    on:
+      DONE: { target: staleSession, guard: "store == 'valkey'", effect: [appLearns], say: "the session is deleted at once: the next request is the sign-in gate" }
+      FAIL.unsupported: { target: staleSession, guard: "store == 'cookie'", say: "501: the app keeps the session in the cookie and ends nothing; it finds out when it next asks Keycloak" }
+
+  staleSession:
+    title: The page still looks signed in, and the session is over
+    description: >-
+      Nothing on the page has changed: the top bar still shows the signed-in links, the panel still has what they typed. The page learns
+      only when something asks. Until then it keeps working on what it holds: with the session in the cookie, libs/auth's proxy asks
+      Keycloak at most once a minute (renewal.ts:196-205), so for up to about a minute after the end (`appKnows` is notYet) a read of the
+      session still answers the session and a write still goes through with the access token the page holds; after it (known) the next
+      request finds the end. With a store the app knows at once. Of the first minute only the write is drawn (saving); the tab read is
+      readingSession's, and a link followed in it simply opens its page. Three things ask: the tab being shown again (the SessionProvider reads GET /api/auth/session, at most
+      every 5 s, session-context.ts:118), a link to another page (the proxy gates it), and a button that writes (the Server Action
+      reads the session). Case `refused`: the session cookie is fine and Keycloak is not asked; only a call to tedrisat finds out.
+    source: libs/auth/src/server/renewal.ts:196
+    by: human
+    on:
+      TYPE_NOTE: { target: staleSession, guard: onProtectedPage, effect: [typesNote], say: "they type a note in the Not field" }
+      MINUTE_PASSES: { target: staleSession, guard: endedNotYetKnown, effect: [appLearns], say: "a minute goes by: the proxy's check of Keycloak is due at the next request" }
+      TAB_SHOWN: { target: readingSession, say: "they switch back to this tab: it is shown again, or the window takes the focus" }
+      FOLLOW_LINK:
+        - { target: handed_over.sign_in_page_link, guard: endedAndKnown, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'", session: "'none'" } }, say: "they take Derslerim: the proxy answers the page request with 307 to /auth/signin?callbackUrl=%2Fmy-courses" }
+        - { target: handed_over.reauth, guard: refusedToken, say: "they take Derslerim: the page asks tedrisat with the refused token, gets 401 and redirects to /auth/signin?callbackUrl=%2Fmy-courses&reauth=1" }
+      ADD_NOTE: { target: saving, guard: "onProtectedPage and draftTyped", say: "they press Notu ekle with a note typed" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  readingSession:
+    title: The tab reads the session
+    description: >-
+      The SessionProvider asks GET /api/auth/session (it runs through the proxy, which is where the end is found out and the cookie is
+      dropped) and compares the answer with the session it holds (session-context.ts:96-104). A session that ended, or that is another
+      account's now, reloads the page (window.location.reload); the same session changes nothing. An answer that is not 200 (the store
+      cannot be asked) is "could not ask" and changes nothing. The read is never done in the last 5 s since the previous one, and not
+      by a hidden tab.
+    source: libs/auth/src/client/session-context.ts:96
+    invoke: { action: getAuthSession }
+    on:
+      DONE:
+        - { target: staleSession, guard: "refusedToken or endedNotYetKnown", say: "the answer is the session they hold (the API's refusal is not the session's end, and the app has not asked Keycloak yet): nothing changes" }
+        - { target: handed_over.sign_in_page_reload, guard: onProtectedPage, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'", session: "'none'" } }, say: "the answer is null, the page reloads, and the proxy sends the request for the protected page to /auth/signin?callbackUrl=<the page>" }
+        - { target: visitorPage, say: "the answer is null, the page reloads, and a page a visitor may read renders as the visitor's" }
+      FAIL.unavailable: { target: staleSession, say: "the session store could not be asked: 503, not null; the page stays as it is" }
+
+  saving:
+    title: The Server Action finds the session over
+    description: >-
+      "Notu ekle" posts the note as the Server Action createLessonNote (a POST to the page's own address). The proxy runs first and,
+      past the minute, finds the session over and drops the cookie from the request; the action then has no access token and answers
+      { kind: "unauthenticated" } without calling tedrisat (reads.ts:211-216). With a token that tedrisat refuses it answers the same with
+      `reauth: true` (reads.ts:222). The panel hands the answer to sendToSignIn and returns: no error text is drawn (lesson-notes.tsx:340).
+      While it is on its way the button is busy and a status line reads "Kaydediliyor". The panel's `finally` frees the button again
+      while the browser is already leaving the page, so for a moment it looks as it did, with the text still in the field.
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:329
+    invoke: { action: createLessonNote }
+    on:
+      DONE: { target: staleSession, guard: endedNotYetKnown, effect: [savesNote], say: "the app has not noticed yet: the action runs with the token the page holds and tedrisat saves the note; the page shows it and the field is empty" }
+      FAIL.unauthenticated:
+        - { target: startingSignIn, guard: endedAndKnown, say: "no token: sendToSignIn goes to /api/auth/signin?callbackUrl=<the page>&locale=tr at once, not through the app's sign-in page" }
+        - { target: handed_over.reauth, guard: refusedToken, say: "the API refused the token: sendToSignIn goes to /api/auth/signin?callbackUrl=<the page>&locale=tr&reauth=1" }
+      # Derslerim is a next/link and stays live while the action runs; a navigation pre-empts a pending Server Action in Next's
+      # router (the action's router state is dropped), so the person leaves at once and the proxy gates /my-courses as from
+      # staleSession; the panel that would draw the action's answer is gone with the page.
+      FOLLOW_LINK:
+        - { target: handed_over.sign_in_page_link, guard: endedAndKnown, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'", session: "'none'" } }, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way: the proxy answers /my-courses with 307 to /auth/signin?callbackUrl=%2Fmy-courses" }
+        - { target: handed_over.reauth, guard: refusedToken, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way: the page asks tedrisat with the refused token, gets 401 and redirects to sign in with reauth=1" }
+        - { target: courses_opened, guard: endedNotYetKnown, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73, say: "they take Derslerim while the note is on its way, inside the minute: /my-courses opens; the note reaches tedrisat, and the page that would show it is gone" }
+
+  startingSignIn:
+    title: The start route sends the browser to Keycloak
+    description: >-
+      GET /api/auth/signin?callbackUrl=<the page's path, query and fragment>&locale=tr, the start route of libs/auth: the cap of starts,
+      the session store, Keycloak's discovery document, then a 303 to Keycloak's authorization endpoint (routes.ts:146). Keycloak has no
+      session for this browser any more, so it shows its login form. The typed note is gone with the page (WRT-13).
+    source: libs/auth/src/server/routes.ts:146
+    invoke: { action: startSignIn }
+    on:
+      DONE: { target: handed_over.sign_in_form, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'", session: "'none'" } }, say: "Keycloak shows its login form; after it the callback lands them on the page they were on" }
+      FAIL.retryable: { target: error_box.retryable, say: "Keycloak's discovery document or the session store could not be asked" }
+      FAIL.final: { target: error_box.final, say: "this browser has started five round trips in five minutes" }
+
+  visitorPage:
+    title: The page renders for a visitor
+    description: >-
+      Keşfet after the reload: the server finds no session and renders for a visitor (MDRS-216; public-paths.ts:12). The top bar is
+      the visitor's: Keşfet, Giriş yap and Kayıt ol, with no Ana sayfa, Derslerim, Programım, Desteler, bell or account link. Nothing says
+      that the person was signed in a moment ago: no message, no notice. "Giriş yap" is a link to /auth/signin?callbackUrl=%2Fdiscover.
+    source: apps/tedris/components/phone-menu/desktop-bar.tsx:57
+    by: human
+    on:
+      SIGN_IN: { target: handed_over.sign_in_link, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'", session: "'none'" } }, say: "they take Giriş yap" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  handed_over.sign_in_page_reload:
+    type: final
+    title: The protected page was reloaded and the app sends them to its sign-in page
+    description: >-
+      The proxy answered the reload of a protected page with 307 to /auth/signin?callbackUrl=<the page's path and query> (proxy.ts:198).
+      The app's sign-in page reads the session, starts the round trip by itself and Keycloak's form follows (realm.auth.signIn draws it
+      from openApp with entry protectedPage). The address they come back to is the page they were on.
+
+  handed_over.sign_in_page_link:
+    type: final
+    title: A protected page they followed a link to sends them to the app's sign-in page
+    description: >-
+      The proxy answered the request for /my-courses (a client navigation fetches it as a page request) with 307 to
+      /auth/signin?callbackUrl=%2Fmy-courses. The address they come back to is the page they asked for, not the one they were on.
+      From a stale public page it is the same.
+
+  handed_over.sign_in_form:
+    type: final
+    title: A write sent them straight to Keycloak's form
+    description: >-
+      /api/auth/signin?callbackUrl=<the page>&locale=tr answered 303 to Keycloak, which shows its login form: the app's own sign-in
+      page is skipped, and so are its words ("Giriş sayfasına yönlendiriliyorsunuz…"). realm.auth.signIn begins at the app's page; this
+      path joins it at the start route (its state startingRoundTrip).
+
+  handed_over.sign_in_link:
+    type: final
+    title: They take Giriş yap on the visitor's page
+    description: "/auth/signin?callbackUrl=%2Fdiscover: the app's sign-in page, then Keycloak's form (realm.auth.signIn)."
+
+  handed_over.reauth:
+    type: final
+    title: The API refused the token, so the app goes for new tokens
+    description: >-
+      /api/auth/signin?...&reauth=1 (from a write: directly; from a page: through /auth/signin?callbackUrl=...&reauth=1). With `reauth` the
+      start route does not take the session the browser holds as "already signed in" (routes.ts:200) and the sign-in page counts only a
+      newer session; the round trip goes to Keycloak, whose own session answers at once with a new code, and the callback stores new tokens
+      and lands on the page. No form is shown. Each round trip counts against the start cap and the tab's budget, so a token tedrisat
+      never takes ends on the SignInLimit box instead of in a loop (realm.auth.signInFailures draws that box). realm.auth.signIn does
+      not draw `reauth`: this is its gap (needs.yaml, reauth-fetches-new-tokens).
+
+  error_box.retryable:
+    type: final
+    title: The app's sign-in page shows its error box after a retryable failure
+    description: "OAuthSignin: the page tries once by itself, then shows Giriş sayfasına dön. realm.auth.signInFailures draws it."
+
+  error_box.final:
+    type: final
+    title: The app's sign-in page shows its error box after a failure no retry fixes
+    description: "SignInLimit: the box at once, with Ana sayfaya dön. realm.auth.signInFailures draws it."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+  courses_opened:
+    type: final
+    title: Derslerim opens
+    leavesPage: true
+    description: "The top bar's Derslerim, a next/link to /my-courses, opened while the app still took the session as good: the page tedris.learning.myCourses draws."
+
+assertions:
+  - id: a-store-knows-at-once
+    never: "state == 'staleSession' and store == 'valkey' and cause == 'ended' and appKnows == 'notYet'"
+    say: "With a session store the back-channel logout deletes the session at once: the app never takes an ended session as good."
+    source: libs/auth/src/server/session-store.ts:200
+  - id: reauth-only-after-a-refusal
+    never: "state == 'handed_over.reauth' and cause != 'refused'"
+    say: "reauth=1 is asked only when tedrisat refused a token the session holds; an ended session goes through an ordinary sign-in."
+    source: libs/auth/src/server/reads.ts:222
+  - id: visitor-only-when-the-session-ended
+    never: "state == 'visitorPage' and cause != 'ended'"
+    say: "A page renders for a visitor only when the session is gone. A session whose token is refused is not a visitor: it goes for new tokens."
+    source: libs/auth/src/server/reads.ts:129
+  - id: a-write-never-saves-without-a-session
+    never: "state == 'startingSignIn' and cause != 'ended'"
+    say: "The write path goes straight to Keycloak's form only with no session at all; a refused token takes the reauth path."
+    source: libs/auth/src/server/reads.ts:211

@@ -1,0 +1,318 @@
+# The Arşiv of a medrese in nazar-web (/medrese/<id>/arsiv), read by its başmüderris, who hides the whole medrese after one question and
+# brings it back. Read from the code of PR #394 (apps/nazar/features/archive, the API's POST /madrasahs/:id/hide and /restore, GET
+# /madrasahs/:id/archive and POST /archive/:type/:id/restore). It says what the code does today:
+#   - "Medreseyi gizle" is the last section under the list, drawn only to the başmüderris (and to the başnazım, who may also open the page) and
+#     only while the medrese is shown; a nazır given madrasah.course_hide opens the page and meets no such section (runsMedrese).
+#   - the question is an alertdialog whose focus starts on "Vazgeç"; the scrim does not close it; while the call runs the dialog stays open and
+#     "Gizle" is busy (Vazgeç, the close icon and Esc do nothing until the answer comes).
+#   - once it is hidden the page is read again and shows a banner "Medrese gizli" in place of the section; the courses that were shown go into
+#     the list, each with "Geri al", and a press on one is refused with ARCHIVE_PARENT_HIDDEN (409) for as long as the medrese is hidden.
+#   - "Medreseyi geri getir" brings the medrese and the courses hidden at the same instant back. It is drawn only where the API says canRestore:
+#     a medrese the başnazım hid (platform level) is not hers to bring back, and the banner gives a sentence in place of the button.
+# What the e2e checks (archive#7) is carried; the walk makes its own medrese, so that the seeded one is never hidden.
+schema: delurio-graph/0
+kind: flow
+id: nazar.archive.hideMedrese
+status: captured
+domain: medaris.api
+ui: nazar.archive.hideMedrese
+title: Hide the whole medrese and bring it back
+summary: >-
+  The başmüderris opens the Arşiv of her medrese and, under the list, reads "Medreseyi gizle". It asks once, in an alertdialog that names the
+  medrese and says what follows (the shown courses are hidden with it, nothing is deleted, she or Medaris yönetimi brings it back, and the
+  courses of the Arşiv cannot be brought back one by one until then); she cancels once and confirms the second time. The medrese and its
+  shown courses are hidden at one instant, a toast says so, and the page shows the banner "Medrese gizli" with "Medreseyi geri getir" and the
+  courses as rows of the list. A press on "Geri al" of one course is refused: the medrese is hidden. "Medreseyi geri getir" brings the medrese
+  and those courses back, and the page offers "Medreseyi gizle" again. Where Medaris yönetimi hid the medrese (or hid it while her dialog was
+  open), the banner has a sentence and no button, the rows too, and the only way out is to leave. A medrese brought back or hidden by someone
+  else while her page was open meets her with a refusal that names it. Findings read here: F-A-2 (focus is lost when the opener or the banner
+  is replaced), F-A-3 (the banner's section is labelled by an id that does not exist), F-A-10 (a call that fails outright is not caught),
+  F-A-12 (a tab's name has its count glued on), F-A-14 (a busy button says "Yükleniyor" from a hard-coded default), F-A-16 (the refusal is a
+  neutral status), and the new HIDEMED-1 to HIDEMED-3.
+
+scope:
+  shows: >-
+    the Arşiv page of one medrese for its başmüderris: the heading, the tabs and the list as they bear on hiding the medrese, the "Medreseyi
+    gizle" section and its question, the banner of a hidden medrese with "Medreseyi geri getir", the courses that go with it and their "Geri
+    al", and the toasts of each answer
+  world: open
+  outOfView:
+    - "a medrese nazır with no grant meets the forbidden alert instead of the list (archive#8): drawn here as the refusal of the read and walked once; her whole story, page by page, is nazar.access.medreseNazirRefused"
+    - "a nazır given madrasah.course_hide or madrasah.settings_edit opens the page and meets no 'Medreseyi gizle' (runsMedrese, MDRS-108); the başnazım, who also opens the page, may hide from it"
+    - "the tabs, the paging and 'Geri al' of a course hidden on its own, with its toasts and refusals (ARCHIVE_ITEM_NOT_FOUND, ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL): nazar.archive.hideAndRestoreCourse"
+    - "the restore from nizam's Medreseler ('Geri al' and the kademe caption): nizam.madrasahs.restore. nizam can only restore a medrese; it has no button that hides one (apps/nizam/features/madrasahs has restoreMadrasah and no hide)"
+    - "the failed read 'Arşiv okunamadı' with its retry (not an answer of the API's)"
+    - "what a talebe or a hoca meets in a hidden medrese or course: tedris.discover.readMadrasah, tedris.discover.readKosk"
+
+decisions:
+  D1:
+    question: >-
+      Should the rows of a hidden medrese offer "Geri al" at all? The API refuses every one of them (ARCHIVE_PARENT_HIDDEN) until the medrese is
+      brought back, and the page says so only in the error toast after the press.
+    recommend: >-
+      Put the sentence in the button's place, as the page already does for a kademe that is too low ("Önce medreseyi geri getirin"), and keep the
+      button for the courses hidden on their own.
+    affects: [hidden, restoringCourse]
+  D2:
+    question: >-
+      What should the toast say when the medrese was hidden by someone else before the press? Today its title is "Medrese gizlendi", the success
+      title, with "Bu medrese zaten gizli." under it.
+    recommend: >-
+      A title of its own ("Medrese zaten gizliydi"), so that the person who pressed "Gizle" is not told she hid it.
+    affects: [lockedHidden]
+
+context:
+  reader:
+    values: [head, nazir]
+    initial: any
+    say:
+      head: "she is the başmüderris of the medrese: the API answers the read"
+      nazir: "she is a medrese nazır who holds none of the four codes the archive asks for: the API refuses the read"
+  start:
+    values: [shown, hiddenByAdmin]
+    initial: any
+    say:
+      shown: "the medrese is shown when her page is read, and she runs it"
+      hiddenByAdmin: "Medaris yönetimi (the başnazım) had hidden the medrese before the page was read; it was hidden at the platform level"
+  elsewhere:
+    values: [untouched, adminHid, adminRestored, adminRehid]
+    initial: untouched
+    say:
+      untouched: "nobody else has touched the medrese since her page was read"
+      adminHid: "the başnazım hid the medrese at the platform level (from this page in nazar, which she may open, or through the API: nizam has no hide button) while the başmüderris's page showed it as shown"
+      adminRestored: "the başnazım brought the medrese back while her page showed it as hidden"
+      adminRehid: "the başnazım brought it back and hid it again at the platform level while her page showed it as hidden by her"
+  last:
+    values: [nothing, hidden, already, hideRefused, hideFailed, parentHidden, restored, notHidden, restoreLevel, restoreRefused, restoreFailed]
+    initial: nothing
+    say:
+      nothing: "no answer is on the screen, or its toast is gone"
+      hidden: "the medrese was just hidden by her"
+      already: "the medrese was hidden by someone else before her press"
+      hideRefused: "the API refused the hiding for lack of permission"
+      hideFailed: "the API refused the hiding for another reason"
+      parentHidden: "a course could not be brought back: its medrese is hidden"
+      restored: "the medrese was just brought back"
+      notHidden: "the medrese was not hidden any more when she pressed"
+      restoreLevel: "the medrese was hidden at a level above hers when she pressed"
+      restoreRefused: "the API refused the restore for lack of permission"
+      restoreFailed: "the API refused the restore for another reason"
+
+guards:
+  untouched: "elsewhere == 'untouched'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  cancelled: { set: { last: nothing } }
+  adminHides: { set: { elsewhere: adminHid } }
+  adminRestores: { set: { elsewhere: adminRestored } }
+  adminRehides: { set: { elsewhere: adminRehid } }
+  hidByHer: { set: { last: hidden } }
+  alreadyHidden: { set: { last: already, elsewhere: untouched } }
+  hideRefused: { set: { last: hideRefused } }
+  hideFailed: { set: { last: hideFailed } }
+  parentHidden: { set: { last: parentHidden } }
+  restored: { set: { last: restored } }
+  notHidden: { set: { last: notHidden, elsewhere: untouched } }
+  restoreLevel: { set: { last: restoreLevel, elsewhere: untouched } }
+  restoreRefused: { set: { last: restoreRefused } }
+  restoreFailed: { set: { last: restoreFailed } }
+
+failures:
+  opened:
+    from: listMadrasahArchive
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  hiding:
+    from: hideMadrasah
+    already: [MADRASAH_ALREADY_HIDDEN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [MADRASAH_NOT_FOUND]
+  restoringCourse:
+    from: restoreArchiveItem
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+  restoring:
+    from: restoreMadrasah
+    level: [ARCHIVE_RESTORE_LEVEL]
+    notHidden: [MADRASAH_NOT_HIDDEN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [MADRASAH_NOT_FOUND]
+
+# The story the page tells first: she asks, cancels, asks again and hides it; a course refuses to come back alone; the medrese comes back.
+main:
+  given: { reader: head, start: shown }
+  events: [DONE, HIDE, CANCEL, HIDE, CONFIRM_HIDE, DONE, RESTORE_ROW, FAIL.parentHidden, RESTORE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The Arşiv is read
+    description: >-
+      The page reads GET /madrasahs/:id/archive on the server (the first page of the list, ten rows, "Tümü"), with the person's name and her
+      scope, and draws behind a loading skeleton. Nothing is on the screen of this step. Her scope role and the API's `madrasah` block pick the
+      case: a medrese that is shown draws the list and the "Medreseyi gizle" section; a medrese that is hidden draws the banner, and the
+      banner's button only where the API says she may bring it back. A nazır who holds none of the four codes is refused and the list is
+      replaced by an alert (state forbidden); a 404 is the 404 page; any other failure draws "Arşiv okunamadı" with a retry (not drawn here:
+      it is not an answer of the API's).
+    invoke: { action: listMadrasahArchive }
+    on:
+      DONE:
+        - { guard: "reader == 'head' and start == 'hiddenByAdmin'", target: lockedHidden, say: "the medrese was hidden at the platform level: the banner has a sentence and no button", source: apps/nazar/features/archive/components/archive-page.tsx:86 }
+        - { guard: "reader == 'head'", target: shownMedrese }
+      FAIL.forbidden: { guard: "reader == 'nazir'", target: forbidden, say: "the API refuses the read: the list is replaced by an alert", source: apps/nazar/features/archive/components/archive-page.tsx:76 }
+      FAIL.missing: { target: not_found, say: "the medrese is gone between the portal's check and the read", source: apps/nazar/features/archive/components/archive-page.tsx:47 }
+    source: apps/nazar/features/archive/components/archive-page.tsx:47
+
+  forbidden:
+    title: The Arşiv refuses the list
+    description: >-
+      The heading and its intro stay and a neutral alert says "Bu sayfaya izniniz yok" under them; the tabs, the list and "Medreseyi gizle" are
+      left out (F-A-16: a neutral alert is a status already in the page at load, so it is not announced). The nazır's whole story is
+      nazar.access.medreseNazirRefused (archive#8); it is drawn here because the read can end so, and the scenario nazirRefused walks it.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-page.tsx:76
+
+  shownMedrese:
+    title: The medrese is shown; "Medreseyi gizle" is under the list
+    description: >-
+      The page: the heading "Arşiv" and its intro, the tabs with their counts (F-A-12: each tab's name is its label with the count glued on,
+      "Tümü0"), the table "Gizlenen öğeler", which says "Bu medresede gizlenmiş bir öğe yok." while nothing is hidden (the medrese's courses
+      are shown), and under it the section "Medreseyi gizle" with a sentence that says what hiding does and the button. The page sets no
+      focus of its own. A toast of the last answer may stand in the page for a few seconds (`last`): the medrese was just brought back, or a
+      refusal of the hiding, or of the restore. Findings read here: F-A-2 (after a restore the banner is gone and nothing moves the focus) and F-A-12 (the tabs' names).
+      The başnazım may hide the medrese while this page is open, which she cannot know (ADMIN_HIDES).
+    by: human
+    goal: true
+    on:
+      HIDE: { target: confirmHide, effect: [clearNote], say: "they press Medreseyi gizle" }
+      ADMIN_HIDES: { guard: untouched, target: shownMedrese, effect: [adminHides], say: "the başnazım hides the medrese at the platform level (nizam has no hide button, so from her own copy of this page in nazar or through the API); this page does not know", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:489 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-page.tsx:112
+
+  confirmHide:
+    title: Medreseyi gizle asks once
+    description: >-
+      An alertdialog, "Medreseyi gizle", with the medrese's name above its title, says that the medrese and its shown courses will be hidden from
+      everyone, that only she and Medaris yönetimi will open its pages, that nothing is deleted and that the medrese is brought back by her or
+      by Medaris yönetimi, and that until then the courses in the Arşiv cannot be brought back. Focus starts on "Vazgeç"; the scrim does not
+      close it. Cancelling or closing it hands the focus back to the page's button (Base UI; not verified: the dialog has no trigger, so the
+      return rests on the element that had the focus when it opened).
+    by: human
+    on:
+      CONFIRM_HIDE: { target: hiding, say: "they press Gizle" }
+      CANCEL: { target: shownMedrese, effect: [cancelled], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: shownMedrese, effect: [cancelled], say: "they press the close icon" }
+    source: apps/nazar/features/archive/components/hide-madrasah.tsx:104
+
+  hiding:
+    title: The hiding is on its way
+    description: >-
+      hideMedrese calls POST /madrasahs/:id/hide with no body: one transaction hides the medrese and every course of it not hidden already,
+      at the same instant, at the level she acts at (madrasah for the başmüderris), and writes one audit row. The dialog stays open while the
+      call runs: "Gizle" is busy ("Yükleniyor" for a reader of the screen, F-A-14) and the dialog ignores Vazgeç, the close icon and Esc until
+      the answer comes (HIDEMED-3). An answer of 409 MADRASAH_ALREADY_HIDDEN (someone hid it first) is handled as a success: the dialog
+      closes and the page goes on as for a medrese that is hidden, with an info toast. Any other refusal closes the dialog and shows an error
+      toast, and the page is not read again.
+    invoke: { action: hideMadrasah }
+    on:
+      DONE: { guard: untouched, target: hidden, effect: [hidByHer], say: "the medrese and its courses are hidden at one instant", source: apps/nazar/features/archive/components/hide-madrasah.tsx:50 }
+      FAIL.already: { guard: "elsewhere == 'adminHid'", target: lockedHidden, effect: [alreadyHidden], say: "the başnazım hid it first, at the platform level; her page is read again and the banner has no button", source: apps/nazar/features/archive/components/hide-madrasah.tsx:50 }
+      FAIL.forbidden: { target: shownMedrese, effect: [hideRefused], source: apps/nazar/features/archive/components/hide-madrasah.tsx:63 }
+      FAIL.other: { target: shownMedrese, effect: [hideFailed], source: apps/nazar/features/archive/components/hide-madrasah.tsx:63 }
+      CANCEL: { target: hiding, source: apps/nazar/features/archive/components/hide-madrasah.tsx:107, say: "Vazgeç or Esc: nothing happens, the hiding goes on (HIDEMED-3)" }
+      CLOSE: { target: hiding, source: apps/nazar/features/archive/components/hide-madrasah.tsx:107, say: "the close icon: nothing happens either" }
+    source: apps/nazar/features/archive/components/hide-madrasah.tsx:48
+
+  hidden:
+    title: The medrese is hidden by her; its courses wait in the list
+    description: >-
+      After the answer the page is read again (router.refresh). The section "Medreseyi gizle" is gone and the banner "Medrese gizli" stands
+      above the list with "Medreseyi geri getir" (its accessible name is "Geri getir: {name}", which does not contain the visible words,
+      HIDEMED-1; the banner's section is labelled by an id that does not exist, F-A-3). The courses that were shown are rows of the list, each
+      with "Geri al: {title}"; the tab counts follow. A toast "Medrese gizlendi" stands for a few seconds. A press on a row's "Geri al" is
+      refused (D1). Focus: the opener button was replaced and nothing moves the focus (F-A-2). The başnazım may bring the medrese back, or
+      bring it back and hide it again at the platform level, while this page is open, which she cannot know (ADMIN_RESTORES, ADMIN_REHIDES).
+    by: human
+    on:
+      RESTORE: { target: restoring, effect: [clearNote], say: "they press Medreseyi geri getir" }
+      RESTORE_ROW: { guard: untouched, target: restoringCourse, effect: [clearNote], say: "they press Geri al on a course" }
+      ADMIN_RESTORES: { guard: untouched, target: hidden, effect: [adminRestores], say: "the başnazım brings the medrese back, in nizam; this page does not know", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:571 }
+      ADMIN_REHIDES: { guard: untouched, target: hidden, effect: [adminRehides], say: "the başnazım brings it back and hides it again at the platform level; this page does not know", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:489 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-page.tsx:86
+
+  restoringCourse:
+    title: A course is asked to come back alone
+    description: >-
+      restoreItem calls POST /archive/course/:id/restore with no body. The row's "Geri al" is busy (aria-busy, "Yükleniyor" for a reader of
+      the screen) and the other controls stay live. The API refuses with 409 ARCHIVE_PARENT_HIDDEN, because the course's medrese is hidden:
+      an error toast "Geri alınamadı" says "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Medreseyi, onu
+      gizleyen kademe ya da üstü geri getirir." and, for this one refusal, the page is not read again, so the row stays. The call cannot
+      succeed while the medrese is hidden, so this step has no DONE (its other refusals belong to nazar.archive.hideAndRestoreCourse).
+    invoke: { action: restoreArchiveItem }
+    on:
+      FAIL.parentHidden: { guard: untouched, target: hidden, effect: [parentHidden], say: "the course stays in the list; the toast names the medrese", source: apps/nazar/features/archive/components/archive-list.tsx:79 }
+    source: apps/nazar/features/archive/components/archive-list.tsx:64
+
+  restoring:
+    title: The medrese is on its way back
+    description: >-
+      restoreMedrese calls POST /madrasahs/:id/restore with no body: one transaction brings the medrese back, and the courses whose hiding
+      carries the medrese's own instant (a course hidden earlier on its own stays hidden). The banner's button is busy ("Yükleniyor" for a
+      reader of the screen) and stays on the page until the answer comes. After any answer the page is read again, a failure too. 403
+      ARCHIVE_RESTORE_LEVEL (the başnazım hid it at the platform level meanwhile) and 409 MADRASAH_NOT_HIDDEN (someone brought it back
+      meanwhile) are told in an error toast titled "Medrese geri getirilemedi", and the page that is read again shows the medrese as it is.
+    invoke: { action: restoreMadrasah }
+    on:
+      DONE: { guard: untouched, target: shownMedrese, effect: [restored], say: "the medrese and its courses are back; the section Medreseyi gizle is drawn again", source: apps/nazar/features/archive/components/restore-madrasah.tsx:46 }
+      FAIL.level: { guard: "elsewhere == 'adminRehid'", target: lockedHidden, effect: [restoreLevel], say: "the page is read again: the banner has a sentence and no button", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+      FAIL.notHidden: { guard: "elsewhere == 'adminRestored'", target: shownMedrese, effect: [notHidden], say: "the page is read again: the medrese is shown", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+      FAIL.forbidden: { target: hidden, effect: [restoreRefused], source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+      FAIL.other: { target: hidden, effect: [restoreFailed], source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+    source: apps/nazar/features/archive/components/restore-madrasah.tsx:43
+
+  lockedHidden:
+    title: The medrese is hidden above her kademe
+    description: >-
+      The banner "Medrese gizli" has a sentence in place of the button, "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri
+      alabilir.", and so does every row of the list (the courses were hidden at the same level). She can read and leave; nothing on the page
+      brings it back. Reached by opening the page of a medrese Medaris yönetimi hid, or after a refusal that told her so (a toast of that
+      answer may stand: the info toast "Medrese gizlendi" with "Bu medrese zaten gizli." after a hiding that came too late (HIDEMED-2), or
+      the error toast "Medrese geri getirilemedi" with "Bu medreseyi Medaris yönetimi gizledi; yalnız Medaris yönetimi geri getirebilir.").
+      The banner's section is labelled by an id that does not exist (F-A-3).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-page.tsx:90
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the archive read is Next's not-found page (lib/tedrisat-read.ts)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-nazir-is-never-asked-to-hide
+    never: "(state == 'shownMedrese' or state == 'confirmHide' or state == 'hiding' or state == 'hidden') and reader == 'nazir'"
+    say: A medrese nazır with none of the four codes meets the refusal and nothing else; the list, the banner and "Medreseyi gizle" are not drawn for her.
+    source: apps/nazar/features/archive/components/archive-page.tsx:76
+  - id: a-hidden-start-has-no-hide-dialog
+    never: "(state == 'confirmHide' or state == 'hiding') and start == 'hiddenByAdmin'"
+    say: A medrese Medaris yönetimi hid is never hidden by her; the page offers no "Medreseyi gizle" for it.
+    source: apps/nazar/features/archive/components/archive-page.tsx:112
+  - id: a-hidden-start-has-no-restore
+    never: "(state == 'restoring' or state == 'restoringCourse') and start == 'hiddenByAdmin'"
+    say: A medrese Medaris yönetimi hid is never brought back by her; the banner has a sentence in place of the button, and so do the rows.
+    source: apps/nazar/features/archive/components/restore-madrasah.tsx:84
+  - id: no-hide-while-hidden
+    never: "state == 'confirmHide' and last == 'hidden'"
+    say: The section "Medreseyi gizle" is gone once the medrese is hidden; the question cannot open over the toast of a hiding.
+    source: apps/nazar/features/archive/components/archive-page.tsx:112

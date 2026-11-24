@@ -1,0 +1,101 @@
+# What every binding of tedris.celse.attend shares: the data the walk makes, the exits' addresses and the locators of the nodes that role and
+# name cannot find. The scenarios are in binding.yaml (the main story) and in one small file for each other standing, because `--to <state>`
+# takes the first scenario that reaches the state and `live`, `over` and `ahead` are reached by several of them.
+#
+# Data. The seeded celses are fixed in time (Tue and Thu 21:00; Mon and Wed 20:30) and the page reads the clock in minutes, so
+# attend-data.mjs (this folder) makes a published course of its own in the second köşk, "Kubbealtı Köşkü", with nine celses placed from
+# the moment `setup` runs (see its header: eight minutes ahead, running, two days ahead, with no link, in person, over, with a stream, with an exam) and
+# gives the spare talebe `applicantE` the seat. `up` is run by every scenario's `setup` and `down` by its `teardown`, so the times are those
+# of that walk and nothing outlives it. The ids are in graphs/.local/attend-celse.json, read here as {att.opening}, {att.live} and so on.
+# The meeting links are https://meet.example.test/..., which nothing answers: the walk stops at the link (see `meeting_opened`).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.attend
+
+data:
+  att: { json: ../.local/attend-celse.json }
+
+# Values the nodes found by role and name are matched with: the celse's own title and its neighbours' (the walk's own data). A scenario's
+# file overrides them where its celse is another one.
+samples:
+  title: Yaklaşan celse
+  previous: Yaklaşan celse
+  next: Başlamış celse
+  week: '1'
+  weeks: '1'
+  number: '1'
+  zone: İstanbul
+
+events:
+  # the clock moves the celse on by itself every half minute (CLOCK) and nothing the walk can press causes it: not bound (reported)
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+
+states:
+  # The link has target=_blank, so the meeting opens in a tab of its own. The replay follows the first tab only: the page it checks stays
+  # on the celse, so this address is what the graph says and what the walk cannot see (an engine limit, reported).
+  meeting_opened: { url: 'https://meet.example.test/**' }
+  stream_opened: { url: '{tedris}/courses/*/lessons/*/izle' }
+  calendar_menu_opened: { url: '{tedris}/courses/*/lessons/*' }
+  kosk_opened: { url: '{tedris}/kosks/*' }
+  course_opened: { url: '{tedris}/courses/*' }
+  curriculum_opened: { url: '{tedris}/courses/*/lessons/*' }
+  resource_opened: { url: '{tedris}/courses/*/lessons/*' }
+  notes_started: { url: '{tedris}/courses/*/lessons/*' }
+  locked_shown: { url: '{tedris}/courses/*/lessons/*' }
+  cancelled_shown: { url: '{tedris}/courses/*/lessons/*' }
+  not_found: { url: '{tedris}/courses/*/lessons/*' }
+  left: { url: '{tedris}/notifications' }
+
+# Where role and name cannot find a node. The celse page has one <main>, but the pages it leaves for have one too: this one is told by
+# the eyebrow "Hafta n · k. celse". Words that move with the clock or with the celse (a countdown, the minutes that have passed, the
+# day, the hours) are found by a pattern. Everything in the card is looked for inside <section data-testid="session-action">.
+nodes:
+  celsePage: { role: main, hasText: '/Hafta \d+ · \d+\. celse/' }
+  crumbKosk: { css: 'nav.mds-breadcrumb a[href^="/kosks/"]' }
+  crumbCourse: { css: 'nav.mds-breadcrumb a[href^="/courses/"]' }
+  crumbWeek: { css: 'nav.mds-breadcrumb [aria-current=page]' }
+  eyebrowWeek: { css: 'main p.mds-eyebrow', hasText: '/^Hafta \d+ · \d+\. celse$/' }
+  badgeCountdown: { css: '[data-testid=session-state] time', hasText: '/ sonra$|^Yarın$|^Öbür gün$/' }
+  badgeLive: { css: '[data-testid=session-state] .mds-badge--live', hasText: '/^Canlı · \d+ dk$/' }
+  badgeEnded: { css: '[data-testid=session-state] .mds-badge', hasText: 'Sona erdi' }
+  metaWhen: { css: '[data-testid=session-meta] time', hasText: '/ · \d{2}:\d{2}–\d{2}:\d{2}$/' }
+  metaLength: { css: '[data-testid=session-meta] > span', hasText: '/^\d+ dk$/' }
+  metaHoca: { css: '[data-testid=session-meta] span[dir=auto]' }
+
+  sessionCard: { css: 'section[data-testid=session-action]' }
+  dateWeekday: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-eyebrow' }
+  dateDay: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-h1' }
+  dateClock: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-num' }
+  dateStartsIn: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-caption', hasText: '/^Başlamasına /' }
+  dateElapsed: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-caption', hasText: '/ dakikadır sürüyor$/' }
+  dateEnded: { css: 'section[data-testid=session-action] [data-date-block] > span.mds-caption', hasText: 'Sona erdi' }
+  eyebrowLive: { css: 'section[data-testid=session-action] p.mds-eyebrow', hasText: 'Canlı ders' }
+  eyebrowInPerson: { css: 'section[data-testid=session-action] p.mds-eyebrow', hasText: 'Yüz yüze' }
+  eyebrowRecording: { css: 'section[data-testid=session-action] p.mds-eyebrow', hasText: 'Ders kaydı' }
+  platformChip: { css: 'section[data-testid=session-action] .mds-platform-chip:not(a .mds-platform-chip)' }
+
+  posterLink: { css: 'section[data-testid=session-action] a[data-poster]' }
+  posterLive: { css: 'section[data-testid=session-action] a[data-poster] .mds-badge--live' }
+  posterProvider: { css: 'section[data-testid=session-action] a[data-poster] .mds-platform-chip' }
+  streamElapsed: { css: 'section[data-testid=session-action] p.mds-body-sm', hasText: '/dakikadır sürüyor/' }
+  streamWatchOrJoin: { css: 'section[data-testid=session-action] p.mds-body-sm', hasText: 'Konuşmak ve soru sormak için toplantıya katıl' }
+  streamLiveText: { css: 'section[data-testid=session-action] p.mds-body-sm', hasText: 'Bu celse YouTube' }
+  inPersonStreamLiveText: { css: 'section[data-testid=session-action] p.mds-body-sm', hasText: 'Bu celse yüz yüze yapılıyor' }
+  watchStream: { css: 'section[data-testid=session-action] a.mds-btn--primary', hasText: 'Yayını izle' }
+  streamFootnote: { css: 'section[data-testid=session-action] p.mds-caption', hasText: 'Ders kaydı eklenirse' }
+
+  joinLink: { css: 'section[data-testid=session-action] a.mds-join__link' }
+  joinReveal: { css: 'section[data-testid=session-action] details.mds-join__reveal > summary' }
+  meetingAddress: { css: 'section[data-testid=session-action] details.mds-join__reveal p.mds-join__url' }
+
+  examFormat: { css: '[data-testid=session-exam] p.mds-body-sm', hasText: 'Yazılı' }
+  examScore: { css: '[data-testid=session-exam] .mds-num' }
+  examPlace: { css: '[data-testid=session-exam-place]' }
+  examTopics: { css: '[data-testid=session-exam-topics]' }
+  agendaList: { css: 'section[aria-labelledby=agenda-title] ol' }
+  agendaStep: { css: 'section[aria-labelledby=agenda-title] ol > li', count: '{steps}' }
+  agendaNow: { css: 'section[aria-labelledby=agenda-title] li[aria-current=step] .text-live-default', hasText: 'şimdi' }
+  kaynakLine: { css: '[data-testid=session-kaynak]' }
+  resourceRow: { css: '[data-testid=session-resources] a', count: 1 }

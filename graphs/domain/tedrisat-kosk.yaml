@@ -1,0 +1,1271 @@
+# Köşk, köşk applications, hosting rights and the Medaris home page: 31 handlers of apps/tedrisat (inventory/domain.md lines 2689-3055).
+# kosk.controller.ts 12, kosk-admin.controller.ts 10, kosk-application.controller.ts 1, nizam-kosk-applications.controller.ts 4,
+# nizam-dashboard.controller.ts 1, hosting.controller.ts 3. Each `source` is the route decorator line of the handler, read in this
+# worktree (stacked on #394). The köşk grants routes (GET|POST /kosks/{id}/grants, PATCH|DELETE /kosks/{id}/grants/{grantId}) and
+# GET /kosks/{koskId}/courses (listKoskCourses, in courses) are other chapters' handlers and are not written here.
+#
+# Reading the refusals:
+#   - 401 HTTP_401 (AuthGuard: no bearer token, or one that is not a valid access token; invariant access-token-only) and the 429 of the
+#     throttlers (invariant rate-limit-before-auth) are listed on no action. On an @AuthzPublic route only a token that is present and
+#     wrong is refused; no token passes.
+#   - HTTP_400 is a Nest pipe (ParseUUIDPipe, ParseEnumPipe, ParseIntPipe): body type HTTP_ERROR. VALIDATION_ERROR is a failed DTO.
+#   - byExistingKosk (kosk.controller.ts:82) answers 404 KOSK_NOT_FOUND for a malformed or an unknown :id BEFORE the permission is asked,
+#     so on those routes a malformed id is a 404 and not a 400, and a caller who may not act learns 404 or 403 by whether the köşk exists.
+#   - byParam(KOSK) routes: a malformed id reaches the pipe (400); an unknown uuid is 404 from the role resolver (a caller with no token
+#     also gets 404 for an unlisted or hidden köşk, tedrisat-role-resolver.service.ts:160), and for SYSTEM_ADMIN, who bypasses the
+#     resolver, from the service.
+#   - AUTHZ_FORBIDDEN from the guard is authz.guard.ts:92 ("Caller is not authorized for the requested scope on this resource").
+#   - KEYCLOAK_ADMIN_UNAVAILABLE (S6-S8) is real only where written below (assertKnownAccounts): the people-name lookups of the
+#     directory, overview, nazım list and Hosting list swallow a directory failure (kosk-admin.service.ts:130-146 and :425-445).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+actions:
+  # ---- Köşk: public reads, discovery, following (kosk.controller.ts) ----
+  listKosks:
+    route: GET /kosks
+    summary: A page of köşks, the list Keşfet and nizam's köşk list read
+    needs: "AuthGuard + AuthzGuard: @AuthzPublic, no @Authz (a list has no single resource). No token is let in; managedBy=me needs a token"
+    description: >-
+      Anyone, token or not. A hidden köşk (archivedAt) is in no list, the manager's own included. Without managedBy=me an unlisted
+      (isPrivate) köşk is also in no list, for anyone, the başnazım included. With managedBy=me the list is the köşks where the caller holds
+      a live KOSK_NAZIM role (unlisted ones too), and total follows it. madrasahId keeps the köşks where that medrese holds a non-revoked
+      hosting right. q: every whitespace-separated word must occur, case-insensitively, in name, handle, description or field, and the
+      characters % _ and the backslash are text. Order: featured desc, createdAt desc, id desc. total counts the same filter.
+    query:
+      type: object
+      properties:
+        page: { type: integer, default: 1, minimum: 1, note: "a value below 1 becomes 1" }
+        limit: { type: integer, default: 12, minimum: 1, maximum: 50, note: "clamped into 1..50" }
+        managedBy: { enum: [me] }
+        madrasahId: { type: string, format: uuid, references: Madrasah }
+        level: { enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED] }
+        field: { type: string, note: "trimmed; an exact match on Kosk.field" }
+        q: { type: string, maxLength: 100, note: "cut to 100 characters, not refused" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              ownerId: { type: [string, "null"], format: uuid, note: "null for a caller with no token" }
+              managerIds: { type: array, items: { type: string, format: uuid }, note: "empty for a caller with no token; the live KOSK_NAZIM holders, oldest grant first, for anyone signed in" }
+              managerName: { type: [string, "null"], note: "the oldest live nazım's given and family name; shown to everyone" }
+              courseCount: { type: integer, note: "PUBLISHED courses that are not hidden; drafts left out" }
+              studentCount: { type: integer, note: "distinct users with an enrollment of any status but REVOKED in a non-hidden course" }
+              muderrisCount: { type: integer, note: "distinct course_muderris rows of non-hidden courses, drafts included" }
+              followerCount: { type: integer }
+              isFollowing: { type: boolean, note: "false for a caller with no token" }
+            note: "a KoskResponse: every Kosk field (the stored ones) plus the computed fields above"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      AUTHZ_MISSING_USER: { status: 401, note: "managedBy=me with no token", source: apps/tedrisat/src/kosk/kosk.controller.ts:170 }
+      HTTP_400: { status: 400, note: "managedBy is not me, level is not one of the four, madrasahId is no uuid, page or limit is not an integer" }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:154
+
+  listKoskFields:
+    route: GET /kosks/fields
+    summary: The distinct ilim alanı of the listed köşks, the chips of Keşfet
+    needs: "AuthGuard + AuthzGuard: @AuthzPublic. No token is let in"
+    description: >-
+      The distinct, non-empty Kosk.field of the köşks that are listed (not isPrivate) and not hidden, alphabetical. Declared before
+      GET /kosks/{id} so that "fields" is not read as an id.
+    result:
+      status: 200
+      type: array
+      items: { type: string }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:196
+
+  listFollowedKoskCourses:
+    route: GET /kosks/followed/courses
+    summary: Published courses of the köşks the caller follows, for Ana sayfa
+    needs: "AuthGuard + AuthzGuard: @AuthzExempt. A token is required; rows are chosen by the caller's own sub"
+    description: >-
+      Courses of the köşks the caller follows that are PUBLISHED and not hidden, whose köşk is neither unlisted nor hidden, and in which
+      the caller has no enrollment row at all (any status). Newest first (createdAt desc, id desc). Each carries the first müderris by
+      orderIndex with that müderris's unvan, whether they are the course's imam (a held MUDERRIS role with isImam) and how many müderrisler
+      the course lists.
+    query:
+      type: object
+      properties:
+        limit: { type: integer, default: 4, minimum: 1, maximum: 12, note: "clamped into 1..12" }
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string, format: uuid, references: Course }
+          title: { type: string }
+          koskId: { type: string, format: uuid, references: Kosk }
+          koskName: { type: string }
+          coverHue: { type: integer }
+          muderrisName: { type: [string, "null"] }
+          muderrisUnvan: { type: [string, "null"], note: "the hoca unvan; null is none, shown as the name and Hoca" }
+          muderrisIsImam: { type: boolean }
+          muderrisCount: { type: integer }
+    refusals:
+      HTTP_400: { status: 400, note: "limit is not an integer" }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:218
+
+  getKosk:
+    route: GET /kosks/{id}
+    summary: One köşk with its numbers
+    needs: "AuthGuard + AuthzGuard: @Authz(kosk.view, byParam(KOSK)) + @AuthzPublic. No token is let in for a listed, shown köşk"
+    description: >-
+      No token: only a listed, shown köşk; a missing, unlisted or hidden one is the same 404. Signed in: any köşk that exists (an unlisted
+      köşk opens by its link), except that a hidden köşk opens only for holders of kosk.manage there or platform.kosk_edit (the başnazım by
+      bypass); for everyone else it is a 404. The numbers are defined in the result.
+    result:
+      status: 200
+      returns: Kosk
+      note: >-
+        A KoskResponse: the Kosk fields plus managerIds (live KOSK_NAZIM holders, oldest first), managerName, courseCount (PUBLISHED, not
+        hidden), studentCount (distinct users with any enrollment but REVOKED in a non-hidden course), muderrisCount (distinct
+        course_muderris rows of non-hidden courses, drafts included), followerCount and isFollowing (false with no token). For a caller
+        with no token ownerId is null and managerIds is [] (maskKoskForAnonymous); a signed-in caller gets both.
+    refusals:
+      KOSK_NOT_FOUND:
+        status: 404
+        note: >-
+          Four ways, one answer: no such köşk (service); a caller with no token and the köşk is unlisted or hidden (role resolver, :160); a
+          signed-in caller and an unknown uuid (resolver, :355); a signed-in caller, a hidden köşk and neither kosk.manage nor
+          platform.kosk_edit (assertMayOpenHidden)
+        source: apps/tedrisat/src/kosk/kosk.controller.ts:247
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:261
+
+  listKoskDecks:
+    route: GET /kosks/{id}/decks
+    summary: The shared decks a köşk offers the people who belong to it
+    needs: "AuthGuard + AuthzGuard: @Authz(kosk.view, byExistingKosk), no @AuthzPublic: a token is required"
+    description: >-
+      Any signed-in caller gets 200. The caller belongs when they hold an ENROLLED or COMPLETED enrollment in a non-hidden course of the
+      köşk, are a course_muderris of one of its courses, or manage the köşk. Belonging: accessible true and the köşk's decks that are
+      public and not archived, ordered by title. Not belonging (a PENDING applicant, a stranger): accessible false and no decks, never an
+      error. A hidden köşk is a 404 to everyone but kosk.manage and platform.kosk_edit holders.
+    result:
+      status: 200
+      type: object
+      required: [accessible, decks]
+      properties:
+        accessible: { type: boolean }
+        decks:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Deck }
+              title: { type: string }
+              cardCount: { type: integer }
+              inCollection: { type: boolean, note: "a decks_users row for the caller" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, shared tag S12), or a hidden köşk to a caller without kosk.manage and platform.kosk_edit (:247)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:281
+
+  followKosk:
+    route: POST /kosks/{id}/follow
+    summary: Follow a köşk as the current talebe
+    needs: "AuthGuard + AuthzGuard: @Authz(kosk.view, byParam(KOSK)). Any signed-in caller who may see the köşk"
+    description: >-
+      Inserts the KoskFollower row (userId, koskId) with onConflictDoNothing, so it is idempotent and answers true either way. Only that the
+      köşk exists is checked, not that it is shown: see the note.
+    result: { status: 201, type: boolean, note: "always true" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      KOSK_NOT_FOUND: { status: 404, note: "unknown uuid (role resolver for a caller who is not SYSTEM_ADMIN) or no such köşk (service)", source: apps/tedrisat/src/kosk/kosk.service.ts:103 }
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    note: >-
+      A hidden köşk can be followed by whoever knows its id: the guard's closure covers courses only and the service reads existence
+      alone (kosk.service.ts:277). Inventory F-5, not run.
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:470
+
+  unfollowKosk:
+    route: DELETE /kosks/{id}/follow
+    summary: Stop following a köşk
+    needs: "AuthGuard + AuthzGuard: @AuthzExempt, on purpose: leaving must not depend on still being allowed in"
+    description: Deletes the caller's own KoskFollower row. True when a row was deleted, false when there was none; a missing köşk is simply false.
+    result: { status: 200, type: boolean }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:487
+
+  # ---- Köşk: opening, editing, deleting, nazımları (kosk.controller.ts) ----
+  createKosk:
+    route: POST /kosks
+    summary: Open a köşk together with its nazımları
+    needs: "AuthGuard + AuthzGuard: @Authz(platform.kosk_create, forNew(KOSK)), asked again by the service. The başnazım, or a Medaris nazımı who was given platform.kosk_create"
+    description: >-
+      Nobody else (no role default, no relationship); a köşk nazımı cannot open a köşk. One transaction: the Kosk (ownerId = the caller),
+      one KOSK_NAZIM RoleAssignment per managerUserIds entry (grantedBy = the caller, no end) and the audit row. The caller is the owner
+      and is not made a nazım. Order of the checks: guard, DTO, self-grant, service permission, handle, accounts. Unknown properties
+      (verified, featured, rating, ownerId and the rest) are refused, and so is null for a NOT NULL field.
+    body:
+      type: object
+      required: [name, managerUserIds]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        handle: { type: [string, "null"], maxLength: 60 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        coverHue: { type: integer, minimum: 0, maximum: 360, default: 215, note: "never null" }
+        isPrivate: { type: boolean, default: false, note: "false is listed" }
+        field: { type: [string, "null"], maxLength: 60 }
+        level: { type: [string, "null"], enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED, null] }
+        tags: { type: array, maxItems: 10, uniqueItems: true, items: { type: string, maxLength: 40, pattern: "\\S" }, default: [] }
+        alwaysRequireApproval: { type: boolean, default: false }
+        recordingsNeverPublic: { type: boolean, default: false }
+        managerUserIds: { type: array, minItems: 1, maxItems: 10, uniqueItems: true, items: { type: string, format: uuid, references: User } }
+    result:
+      status: 201
+      returns: Kosk
+      note: "re-read as for getKosk, with the caller's isFollowing"
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller is among managerUserIds and is not SYSTEM_ADMIN: always refused (always true), whatever they hold; audit permission.self_grant_refused", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_create: from the guard first, and again from the service as 'Only the Medaris başnazımı and a Medaris nazımı holding platform.kosk_create may open a köşk with nazımları'", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:117 }
+      KOSK_HANDLE_TAKEN: { status: 409, note: "another köşk has the same short name, compared without case and with a leading @ ignored", source: apps/tedrisat/src/kosk/kosk.service.ts:147 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404, note: "an id that is neither in users nor in the realm directory (or the directory is not configured)", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:473 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the realm lookup of an id missing from users failed (S6-S8)", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+      VALIDATION_ERROR: { status: 400, note: "no nazım named, a duplicate or a malformed id, name out of range, a bad level, coverHue or tags, an unknown property, null for a NOT NULL field" }
+    sideEffects:
+      - audit:kosk.create
+      - "one KOSK_NAZIM role assignment per managerUserIds entry, granted by the caller"
+      - "audit:permission.self_grant_refused, when the refusal above is given"
+      - "Keycloak read: GET /users/<id> for each id with no users row, only when KEYCLOAK_ADMIN_* is set"
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+
+  updateKosk:
+    route: PATCH /kosks/{id}
+    summary: Change a köşk's own fields and policies
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk)"
+    description: >-
+      A nazım of that köşk, a Medaris nazımı holding platform.kosk_edit, or the başnazım. Not another köşk's nazım, not a medrese's
+      başmüderris (a medrese has no say over a köşk since MDRS-134). Every field of createKosk is optional except managerUserIds, which is
+      not accepted; the nullable columns (handle, description, field, level) take null to clear. A platform policy that is on cannot be
+      switched off from below: alwaysRequireApproval false while the platform policy ALWAYS_REQUIRE_APPROVAL is on, or
+      recordingsNeverPublic false while RECORDINGS_NEVER_PUBLIC is on, is refused unless the caller is SYSTEM_ADMIN.
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        handle: { type: [string, "null"], maxLength: 60 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        coverHue: { type: integer, minimum: 0, maximum: 360 }
+        isPrivate: { type: boolean }
+        field: { type: [string, "null"], maxLength: 60 }
+        level: { type: [string, "null"], enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED, null] }
+        tags: { type: array, maxItems: 10, uniqueItems: true, items: { type: string, maxLength: 40, pattern: "\\S" } }
+        alwaysRequireApproval: { type: boolean }
+        recordingsNeverPublic: { type: boolean }
+    result: { status: 200, returns: Kosk, note: "re-read as for getKosk" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); the update matched no row (:238)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+      KOSK_HANDLE_TAKEN: { status: 409, note: "as createKosk; the köşk's own handle is excepted", source: apps/tedrisat/src/kosk/kosk.service.ts:147 }
+      PLATFORM_POLICY_LOCKED: { status: 409, note: "alwaysRequireApproval=false while ALWAYS_REQUIRE_APPROVAL is on, or recordingsNeverPublic=false while RECORDINGS_NEVER_PUBLIC is on; never given to SYSTEM_ADMIN", source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:61 }
+      VALIDATION_ERROR: { status: 400, note: "null for a NOT NULL field, an unknown property (managerUserIds among them), a value out of range" }
+    sideEffects:
+      - "audit:kosk.policy_change, only when the body touches alwaysRequireApproval or recordingsNeverPublic"
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+
+  deleteKosk:
+    route: DELETE /kosks/{id}
+    summary: Delete a köşk for real
+    needs: "AuthGuard + AuthzGuard: @Authz(kosk.delete, byExistingKosk). kosk.delete is held by no role, grant or relationship: only SYSTEM_ADMIN, by the realm bypass"
+    description: >-
+      One transaction (kosk.repository.ts:689): every course of the köşk and all under it (lessons, weeks, recordings, notes, questions,
+      submissions and their files, exams, assignments, resources, müderris rows, enrollments, partner links and codes, the courses' role
+      rows, queued file deletions), the followers, the köşk's role assignments, the Kosk, and one audit row naming the name, the managers
+      and per-table counts. Hosting rights go with the row (cascade). A köşk nazım hides and never deletes.
+    result: { status: 200, type: boolean, note: "true" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); the purge found no row (:269)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "everyone but SYSTEM_ADMIN, the köşk's owner and its nazımları included", source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - audit:kosk.delete
+      - "LessonInvitationService.kick: the CANCEL mails of the lost sessions"
+      - "StorageDeletionService.kick: the stored files of the köşk's courses go"
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:367
+
+  addKoskManager:
+    route: POST /kosks/{id}/managers/{userId}
+    summary: Seat a person as a nazım of the köşk
+    needs: "AuthGuard + AuthzGuard: @Authz(platform.kosk_nazim_manage, byExistingKosk)"
+    description: >-
+      The başnazım, or a Medaris nazımı holding platform.kosk_nazim_manage. A köşk nazım does not add peers (owner decision d-1004-12,
+      MDRS-136). Idempotent: an existing live nazım answers 201 with no write. The target must have a users row (has signed in). Done
+      under a NO KEY UPDATE lock of the köşk row so concurrent changes queue. No end date on this route. A lapsed but unrevoked row of
+      the same seat is revoked before the new one is inserted. Unlike addKoskNazims it does not clear Kosk.passiveSince.
+    result: { status: 201, returns: Kosk, note: "re-read as for getKosk" }
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller names themselves into KOSK_NAZIM without holding those codes and is not SYSTEM_ADMIN; audit permission.self_grant_refused", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_nazim_manage, a köşk's own nazım included", source: libs/common/src/authz/authz.guard.ts:92 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); the köşk vanished under the lock (:183)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      KOSK_MANAGER_UNKNOWN_USER: { status: 404, note: "the target has no users row: they never signed in", source: apps/tedrisat/src/kosk/kosk.service.ts:185 }
+      HTTP_400: { status: 400, note: "userId is no uuid" }
+    sideEffects:
+      - "audit:kosk.nazim.add, details authority platform"
+      - "audit:permission.self_grant_refused, when the refusal above is given"
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:388
+
+  removeKoskManager:
+    route: DELETE /kosks/{id}/managers/{userId}
+    summary: Take a nazım off the köşk, naming a successor when they are the last
+    needs: "AuthGuard + AuthzGuard: @Authz(platform.kosk_nazim_manage, byExistingKosk)"
+    description: >-
+      The başnazım, or a Medaris nazımı holding platform.kosk_nazim_manage. A köşk nazım cannot remove a peer or resign. Under the köşk
+      lock, in order: köşk missing, target not a live nazım, successor equal to the target, no successor and the target the only live
+      nazım; with a successor, the successor is seated first (needs a users row; an existing nazım is fine) and then the target's row is
+      revoked in the caller's name (revokedAt and revokedBy; never deleted). The başnazım may name themselves as the successor.
+    query:
+      type: object
+      properties:
+        successorUserId: { type: string, format: uuid, references: User, note: "who takes the seat when the removed nazım is the last one" }
+    result: { status: 200, returns: Kosk, note: "re-read as for getKosk" }
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "the successor is the caller, who is not SYSTEM_ADMIN and does not hold the KOSK_NAZIM codes; given before any check of the köşk or the target", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_nazim_manage", source: libs/common/src/authz/authz.guard.ts:92 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); the köşk vanished under the lock (:207)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      KOSK_MANAGER_NOT_FOUND: { status: 404, note: "the target is not a live nazım of the köşk", source: apps/tedrisat/src/kosk/kosk.service.ts:209 }
+      KOSK_SUCCESSOR_INVALID: { status: 400, note: "the successor is the nazım being removed", source: apps/tedrisat/src/kosk/kosk.service.ts:215 }
+      KOSK_LAST_MANAGER: { status: 409, note: "the target is the only live nazım and no successor was named", source: apps/tedrisat/src/kosk/kosk.service.ts:212 }
+      KOSK_MANAGER_UNKNOWN_USER: { status: 404, note: "the successor has no users row", source: apps/tedrisat/src/kosk/kosk.service.ts:218 }
+      HTTP_400: { status: 400, note: "userId or successorUserId is no uuid" }
+    sideEffects:
+      - "audit:kosk.nazim.remove, with successorUserId when one was named"
+      - "audit:kosk.nazim.add for the successor, when they were seated"
+      - "audit:permission.self_grant_refused, when the refusal above is given"
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:435
+
+  # ---- Köşk administration screens (kosk-admin.controller.ts) ----
+  getKoskDirectory:
+    route: GET /kosks/directory
+    summary: Every köşk for nizam's table, hidden and passive ones too
+    needs: "AuthGuard + AuthzGuard: @AuthzExempt; the service decides (scopeOf). Registered before KoskController so that directory is not read as :id"
+    description: >-
+      The başnazım, or anyone holding any of platform.kosk_create, platform.kosk_edit, platform.kosk_nazim_manage or
+      platform.hosting_grant, sees every köşk. A köşk nazım sees only the köşks they manage. Everyone else is refused. Status is derived:
+      HIDDEN (archivedAt set) before PASSIVE (passiveSince set) before ACTIVE. Rows are ordered by name, id. since is archivedAt or
+      passiveSince; hiddenLevel is archivedLevel, or kosk for a legacy row. courseCount here counts EVERY course of the köşk, hidden and
+      draft included, unlike the public courseCount. Each row carries its live nazımları (name and e-mail from users, else from Keycloak)
+      and canRestore (the caller's rung on the köşk hide ladder reaches hiddenLevel). counts follow the caller's scope and ignore the
+      other filters; fields are the distinct fields of the caller's köşks. The nazım e-mail is personal data.
+    query:
+      type: object
+      properties:
+        status: { enum: [ALL, ACTIVE, PASSIVE, HIDDEN], default: ALL }
+        level: { enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED] }
+        field: { type: string, maxLength: 100, note: "trimmed and cut to 100" }
+        listing: { enum: [ALL, LISTED, UNLISTED], default: ALL }
+        q: { type: string, maxLength: 100, note: "matches name, handle or a live nazım's full name, case-insensitively" }
+        page: { type: integer, default: 1, minimum: 1 }
+        limit: { type: integer, default: 12, minimum: 1, maximum: 50 }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit, counts, fields]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              handle: { type: [string, "null"] }
+              name: { type: string }
+              coverHue: { type: integer }
+              field: { type: [string, "null"] }
+              level: { type: [string, "null"] }
+              isPrivate: { type: boolean }
+              status: { enum: [ACTIVE, PASSIVE, HIDDEN] }
+              since: { type: [string, "null"], format: date-time }
+              hiddenLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+              canRestore: { type: boolean }
+              courseCount: { type: integer, note: "every course, hidden and draft included" }
+              nazims:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid, references: User }
+                    name: { type: [string, "null"] }
+                    email: { type: [string, "null"], sensitivity: personal }
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        counts:
+          type: object
+          properties:
+            all: { type: integer }
+            active: { type: integer }
+            passive: { type: integer }
+            hidden: { type: integer }
+        fields: { type: array, items: { type: string } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "'The köşk table is for the Medaris başnazımı and köşk nazımları': the caller holds none of the four platform codes and manages no köşk", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:203 }
+      HTTP_400: { status: 400, note: "status, level or listing is not one of its values, page or limit is not an integer" }
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:131
+
+  getKoskOverview:
+    route: GET /kosks/{id}/overview
+    summary: The Medaris yönetimi's page of one köşk, numbers and facts
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk)"
+    description: >-
+      A nazım of that köşk, a platform.kosk_edit holder, or the başnazım. students is the distinct users with an ENROLLED enrollment in a
+      non-hidden course (COMPLETED is not counted), pendingApplications is PENDING enrollments in non-hidden courses, courses.all is
+      every row, courses.published and courses.draft are the non-hidden ones, nazimCount is the live ones, hostingMadrasahs are the
+      non-revoked rights whose medrese is not hidden. openedBy is the owner (name and e-mail from users, else Keycloak).
+    result:
+      status: 200
+      type: object
+      properties:
+        status: { enum: [ACTIVE, PASSIVE, HIDDEN] }
+        since: { type: [string, "null"], format: date-time }
+        hiddenLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+        canRestore: { type: boolean }
+        openedAt: { type: string, format: date-time }
+        openedBy:
+          type: [object, "null"]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"] }
+            email: { type: [string, "null"], sensitivity: personal }
+        courses:
+          type: object
+          properties:
+            all: { type: integer }
+            published: { type: integer }
+            draft: { type: integer }
+            hidden: { type: integer }
+        students: { type: integer }
+        pendingApplications: { type: integer }
+        nazimCount: { type: integer }
+        hostingMadrasahs:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Madrasah }
+              name: { type: string }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row (:296)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:177
+
+  getKoskDashboard:
+    route: GET /kosks/{id}/dashboard
+    summary: A köşk nazımı's home page in one read
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk). The service then cuts what is shown"
+    description: >-
+      The köşk's nazımları and the başnazım get everything. A Medaris nazımı holding only platform.kosk_edit gets contentLocked true:
+      the numbers, with no meeting links, no per-row attendance flags and latestApplications empty (counts.pendingApplications still
+      counts). The programme is live (type LIVE) sessions with a time, in PUBLISHED, non-hidden courses, weeks and sessions. counts.courses
+      is the non-hidden courses (drafts included); counts.students the distinct ENROLLED users; sessionCounts.upcoming is not cancelled
+      and starting in the next 7 days, past is not cancelled and already started, cancelled is cancelled; withoutAccessCount is the
+      upcoming ones with no meeting link, no live stream and not in person, firstWithoutAccess the first of them. sessions of the tab:
+      UPCOMING soonest first, at most 50; PAST and CANCELLED newest first, at most 20. latestApplications is the 5 newest PENDING
+      enrollments, each with canDecide (the caller's effective enrollment.decide on that course; always true for SYSTEM_ADMIN). A
+      course in a passive scope is left out of pendingApplications, the session lists and counts and latestApplications unless the caller
+      is a live nazım of this köşk or holds platform.inactive_scopes_manage; counts.courses and counts.students still include it (the
+      repository applies the passive filter to the other queries only).
+    query:
+      type: object
+      properties:
+        sessions: { enum: [UPCOMING, PAST, CANCELLED], default: UPCOMING }
+    result:
+      status: 200
+      type: object
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk }
+        koskName: { type: string }
+        greetingName: { type: [string, "null"] }
+        counts:
+          type: object
+          properties:
+            courses: { type: integer }
+            students: { type: integer }
+            upcomingSessions: { type: integer }
+            pendingApplications: { type: integer }
+        sessionCounts:
+          type: object
+          properties:
+            upcoming: { type: integer }
+            past: { type: integer }
+            cancelled: { type: integer }
+        withoutAccessCount: { type: integer }
+        firstWithoutAccess: { type: [object, "null"], note: "a session row as in sessions" }
+        tab: { enum: [UPCOMING, PAST, CANCELLED] }
+        contentLocked: { type: boolean }
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Lesson }
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: string }
+              courseCoverHue: { type: integer }
+              weekNumber: { type: integer }
+              scheduledAt: { type: string, format: date-time }
+              durationMinutes: { type: [integer, "null"] }
+              meetingUrl: { type: [string, "null"], note: "absent when contentLocked" }
+              inPerson: { type: boolean, note: "absent when contentLocked" }
+              hasLiveStream: { type: boolean, note: "absent when contentLocked" }
+              withoutAccess: { type: boolean, note: "absent when contentLocked" }
+              isMakeup: { type: boolean }
+              studentCount: { type: integer }
+              cancelled: { type: boolean }
+              madrasahName: { type: [string, "null"] }
+              muderris: { type: array, items: { type: object, properties: { name: { type: string }, unvan: { type: [string, "null"] }, isImam: { type: boolean } } } }
+        latestApplications:
+          type: array
+          items:
+            type: object
+            properties:
+              userId: { type: string, format: uuid, references: User }
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: string }
+              studentName: { type: [string, "null"] }
+              studentEmail: { type: [string, "null"], sensitivity: personal }
+              requestedAt: { type: string, format: date-time }
+              canDecide: { type: boolean }
+              scopePassive: { type: boolean }
+        muderris:
+          type: array
+          items:
+            type: object
+            properties:
+              userId: { type: [string, "null"], format: uuid, references: User }
+              name: { type: string }
+              courseCount: { type: integer }
+              studentCount: { type: integer }
+              madrasahName: { type: [string, "null"] }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row (:85)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_400: { status: 400, note: "sessions is not UPCOMING, PAST or CANCELLED" }
+    sideEffects:
+      - "audit:course.roster_read (entity kosk, details via kosk-dashboard, courseIds, systemAdmin, permission), on every read that is not contentLocked, even when no applicant is listed"
+      - "audit:course.content_read, one per course whose meeting link is handed out, unless the caller is a müderris of that course"
+      - "audit:scope.passive_open, one per such course that sits in a passive scope"
+      - "the rows are written before the page is returned: a failed write fails the read"
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+
+  getKoskCourseRoster:
+    route: GET /kosks/{id}/course-roster
+    summary: Every course of the köşk for nizam's Dersler table
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk)"
+    description: >-
+      Every course of the köşk, hidden ones too, newest first. Per row: status PUBLISHED, DRAFT or HIDDEN, weekCount (non-hidden weeks),
+      the medrese (id, name) or null, the müderrisler (name, unvan, isImam), studentCount (ENROLLED), pendingCount (PENDING), bannedCount
+      (distinct users with an open ban in this köşk on the course or on the whole köşk), and for a HIDDEN course hiddenLevel and canRestore
+      (the course hide ladder). counts are over the items. No audit row.
+    result:
+      status: 200
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Course }
+              title: { type: string }
+              coverHue: { type: integer }
+              weekCount: { type: integer }
+              madrasah: { type: [object, "null"], properties: { id: { type: string, format: uuid, references: Madrasah }, name: { type: string } } }
+              status: { enum: [PUBLISHED, DRAFT, HIDDEN] }
+              hiddenAt: { type: [string, "null"], format: date-time }
+              hiddenLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+              canRestore: { type: boolean }
+              createdAt: { type: string, format: date-time }
+              muderris: { type: array, items: { type: object, properties: { name: { type: string }, unvan: { type: [string, "null"] }, isImam: { type: boolean } } } }
+              studentCount: { type: integer }
+              pendingCount: { type: integer }
+              bannedCount: { type: integer }
+        counts:
+          type: object
+          properties:
+            all: { type: integer }
+            published: { type: integer }
+            draft: { type: integer }
+            hidden: { type: integer }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row (:326)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+
+  previewKoskDeactivation:
+    route: GET /kosks/{id}/deactivation-preview
+    summary: What taking a köşk out of service takes along, with the confirmation to post
+    needs: "AuthGuard + AuthzGuard: @Authz(platform.kosk_edit, byExistingKosk)"
+    description: >-
+      The başnazım, or a Medaris nazımı holding platform.kosk_edit; a köşk nazım may not. The courses below the köşk (the courses of
+      medreses it hosts too), how many have a müderris in the post now, the talebe enrolled and completed, the live sessions in the next
+      days, the nazımları who leave, and a 64-character confirmation token bound to those numbers and to the caller. A köşk that is
+      passive already answers 200 with alreadyPassive true.
+    result:
+      status: 200
+      type: object
+      properties:
+        scope: { type: object, properties: { type: { type: string }, id: { type: string, format: uuid, references: Kosk }, name: { type: string } } }
+        alreadyPassive: { type: boolean }
+        closesContent: { type: boolean }
+        staffLeaving: { type: integer }
+        courses: { type: object, properties: { total: { type: integer }, published: { type: integer }, draft: { type: integer }, withLiveMuderris: { type: integer }, items: { type: array, items: { type: object } }, truncated: { type: boolean } }, note: "items: the first 50, most enrolled first" }
+        students: { type: object, properties: { enrolled: { type: integer }, completed: { type: integer } } }
+        sessions: { type: object, properties: { windowDays: { type: integer }, count: { type: integer }, next: { type: array, items: { type: object } } } }
+        confirmation: { type: string, minLength: 64, maxLength: 64 }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row (:372)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_edit, a köşk nazım included", source: libs/common/src/authz/authz.guard.ts:92 }
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:255
+
+  deactivateKosk:
+    route: POST /kosks/{id}/deactivate
+    summary: Take a köşk out of service (Köşkü pasife al)
+    needs: "AuthGuard + AuthzGuard: @Authz(platform.kosk_edit, byExistingKosk), HttpCode 200. The başnazım, or a Medaris nazımı holding platform.kosk_edit"
+    description: >-
+      One transaction under the köşk row lock: not found, then already passive, then the impact is measured again and compared with the
+      posted confirmation; every live KOSK_NAZIM role is revoked in the caller's name; passiveSince = now and passiveReason =
+      DEACTIVATED_BY_ADMIN. Nothing is hidden or deleted; every course below closes (passive scope). Adding a nazım through addKoskNazims
+      makes it active again.
+    body:
+      type: object
+      required: [confirmation]
+      additionalProperties: false
+      properties:
+        confirmation: { type: string, minLength: 64, maxLength: 64, note: "the token previewKoskDeactivation gave this caller" }
+    result: { status: 200, type: object, properties: { id: { type: string, format: uuid, references: Kosk }, status: { const: PASSIVE } }, note: "a KoskDirectoryItemResponse, as one row of getKoskDirectory" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row under the lock", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:387 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+      KOSK_ALREADY_PASSIVE: { status: 409, note: "passiveSince is already set", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:389 }
+      PASSIVATION_IMPACT_CHANGED: { status: 409, note: "the confirmation is not for these numbers and this caller; context.impact carries the fresh preview; nothing is written", source: apps/tedrisat/src/passivation/passivation-impact.repository.ts:182 }
+      VALIDATION_ERROR: { status: 400, note: "confirmation is not a string of 64 characters, or the body has another property" }
+    sideEffects:
+      - "audit:kosk.deactivate, details name, removedNazimIds, the impact and the confirmation"
+      - "every live KOSK_NAZIM role of the köşk is revoked"
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:277
+
+  listKoskNazims:
+    route: GET /kosks/{id}/nazims
+    summary: The köşk's nazımları with who gave each post and when
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk)"
+    description: >-
+      The live (not revoked, not lapsed) KOSK_NAZIM rows, oldest first. grantedByRole is worked out at read time: the Keycloak holders of
+      SYSTEM_ADMIN (the admin directory, GET /roles/SYSTEM_ADMIN/users), then 'was ever a nazım of this köşk', then 'holds MEDARIS_NAZIM
+      now'; a directory failure is logged and ignored, and the role is then null. Names and e-mails come from users, else from Keycloak.
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        properties:
+          user: { type: object, properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] }, email: { type: [string, "null"], sensitivity: personal } } }
+          grantedBy: { type: object, properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] }, email: { type: [string, "null"], sensitivity: personal } } }
+          grantedByRole: { type: [string, "null"], enum: [SYSTEM_ADMIN, KOSK_NAZIM, MEDARIS_NAZIM, null] }
+          grantedAt: { type: string, format: date-time }
+          endsAt: { type: [string, "null"], format: date-time }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "Keycloak read: GET /roles/SYSTEM_ADMIN/users, when KEYCLOAK_ADMIN_* is set; a failure is swallowed"
+    note: >-
+      The DTO text and the e2e title say the list is for the köşk's nazımları and the başnazım, 'closed to everyone else'; the route also
+      admits platform.kosk_edit holders. Inventory F-7.
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+
+  addKoskNazims:
+    route: POST /kosks/{id}/nazims
+    summary: Make people the köşk's nazımları, all or nothing
+    needs: "AuthGuard + AuthzGuard: @AuthzExempt; the service asks requirePlatform(platform.kosk_nazim_manage), which the başnazım passes. A köşk's own nazım does not hold it"
+    description: >-
+      The başnazım, or a Medaris nazımı holding platform.kosk_nazim_manage. The end date must be in the future; ids are lower-cased; each
+      id must be in users or in the realm directory. Under the köşk row lock, all or nothing: if any id is already a live nazım nothing is
+      written and the call is a 409 listing them. Each is granted KOSK_NAZIM with expiresAt = endsAt. A passive köşk becomes active again
+      (passiveSince and passiveReason cleared). Answers the nazım list as it is now.
+    body:
+      type: object
+      required: [userIds]
+      additionalProperties: false
+      properties:
+        userIds: { type: array, minItems: 1, maxItems: 10, uniqueItems: true, items: { type: string, format: uuid, references: User } }
+        endsAt: { type: string, format: date-time, note: "ISO-8601; omitted means until the nazım is taken away; in the past is refused" }
+    result:
+      status: 201
+      type: array
+      items:
+        type: object
+        properties:
+          user: { type: object, properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] }, email: { type: [string, "null"], sensitivity: personal } } }
+          grantedBy: { type: object, properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] }, email: { type: [string, "null"], sensitivity: personal } } }
+          grantedByRole: { type: [string, "null"], enum: [SYSTEM_ADMIN, KOSK_NAZIM, MEDARIS_NAZIM, null] }
+          grantedAt: { type: string, format: date-time }
+          endsAt: { type: [string, "null"], format: date-time }
+      note: "the same rows as listKoskNazims"
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller is among userIds and is not SYSTEM_ADMIN; always (always true). It is given before the permission is asked, so a caller with no right at all who names themselves gets this and not AUTHZ_FORBIDDEN", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "'Only the Medaris başnazımı and a Medaris nazımı holding platform.kosk_nazim_manage may add köşk nazımları'", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:117 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "'The end date is in the past'", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:489 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404, note: "an id in neither users nor the realm directory (or the directory is not configured)", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:473 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the realm lookup of an id missing from users failed (S6-S8); real only here and in createKosk", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+      KOSK_NOT_FOUND: { status: 404, note: "no such köşk, found under the lock; it is checked after the accounts", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:499 }
+      KOSK_NAZIM_EXISTS: { status: 409, note: "'Already a nazım of köşk x: ids'; nothing is written", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:501 }
+      VALIDATION_ERROR: { status: 400, note: "userIds empty, over 10, duplicated or not uuids, endsAt not ISO-8601, another property" }
+      HTTP_400: { status: 400, note: "the id is no uuid (no byExistingKosk on this route)" }
+    sideEffects:
+      - "audit:kosk.nazim.add, one per person, details name, userId, endsAt"
+      - "audit:permission.self_grant_refused, when the first refusal is given"
+      - "a passive köşk is made active again"
+      - "Keycloak read: GET /users/<id> for each id with no users row, only when KEYCLOAK_ADMIN_* is set"
+    note: >-
+      The swagger summary says '(SYSTEM_ADMIN only)' and the e2e title calls it the başnazım's alone, but requirePlatform also admits a
+      Medaris nazımı holding platform.kosk_nazim_manage. Inventory F-6.
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+
+  hideKosk:
+    route: POST /kosks/{id}/hide
+    summary: Hide a köşk (Köşkü gizle)
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.manage, platform.kosk_edit], byExistingKosk), HttpCode 200"
+    description: >-
+      A nazım of the köşk, a platform.kosk_edit holder, or the başnazım. The level the caller acts at is the highest rung they hold on the
+      köşk hide ladder (platform: platform.kosk_edit, the başnazım by bypass; köşk: kosk.manage). Under the row lock; already hidden is
+      refused. The köşk and its courses leave every list and answer 404 to everyone but the people above; nothing is deleted.
+    result: { status: 200, type: object, properties: { id: { type: string, format: uuid, references: Kosk }, status: { const: HIDDEN } }, note: "a KoskDirectoryItemResponse, as one row of getKoskDirectory" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12); no row under the lock (:258)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.manage on the köşk nor platform.kosk_edit", source: libs/common/src/authz/authz.guard.ts:92 }
+      KOSK_ALREADY_HIDDEN: { status: 409, note: "archivedAt is already set", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:259 }
+    sideEffects:
+      - "audit:kosk.hide, details title, level, koskId, name"
+      - "no invitation sweep is kicked: the 5-minute lesson invitation sweep reconciles"
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+
+  restoreKosk:
+    route: POST /kosks/{id}/restore
+    summary: Bring a hidden köşk back, by the level that hid it or above
+    needs: "AuthGuard + AuthzGuard: @AuthzExempt, HttpCode 200; the service decides because the level the caller acts at is the input of the rule"
+    description: >-
+      A nazım of the köşk (for what the köşk level hid), a platform.kosk_edit holder or the başnazım (anything). The caller's rung on the
+      köşk hide ladder must exist (none is a 403), then it must reach the level the köşk was hidden at: course < medrese < köşk <
+      platform, a null archivedLevel counting as köşk. Courses hidden on their own stay hidden.
+    result: { status: 200, type: object, properties: { id: { type: string, format: uuid, references: Kosk }, status: { enum: [ACTIVE, PASSIVE] } }, note: "a KoskDirectoryItemResponse, as one row of getKoskDirectory" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds neither kosk.manage on the köşk nor platform.kosk_edit", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:278 }
+      ARCHIVE_RESTORE_LEVEL: { status: 403, note: "'This was hidden at the <level> level; only that level or above brings it back (you act at the <level> level)', context hiddenAt and yourLevel", source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:514 }
+      KOSK_NOT_FOUND: { status: 404, note: "no row: the role resolver for a caller who is not SYSTEM_ADMIN, the repository for SYSTEM_ADMIN", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:283 }
+      KOSK_NOT_HIDDEN: { status: 409, note: "archivedAt is not set", source: apps/tedrisat/src/kosk/kosk-admin.service.ts:284 }
+      HTTP_400: { status: 400, note: "the id is no uuid (no byExistingKosk on this route)" }
+    sideEffects:
+      - "audit:kosk.restore, details title, level, hiddenLevel, hiddenSince"
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:382
+
+  # ---- Köşk applications (open-a-köşk requests) ----
+  createKoskApplication:
+    route: POST /kosk-applications
+    summary: Apply to open a köşk
+    needs: "AuthGuard only (no AuthzGuard, no @Authz). Any signed-in caller"
+    description: >-
+      Inserts a KoskApplication with status PENDING and applicantId = the caller's sub. Nothing limits how many a person files (the global
+      throttler is the only guard, kosk-application.service.ts:10). No notification to Medaris: they see it in the dashboard counts.
+    body:
+      type: object
+      required: [name, field, summary, reason, email]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, note: "trimmed" }
+        field: { enum: [ARABIC_LANGUAGE_SCIENCES, RHETORIC, FIQH, USUL_AL_FIQH, HADITH, QURAN_SCIENCES, TAFSIR, AQEEDAH_KALAM, SEERAH, LOGIC, OTHER] }
+        summary: { type: string, minLength: 1, maxLength: 500, note: "trimmed" }
+        reason: { type: string, minLength: 1, maxLength: 3000, note: "trimmed" }
+        email: { type: string, format: email, maxLength: 254, sensitivity: personal, note: "trimmed" }
+        phone: { type: [string, "null"], pattern: "^\\+?[0-9][0-9 ()-]{5,18}[0-9]$", sensitivity: personal, note: "optional; trimmed, an empty string is stored as null" }
+    result:
+      status: 201
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid, references: KoskApplication }
+        status: { const: PENDING }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      VALIDATION_ERROR: { status: 400, note: "a field missing, blank or over its length, field not one of the eleven, a bad e-mail or phone, another property" }
+    source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
+
+  listKoskApplications:
+    route: GET /nizam/kosk-applications
+    summary: Köşk applications, the waiting and the answered tab
+    needs: "AuthGuard only; the service asks PlatformAccessService.assert(platform.kosk_application_decide). The başnazım, or a Medaris nazımı holding it"
+    description: >-
+      The PENDING tab is oldest first; the DECIDED tab (status other than PENDING) is newest decided first; at most 100 rows. Both tab
+      counts are returned. No contact detail is in the list.
+    query:
+      type: object
+      properties:
+        status: { enum: [PENDING, DECIDED], default: PENDING }
+    result:
+      status: 200
+      type: object
+      required: [items, pendingCount, decidedCount]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: KoskApplication }
+              name: { type: string }
+              field: { type: string }
+              applicantName: { type: [string, "null"] }
+              status: { enum: [PENDING, APPROVED, REJECTED] }
+              createdAt: { type: string, format: date-time }
+              decidedAt: { type: [string, "null"], format: date-time }
+        pendingCount: { type: integer }
+        decidedCount: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "'Only the Medaris başnazımı and a Medaris nazımı holding platform.kosk_application_decide may do this' (S14)", source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      HTTP_400: { status: 400, note: "status is not PENDING or DECIDED" }
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+
+  getKoskApplication:
+    route: GET /nizam/kosk-applications/{id}
+    summary: One application with the applicant's contact details
+    needs: "AuthGuard only; the service asks PlatformAccessService.assert(platform.kosk_application_decide). Nobody else: a köşk nazım, the applicant included, is refused"
+    description: >-
+      The order in the service is assert the permission, then require the application (404), then the audit row, so a missing id writes
+      nothing. The applicant's e-mail and phone are personal data, so the read is audited BEFORE the details are returned. The detail
+      includes the applicant's live role names and up to 20 names of non-hidden köşks whose field equals the Turkish label of the
+      application's field (KOSK_FIELD_LABEL).
+    result:
+      status: 200
+      type: object
+      properties:
+        id: { type: string, format: uuid, references: KoskApplication }
+        name: { type: string }
+        field: { type: string }
+        applicantName: { type: [string, "null"] }
+        status: { enum: [PENDING, APPROVED, REJECTED] }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: [string, "null"], format: date-time }
+        summary: { type: string }
+        reason: { type: string }
+        applicant:
+          type: object
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"] }
+            email: { type: string, sensitivity: personal }
+            phone: { type: [string, "null"], sensitivity: personal }
+            roles: { type: array, items: { type: string } }
+        sameFieldKosks: { type: array, items: { type: string }, note: "köşk names, at most 20" }
+        rejectReason: { type: [string, "null"] }
+        koskId: { type: [string, "null"], format: uuid, references: Kosk }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_application_decide (S14)", source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      KOSK_APPLICATION_NOT_FOUND: { status: 404, note: "'No köşk application x'", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:215 }
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    sideEffects:
+      - "audit:kosk_application.contact_read, details name and applicant, before the details are returned"
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
+
+  approveKoskApplication:
+    route: POST /nizam/kosk-applications/{id}/approve
+    summary: Mark an application accepted with the köşk opened from it
+    needs: "AuthGuard only; the service asks PlatformAccessService.assert(platform.kosk_application_decide), HttpCode 204. Nobody else"
+    description: >-
+      This route does not open a köşk: the köşk is opened first with createKosk and its id is posted. In order: permission, the
+      application exists, the köşk exists, then one transaction updates the KoskApplication to APPROVED (decidedBy, decidedAt = now,
+      rejectReason null, koskId) WHERE status = PENDING and writes the audit row; no row updated means it was answered meanwhile.
+    body:
+      type: object
+      required: [koskId]
+      additionalProperties: false
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk, note: "the köşk opened from the application" }
+    result: { status: 204 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_application_decide (S14)", source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      KOSK_APPLICATION_NOT_FOUND: { status: 404, note: "'No köşk application x'", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:215 }
+      KOSK_NOT_FOUND: { status: 404, note: "koskId names no köşk", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:167 }
+      KOSK_APPLICATION_DECIDED: { status: 409, note: "'Köşk application x has been answered already'", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:178 }
+      VALIDATION_ERROR: { status: 400, note: "koskId missing or no uuid, another property" }
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    sideEffects:
+      - "audit:kosk_application.approve, details name and koskId"
+      - "notify:KOSK_APPLICATION_RESULT to the applicant, params outcome approved and koskName, no target; a failure is logged and never undoes the decision"
+    note: >-
+      It is not checked that the köşk named by koskId was opened from this application, nor that it is not already attached to another
+      application (kosk-application-review.service.ts:156-181). Inventory F-3.
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+
+  rejectKoskApplication:
+    route: POST /nizam/kosk-applications/{id}/reject
+    summary: Refuse an application with a reason
+    needs: "AuthGuard only; the service asks PlatformAccessService.assert(platform.kosk_application_decide), HttpCode 204. Nobody else"
+    description: >-
+      The same conditional update as approve with status REJECTED and rejectReason = the trimmed reason; no köşk id. The reason goes to
+      the applicant in their notifications.
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 1000, pattern: "\\S", note: "RejectReasonDto of deck review (DECK_REVIEW_REASON_MAX); trimmed by the service" }
+    result: { status: 204 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.kosk_application_decide (S14)", source: apps/tedrisat/src/platform-access/platform-access.service.ts:46 }
+      KOSK_APPLICATION_NOT_FOUND: { status: 404, note: "'No köşk application x'", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:215 }
+      KOSK_APPLICATION_DECIDED: { status: 409, note: "answered already", source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:204 }
+      VALIDATION_ERROR: { status: 400, note: "reason missing, blank, or over 1000 characters" }
+      HTTP_400: { status: 400, note: "the id is no uuid" }
+    sideEffects:
+      - "audit:kosk_application.reject, details name and reason"
+      - "notify:KOSK_APPLICATION_RESULT to the applicant, params outcome rejected, koskName (the application's name) and reason; a failure is logged and never undoes the decision"
+    note: "The DTO is deck review's RejectReasonDto, borrowed across modules, so the limit is a deck-review constant. Inventory F-8."
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
+
+  # ---- Hosting rights (hosting.controller.ts) ----
+  listKoskHostingRights:
+    route: GET /kosks/{id}/hosting-rights
+    summary: The medreses that hold a hosting right in the köşk
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.hosting, platform.hosting_grant], byExistingKosk)"
+    description: >-
+      A nazım of the köşk (kosk.hosting by role default), a Medaris nazımı holding platform.hosting_grant, or the başnazım. Not a
+      başmüderris of a hosted medrese, not another köşk's nazım. The held (non-revoked) rights, oldest first; a hidden medrese and hidden
+      courses are left out. Each carries the medrese's başmüderris, who granted the right and in what role, and the medrese's courses
+      here that are not hidden.
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        properties:
+          madrasahId: { type: string, format: uuid, references: Madrasah }
+          name: { type: string }
+          handle: { type: string }
+          coverHue: { type: integer }
+          headMuderris: { type: [object, "null"], properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] } } }
+          grantedBy: { type: object, properties: { id: { type: string, format: uuid, references: User }, name: { type: [string, "null"] }, role: { type: [string, "null"], enum: [SYSTEM_ADMIN, MEDARIS_NAZIM, KOSK_NAZIM, null] } } }
+          grantedAt: { type: string, format: date-time }
+          openCourses:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: string, format: uuid, references: Course }
+                title: { type: string }
+                status: { enum: [DRAFT, PUBLISHED] }
+                studentCount: { type: integer, note: "ENROLLED only" }
+                imamName: { type: [string, "null"] }
+                imamUnvan: { type: [string, "null"] }
+                muderrisCount: { type: integer }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.hosting on the köşk nor platform.hosting_grant", source: libs/common/src/authz/authz.guard.ts:92 }
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:72
+
+  grantKoskHostingRight:
+    route: POST /kosks/{id}/hosting-rights
+    summary: Give a medrese a hosting right in the köşk
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.hosting, platform.hosting_grant], byExistingKosk)"
+    description: >-
+      A nazım of the köşk, a Medaris nazımı holding platform.hosting_grant, or the başnazım. The medrese row is locked and must exist and
+      not be hidden. Inserts a MadrasahKoskHosting row, onConflictDoNothing on the partial unique index of one held right per (medrese,
+      köşk): idempotent, with no second audit row when the right is already held. grantedByRole is SYSTEM_ADMIN for the başnazım, else
+      KOSK_NAZIM if the caller holds kosk.hosting on the köşk, else MEDARIS_NAZIM. A withdrawn right can be granted again as a new row.
+    body:
+      type: object
+      required: [madrasahId]
+      additionalProperties: false
+      properties:
+        madrasahId: { type: string, format: uuid, references: Madrasah }
+    result: { status: 201, type: object, properties: { madrasahId: { type: string, format: uuid, references: Madrasah } }, note: "this right, as one item of listKoskHostingRights" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.hosting on the köşk nor platform.hosting_grant", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "the medrese is missing or hidden", source: apps/tedrisat/src/hosting/hosting.repository.ts:284 }
+      VALIDATION_ERROR: { status: 400, note: "madrasahId missing or no uuid, another property" }
+    sideEffects:
+      - "audit:hosting_right.grant, details madrasahId and grantedByRole, only when a row was inserted"
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:92
+
+  revokeKoskHostingRight:
+    route: DELETE /kosks/{id}/hosting-rights/{madrasahId}
+    summary: Withdraw a medrese's hosting right and say what becomes of its courses
+    needs: "AuthGuard + AuthzGuard: @Authz([kosk.hosting, platform.hosting_grant], byExistingKosk), HttpCode 204"
+    description: >-
+      A nazım of the köşk, a Medaris nazımı holding platform.hosting_grant, or the başnazım. Sets revokedAt and revokedBy on the held row,
+      which stays as history. KEEP leaves the medrese's courses in this köşk as they are. HIDE hides every non-hidden course of that
+      medrese in this köşk, drafts included (archivedAt, archivedBy, archivedLevel, version + 1, updatedAt); archivedLevel is the level the
+      caller acts at: platform for the başnazım or a platform.hosting_grant holder, köşk for a kosk.hosting holder, so the medrese's own
+      başmüderris cannot bring them back. After either, the medrese can open no new course here (HOSTING_RIGHT_REQUIRED).
+    query:
+      type: object
+      required: [coursesAction]
+      properties:
+        coursesAction: { enum: [KEEP, HIDE] }
+    result: { status: 204 }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (byExistingKosk, S12)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "neither kosk.hosting on the köşk nor platform.hosting_grant", source: libs/common/src/authz/authz.guard.ts:92 }
+      HOSTING_RIGHT_NOT_FOUND: { status: 404, note: "'Medrese x holds no hosting right in köşk y'; nothing is hidden", source: apps/tedrisat/src/hosting/hosting.repository.ts:333 }
+      HTTP_400: { status: 400, note: "madrasahId is no uuid, or coursesAction is absent or not KEEP or HIDE" }
+    sideEffects:
+      - "audit:hosting_right.revoke, details madrasahId, coursesAction and hiddenCourseIds"
+      - "no invitation sweep is kicked: the 5-minute lesson invitation sweep reconciles"
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:143
+
+  # ---- The Medaris home page ----
+  getNizamDashboard:
+    route: GET /nizam/dashboard
+    summary: The Medaris başnazımı's and Medaris nazımı's home page in one read
+    needs: "AuthGuard only; the service decides: SYSTEM_ADMIN (viewer CHIEF) or a holder of a live MEDARIS_NAZIM role (viewer MEDARIS_NAZIM). No code opens it; what it shows is cut to the platform permissions the viewer holds"
+    description: >-
+      Per viewer a section is shown when the viewer is CHIEF or holds its code; otherwise the field is null, never 0. applications
+      (platform.kosk_application_decide) gives pendingTotals.koskApplications and latestApplications (the 3 newest PENDING); deckRequests
+      (platform.deck_publish) gives pendingTotals.deckPublishRequests and latestDeckRequests (3, decks with publish status PENDING, not
+      archived); appeals (platform.appeal_decide) gives pendingTotals.appeals; permanentBans (platform.ban_account) makes
+      pendingTotals.permanentBanRequests the constant 0 (permanent-ban requests have no decision model yet); bans (platform.ban_scoped or
+      platform.ban_account) gives latestBans (3 newest ACTIVE bans; a BAN_FORBIDDEN there becomes null, not an error); inactiveScopes
+      (platform.inactive_scopes_manage) gives inactiveScopes (3) and inactiveScopeCount; courseNumbers is CHIEF only and gives
+      platformCounts.course, inactiveCourse and enrolledStudents. can.openKosk is CHIEF only. Always present: platformCounts.kosk
+      (non-hidden köşks), unlistedKosk (non-hidden and isPrivate), madrasah (non-hidden), inactiveMadrasah (passive medreses).
+      greetingName is the caller's given name from users, else the token's given_name.
+    result:
+      status: 200
+      type: object
+      properties:
+        viewer: { enum: [CHIEF, MEDARIS_NAZIM] }
+        greetingName: { type: [string, "null"] }
+        can: { type: object, properties: { openKosk: { type: boolean } } }
+        pendingTotals:
+          type: object
+          properties:
+            koskApplications: { type: [integer, "null"] }
+            deckPublishRequests: { type: [integer, "null"] }
+            appeals: { type: [integer, "null"] }
+            permanentBanRequests: { type: [integer, "null"], note: "0 for a viewer who sees it, never a real count" }
+        platformCounts:
+          type: object
+          properties:
+            kosk: { type: integer }
+            unlistedKosk: { type: integer }
+            madrasah: { type: integer }
+            inactiveMadrasah: { type: integer }
+            course: { type: [integer, "null"] }
+            inactiveCourse: { type: [integer, "null"] }
+            enrolledStudents: { type: [integer, "null"] }
+        latestApplications:
+          type: [array, "null"]
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: KoskApplication }
+              name: { type: string }
+              field: { type: string }
+              applicantName: { type: [string, "null"] }
+              createdAt: { type: string, format: date-time }
+        latestDeckRequests: { type: [array, "null"], items: { type: object, properties: { id: { type: string, format: uuid, references: Deck }, title: { type: string }, ownerName: { type: [string, "null"] }, cardCount: { type: integer }, requestedAt: { type: string, format: date-time } } } }
+        inactiveScopes: { type: [array, "null"], items: { type: object, properties: { type: { type: string }, id: { type: string, format: uuid }, name: { type: string }, koskName: { type: [string, "null"] }, reason: { enum: [EXPIRED, REMOVED] }, since: { type: string, format: date-time } } } }
+        inactiveScopeCount: { type: [integer, "null"] }
+        latestBans: { type: [array, "null"], items: { type: object, properties: { id: { type: string, format: uuid, references: Ban }, userName: { type: [string, "null"] }, scope: { type: string }, courseTitle: { type: [string, "null"] }, koskName: { type: [string, "null"] }, bannedByName: { type: [string, "null"] }, reason: { type: string }, createdAt: { type: string, format: date-time } } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "'Only the Medaris başnazımı and a Medaris nazımı open the Medaris home page'", source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:45 }
+    note: "Reads only: no audit row and no notification. The BanService.listAll and InactiveScopeService.brief reads belong to the moderation chapter."
+    source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+
+invariants:
+  - id: kosk-listing-visibility
+    rule: >-
+      The public köşk list never holds an unlisted (isPrivate) or a hidden (archivedAt) köşk, for anyone, the başnazım included. managedBy=me
+      adds the caller's unlisted köşks and never a hidden one. The fields list follows the same rule.
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:158
+
+  - id: kosk-unlisted-by-link
+    rule: >-
+      An unlisted köşk is opened by its id by any signed-in caller, and answers 404, the same as no such köşk, to a caller with no token, on
+      GET /kosks/{id} and on its courses.
+    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:160
+
+  - id: unlisted-kosk-enrolments-wait
+    rule: >-
+      Every enrollment in a course of an unlisted köşk waits (PENDING) whatever the course says; the köşk policy alwaysRequireApproval and the
+      platform policy ALWAYS_REQUIRE_APPROVAL say the same.
+    source: apps/tedrisat/src/course/course.service.ts:1566
+
+  - id: kosk-hidden-comes-back-by-level
+    rule: >-
+      A hidden köşk answers 404 to everyone but kosk.manage holders there, platform.kosk_edit holders and the başnazım, on its page and its
+      decks. It is brought back only by the level that hid it or one above, on the ladder course < medrese < köşk < platform; a legacy row
+      with no archivedLevel counts as hidden by the köşk. (Its courses' side is hidden-kosk-closes-its-courses.)
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:489
+
+  - id: kosk-anonymous-mask
+    rule: >-
+      A köşk read answered to a request with no token carries ownerId null and managerIds [], and keeps managerName, a name.
+    source: apps/tedrisat/src/kosk/anonymous-mask.ts:13
+
+  - id: kosk-person-ids-stay-off-public-reads
+    rule: >-
+      A person's id, the Keycloak sub, is shown only where a page needs it: the creator's and every nazım's sub are not on the public köşk
+      reads for any caller.
+    holds: false
+    finding: kosk-person-ids-reach-signed-in-callers
+    note: >-
+      maskKoskForAnonymous hides ownerId and managerIds only from a caller with no token (anonymous-mask.ts:13). Any signed-in caller gets
+      the creator's sub and every nazım's sub on the public GET /kosks and GET /kosks/{id}, though the file's own comment says no public page
+      needs a person's id. Inventory F-4.
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:182
+
+  - id: kosk-handle-unique
+    rule: >-
+      A köşk's short name is unique across köşks, compared without case and with a leading @ removed; an empty one compares equal to
+      nothing; an update excepts the köşk itself.
+    note: "The rule is the application's: the column is not unique in the database (see Kosk.handle), so two concurrent creates can store one handle."
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:458
+
+  - id: kosk-field-limits
+    rule: >-
+      name 2 to 120 characters, handle at most 60, description at most 1000, field at most 60, level one of ALL, BEGINNER, INTERMEDIATE,
+      ADVANCED, coverHue an integer 0 to 360, tags at most 10, distinct, non-blank and at most 40 characters each, nazımları at most 10.
+      verified, featured and rating are not client-settable.
+    source: apps/tedrisat/src/kosk/dto/kosk-field-rules.ts:33
+
+  - id: kosk-opened-with-nazims
+    rule: >-
+      A köşk is opened together with 1 to 10 distinct nazımları who have accounts (a users row or a realm account), and the opener is not
+      one of them unless the opener is the başnazım; the opener becomes ownerId only.
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:319
+
+  - id: kosk-nazim-permission-not-role
+    rule: >-
+      Seating and removing a nazım is the permission platform.kosk_nazim_manage, not being a nazım: a köşk nazım cannot add a peer, remove
+      one or resign.
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:388
+
+  - id: kosk-last-nazim
+    rule: >-
+      The last live nazım of a köşk cannot be removed unless a successor is named, who is seated first in the same transaction under the
+      köşk row lock; the successor must have signed in; nobody is their own successor.
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:627
+
+  - id: kosk-nazim-one-live-seat
+    rule: >-
+      A person holds at most one live KOSK_NAZIM row per köşk; a lapsed but unrevoked row is revoked before a new one is inserted; a
+      removal revokes the row and records who revoked it, and never deletes it.
+    source: apps/tedrisat/src/database/role-assignments.ts:109
+
+  - id: kosk-nazims-batch
+    rule: >-
+      POST /kosks/{id}/nazims is all or nothing: one person who is a nazım already refuses the whole call with a 409; the end date must be in
+      the future; one kosk.nazim.add audit row is written per person.
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:365
+
+  - id: kosk-status-is-derived
+    rule: >-
+      A köşk's status is HIDDEN when archivedAt is set, else PASSIVE when passiveSince is set, else ACTIVE. passiveSince is set only by
+      deactivate and cleared by POST /kosks/{id}/nazims and by the inactive-scope assignment.
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:145
+
+  - id: kosk-status-follows-its-nazims
+    rule: A köşk that has a live nazım is not listed as PASSIVE.
+    holds: false
+    finding: kosk-passive-status-after-managers-route
+    note: >-
+      Two ways of seating a nazım differ. POST /kosks/{id}/nazims and the inactive-scope assignment clear passiveSince; POST
+      /kosks/{id}/managers/{userId}, and the successor seating of the DELETE on it, do not (kosk.repository.ts:558-595). After deactivate, adding
+      a manager through the managers route leaves the directory and overview status at PASSIVE although a live nazım holds the seat; the
+      engine's own passive scope, derived from the role rows, is open again. Read from the code; no spec covers it. Inventory F-2.
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:558
+
+  - id: kosk-deactivation-confirmed
+    rule: >-
+      Passivation needs a 64-character confirmation bound to the measured impact and the caller; the impact is measured again under the row
+      lock; a mismatch is a 409 and writes nothing; every live nazım is revoked; a köşk that is passive already is a 409.
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:702
+
+  - id: kosk-policy-ceiling
+    rule: >-
+      A köşk may switch its own alwaysRequireApproval and recordingsNeverPublic on, but not off while the platform policy of the same name is
+      on (409 PLATFORM_POLICY_LOCKED), except the başnazım; every change of either field writes kosk.policy_change.
+    note: >-
+      recordingsNeverPublic is read (course.service.ts:859-872 and the authz policy chain), although the description of the field in
+      create-kosk.dto.ts and the comment in kosk.schema.ts still say nothing reads it. Inventory F-1.
+    source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:56
+
+  - id: kosk-follow-idempotent
+    rule: Following a köşk already followed changes nothing; unfollowing needs no permission.
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:728
+
+  - id: kosk-hidden-cannot-be-followed
+    rule: A köşk that answers 404 to the caller cannot be followed by them.
+    holds: false
+    finding: kosk-follow-reaches-hidden
+    note: >-
+      POST /kosks/{id}/follow checks only that the köşk exists (kosk.service.ts:277), and the guard's closure covers courses only, so a
+      signed-in caller who knows the id of a hidden köşk can follow it. Not covered by hidden-kosk.e2e.spec.ts; not run. Inventory F-5.
+    source: apps/tedrisat/src/kosk/kosk.service.ts:276
+
+  - id: kosk-counters
+    rule: >-
+      The public courseCount is the PUBLISHED, non-hidden courses and studentCount the distinct non-REVOKED enrollees in non-hidden courses;
+      every admin number that says talebe (overview.students, dashboard.counts.students, platformCounts.enrolledStudents) counts distinct
+      ENROLLED only; dashboard.counts.courses counts non-hidden courses with drafts; the directory's courseCount counts every course.
+    source: apps/tedrisat/src/kosk/kosk.repository.ts:93
+
+  - id: kosk-dashboard-redaction
+    rule: >-
+      The köşk home page hands out meeting links and applicants only to kosk.manage holders; a platform.kosk_edit-only caller gets numbers
+      (contentLocked). Passive-scope courses are left out of the pending count, the session lists and counts and the applicants unless the
+      caller is a live nazım of the köşk or holds platform.inactive_scopes_manage. Every handout is audited before the page returns.
+    note: >-
+      counts.courses and counts.students do not take the passive filter, so they include a passive-scope course even for a caller who does
+      not see it elsewhere (kosk-dashboard.repository.ts:127-136). Not verified against the intent; the inventory says the course is left
+      out of everything.
+    source: apps/tedrisat/src/kosk/kosk-dashboard.service.ts:79
+
+  - id: kosk-dashboard-windows
+    rule: >-
+      Upcoming means the next 7 days; the PAST and CANCELLED tabs hold at most 20 rows and UPCOMING at most 50; the köşk page lists 5
+      applications; the Medaris home cards list 3 rows.
+    source: apps/tedrisat/src/kosk/kosk-dashboard.repository.ts:27
+
+  - id: kosk-application-answered-once
+    rule: >-
+      An application moves PENDING to APPROVED or REJECTED exactly once, by a conditional update on status PENDING, with decidedBy and
+      decidedAt, a reason for a refusal, the köşk id for an approval, an audit row and a notification to the applicant; reading the
+      applicant's e-mail and phone writes kosk_application.contact_read first. A person may file any number of applications.
+    source: apps/tedrisat/src/kosk-application/kosk-application-review.repository.ts:183
+
+  - id: kosk-approval-names-its-kosk
+    rule: An approved application records the köşk that was opened from it, and that köşk belongs to no other application.
+    holds: false
+    finding: kosk-approval-without-link
+    note: >-
+      approveKoskApplication checks that the köşk exists, not that it was opened from this application or that it is not attached to another
+      one (kosk-application-review.service.ts:156-181); the application row records koskId and nothing links back. Inventory F-3.
+    source: apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:156
+
+  - id: kosk-hosting-one-held-right
+    rule: >-
+      At most one non-revoked hosting right exists per (medrese, köşk); a grant is idempotent; the medrese must exist and be shown; a
+      revocation keeps the row as history and a new grant is a new row; a medrese opens a course in a köşk only while it holds a right
+      (HOSTING_RIGHT_REQUIRED); revoking with HIDE hides at the caller's level so the medrese cannot bring the courses back.
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:156
+
+  - id: kosk-hosting-who
+    rule: >-
+      Giving and withdrawing a hosting right is kosk.hosting (a köşk nazım's role default) or platform.hosting_grant; a başmüderris of the
+      hosted medrese and another köşk's nazım are refused.
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:72

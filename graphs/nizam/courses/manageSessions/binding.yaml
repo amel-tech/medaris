@@ -1,0 +1,84 @@
+# nizam.courses.manageSessions on the local stack: Celseler of a course the walk makes, at http://localhost:4001, read by the seeded köşk nazımı
+# (KOSK_NAZIM). This file holds the scenarios whose writes go through and the one that is refused at the door; refusals.binding.yaml holds the
+# two that are refused by the API on a page gone stale. What the walks share (the course, the words, the events, the locators, the checks, what is
+# not bound and why) is in locators.binding.yaml: read its header first.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/manageSessions \
+#     --bind graphs/nizam/courses/manageSessions/binding.yaml --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. The binding loads (`--emit-spec --out <dir>` writes a spec and walks nothing).
+# Every scenario makes the same course (tag nmSessions) and takes it away, so they run one after the other, never together; `make` removes a tag a
+# crashed walk left, so `setup` is safe to run twice.
+#
+# e2e carried (apps/nizam/e2e/courses.e2e.ts, the seeded course of courses-seed.ts has five celses and the walk's has two):
+#   courses#16  a1 the h1 (pageTitle), a2 the counts line (upcomingCounts: "1 celse · Hafta 1", the seeded course's "4 celse · 1 iptal edildi · Hafta 5"
+#               is the same shape), a4 the table "Geçmiş celseler" and the title in it (pastTable, pastRowTitle). NOT carried: a3, the order of
+#               four titles in the table ahead (this course has one celse ahead).
+#   courses#17  all: "Bağlantı ekle", an http:// address refused under the field, an https one saved ("Bağlantı kaydedildi"), the row says "Zoom",
+#               the stored address (effect closedAfterLink). It is the main story.
+#   courses#18  all: "İptal et" -> the alertdialog -> "Celse iptal edildi", the row says "İptal edildi" and "İşlem yok", cancelledAt is set and one
+#               audit row lesson.cancel is written (effect cancelled).
+#   courses#19  all: "Tarihi değiştir" -> a date and 20:30 -> "Celse zamanı değişti", the stored instant (effect closedAfterTime).
+# Not covered by any e2e and walked here for the first time: the in-person mark, the stream (set, an unparsable link, cleared), the busy states, a
+# cancel's effect on the talebe (notice and mail).
+#
+# Scenarios here (each opens the same page; none shares a `given`):
+#   adds     the main story, which `--cover transitions` also walks the other ways: the time, the three in-person choices, the stream (a channel
+#            link the page refuses, a video link it takes, cleared again), each form's Vazgeç and its empty field, the confirmation's Vazgeç, the
+#            cancel, and the way out by the breadcrumb and by "Celse planla". It arrives the way a nazım does, through the course's Genel bakış
+#            ("Bütün celseler", the nav graph's entry courseOverview->courseSessions).
+#   refused  the address of a course of Kubbealtı Köşkü under the other seeded köşk's id: the page answers notFound() and draws "Bu bölüm için izniniz
+#            yok" (the exit no_access; its story is nizam.shell.noAccessAndNotFound). The 403 of a nazım who may not edit the course is NOT walked:
+#            the seed has no such person here.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.manageSessions
+
+scenarios:
+  adds:
+    given: { access: own, changeAnswer: saved, streamAnswer: saved, cancelAnswer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseOverview->courseSessions' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/course.mjs, make, nmSessions, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --start, '-1', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      # the invitation sweep runs a moment after the seat: the "Güncellendi" and "İptal" mails of the effects follow an invitation, so wait for it
+      - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_G_EMAIL} subject:Davet', --wait, '90']
+        expect: 'Davet'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nmSessions]
+        expect: 'course remove nmSessions'
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nmSessions'"]
+        expect: '{"n":0}'
+    vars: { bump: '0', gone: '0' }
+
+  refused:
+    given: { access: refused, changeAnswer: saved, streamAnswer: saved, cancelAnswer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/courses/{made.course}/sessions'
+    setup:
+      - run: [node, helpers/course.mjs, make, nmSessions, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --start, '-1']
+        expect: '"tag":"nmSessions"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nmSessions]
+        expect: 'course remove nmSessions'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nmSessions'"]
+        expect: '{"n":0}'
+    vars: { bump: '0', gone: '0' }
+
+states:
+  # the writes are Next server actions: a POST to the page's own address, held while the busy state is checked (the status of a refusal cannot be
+  # compared there, so none of the refusing walks is in this file)
+  savingLink: { call: '{nizam}/kosks/*/courses/*/sessions' }
+  savingTime: { call: '{nizam}/kosks/*/courses/*/sessions' }
+  savingInPerson: { call: '{nizam}/kosks/*/courses/*/sessions' }
+  savingStream: { call: '{nizam}/kosks/*/courses/*/sessions' }
+  removingStream: { call: '{nizam}/kosks/*/courses/*/sessions' }
+  cancelling: { call: '{nizam}/kosks/*/courses/*/sessions' }

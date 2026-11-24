@@ -23,6 +23,11 @@ export {
 export { AUTH_BASE_PATH, AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 export type { Session, SessionUser } from "../shared/session";
 export {
+  DEFAULT_SIGN_IN_LIMIT,
+  parseSignInLimit,
+  type SignInLimit,
+} from "../shared/sign-in-limit";
+export {
   httpStatusOf,
   isUnauthenticated,
   isUnauthorizedError,

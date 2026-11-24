@@ -1,0 +1,40 @@
+# nizam.nazims.editPermissions, the appointment is re-made to end sooner while the dialog is open (`answer: expiry`; no e2e check does this).
+# Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/editPermissions \
+#     --bind graphs/nizam/nazims/editPermissions/binding.expiry.yaml --cover transitions --absent --out <dir>
+# The dialog was opened on a seat that ends twenty days ahead and the walk pressed "Kaydet": `before` on it dismisses the seat and appoints it again with the same
+# group and singles and an end two hours ahead (edit-data.mjs shorten), so the end the page sent (the held one, or a typed one ten days ahead) is after the
+# appointment's (GRANT_EXPIRY_INVALID, 400 from setGrants, :420 of permission-admin.repository.ts). The page toasts "İzinler kaydedilemedi" / "Bitiş tarihi geçmişte
+# ya da atamanın bitişinden sonra." and the dialog stays open (EPERM-3). A path that emptied the end sends null and is saved, so the graph's FAIL.expiry is guarded
+# by the form sending an end (`endSent`) and the cover takes only those paths. The seat is dated: on a seat with no end the same hook leaves a seat the page's
+# `forever` story edits, which no scenario of this file walks.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.editPermissions
+
+scenarios:
+  expiry:
+    given: { seat: dated, answer: expiry }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up]
+        expect: edit-data up
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog, name: İzinleri düzenle }
+    before: [{ run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, shorten], expect: edit-data shorten }]

@@ -1,0 +1,41 @@
+# nizam.home.decideApplications: the newest applicant is barred from the course behind the page's back, so "Onayla" is answered with 403
+# BAN_ACTIVE and the toast says "Bu başvuruya karar verme yetkiniz yok." (FAIL.barred, HOME-1) although the nazım has the authority and
+# the talebe is the one who is barred. The page lists the row like any other.
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/decideApplications --bind graphs/nizam/home/decideApplications/binding.barred.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: BAN_PLACED is no node's, so the binding gives it: the course's müderris bars applicantH (the newest row, the one
+# the walk presses) from the course through the API (POST /courses/:id/bans, scope COURSE), as nazar.roster.decide's binding.barred.yaml
+# does. A ban row is a record that outlives its course and no route deletes one, so `setup` and `teardown` delete the rows this walk made
+# by their reason (SQL, the one write here with no API), and the notifications COURSE_BAN_PLACED that went to the köşk's nazım and the
+# Medaris nazımı. The audit row ban.create stays.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.decideApplications
+
+events:
+  BAN_PLACED:
+    - run: [node, helpers/api.mjs, muderris, POST, '/courses/{course}/bans', '{"userId":"{secret.E2E_APPLICANT_H_SUB}","scope":"COURSE","reason":"Deneme yasağı nhdBarred"}']
+      expect: '"scope":"COURSE"'
+
+scenarios:
+  barred:
+    given: { approval: needed, mayDecide: may }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    vars: { course: '{nhdBarred.course}', reason: 'Ön koşul sağlanmıyor.' }
+    setup:
+      # a crashed walk's ban, found by its reason, not by the old course (whose file may be missing)
+      - run: [node, helpers/sql.mjs, "delete from bans where reason = 'Deneme yasağı nhdBarred'"]
+        expect: '"rows":'
+      - run: [node, helpers/course.mjs, make, nhdBarred, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantF, applicantG, applicantH]
+        expect: '"APPLICANT_H":"PENDING"'
+    teardown:
+      # the ban goes first, so that applicantH is no longer barred when the course's remove has the talebe leave
+      - run: [node, helpers/sql.mjs, "delete from bans where reason = 'Deneme yasağı nhdBarred'"]
+        expect: '"rows":'
+      - run: [node, helpers/sql.mjs, "delete from notifications where type = 'COURSE_BAN_PLACED' and params->>'courseTitle' = 'Deneme dersi nhdBarred'"]
+        expect: '"rows":'
+      - run: [node, helpers/course.mjs, remove, nhdBarred]
+        expect: 'course remove nhdBarred'

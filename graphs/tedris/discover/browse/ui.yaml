@@ -1,0 +1,111 @@
+# The screens of tedris.discover.browse: tedris-web's Keşfet (/discover, app/discover/page.tsx, features/discover/components/*) at the
+# wide layout, as a visitor and as a member sees it. Only <main> is drawn: the bar, the footer and Sonner's region belong to
+# tedris.shell.frame.
+#
+# Words: every `DiscoverPage.*` and `AnonymousInvite.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.DiscoverPage`), the key being the path inside that file; catalog/tr.json is made from it by a script that checks every
+# value letter for letter. The `composed.*` keys are NOT in any i18n file: they are the texts the app builds in code from messages
+# and data, written with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.DiscoverPage.koskName / madrasahName   the name the API gives ({kosk}, {madrasah}), the title of a card (kosk-card.tsx:31, madrasah-card.tsx:32)
+#   composed.DiscoverPage.koskDescription            the köşk's description, shown as it is (kosk-card.tsx:55)
+#   composed.DiscoverPage.followName / followingName the follow button's aria-label "<Takip et|Takip ediliyor>: <köşk>" (follow-button.tsx:61)
+#   composed.DiscoverPage.courseTitle                the title of a course listed on a medrese card (madrasah-card.tsx:62)
+#   composed.AnonymousInvite.signIn / register       the two link words, the parts of AnonymousInvite.discover between its tags
+#                                                    (<signIn>giriş yap</signIn>, <register>kayıt ol</register>; anonymous-invite.tsx:41,46)
+# `AnonymousInvite.discover` itself keeps its tags, as the app's file has them: next-intl's `t.rich` turns them into the two links.
+# `samples` are invented and neutral: every number and name on the page is data the API gives, and a replay uses only the
+# binding's samples, so a placeholder the binding gives no value matches any text (the exact numbers of the count line are
+# checked by the binding where a walk knows them).
+# No `changes` note: the flow invokes no action that writes (two GET reads).
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.browse
+flow: tedris.discover.browse
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Örnek köşk
+  madrasah: Örnek medrese
+  description: Örnek bir köşkün açıklaması.
+  course: Örnek ders
+  name: Örnek hoca
+  kosks: "3"
+  madrasahs: "1"
+  count: "2"
+  page: "1"
+  total: "2"
+
+nodes:
+  # ---- the page ----
+  page: { type: page, component: Page, role: main, in: [list, emptyResult, loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:97 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.title }, in: [list, emptyResult, loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:99 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: DiscoverPage.subtitle }, in: [list, emptyResult, loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:100 }
+
+  # ---- the filters and the count: drawn by the page's own read, so not while it has failed ----
+  filters: { type: page, component: Page, role: search, name: { key: DiscoverPage.filters }, in: [list, emptyResult], source: apps/tedris/features/discover/components/discover-filters.tsx:60 }
+  searchBox: { type: field, component: TextField, role: searchbox, text: { key: DiscoverPage.searchLabel }, value: { literal: "" }, in: [list, emptyResult], source: apps/tedris/features/discover/components/discover-filters.tsx:71 } # type=search, maxLength 100; the placeholder says the same words; the address's ?q= fills it on arrival, and a walk that lands with one starts non-empty
+  madrasahSelect: { type: field, component: TextField, role: combobox, text: { key: DiscoverPage.madrasahLabel }, in: [list, emptyResult], source: apps/tedris/features/discover/components/discover-filters.tsx:81 } # a Base UI Select: a button with role combobox that opens a listbox; its first option is "Bütün medreseler" (DiscoverPage.allMadrasahs, not drawn: the option is not a node), then every medrese the page read (for a visitor, only those with a listed course)
+  resultCount: { type: status, component: Status, role: status, text: { key: DiscoverPage.resultCount }, in: [list, emptyResult], source: apps/tedris/features/discover/components/discover-page.tsx:133 } # an <output aria-live=polite>; {kosks} is the total across every page, {madrasahs} the medreses shown
+
+  # ---- the köşks ----
+  koskSection: { type: page, component: Page, role: region, name: { labelledBy: koskHeading }, in: [list], when: koskShown, source: apps/tedris/features/discover/components/discover-page.tsx:156 }
+  koskHeading: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.kosks }, in: [list], when: koskShown, source: apps/tedris/features/discover/components/discover-page.tsx:160 } # h2, drawn when at least one köşk matches, whatever page the address names (DSC-13)
+  koskCardTitle: { type: text, component: Heading, role: heading, text: { key: composed.DiscoverPage.koskName }, in: [list], when: koskCards, repeat: kosks, source: apps/tedris/features/discover/components/kosk-card.tsx:29 } # h3; the avatar beside the name is decorative
+  koskLink: { type: action, component: LinkButton, role: link, text: { key: composed.DiscoverPage.koskName }, in: [list], when: koskCards, repeat: kosks, emits: OPEN_KOSK, source: apps/tedris/features/discover/components/kosk-card.tsx:27 } # inside the h3; the whole card is clickable (the kit's overlay), the name is the one link
+  koskDescription: { type: text, component: Text, text: { key: composed.DiscoverPage.koskDescription }, in: [list], when: koskCards, repeat: kosks, source: apps/tedris/features/discover/components/kosk-card.tsx:55 } # only when the köşk has one
+  koskCourseCount: { type: text, component: Text, text: { key: DiscoverPage.coursesCount }, in: [list], when: koskCards, repeat: kosks, source: apps/tedris/features/discover/components/kosk-card.tsx:37 } # the published courses that are not hidden; a draft is not counted
+  followButton: { type: action, component: Button, role: button, intent: secondary, name: { oneOf: [composed.DiscoverPage.followName, composed.DiscoverPage.followingName] }, text: { oneOf: [DiscoverPage.follow, DiscoverPage.following] }, in: [list], when: "member and koskCards", repeat: kosks, source: apps/tedris/features/discover/components/follow-button.tsx:56 } # aria-pressed; the name changes with the state and so does aria-pressed (DSC-02); pressing it is tedris.discover.followKosk's, so it sends no event here
+  pager: { type: page, component: Page, role: navigation, name: { key: DiscoverPage.pages }, in: [list], when: "paged and koskShown", source: apps/tedris/features/discover/components/discover-page.tsx:41 } # absent when the köşks fit one page
+  pagerPrevious: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.prev }, in: [list], when: "paged and koskShown and at != 'first'", emits: PREVIOUS_PAGE, source: apps/tedris/features/discover/components/discover-page.tsx:45 } # rel=prev, a plain link; before the position
+  pagerPosition: { type: text, component: Text, text: { key: DiscoverPage.pageOf }, in: [list], when: "paged and koskShown", source: apps/tedris/features/discover/components/discover-page.tsx:55 } # a <span aria-current=page>: "1 / 2"; past the end it says "99 / 2" (DSC-13)
+  pagerNext: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.next }, in: [list], when: "paged and koskShown and at == 'first'", emits: NEXT_PAGE, source: apps/tedris/features/discover/components/discover-page.tsx:58 } # rel=next, a plain link; keeps ?q= and ?madrasah=
+
+  # ---- the medreses ----
+  madrasahSection: { type: page, component: Page, role: region, name: { labelledBy: madrasahHeading }, in: [list], when: madrasahShown, source: apps/tedris/features/discover/components/discover-page.tsx:182 }
+  madrasahHeading: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.madrasahs }, in: [list], when: madrasahShown, source: apps/tedris/features/discover/components/discover-page.tsx:186 } # h2
+  madrasahCardTitle: { type: text, component: Heading, role: heading, text: { key: composed.DiscoverPage.madrasahName }, in: [list], when: madrasahShown, repeat: madrasahs, source: apps/tedris/features/discover/components/madrasah-card.tsx:29 } # h3
+  madrasahLink: { type: action, component: LinkButton, role: link, text: { key: composed.DiscoverPage.madrasahName }, in: [list], when: madrasahShown, repeat: madrasahs, emits: OPEN_MADRASAH, source: apps/tedris/features/discover/components/madrasah-card.tsx:28 }
+  madrasahHead: { type: text, component: Text, text: { key: DiscoverPage.headMuderris }, in: [list], when: madrasahShown, repeat: madrasahs, source: apps/tedris/features/discover/components/madrasah-card.tsx:44 } # "Başmüderris {name}", only when the medrese has one with a name
+  madrasahCourse: { type: action, component: LinkButton, role: link, text: { key: composed.DiscoverPage.courseTitle }, in: [list], when: madrasahShown, repeat: madrasahs.courses, emits: OPEN_COURSE, source: apps/tedris/features/discover/components/madrasah-card.tsx:61 } # a list of links; the small cover beside each is aria-hidden (DSC-12 does not apply here)
+  madrasahCourseCount: { type: text, component: Text, text: { key: DiscoverPage.coursesCount }, in: [list], when: madrasahShown, repeat: madrasahs, source: apps/tedris/features/discover/components/madrasah-card.tsx:37 } # only for a medrese with a listed course
+  madrasahNoCourses: { type: text, component: Text, text: { key: DiscoverPage.madrasahNoCourses }, in: [list], when: "madrasahShown and member and quiet == 'present'", repeat: madrasahs, source: apps/tedris/features/discover/components/madrasah-card.tsx:49 } # a member only: a visitor's list leaves such a medrese out (reads.ts:29-33)
+
+  # ---- nothing matches ----
+  emptyText: { type: text, component: Text, text: { key: DiscoverPage.empty }, in: [emptyResult], source: apps/tedris/features/discover/components/discover-page.tsx:151 }
+  clearFilters: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.clearFilters }, in: [emptyResult], when: filtered, emits: CLEAR_FILTERS, source: apps/tedris/features/discover/components/discover-page.tsx:145 } # href "?", a plain link: a new document
+
+  # ---- the read failed ----
+  loadFailedBox: { type: alert, component: Alert, role: alert, in: [loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:104 } # no accessible name: its title is a <p class=mds-alert__title>, not a heading
+  loadFailedTitle: { type: text, component: Text, text: { key: DiscoverPage.loadErrorTitle }, in: [loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:104 }
+  loadFailedText: { type: text, component: Text, text: { key: DiscoverPage.loadError }, in: [loadFailed], source: apps/tedris/features/discover/components/discover-page.tsx:105 }
+  retry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/discover/components/discover-page.tsx:107 } # the same address, with the filters
+
+  # ---- the card at the foot: the way to ask for a köşk (a member) or the invitation (a visitor) ----
+  applyNotice: { type: text, component: Text, text: { key: DiscoverPage.applyNotice }, in: [list, emptyResult], when: member, source: apps/tedris/features/discover/components/discover-page.tsx:205 }
+  applyLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.applyLink }, in: [list, emptyResult], when: member, emits: APPLY_FOR_KOSK, source: apps/tedris/features/discover/components/discover-page.tsx:206 }
+  inviteText: { type: text, component: Text, text: { key: AnonymousInvite.discover }, in: [list, emptyResult], when: visitor, source: apps/tedris/components/anonymous-invite.tsx:55 } # one paragraph; the tags of the catalog message are the two links below
+  inviteSignIn: { type: action, component: LinkButton, role: link, text: { key: composed.AnonymousInvite.signIn }, in: [list, emptyResult], when: visitor, emits: SIGN_IN, source: apps/tedris/components/anonymous-invite.tsx:41 } # /auth/signin?callbackUrl=<this address, filters and page included>, prefetch off
+  inviteRegister: { type: action, component: LinkButton, role: link, text: { key: composed.AnonymousInvite.register }, in: [list, emptyResult], when: visitor, emits: REGISTER, source: apps/tedris/components/anonymous-invite.tsx:46 } # /auth/register, no callbackUrl
+
+edges:
+  - { labelledBy: [koskSection, koskHeading] }
+  - { labelledBy: [madrasahSection, madrasahHeading] }
+  - { triggers: [koskLink, kosk_opened] }
+  - { triggers: [madrasahLink, madrasah_opened] }
+  - { triggers: [madrasahCourse, course_opened] }
+  - { triggers: [applyLink, application_opened] }
+  - { triggers: [inviteSignIn, handed_over.sign_in] }
+  - { triggers: [inviteRegister, handed_over.register] }
+
+rules:
+  - { id: focus-not-set, rule: "Keşfet sets no initial focus (no autoFocus and no focus() in features/discover), so the page node has no `initialFocus`. After typing or choosing the client navigation keeps the focus where it was: the search box, and the select's button (observed 15 Nov 2026). The pager, \"Filtreleri temizle\" and \"Yeniden dene\" are plain links (a new document), so the focus goes to the start of the document and a keyboard user starts again from the top of the bar. Recorded so the silence is not read as an omission." }
+  - { id: DSC-13, rule: "?page= is not clamped (features/discover/discover-query.ts:28-36; discover-page.tsx:38-70). Verified on the stack, 15 Nov 2026: with 14 köşks over two pages ?page=3 draws \"Köşkler\" with no card, \"3 / 2\" and \"Önceki\" to ?page=2, and ?page=99 the same with \"Önceki\" to ?page=98; with the köşks on one page the pager is not drawn at all (pages <= 1), so ?page=99 draws only the heading and the person has no link but the filters. Fix: clamp the page to 1..pageCount(total) in getDiscoverData, or redirect to the last page." }
+  - { id: DSC-12, rule: "Does not apply to Keşfet: the small cover of a course on a medrese card is aria-hidden (madrasah-card.tsx:56-60) and the page's snapshot shows no Arabic label before the course title. The finding is about the köşk page, the medrese page and Derslerim." }
+  - { id: DSC-19, rule: "app/discover/loading.tsx:7 is an aria-busy <main> of three aria-hidden skeletons: nothing says \"loading\" to a screen reader, and aria-busy is not announced. Not drawn in the graph (the states that read have no nodes). Fix: a visually hidden \"Yükleniyor\" status." }
+  - { id: DSC-20, rule: "The page carries Sonner's region with its English default name, \"Notifications alt+T\", beside <main> (it is in the page's accessibility snapshot with no toast open). Its only toast on this page is the follow button's failure, tedris.discover.followKosk's. Fix: pass containerAriaLabel from the catalog." }
+  - { id: BROWSE-1, rule: "New (not in the inventory). GET /kosks answers 500 INTERNAL_ERROR for a page number whose offset a bigint cannot hold (?page=99999999999999999999 gives the offset 1.2e+21, which Postgres refuses: \"invalid input syntax for type bigint\", seen in the API's log: apps/tedrisat/src/kosk/kosk.controller.ts:157 has ParseIntPipe and no upper bound, kosk.service.ts:67 multiplies it by the limit), and Keşfet takes any positive whole number from the address (discover-query.ts:30). The page then draws the error box, whose \"Yeniden dene\" is a link to the same address (discover-page.tsx:107-113), and the filters are gone: nothing on the page leads back to the plain /discover, so a failure the address causes can never be left from the page. Walked on the stack (scenario outage). Fix: clamp the page (DSC-13) and bound it in the API; let the error box offer \"Keşfet'e dön\" or keep the filters." }
+  - { id: BROWSE-2, rule: "New. An address with ?madrasah=<a uuid that is no medrese in the select's list> gives the empty state (the API keeps no köşk and no medrese for it) and the select shows the raw id as its value (observed 15 Nov 2026: combobox \"Medrese\": 00000000-0000-4000-8000-000000000000) where the inventory expected the placeholder (discover-filters.tsx:81-89, the Select takes the id as its value and finds no option). Fix: show \"Bütün medreseler\" when the id is not among the options, or drop the id in the page's read." }
+  - { id: label-in-name, rule: "the follow button's visible text (\"Takip et\" or \"Takip ediliyor\") is contained in its accessible name (\"Takip et: <köşk>\"), WCAG 2.5.3" }
+  - { id: filters-in-the-address, rule: "the word, the medrese and the page are the address's (?q=, ?madrasah=, ?page=): a result is a link and the back button brings the earlier filter back; the box follows the address on back and forward (discover-filters.tsx:48)" }

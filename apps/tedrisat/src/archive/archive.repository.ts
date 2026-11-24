@@ -27,6 +27,7 @@ import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
+import { lessonViews } from "../database/schema/lesson-view.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
@@ -766,6 +767,9 @@ export class ArchiveRepository {
           .delete(lessonNotes)
           .where(inArray(lessonNotes.lessonId, weekLessonIds));
         await tx
+          .delete(lessonViews)
+          .where(inArray(lessonViews.lessonId, weekLessonIds));
+        await tx
           .delete(lessonQuestions)
           .where(inArray(lessonQuestions.lessonId, weekLessonIds));
         // A session's own resources (MDRS-286) go with it, a file's object
@@ -800,6 +804,7 @@ export class ArchiveRepository {
         if (!lesson) return null;
         // The invitation record stays behind for its CANCEL (MDRS-121).
         await tx.delete(lessonNotes).where(eq(lessonNotes.lessonId, id));
+        await tx.delete(lessonViews).where(eq(lessonViews.lessonId, id));
         await tx
           .delete(lessonQuestions)
           .where(eq(lessonQuestions.lessonId, id));

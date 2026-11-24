@@ -1,0 +1,99 @@
+# nazar.roster.remove on the local stack: the müderris of a course of the walk's own at http://localhost:4002, in the real Keycloak sign-in
+# of local.nazar.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code and is unverified
+# until a walk; where the walk may need a fix, a comment says so. The effects and the locators are in locators.binding.yaml.
+#
+# What a walk removes, and how it is taken away. A walk takes out a SPARE talebe and only from a course of its own, never a seeded person:
+# `setup` makes, through tedrisat's API (helpers/course.mjs, which keeps it under graphs/.local/made/rosterremove.json), "Deneme dersi
+# rosterremove": a published course of the seed's medrese with one week and one celse, the müderris as its hoca, and two spare talebe
+# enrolled in it, applicantC (Esma Başvuran, the one taken out) and applicantD (Salih Başvuran, who stays). The seeded courses are not
+# touched. A removal leaves a REVOKED row, which blocks the person from applying and leaving (409) for as long as it exists, and no route
+# deletes it: so `teardown` deletes the course (helpers/course.mjs remove, DELETE /courses/:id as the başnazım), which purges the course's
+# whole tree, the REVOKED rows included, clears the notices that point at it (the talebe's REMOVED_FROM_COURSE) and the invitation mails
+# the course sent; it then asks the database that neither spare account holds a REVOKED row anywhere (`"n":0`) and clears the two
+# accounts' Mailpit boxes (the cancellations the removal sends). `setup`'s `make` takes away the course of a walk that died first (it
+# removes an earlier course of the same tag), so a crashed walk leaves nothing that blocks the next. What it cannot undo: the audit rows
+# (enrollment.remove, course.delete, course.roster_read), which no route removes. Not verified: a course whose made file was lost keeps
+# its REVOKED row until somebody deletes the course; the row only blocks that course, so no account is blocked elsewhere.
+#
+# The ders nazırı scenarios (completer, none) appoint the seeded ders nazırı (Rukiye Ders Nazırı) to the walk's own course with
+# helpers/course-nazir-grants.mjs, as the müderris does on the course's Nazırlar page; the post goes with the course.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   removes        Başvurular -> Kayıtlı -> the row's "Dersten çıkar" -> the reason (with its white space) -> sent -> the list, the toast,
+#                  Erişimi kaldırılanlar with the new row (the story of the flow; no e2e check exists: FLOWS.md "e2e: none")
+#   none           a ders nazırı whose post holds nothing: the forbidden alert
+# In files of their own, because a scenario that adds no transition to the ones above is not walked by `--cover transitions`
+# (it takes the shortest scenario for each transition, the first in file order), or because it needs a `before` on the state `submitting`
+# that would run in every walk of a file that holds the others:
+#   binding.last.yaml        removesLast: one talebe only, so the Kayıtlı list says "Kayıtlı talebe yok" afterwards
+#   binding.completer.yaml   completer: a ders nazırı holding enrollment.complete only: the rows have "Tamamladı say" and no "Dersten çıkar"
+#   binding.gone.yaml        gone: the talebe leaves while the removal is on its way
+#   binding.refused.yaml     refused: the ders nazırı loses `enrollment.remove` while it is on its way
+#   binding.failed.yaml      failed: the course is deleted while it is on its way
+# Not bound, with the reason (each is drawn in the flow and cannot be made on the local stack):
+#   LEAVE_EMPTY after a typed reason, and emptying the reason again (not drawn)
+#   the unreadable lists and the course read failing (the page's own states, out of view)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  # The main story: the menu's "Talebeler" of the walk's course, the Kayıtlı tab, the row of Esma Başvuran (the first by name), "Dersten çıkar",
+  # the reason with its white space, the removal, and the tab Erişimi kaldırılanlar.
+  removes:
+    given: { viewer: remover, answer: removed, others: some }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: '  Derse üç hafta üst üste katılmadı  '
+      reasonSaved: Derse üç hafta üst üste katılmadı
+      removerName: Hamdi Müderris
+
+  # A ders nazırı whose post holds no permission: Talebeler is in her menu and the page is "Bu sayfaya izniniz yok".
+  none:
+    given: { viewer: none, answer: removed, others: some }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Bu yazı gönderilmez
+      reasonSaved: Bu yazı gönderilmez
+      removerName: Rukiye Ders Nazırı

@@ -1,0 +1,98 @@
+# The part of nizam.kosks.browse's bindings that every scenario shares: the window, the events no node sends, the exits, and the locators
+# where role and name cannot find a node. It has no scenario of its own: binding.yaml (the main scenarios) and the four small files
+# (binding.notHidden.yaml, binding.gone.yaml, binding.level.yaml, binding.forbidden.yaml) extend it. Each of those four is a file of its own
+# because it adds no transition to binding.yaml's scenarios and needs a `before` of its own on the state `restoring` (a second person acts
+# while the page is open), which a scenario cannot carry.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Nothing below was seen in a browser; every locator is
+# read from the code (kosks-directory.tsx, libs/ui/src/mds/{table,tabs,choice-chips}.tsx, taught-courses.tsx), and the only things looked at
+# were GET answers of the API and the HTML nizam-web served for /kosks (the tabs, the chips, the table's roles and data-labels, the box, the empty line, the buttons each person is given) as the başnazım, the Medaris nazımı, the köşk nazımı and the talebe on 16 Nov 2026.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.kosks.browse
+
+# the table's columns stack below 768 px and the tab strip and the filters wrap: the walk uses the wide layout
+browser: { width: 1280, height: 900 }
+
+events:
+  # what the search box holds is typed by the walk (no node sends these events): the text each scenario finds a kind of köşk by, and one that
+  # finds nobody. The address follows after 300 ms and the server reads again.
+  TYPE_ACTIVE: [{ fill: { role: searchbox, name: 'Köşk ya da köşk nazımı ara', value: '{typeActive}' } }]
+  TYPE_PASSIVE: [{ fill: { role: searchbox, name: 'Köşk ya da köşk nazımı ara', value: '{typePassive}' } }]
+  TYPE_HIDDEN: [{ fill: { role: searchbox, name: 'Köşk ya da köşk nazımı ara', value: '{typeHidden}' } }]
+  TYPE_NOBODY: [{ fill: { role: searchbox, name: 'Köşk ya da köşk nazımı ara', value: '{typeNobody}' } }]
+  CLEAR_SEARCH: [{ fill: { role: searchbox, name: 'Köşk ya da köşk nazımı ara', value: '' } }]
+  # any page that does not send the person on by their roles, for every persona: Hesap ve ayarlar
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+
+states:
+  # exits with no node of their own are checked by their address (and by a word they must show where the address does not change)
+  handed_over.open: { url: '{nizam}/kosks**', text: 'zorunlu alan' }
+  handed_over.manage: { url: '{nizam}/kosks/*' }
+  handed_over.courses: { url: '{nizam}/kosks/*/dersler' }
+  handed_over.archive: { url: '{nizam}/arsiv' }
+  handed_over.taught: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  handed_over.no_access: { url: '{nizam}/kosks**', text: 'Bu bölüm için izniniz yok' }
+  left: { url: '{nizam}/hesap' }
+  # a Next server action answers 200 on the page's own address, so only the busy state is held here (never a status compared)
+  restoring: { call: '{nizam}/kosks**' }
+
+effects:
+  # what "Geri al" leaves outside the screen: the köşk is ACTIVE again, and exactly one kosk.restore audit row names it (kosks#3)
+  restoreKosk:
+    - run: [node, ../nizam/kosks/browse/kosks.mjs, status, '{tag}', gizli]
+      expect: 'kosk {tag} gizli ACTIVE restores=1'
+
+# Where role and name cannot find a node. The rows are data, so a node is found by the table's own hooks (data-label on a cell, th[scope=row]
+# for the name, the kit's classes) and, where the graph has no params, by a pattern of the words. The wrapper `[data-testid=kosks]` keeps every
+# row locator inside the directory (the shell's sidebar has links and buttons of its own, among them an "Arşiv" link).
+nodes:
+  kosksPage: { testId: kosks }
+  # "Köşkler" is also a part of "Bütün köşkler"; the h1 is asked for exactly
+  pageTitle: { role: heading, name: '/^Köşkler$/' }
+  archiveLink: { css: '[data-testid=kosks] a[href="/arsiv"]' }
+  tabAllCount: { css: '[data-testid=kosks] .mds-tab__count', nth: 0 }
+  tabActiveCount: { css: '[data-testid=kosks] .mds-tab__count', nth: 1 }
+  tabPassiveCount: { css: '[data-testid=kosks] .mds-tab__count', nth: 2 }
+  tabHiddenCount: { css: '[data-testid=kosks] .mds-tab__count', nth: 3 }
+  columnKosk: { role: columnheader, name: '/^Köşk$/' }
+  columnCourses: { role: columnheader, name: '/^Ders$/' }
+  columnStatus: { role: columnheader, name: '/^Durum$/' }
+  loadFailedAlert: { role: alert, hasText: 'Köşkler yüklenemedi' }
+
+  # a row: the cells every row has
+  rowLink: { css: '[data-testid=kosks] th[scope=row] a.mds-link' }
+  rowHandle: { css: '[data-testid=kosks] th[scope=row] bdi.font-mono' }
+  rowCourses: { css: '[data-testid=kosks] td[data-label="Ders"]' }
+  rowUnlisted: { css: '[data-testid=kosks] th[scope=row]', hasText: Listelenmeyen }
+  # the nazımları, by kind of row
+  rowNazims: { css: '[data-testid=kosks] td[data-label="Köşk nazımları"]:not(:has-text("Köşk nazımı yok"))' }
+  rowNoNazim: { css: '[data-testid=kosks] td[data-label="Köşk nazımları"]', hasText: Köşk nazımı yok }
+  rowYou: { css: '[data-testid=kosks] td[data-label="Köşk nazımları"] .mds-caption', hasText: '/^Siz$/' }
+  # the state, by kind of row (the Durum cell starts with the state's word)
+  rowStatusActive: { css: '[data-testid=kosks] td[data-label="Durum"]', hasText: '/^Etkin/' }
+  rowStatusPassive: { css: '[data-testid=kosks] td[data-label="Durum"]', hasText: '/^Pasif/' }
+  rowStatusHidden: { css: '[data-testid=kosks] td[data-label="Durum"]', hasText: '/^Gizli/' }
+  rowSincePassive: { css: '[data-testid=kosks] tr:has(td[data-label="Durum"]:text-matches("^Pasif")) td[data-label="Durum"] .mds-caption' }
+  rowSinceHidden: { css: '[data-testid=kosks] tr:has(td[data-label="Durum"]:text-matches("^Gizli")) td[data-label="Durum"] .mds-caption' }
+  # the buttons of a hidden row: "Geri al: <ad>", or the sentence that names who hid it (its cell has no data-label: its header is an element)
+  restoreButton: { role: button, name: '/^Geri al: /' }
+  lockedCaption: { css: '[data-testid=kosks] td .mds-caption', hasText: '/^Bunu .+ gizledi; yalnız o kademe ya da üstü geri alabilir\.$/' }
+
+  # the pager, on both of its pages: the same two buttons, one of them natively disabled (told apart by the attribute)
+  pagerNav: { testId: pager }
+  previousButton: { css: '[data-testid=pager] button:not([disabled])', hasText: Önceki }
+  previousOff: { css: '[data-testid=pager] button[disabled]', hasText: Önceki }
+  nextButton: { css: '[data-testid=pager] button:not([disabled])', hasText: Sonraki }
+  nextOff: { css: '[data-testid=pager] button[disabled]', hasText: Sonraki }
+  pageOf: { css: '[data-testid=pager] .mds-caption', hasText: '/^\d+ \/ \d+$/' }
+
+  # the toasts (Sonner): found by their words, and closed by their own button
+  restoredTitle: { css: '[data-sonner-toast]', hasText: Köşk geri alındı }
+  restoredBody: { css: '[data-sonner-toast]', hasText: yeniden listelerde. }
+  failedTitle: { css: '[data-sonner-toast]', hasText: Köşk geri alınamadı }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+  # the courses the viewer teaches elsewhere: a <ul> with shadcn-era classes (F-W3-16)
+  taughtList: { css: 'ul.divide-y' }
+  taughtLink: { css: 'ul.divide-y a[href*="/courses/"]' }

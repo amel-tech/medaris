@@ -1,0 +1,181 @@
+# The screens of nazar.decks.openAndFill: Ders desteleri of a course (/ders/<id>/deste) with its "Deste aç" dialog, and the deck's own
+# page (/ders/<id>/deste/<deckId>) with its "Kart ekle" row, the batch panel of a paste, the cards, the card's edit form and the
+# confirmation of a delete. Read from the code of PR #394 on 15 Nov 2026: apps/nazar/features/decks (decks-page, decks-actions,
+# deck-form-dialog, deck-detail-page, deck-detail-screen, card-quick-add, card-tile, decks.ts, actions.ts) and libs/ui/src/mds. Nothing
+# was seen in a browser by its writer: every behaviour is "from the code" unless a rule says otherwise.
+#
+# What this file leaves to its neighbours (flow.yaml `scope.outOfView` names them): the deck's settings below the cards, Sîga üret and
+# Excel'den aktar. Those parts of the deck page are on screen in every state of it and are not drawn.
+#
+# Words: every key without a `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nazar.json (the file the app
+# reads as `nazar`; a key is the path under its root), by <scratchpad>/mkcat-openandfill.mjs, except `Changes.note`, the one authored
+# message of this catalog (no message of the app says, in one place, who sees a new deck and what a delete does). The `composed.*`
+# keys are text the app builds in code from data and messages, each with its code line:
+#   composed.Decks.backLink      "← Ders desteleri"   the glyph typed in the JSX and Decks.backToDecks (deck-detail-page.tsx:77)
+#   composed.Decks.deckTile      "{title}"            the deck's tile is one link; its name is the cover's initials, the title, the facts and the
+#                                                     mastery text in one run (decks-page.tsx:103-149, F-D1-23); the graph names only the title
+#   composed.Decks.deckTitle     "{title}"            the deck's own title as the h1 (deck-detail-page.tsx:82)
+#   composed.Decks.cardsHeading  "Kartlar · {count}"  Decks.cardsTitle, " · " and the card count in one <h2> (deck-detail-screen.tsx:64-66)
+#   composed.Decks.batchSummary  "{count} kart hazır · atlanacak satırlar: {lines}"  Decks.pasteReady in a <strong>, " · " and
+#                                                     Decks.pasteSkipped, in one <span> (card-quick-add.tsx:157-163)
+#   composed.Button.loading      "Yükleniyor"         the busy button's hidden status, the kit's hard-coded default (libs/ui/src/mds/button.tsx:114)
+# The dialogs' "Kapat" and "Vazgeç" are the primitives' hard-coded words (libs/ui/src/mds/dialog.tsx:100, alert-dialog.tsx:44, F-D1-24);
+# the graph names them with Shell.close and Decks.cancel, which say the same.
+schema: delurio-graph/0
+kind: ui
+id: nazar.decks.openAndFill
+flow: nazar.decks.openAndFill
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  decks: '1'
+  cards: '3'
+  students: '0'
+  count: '2'
+  lines: '3'
+  title: Deneme destesi deck-fill
+
+# No page of this flow moves the focus on load (nothing in features/decks does), so there is no `initialFocus` on a page and no `focus`
+# for the page states. The graph draws only what the code gives: the front box after an add, the edit form's front box, and the
+# confirmation's "Vazgeç".
+focus:
+  cardAdded: addFront
+  batchAdded: addFront
+  editing: editFront
+
+nodes:
+  # --- the refusal ----------------------------------------------------------------------------------------------------------------
+  forbiddenPage: { type: page, component: Page, role: main, in: [forbidden], source: apps/nazar/features/decks/components/decks-page.tsx:43 } # the shell's one <main>; it has no name
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # --- Ders desteleri: the list ---------------------------------------------------------------------------------------------------
+  listPage: { type: page, component: Page, role: main, in: [emptyList, deckList], source: apps/nazar/features/decks/components/decks-page.tsx:75 } # the shell's one <main>; it has no name
+  listTitle: { type: text, component: Heading, role: heading, text: { key: Decks.title }, in: [emptyList, deckList, forbidden], source: apps/nazar/features/decks/components/decks-page.tsx:78 } # h1; the page's only heading
+  listSummary: { type: text, component: Text, text: { key: Decks.summary, params: { decks: course.deckCount, cards: course.cardCount, students: course.enrolledCount } }, in: [emptyList, deckList], source: apps/nazar/features/decks/components/decks-page.tsx:79 } # "{decks} deste · {cards} kart · kayıtlı {students} talebe görür"; the numbers follow the course
+  importButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.importButton }, in: [emptyList, deckList], disabledIn: [emptyList], source: apps/nazar/features/decks/components/decks-actions.tsx:28 } # disabled while the course has no deck, with no word saying why (F-D1-15); nazar.decks.import presses it
+  newButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.newButton }, in: [emptyList, deckList], emits: NEW_DECK, source: apps/nazar/features/decks/components/decks-actions.tsx:35 }
+  emptyTitle: { type: text, component: Text, text: { key: Decks.emptyTitle }, in: [emptyList], source: apps/nazar/features/decks/components/decks-page.tsx:94 } # a <p class=mds-h3> inside the EmptyState's own <p> (OPENFILL-3)
+  emptyBody: { type: text, component: Text, text: { key: Decks.emptyBody }, in: [emptyList], source: apps/nazar/features/decks/components/decks-page.tsx:95 }
+  deckCard: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.deckTile, params: { title: deck.title } }, in: [deckList], repeat: course.decks, emits: OPEN_DECK, source: apps/nazar/features/decks/components/decks-page.tsx:103 } # one link for the whole tile; its name is a long run of words (F-D1-23), found by the title in the binding
+
+  # --- "Deste aç" ----------------------------------------------------------------------------------------------------------------
+  newDeckDialog: { type: page, component: Page, role: dialog, name: { labelledBy: newDeckTitle }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:95 } # no initialFocus: Base UI's default is the first tabbable element, the header's "Kapat" (OPENFILL-2)
+  newDeckTitle: { type: text, component: Heading, role: heading, text: { key: Decks.newTitle }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:103 }
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Decks.titleField }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:120 } # required by a hidden star only (F-D1-03)
+  titleHelp: { type: text, component: Text, text: { key: Decks.titleHelp }, in: [newDeck, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:116 }
+  titleError: { type: text, component: Text, text: { key: Decks.required }, in: [newDeckProblem], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:117 } # replaces the help line; a Field error with no role, so nothing announces it (F-D1-16)
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Decks.descriptionField }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:133 } # a <textarea>
+  descriptionHelp: { type: text, component: Text, text: { key: Decks.descriptionHelp }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:130 }
+  cardTypeField: { type: field, component: TextField, role: combobox, text: { key: Decks.cardTypeField }, value: { key: Decks.typeVocabulary }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:141 } # Base UI Select; Kelime unless the person chooses Hadis (not drawn); required by a hidden star only (F-D1-03)
+  weekField: { type: field, component: TextField, role: combobox, text: { key: Decks.weekField }, value: { key: Decks.weekNone }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:157 } # "Haftasız" until a week is chosen (not drawn)
+  # duringStep on the checkbox, "Vazgeç" and "Kapat": the dialog has no pending guard (deck-form-dialog.tsx:97) and the box is never
+  # disabled (:172), so while the deck is sent the box still toggles (the request has taken the old value) and the dialog closes at
+  # once; the request goes on, and a success still shows its toast and opens the new deck (:88-90) after the person closed the dialog.
+  draftBox: { type: field, component: TextField, role: checkbox, text: { key: Decks.draftField }, checked: "box == 'on'", in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: TOGGLE_DRAFT, duringStep: true, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:172 } # named by aria-labelledby, described by aria-describedby
+  draftHelp: { type: text, component: Text, text: { key: Decks.draftHelp }, in: [newDeck, newDeckProblem, creating, newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:174 }
+  newDeckAlert: { type: alert, component: Alert, role: alert, text: { key: Decks.failed }, in: [newDeckFailed], source: apps/nazar/features/decks/components/deck-form-dialog.tsx:178 } # tone error: announced
+  newDeckCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: CANCEL, duringStep: true, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:106 }
+  newDeckClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [newDeck, newDeckProblem, creating, newDeckFailed], emits: CLOSE, duringStep: true, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label, the primitive's hard-coded "Kapat" (F-D1-24)
+  newDeckSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.create }, in: [newDeck, newDeckProblem, creating, newDeckFailed], disabledIn: [creating], emits: SUBMIT_DECK, source: apps/nazar/features/decks/components/deck-form-dialog.tsx:107 } # never disabled: busy (aria-disabled) while the call runs
+  creatingBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [creating], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> of the busy button (F-D1-24)
+
+  # --- the deck's page: what stays in every state of it ------------------------------------------------------------------------------
+  deckPage: { type: page, component: Page, role: main, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/deck-detail-page.tsx:74 } # the shell's one <main>; it has no name
+  # duringStep: no write disables the link back (deck-detail-page.tsx:76), so it is followed at once while a card or a batch is sent,
+  # saved or deleted; the write goes on.
+  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.backLink }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], emits: BACK, duringStep: true, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 } # a plain link with the glyph typed in front of the words
+  deckHeading: { type: text, component: Heading, role: heading, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/deck-detail-page.tsx:82 } # h1 lang="auto", which is no language tag (F-D1-14)
+  deckPublished: { type: text, component: Text, text: { key: Decks.published }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], when: "deckState == 'published'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:86 }
+  deckDraftLine: { type: text, component: Text, text: { key: Decks.draftState }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], when: "deckState == 'draft'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:86 }
+  cardsHeading: { type: text, component: Heading, role: heading, text: { key: composed.Decks.cardsHeading, params: { count: deck.cardCount } }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:64 } # h2 "Kartlar · n"
+
+  # --- the "Kart ekle" row -------------------------------------------------------------------------------------------------------------
+  quickAddForm: { type: page, component: Page, role: form, name: { key: Decks.addCard }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/card-quick-add.tsx:119 } # <form aria-label>, the page's one landmark besides main
+  addFront: { type: field, component: TextField, role: textbox, text: { key: Decks.front }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/card-quick-add.tsx:125 } # lang=ar dir=rtl; named by aria-label and a placeholder, no visible label (F-D1-26); a paste of two columns here, or of a ";", is a batch
+  addBack: { type: field, component: TextField, role: textbox, text: { key: Decks.back }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], source: apps/nazar/features/decks/components/card-quick-add.tsx:139 } # no visible label (F-D1-26); a paste with a line break or a tab here is a batch too
+  addButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.add }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, editing, savingCard, editFailed, removing, removeFailed], disabledIn: [addingCard], source: apps/nazar/features/decks/components/card-quick-add.tsx:151 } # the submit; the walk presses Enter in a box (the binding's ADD), so no node sends the event; busy (aria-disabled) while a single card is sent
+  addBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [addingCard], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> of the busy "Ekle"
+  lineHint: { type: status, component: Status, text: { key: Decks.quickAddHint }, in: [addingCard, addingBatch], source: apps/nazar/features/decks/components/card-quick-add.tsx:187 } # the one <p aria-live=polite> under the row: while a call is out it holds the hint (the status is cleared when it starts)
+  lineRequired: { type: status, component: Status, text: { key: Decks.required }, in: [faceProblem], source: apps/nazar/features/decks/components/card-quick-add.tsx:187 } # the field error is the status line; the boxes get aria-invalid
+  lineAdded: { type: status, component: Status, text: { key: Decks.cardAdded }, in: [cardAdded], source: apps/nazar/features/decks/components/card-quick-add.tsx:81 }
+  lineBatchAdded: { type: status, component: Status, text: { key: Decks.importDone, params: { count: batch.count } }, in: [batchAdded], source: apps/nazar/features/decks/components/card-quick-add.tsx:111 } # "{count} kart eklendi", the import dialog's message
+  lineFailed: { type: status, component: Status, text: { key: Decks.failed }, in: [addFailed, batchFailed], source: apps/nazar/features/decks/components/card-quick-add.tsx:76 } # the same words for every refusal; the live region announces it
+
+  # --- the batch panel ---------------------------------------------------------------------------------------------------------------------
+  batchSummary: { type: text, component: Text, text: { key: composed.Decks.batchSummary, params: { count: batch.ready, lines: batch.skipped } }, in: [batchReady, addingBatch, batchFailed], source: apps/nazar/features/decks/components/card-quick-add.tsx:157 } # "2 kart hazır · atlanacak satırlar: 3"; the skipped lines are named by their number in the pasted text
+  batchNone: { type: text, component: Text, text: { key: composed.Decks.batchSummary, params: { count: batch.ready, lines: batch.skipped } }, in: [batchEmpty], source: apps/nazar/features/decks/components/card-quick-add.tsx:157 } # "0 kart hazır · atlanacak satırlar: 1, 2"
+  batchAddAll: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.pasteAll }, in: [batchReady, batchEmpty, addingBatch, batchFailed], disabledIn: [batchEmpty, addingBatch], emits: ADD_ALL, source: apps/nazar/features/decks/components/card-quick-add.tsx:168 } # disabled with no valid line; busy while the batch is sent
+  batchDrop: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [batchReady, batchEmpty, addingBatch, batchFailed], disabledIn: [addingBatch], emits: DROP_BATCH, source: apps/nazar/features/decks/components/card-quick-add.tsx:176 }
+  batchBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [addingBatch], source: libs/ui/src/mds/button.tsx:114 }
+
+  # --- the cards ------------------------------------------------------------------------------------------------------------------------------
+  cardsEmpty: { type: text, component: Text, text: { key: Decks.cardsEmpty }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], when: "cards == 'none'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:79 } # in the EmptyState's <p>
+  cardList: { type: list, component: List, role: list, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], when: "cards != 'none'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:81 } # a <ul> of tiles with no paging; while a tile is open in place the list is not drawn (the open tile and the others are not told apart)
+  tileFront: { type: text, component: Text, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], when: "cards != 'none'", repeat: deck.cards, source: apps/nazar/features/decks/components/card-tile.tsx:128 } # the card's own front, a <span lang=ar dir=rtl>; data, so the binding finds it by its attribute
+  tileBack: { type: text, component: Text, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], when: "cards != 'none'", repeat: deck.cards, source: apps/nazar/features/decks/components/card-tile.tsx:131 } # the card's own back, clamped to two lines, the whole in `title`
+  # duringStep on a tile's "Düzenle" and "Sil": they are off only while a card is deleted (`busy`, deck-detail-screen.tsx:86), so while a
+  # card or a batch is added they open the tile's form or the delete question at once.
+  editCard: { type: action, component: Button, role: button, intent: secondary, name: { key: Decks.edit }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], disabledIn: [removing], when: "cards != 'none'", repeat: deck.cards, emits: EDIT, duringStep: true, source: apps/nazar/features/decks/components/card-tile.tsx:139 } # an icon button named "Düzenle" on every tile (F-D1-25), with a tooltip; the walk presses the first
+  removeCard: { type: action, component: Button, role: button, intent: secondary, name: { key: Decks.remove }, in: [deck, faceProblem, addingCard, cardAdded, addFailed, batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, removing, removeFailed], disabledIn: [removing], when: "cards != 'none'", repeat: deck.cards, emits: REMOVE, duringStep: true, source: apps/nazar/features/decks/components/card-tile.tsx:146 } # an icon button named "Sil" on every tile (F-D1-25)
+  removeLine: { type: text, component: Text, text: { key: Decks.failed }, in: [removeFailed], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:77 } # a bare <p> above the cards, no role, no live region (F-D1-11)
+
+  # --- the toasts ------------------------------------------------------------------------------------------------------------------------------
+  toastCreated: { type: status, component: Status, role: dialog, name: { key: Decks.created }, text: { key: Decks.created }, in: [deck], when: "last == 'created'", source: apps/nazar/features/decks/components/deck-form-dialog.tsx:88 } # a toast is a dialog in the "Bildirimler" live region; it closes by itself after 6 seconds
+  toastRemoved: { type: status, component: Status, role: dialog, name: { key: Decks.cardRemoved }, text: { key: Decks.cardRemoved }, in: [deck], when: "last == 'removed'", source: apps/nazar/features/decks/components/deck-detail-screen.tsx:55 }
+
+  # --- a card open in place ---------------------------------------------------------------------------------------------------------------
+  editForm: { type: page, component: Page, role: form, name: { key: Decks.editCardTitle }, in: [editing, savingCard, editFailed], source: apps/nazar/features/decks/components/card-tile.tsx:68 } # <form aria-label>; Escape inside it puts the stored faces back
+  editFront: { type: field, component: TextField, role: textbox, text: { key: Decks.front }, in: [editing, savingCard, editFailed], source: apps/nazar/features/decks/components/card-tile.tsx:79 } # autoFocus: the form opens with the front box focused
+  editBack: { type: field, component: TextField, role: textbox, text: { key: Decks.back }, in: [editing, savingCard, editFailed], source: apps/nazar/features/decks/components/card-tile.tsx:91 }
+  editLine: { type: text, component: Text, text: { key: Decks.failed }, in: [editFailed], source: apps/nazar/features/decks/components/card-tile.tsx:100 } # a bare <span>, no role, no live region (F-D1-11)
+  editCancel: { type: action, component: Button, role: button, intent: dismiss, name: { key: Decks.cancel }, in: [editing, savingCard, editFailed], disabledIn: [savingCard], emits: CANCEL_EDIT, source: apps/nazar/features/decks/components/card-tile.tsx:102 } # an icon button (a cross) named by aria-label
+  editSave: { type: action, component: Button, role: button, intent: confirm, name: { key: Decks.save }, in: [editing, savingCard, editFailed], disabledIn: [savingCard], emits: SAVE, source: apps/nazar/features/decks/components/card-tile.tsx:112 } # the submit, an icon button (a tick) named by aria-label
+
+  # --- Sil asks once ------------------------------------------------------------------------------------------------------------------------------
+  removeDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: removeTitle }, in: [confirmRemove], initialFocus: removeCancel, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:111 }
+  removeTitle: { type: text, component: Heading, role: heading, text: { key: Decks.remove }, in: [confirmRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:114 }
+  removeBody: { type: text, component: Text, text: { key: Decks.removeConfirm }, in: [confirmRemove], source: apps/nazar/features/decks/components/deck-detail-screen.tsx:119 }
+  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [confirmRemove], emits: CANCEL_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here; the primitive's hard-coded "Vazgeç" (F-D1-24)
+  removeConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.removeYes }, in: [confirmRemove], emits: CONFIRM_REMOVE, source: apps/nazar/features/decks/components/deck-detail-screen.tsx:115 } # destructive
+  removeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmRemove], emits: CLOSE_REMOVE, source: libs/ui/src/mds/alert-dialog.tsx:88 } # an icon button named only by aria-label
+
+edges:
+  - { labelledBy: [newDeckDialog, newDeckTitle] }
+  - { labelledBy: [removeDialog, removeTitle] }
+  - { triggers: [newButton, newDeck] }
+  - { triggers: [deckCard, deck] }
+  - { triggers: [newDeckSubmit, creating] }
+  - { triggers: [batchAddAll, addingBatch] }
+  - { triggers: [editCard, editing] }
+  - { triggers: [editSave, savingCard] }
+  - { triggers: [removeCard, confirmRemove] }
+  - { triggers: [removeConfirm, removing] }
+  - { returnsFocus: [newDeckDialog, newButton] } # Vazgeç, Esc or the Kapat icon: the page's "Deste aç" is still there; not verified in a browser (Base UI's default return)
+  - { returnsFocus: [removeDialog, removeCard] } # Vazgeç, Esc or Kapat: the tile's "Sil" is still there; not verified in a browser
+
+rules:
+  - { id: F-D1-03, rule: "'Field required' draws only an aria-hidden star: Başlık and Kart türü of the dialog carry no `required` or aria-required, so a screen reader is never told they are required (deck-form-dialog.tsx:114-119, 141; libs/ui/src/mds/field.tsx:42-46). Fix: pass `required` to the Input and the Select." }
+  - { id: F-D1-11, rule: "A refused card save is a bare <span> in the tile's form and a refused delete a bare <p> above the cards: neither has a role or a live region, so nothing is announced (card-tile.tsx:100, deck-detail-screen.tsx:77). After a save, a cancel or a delete the form or the tile unmounts and the focus falls to the document. Fix: role=alert on both, and return the focus to the tile's Düzenle or the next tile." }
+  - { id: F-D1-14, rule: "The deck's title is drawn with lang=\"auto\", which is no language tag (the intent is dir=\"auto\"): on the tile (decks-page.tsx:117) and as the h1 (deck-detail-page.tsx:82); a wrong lang can confuse a screen reader's voice choice. Fix: dir=\"auto\" and no lang." }
+  - { id: F-D1-15, rule: "'Excel'den aktar' is disabled while the course has no deck, with no word saying why (decks-actions.tsx:30). Fix: keep it on and explain in the dialog, or describe it." }
+  - { id: F-D1-16, rule: "The dialog checks on submit and the errors are Field errors with no role: the focus stays on the pressed button and nothing announces 'Bu alan zorunlu.' (deck-form-dialog.tsx:74-79, 117). Fix: focus the first invalid control, or give the message role=alert." }
+  - { id: F-D1-17, rule: "Neither route has a loading.tsx (app/ders/[dersId]/deste, .../[desteId]): the portal-wide app/loading.tsx draws a whole-shell skeleton while a deck page loads. Not verified visually. Fix: a loading.tsx in each." }
+  - { id: F-D1-20, rule: "No try/catch around the server-action calls (every startTransition(async ...) of features/decks): when the browser cannot reach Next the rejection escapes, 'Deste aç' and 'Ekle' stay busy and nothing is said. Not verified. Fix: try/catch/finally and a network message." }
+  - { id: F-D1-23, rule: "The deck's tile is one link holding the cover's initials, the title, the facts, a progressbar named 'Ezber oranı %n' and the same sentence visibly: its accessible name is a long run with the percent twice (decks-page.tsx:103-149). Not verified exactly. Fix: aria-hidden on the cover's label and on the visible duplicate." }
+  - { id: F-D1-24, rule: "The dialog and the confirmation pass no closeLabel or cancelLabel, so 'Kapat' and 'Vazgeç' are the primitives' hard-coded words, and a busy button says 'Yükleniyor' from a hard-coded default (dialog.tsx:100, alert-dialog.tsx:44, button.tsx:62). Fix: pass Shell.close, Decks.cancel and a loadingLabel from the catalog." }
+  - { id: F-D1-25, rule: "Every tile's icon buttons are named just 'Düzenle' and 'Sil' (card-tile.tsx:139-152): a screen-reader user in a deck of two dozen cards hears 24 identical names. Fix: put the card's front in the label." }
+  - { id: F-D1-26, rule: "The two boxes of the Kart ekle row carry an aria-label and a placeholder and no visible label (card-quick-add.tsx:125-150): once text is typed nothing on screen names them. Fix: a visible label, or a visually hidden one with column headers." }
+  - { id: F-D1-01, rule: "The list's failed state draws a SystemState with its own h1 under the page's h1 (decks-page.tsx:45, 59). Not drawn here (a failed read is not a refusal of the API's)." }
+  - { id: F-D1-02, rule: "When the deck page is refused it draws only the alert, with no h1; the list page draws its h1 first (deck-detail-page.tsx:53-58). Not drawn here." }
+  - { id: OPENFILL-1, rule: "A person who holds deck.manage_course and did not open the deck is refused every card edit and delete with 404 CARD_NOT_FOUND, because the card routes authorize through the deck's author, a public deck or the shared-with rule, which knows no course staff (flashcard.service.ts:86-101, deck-sharing.ts:35, the domain's course-deck-staff-card-routes-404). The page words it as 'İşlem tamamlanamadı. Tekrar deneyin.', and trying again never works. Adding cards and reading them work (the deck-level routes). Derived from the code, not run. Fix: let the card resolver know the course staff rule; until then say that only the deck's author may change its cards." }
+  - { id: OPENFILL-2, rule: "The 'Deste aç' dialog passes no initialFocus (deck-form-dialog.tsx:95-112), so the focus goes to the first tabbable element, which is the header's 'Kapat', not to Başlık. Base UI's default, not verified in a browser. Fix: initialFocus on the title box." }
+  - { id: OPENFILL-3, rule: "The list's empty state puts two <p> inside the EmptyState's own <p class=mds-empty__text> (decks-page.tsx:93-96, libs/ui/src/mds/empty-state.tsx:20): a <p> cannot hold a <p>, so the browser's parser closes the outer one and React may report a hydration mismatch. Not verified in a browser. Fix: pass inline children, or a div in the EmptyState." }
+  - { id: OPENFILL-4, rule: "The document's title is 'Ders desteleri · Medaris Nazar' on the list and on every deck (generateMetadata of both routes reads Decks.title), so the title does not tell the decks apart (app/ders/[dersId]/deste/[desteId]/page.tsx:5-8). Fix: use the deck's own title on its page." }
+  - { id: OPENFILL-5, rule: "A saved card edit says nothing: the tile returns to view and the deck is read again, with no toast and no line; 'Decks.cardSaved' is in the catalog and never used (card-tile.tsx:61-62). Decision D2. Fix: say 'Kart kaydedildi' in the status line and return the focus to the tile's Düzenle." }
+  - { id: F-D1-27, rule: "CardQuickAdd and CardTile use Input outside a Field, although the primitive says it is always inside one (libs/ui/src/mds/input.tsx doc comment): it works, but it is outside the documented contract, and it is why the boxes have no label of their own (F-D1-26)." }
+  - { id: focus-not-set, rule: "No page of this flow sets an initial focus (nothing in features/decks does). The code moves the focus in three places only: back to Ön yüz after an add or a batch (card-quick-add.tsx:54, 82, 112), to the edit form's front box (card-tile.tsx:84), and to 'Vazgeç' in the delete confirmation (alert-dialog.tsx:70). Not verified in a browser." }
+  - { id: label-in-name, rule: "A button's visible text is in its accessible name where it has any: 'Deste aç', 'Ekle', 'Hepsini ekle', 'Vazgeç', 'Evet, sil'. The icon buttons have no visible text. Holds." }
+  - { id: confirm-before-deleting, rule: "Sil asks first, in an alertdialog whose focus starts on 'Vazgeç'; a card edit does not ask. The confirmation does not say that a delete cannot be undone." }

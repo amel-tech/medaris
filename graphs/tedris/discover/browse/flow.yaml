@@ -1,0 +1,362 @@
+# Keşfet (tedris-web /discover): a person looks over the köşks and the medreses, searches them, narrows them to one medrese, pages
+# through the köşks 12 at a time, clears the filters, and opens one. Written from the code of the branch (the tree of PR #394) on
+# 15 Nov 2026, status captured, and checked on the local stack with Playwright probes by hand (not replays) wherever the inventory
+# said "not verified". Nothing here is approved.
+#
+# What it draws: the page's one server read (three requests in parallel: the köşks of the page, the medreses the filters keep, the
+# medreses all told for the select), the list, the empty state, the failed read, and the ways out of the page: a köşk, a medrese,
+# a course of a medrese, "Köşk açma başvurusu" (a member), "giriş yap" and "kayıt ol" (a visitor). The filters live in the address
+# (?q=, ?madrasah=, ?page=), so every filter change is a new read of the page.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DSC-13   ?page= is not clamped. VERIFIED here (it was "not verified in a browser"): ?page=3 of 2 and ?page=99 draw the heading
+#            "Köşkler" with no card under it and, when the köşks fill more than one page, "3 / 2" with "Önceki" to ?page=2 (page 98
+#            for ?page=99); when they fit one page the pager is not drawn at all, so the page has no way back but the filters.
+#   DSC-12   does NOT apply to Keşfet: the small cover of a course on a medrese card is aria-hidden (madrasah-card.tsx:56-60).
+#   DSC-19   the loading skeleton (app/discover/loading.tsx) is an aria-busy <main> of aria-hidden blocks: nothing says "loading".
+#   DSC-20   the page carries Sonner's region with its English name, "Notifications alt+T" (seen in the page's own snapshot).
+#            Its only use here is the follow button's failure toast, which is tedris.discover.followKosk's.
+#   BROWSE-1 (new) tedrisat answers 500 to GET /kosks with a page number whose offset a bigint cannot hold (?page=99999999999999999999
+#            gives 1.2e+21, which Postgres refuses), Keşfet then draws "Keşfet yüklenemedi" in place of the filters and the lists, and "Yeniden dene" is a link to
+#            the same address, so it fails again for ever: a failure the address causes cannot be left from the page.
+#   BROWSE-2 (new) a ?madrasah= id that is a uuid but no medrese gives the empty state, and the select shows the raw id as its value.
+#   The follow button's findings (DSC-01, DSC-02, DSC-14) are tedris.discover.followKosk's: the button is drawn here and not pressed.
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.browse
+status: captured
+domain: medaris.api
+ui: tedris.discover.browse
+title: Browse Keşfet, search and filter it
+summary: >-
+  A person opens Keşfet, with no account or with one. The page lists the köşks (12 to a page, with a pager when there are more)
+  and the medreses, under a count line "{n} köşk ve {m} medrese". They type a word in the box (the page reads again after a pause
+  of 400 ms, or at once on Enter), choose a medrese in the select, or both; each change starts again at page one and is written
+  in the address, so the result is a link and the back button brings the earlier filter back. A word or a medrese that finds
+  nothing gives the empty state with "Filtreleri temizle". A failed read replaces the filters and the lists with an error box and
+  a retry link. A member sees a follow button on each köşk card, and medreses that have opened no course; a visitor sees neither,
+  and instead of the way to ask for a köşk gets an invitation to sign in or register that brings them back to the same filters.
+  Opening a köşk, a medrese or a course leaves for another page.
+source: apps/tedris/features/discover/components/discover-page.tsx:77
+
+scope:
+  shows: the Keşfet list and its filters, the pager, the empty state and the failed read, and the links out of the page
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the top bar and the phone sheet, the footer and the theme toggle: tedris.shell.frame"
+    - "pressing the follow button, the optimistic flip and the toast of a refusal (DSC-01, DSC-02, DSC-14): tedris.discover.followKosk; the button is drawn, for a member"
+    - "the köşk page, the medrese page and the course page a card leads to: tedris.discover.readKosk, tedris.discover.readMadrasah, tedris.course.readProgramme; a visitor's way on to a course and the sign-in it asks for: tedris.discover.visitorPath"
+    - "the form behind \"Köşk açma başvurusu\": tedris.discover.applyForKosk"
+    - "a word typed while a medrese is chosen, except one both lists share or one that finds nothing: the result is the intersection of the two filters, which depends on which köşks the medrese hosts; the graph draws the word that both lists share and the word that finds nothing"
+    - "the card's own words that the API gives: the description, the başmüderris's name, the course titles; the exact numbers of the count line and of \"{n} ders\" (the replay matches any number there)"
+    - "the köşks the API leaves out: a hidden köşk is in no list, an unlisted one (isPrivate) only in the list of its own nazım; a draft or hidden course is not counted in \"{n} ders\" (discover#4, needs a draft the seed lacks)"
+    - "a medrese with no listed course, drawn for a member with \"Bu medrese henüz ders açmadı.\" and left out for a visitor: modelled (context `quiet`), not walked, because the seed has no such medrese"
+    - "the old addresses: ?level= and ?field= are ignored, a malformed ?madrasah= or ?page= reads as not set, ?q= is trimmed and cut at 100 characters (discover-query.ts:28-36); /learning goes to /discover (tedris.nav)"
+    - "the language: the page is Turkish only (lib/i18n/routing.ts:6)"
+    - "the phone layout, where the grid has one column; the same nodes"
+
+decisions:
+  D1:
+    question: >-
+      Should an address whose page number is past the last page be answered with the last page, and a page number the API cannot
+      take with the first (DSC-13, BROWSE-1)?
+    recommend: >-
+      Yes: clamp `page` to 1..pageCount(total) in the page's read, as the köşk list's own `limit` is clamped in the API
+      (kosk.controller.ts:172-173), and bound the number in parseDiscoverQuery. Today ?page=3 of 2 draws an empty "Köşkler"
+      section and a huge number draws the error box for ever.
+    affects: [list, loadFailed]
+
+context:
+  viewer:
+    values: [visitor, member]
+    initial: any
+    say:
+      visitor: "they have no account, or no session: the page is read with no token"
+      member: "they are signed in: the page is read with their token"
+  read:
+    values: [ok, kosksFailed, madrasahsFailed]
+    initial: any
+    say:
+      ok: "every read of the page answers"
+      kosksFailed: "the köşk read fails (tedrisat 5xx, or its 500 for an absurd page number, BROWSE-1)"
+      madrasahsFailed: "the köşk read answers and one of the two medrese reads fails"
+  stock:
+    values: [bare, small, large]
+    initial: any
+    say:
+      bare: "the platform lists no köşk and no medrese at all, so even with no filter the list is empty"
+      small: "the köşks Keşfet lists fit on one page of 12 (the stack's seed has two)"
+      large: "more than 12 köşks are listed, so the köşks take a second page, and a word that most of them share keeps it"
+  quiet:
+    values: [none, present]
+    initial: any
+    say:
+      none: "every medrese the platform lists has a listed course"
+      present: "there is a medrese that has opened no listed course: a member's list shows it, a visitor's leaves it out"
+  search:
+    values: [none, kosk, madrasah, both, nothing]
+    initial: none
+    say:
+      none: "the box is empty"
+      kosk: "the box holds a word that only a köşk has (its name, say): the list has that köşk and no medrese"
+      madrasah: "the box holds a word that only a medrese has: the list has that medrese and no köşk"
+      both: "the box holds a word that a köşk and a medrese both have (and, where there are many köşks, that most of them share)"
+      nothing: "the box holds a word that nothing has"
+  scope:
+    values: [all, one]
+    initial: all
+    say:
+      all: "the select says \"Bütün medreseler\""
+      one: "the select holds one medrese: the list has the köşks that medrese has a hosting right in, and that medrese"
+  at:
+    values: [first, last, beyond]
+    initial: first
+    say:
+      first: "the address names no page, or page 1"
+      last: "the address names the second page, which is the last"
+      beyond: "the address names a page past the last (a stale link, or a typed number), DSC-13"
+
+guards:
+  member: "viewer == 'member'"
+  visitor: "viewer == 'visitor'"
+  listedSomething: "stock != 'bare'"
+  koskShown: "search in ['none', 'kosk', 'both']"
+  madrasahShown: "search in ['none', 'madrasah', 'both']"
+  filtered: "search != 'none' or scope == 'one'"
+  wordTyped: "search != 'none'"
+  nothingListed: "stock == 'bare' or search == 'nothing'"
+  paged: "stock == 'large' and scope == 'all' and search in ['none', 'both']"
+  koskCards: "koskShown and at != 'beyond'"
+  # a word typed while a medrese is chosen has a result that depends on the hosting (outOfView); the graph draws the typing
+  # of a köşk's or a medrese's own word only with the select on "Bütün medreseler"
+  alone: "listedSomething and scope == 'all'"
+
+effects:
+  typedKoskName: { set: { search: kosk, at: first } }
+  typedMadrasahName: { set: { search: madrasah, at: first } }
+  typedSharedWord: { set: { search: both, at: first } }
+  typedUnknownWord: { set: { search: nothing, at: first } }
+  clearedSearch: { set: { search: none, at: first } }
+  choseMadrasah: { set: { scope: one, at: first } }
+  choseAll: { set: { scope: all, at: first } }
+  clearedFilters: { set: { search: none, scope: all, at: first } }
+  nextPage: { set: { at: last } }
+  previousPage: { set: { at: first } }
+  pastTheEnd: { set: { at: beyond } }
+
+failures:
+  readingKosks: { from: listKosks, unreadable: [] }
+  readingMadrasahs: { from: exploreMadrasahs, unreadable: [] }
+# `unreadable` stands for any answer but success: the page throws on every failure of its reads (page.tsx:22-27) and draws the same
+# box for a 5xx, a network error and a 4xx (the domain lists HTTP_400 for a page or limit that is no integer, which the page never
+# sends: it writes only positive integers). A 401 is the guard's and is left out of the domain.
+
+# The main story: a visitor in a crowded world pages through the köşks, types a word, narrows to a medrese, meets the empty
+# state, clears it, finds one köşk by its name and opens it.
+main:
+  given: { viewer: visitor, read: ok, stock: large, quiet: none }
+  events:
+    - DONE
+    - DONE
+    - NEXT_PAGE
+    - DONE
+    - DONE
+    - PREVIOUS_PAGE
+    - DONE
+    - DONE
+    - TYPE_SHARED_WORD
+    - DONE
+    - DONE
+    - CLEAR_SEARCH
+    - DONE
+    - DONE
+    - CHOOSE_MADRASAH
+    - DONE
+    - DONE
+    - TYPE_UNKNOWN_WORD
+    - DONE
+    - DONE
+    - CLEAR_FILTERS
+    - DONE
+    - DONE
+    - TYPE_KOSK_NAME
+    - DONE
+    - DONE
+    - OPEN_KOSK
+
+initial: readingKosks
+states:
+  readingKosks:
+    title: Read the köşks of the page
+    description: >-
+      The server side of /discover reads the address (parseDiscoverQuery: q trimmed and cut at 100 characters, madrasah only when it
+      is a uuid, page only when it is a positive whole number) and then makes three requests at once (Promise.all): GET /kosks with
+      the page, 12 to a page, the medrese and the word; GET /madrasahs/explore with the same medrese and word; and GET
+      /madrasahs/explore with neither, for the select. It sends the caller's token when there is one and none otherwise. The graph
+      draws the first and the second one after the other, as tedris.account.rolesOverview draws its two. Any failure of the three
+      is one failure of the page. While it runs the segment's loading file draws an aria-busy <main> with three skeletons and no text
+      (DSC-19); nothing of it is drawn here.
+    includes: ["the köşks of one page with their total, the course count and the follower's own state of each"]
+    source: apps/tedris/features/discover/reads.ts:45
+    invoke: { action: listKosks }
+    on:
+      DONE: { guard: "read != 'kosksFailed'", target: readingMadrasahs }
+      FAIL.unreadable: { guard: "read == 'kosksFailed'", target: loadFailed, say: "the köşk read failed: the page draws the error box (BROWSE-1 shows one an address can cause)" }
+
+  readingMadrasahs:
+    title: Read the medreses
+    description: >-
+      GET /madrasahs/explore twice: with the word and the medrese (the lists), and with neither (the select, every medrese). For a
+      visitor, the medreses with no listed course are left out of both afterwards (forVisitor, reads.ts:29-33), so the count line and
+      the select say nothing of them. A member keeps them, each with "Bu medrese henüz ders açmadı.".
+    source: apps/tedris/features/discover/reads.ts:51
+    invoke: { action: exploreMadrasahs }
+    on:
+      DONE: { guard: "read != 'madrasahsFailed'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'madrasahsFailed'", target: loadFailed, say: "a medrese read failed: the same box, whichever read it was" }
+
+  sorting:
+    title: See what the reads found
+    description: classification only; the page draws the empty state when there is no köşk and no medrese to show
+    source: apps/tedris/features/discover/components/discover-page.tsx:141
+    always:
+      - { guard: nothingListed, target: emptyResult, say: "no köşk and no medrese: the platform lists none, or the word finds nothing" }
+      - { target: list, say: "at least one köşk or one medrese" }
+
+  list:
+    title: The köşks and the medreses, with their filters
+    by: human
+    goal: true
+    description: >-
+      The page: h1 "Keşfet" and its sentence; the search box (a search landmark "Filtreler") and the select "Medrese"; the count line
+      "{n} köşk ve {m} medrese" (an <output>, polite live region; n is the köşks across every page, m the medreses shown); the section
+      "Köşkler" when there is at least one köşk (a card each: the name as a link inside an h3, a line of description, "{n} ders",
+      and for a member the follow button), with the pager "Sayfalar" under it when the köşks fill more than one page ("{page} / {total}"
+      and the link to the other page, which keeps the word and the medrese); the section "Medreseler" when there is at least one medrese
+      (a card each: the name as a link, "Başmüderris {name}", the courses as links, "{n} ders"); and at the foot a card, for a member
+      the way to ask for a köşk ("Köşk açma başvurusu"), for a visitor the invitation "Bir derse başvurmak için giriş yap ya da kayıt
+      ol. ..." whose links carry the address of this page, filters and page number included, as callbackUrl.
+      Typing or choosing writes the address with router.replace (the word) or router.push (the medrese) and the server page reads
+      again, so the focus stays in the box or on the select's button (observed, 15 Nov 2026); the pager, "Filtreleri temizle" and
+      the retry link are plain links: a new document, the focus at its start. A page number past the last (DSC-13, verified) draws
+      "Köşkler" with no card, and the pager only when there is more than one page.
+    source: apps/tedris/features/discover/components/discover-page.tsx:96
+    on:
+      TYPE_KOSK_NAME: { guard: "alone and search != 'kosk'", target: readingKosks, effect: [typedKoskName], say: "they type a word only a köşk has; the page reads again after the pause", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      TYPE_MADRASAH_NAME: { guard: "alone and search != 'madrasah'", target: readingKosks, effect: [typedMadrasahName], say: "they type a word only a medrese has", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      TYPE_SHARED_WORD: { guard: "listedSomething and search != 'both'", target: readingKosks, effect: [typedSharedWord], say: "they type a word a köşk and a medrese both have", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      TYPE_UNKNOWN_WORD: { guard: "search != 'nothing'", target: readingKosks, effect: [typedUnknownWord], say: "they type a word nothing has", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      CLEAR_SEARCH: { guard: wordTyped, target: readingKosks, effect: [clearedSearch], say: "they empty the box; a new filter starts at page one", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      CHOOSE_MADRASAH: { guard: "listedSomething and scope == 'all' and search in ['none', 'both']", target: readingKosks, effect: [choseMadrasah], say: "they choose a medrese in the select: the address gets ?madrasah=<id> (a history entry), and the list is that medrese and the köşks it has a hosting right in", source: apps/tedris/features/discover/components/discover-filters.tsx:81 }
+      CHOOSE_ALL: { guard: "scope == 'one'", target: readingKosks, effect: [choseAll], say: "they choose \"Bütün medreseler\": the ?madrasah= leaves the address", source: apps/tedris/features/discover/components/discover-filters.tsx:81 }
+      NEXT_PAGE: { guard: "paged and at == 'first'", target: readingKosks, effect: [nextPage], say: "\"Sonraki\": a plain link to ?page=2 that keeps the word and the medrese; a new document", source: apps/tedris/features/discover/components/discover-page.tsx:58 }
+      PREVIOUS_PAGE:
+        - { guard: "paged and at == 'last'", target: readingKosks, effect: [previousPage], say: "\"Önceki\" on page 2 goes back to page 1 (the address loses ?page=)", source: apps/tedris/features/discover/components/discover-page.tsx:45 }
+        - { guard: "paged and at == 'beyond'", target: readingKosks, say: "\"Önceki\" past the end goes one page down, which is still past the end of a list of two pages (?page=99 gives ?page=98): the person climbs down one page at a time (DSC-13)", source: apps/tedris/features/discover/components/discover-page.tsx:45 }
+      OPEN_PAST_END: { guard: "listedSomething and koskShown and at != 'beyond'", target: readingKosks, effect: [pastTheEnd], say: "they open an address with a page number past the last (an old link, a typed number): the list has the heading and no card (DSC-13)", source: apps/tedris/features/discover/discover-query.ts:28 }
+      OPEN_KOSK: { guard: koskCards, target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "a köşk card is one link: the name leads to /kosks/<id>", source: apps/tedris/features/discover/components/kosk-card.tsx:27 }
+      OPEN_MADRASAH: { guard: madrasahShown, target: madrasah_opened, starts: { flow: tedris.discover.readMadrasah }, say: "a medrese card's name leads to /madrasahs/<id>", source: apps/tedris/features/discover/components/madrasah-card.tsx:28 }
+      OPEN_COURSE: { guard: madrasahShown, target: course_opened, say: "a course listed on a medrese card leads to /courses/<id>", source: apps/tedris/features/discover/components/madrasah-card.tsx:61 }
+      APPLY_FOR_KOSK: { guard: member, target: application_opened, starts: { flow: tedris.discover.applyForKosk }, say: "\"Köşk açma başvurusu\" leads to /kosk-applications/new", source: apps/tedris/features/discover/components/discover-page.tsx:206 }
+      SIGN_IN: { guard: visitor, target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "the link \"giriş yap\" of the invitation goes to /auth/signin with this page as callbackUrl", source: apps/tedris/components/anonymous-invite.tsx:41 }
+      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "the link \"kayıt ol\" goes to /auth/register, which ends on Ana sayfa (no callbackUrl, lib/invite-hrefs.ts:11)", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  emptyResult:
+    title: Nothing matches
+    by: human
+    description: >-
+      The count line says "0 köşk ve 0 medrese" and the page says "Bu aramaya uyan köşk ya da medrese yok."; when a word or a medrese is
+      set a link "Filtreleri temizle" (to "?", which drops every filter: a new document, so the box starts empty and the focus is at
+      the document's start) follows. With no filter set, which only a platform that lists nothing reaches, there is no link. The
+      filters stay above, and the card at the foot (the way to ask for a köşk, or the invitation) is still drawn. A ?madrasah= that is
+      a uuid and no medrese gives this state too, and the select then shows the raw id as its value (BROWSE-2, seen 15 Nov 2026).
+    source: apps/tedris/features/discover/components/discover-page.tsx:141
+    on:
+      CLEAR_FILTERS: { guard: filtered, target: readingKosks, effect: [clearedFilters], say: "\"Filtreleri temizle\": a plain link to \"?\"; the word and the medrese are both dropped", source: apps/tedris/features/discover/components/discover-page.tsx:145 }
+      CLEAR_SEARCH: { guard: wordTyped, target: readingKosks, effect: [clearedSearch], say: "they empty the box and keep the medrese", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      CHOOSE_ALL: { guard: "scope == 'one'", target: readingKosks, effect: [choseAll], say: "they choose \"Bütün medreseler\" and keep the word", source: apps/tedris/features/discover/components/discover-filters.tsx:81 }
+      TYPE_SHARED_WORD: { guard: "listedSomething and search != 'both'", target: readingKosks, effect: [typedSharedWord], say: "they type another word, one that finds something", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
+      APPLY_FOR_KOSK: { guard: member, target: application_opened, starts: { flow: tedris.discover.applyForKosk }, say: "\"Köşk açma başvurusu\" is drawn here too", source: apps/tedris/features/discover/components/discover-page.tsx:206 }
+      SIGN_IN: { guard: visitor, target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "the invitation is drawn here too", source: apps/tedris/components/anonymous-invite.tsx:41 }
+      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "the invitation is drawn here too", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  loadFailed:
+    title: Keşfet could not be read
+    by: human
+    description: >-
+      Under the h1 and its sentence an error box (role alert, no name: its title "Keşfet yüklenemedi" is a paragraph, not a heading)
+      says "Köşkler ve medreseler şu an okunamadı." and holds a link "Yeniden dene" to the same address. The filters, the count, the
+      lists and the card at the foot are gone, so the box is all there is; the page's own status is 200 (a streamed page). When the
+      address is what makes the read fail (BROWSE-1: ?page=99999999999999999999 gives tedrisat's 500), the link fails the same way
+      for ever and the page offers no way to the plain Keşfet. The focus is at the document's start.
+    source: apps/tedris/features/discover/components/discover-page.tsx:103
+    on:
+      RETRY: { target: readingKosks, say: "\"Yeniden dene\" opens the same address again: a new document and a new read, which fails again while what failed still does", source: apps/tedris/features/discover/components/discover-page.tsx:107 }
+      NAVIGATE: { target: left, say: "they go on to another page (the box offers no other)" }
+
+  kosk_opened:
+    type: final
+    title: They open a köşk
+    description: The browser is on /kosks/<id>, which a visitor may read. tedris.discover.readKosk draws it.
+
+  madrasah_opened:
+    type: final
+    title: They open a medrese
+    description: The browser is on /madrasahs/<id>, which a visitor may read. tedris.discover.readMadrasah draws it.
+
+  course_opened:
+    type: final
+    title: They open a course
+    description: >-
+      The browser is on /courses/<id>, the course page. What it shows depends on the person (a visitor reads the intro,
+      tedris.discover.visitorPath; a member the card of their own enrolment, tedris.course.apply and the flows of the course page).
+
+  application_opened:
+    type: final
+    title: They open the form to ask for a köşk
+    description: The browser is on /kosk-applications/new. tedris.discover.applyForKosk draws it.
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to sign in
+    description: >-
+      The browser is on /auth/signin?callbackUrl=<this page with its filters>, which sends it to Keycloak; realm.auth.signIn draws
+      the round trip (entry signInLink) and the person returns to this page, with the follow buttons.
+
+  handed_over.register:
+    type: final
+    title: They go on to register
+    description: The browser is on /auth/register, which opens Keycloak's registration form; realm.auth.register draws it. A new account ends on Ana sayfa, not here.
+
+  left:
+    type: final
+    title: The person leaves Keşfet
+    leavesPage: true
+
+assertions:
+  - id: list-is-never-empty
+    never: "state == 'list' and nothingListed"
+    say: "The list is drawn only when there is a köşk or a medrese to show; otherwise the page says nothing matches"
+    source: apps/tedris/features/discover/components/discover-page.tsx:141
+  - id: empty-only-when-nothing-is-listed
+    never: "state == 'emptyResult' and not nothingListed"
+    say: "The empty state is drawn only when the platform lists nothing or the word finds nothing"
+    source: apps/tedris/features/discover/components/discover-page.tsx:141
+  - id: failure-only-after-a-failed-read
+    never: "state == 'loadFailed' and read == 'ok'"
+    say: "The error box is drawn only after a read failed"
+    source: apps/tedris/features/discover/components/discover-page.tsx:103
+  - id: no-pager-under-one-page
+    never: "state == 'list' and at == 'last' and not paged"
+    say: "The second page is reached only from a pager, and a pager is drawn only when the köşks fill more than one page"
+    source: apps/tedris/features/discover/components/discover-page.tsx:39
+  - id: application-link-is-a-members
+    never: "state == 'application_opened' and viewer == 'visitor'"
+    say: "A visitor is given no way to ask for a köşk: the page draws the invitation to sign in instead"
+    source: apps/tedris/features/discover/components/discover-page.tsx:203
+  - id: invitation-is-a-visitors
+    never: "state in ['handed_over.sign_in', 'handed_over.register'] and viewer == 'member'"
+    say: "A member is given no invitation to sign in or register"
+    source: apps/tedris/features/discover/components/discover-page.tsx:203

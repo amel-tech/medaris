@@ -1,0 +1,139 @@
+# tedris.discover.readMadrasah on the local stack: the medrese page (tedris-web, :4000) of the seeded medrese "Hadis ve Siyer
+# Medresesi", read by a talebe who holds a seat and an application in two of its courses (the main story), by a visitor with no
+# account, and at an address that matches no medrese.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/readMadrasah \
+#     --bind graphs/tedris/discover/readMadrasah/binding.yaml --main --to handed_over.sign_in --to notFoundPage --out <dir>
+# Without --absent on purpose: an exit state has no nodes, so --absent checks this page's nodes against the page the walk leaves for, and a
+# card's heading, a heading named like the medrese and "Köşkler" are on Keşfet and on the köşk page too (probed on the stack: 3 to 10 hits
+# there, none of them a defect). What a page must not show (the badge, the invitation, the hint of the other viewer) is drawn as nodes in
+# both states with a `when`, which the replay checks hidden with or without --absent.
+#
+# What each scenario starts from (the stack's seed, STACK.md; the medrese has two listed courses, both of the köşk "Süleymaniye Köşkü",
+# both with a celse ahead, neither in person; its başmüderris has signed in so the name is drawn, and teaches none of the courses):
+#   member   (the main story)  applicantA, a spare talebe with no seat anywhere. `setup` gives her the two seats the e2e fixture gives its
+#            talebe (madrasah#6): she applies to "Bina ve İzhar Şerhi", which takes anyone (ENROLLED: "Devam ediyor"), and to "İsâgûcî ile
+#            Mantığa Giriş", which asks for approval (PENDING: "Onay bekliyor"), through tedrisat's API (helpers/apply.mjs). `teardown` takes
+#            both away and clears her mail (taking a seat makes tedrisat's invitation sweep mail her). The walk comes in through Keşfet
+#            (the nav entry discover->madrasah), reads the page and opens the first course.
+#   visitor  nobody signed in (no `as`, so nothing signs in): the page with the hint "Medresenin bütün dersleri", no badge and the invitation.
+#            Reached through Keşfet as well. The walk presses "giriş yap".
+#   unknown  nobody signed in, at an address that matches no medrese: the not-found page, and on the wire a 404 for it and for `abc`.
+# Nothing the walk makes outlives it.
+#
+# `effects`, run after a step, read the wire and not the screen:
+#   getMadrasahOverview  after the overview read: page-check.mjs reads the visitor's page twice (HTML and flight payload) and fails if either
+#                        holds a meeting link or the başmüderris's account id (madrasah#2; the finding overview-exposes-head-id)
+#   answers404           the 404 of an unknown id and of a malformed one (madrasah#5, anonymous#16)
+#
+# Not walked, and not walkable on this stack: `read: failed` and `overviewFailed` (tedrisat answers every read, so no read fails), `read: absent`
+# for a hidden medrese (hiding one is another flow's), `listing: none` (the seeded medrese has courses; making one without is nizam's flow),
+# `head: unnamed` (the seeded başmüderris has signed in), `celse: none`, `place: inPerson` (no seeded course is held in person), and
+# `viewer: member` with no badge (the seeded OTHER holds no seat, but the main story and the visitor's already cover the two ends).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.readMadrasah
+
+# What the heading, the breadcrumb's last item and the side list's name are matched against: the seeded medrese's own name.
+samples:
+  name: '{seed.titles.madrasah}'
+
+scenarios:
+  member:
+    given: { viewer: seatHolder, read: ok, listing: courses, head: named, celse: planned, place: online }
+    as: applicantA
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'discover->madrasah' }
+    vars:
+      madrasah: '{seed.madrasah}'
+      madrasahName: '{seed.titles.madrasah}'
+      cards: 2 # the two listed courses
+      badges: 2 # one "Devam ediyor", one "Onay bekliyor"
+      koskCards: 1
+    setup:
+      - { run: [node, helpers/apply.mjs, applicantA, '{seed.courses.open}'], expect: 'apply APPLICANT_A' }
+      - { run: [node, helpers/apply.mjs, applicantA, '{seed.courses.approval}'], expect: 'apply APPLICANT_A' }
+    teardown:
+      - { run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}'] }
+      - { run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}'] }
+      - { run: [node, helpers/mail.mjs, clear, 'to:{address}'] }
+  visitor:
+    given: { viewer: visitor, read: ok, listing: courses, head: named, celse: planned, place: online }
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'discover->madrasah' }
+    vars:
+      madrasah: '{seed.madrasah}'
+      madrasahName: '{seed.titles.madrasah}'
+      cards: 2
+      badges: 0
+      koskCards: 1
+  unknown:
+    given: { viewer: visitor, read: absent, listing: courses, head: named, celse: planned, place: online }
+    open: '{tedris}/madrasahs/00000000-0000-4000-8000-000000000001'
+    vars:
+      madrasah: '00000000-0000-4000-8000-000000000001'
+      madrasahName: '{seed.titles.madrasah}'
+      cards: 0
+      badges: 0
+      koskCards: 0
+
+events:
+  NAVIGATE:
+    - goto: '{tedris}/discover'
+
+states:
+  readByVisitor: { url: '{tedris}/madrasahs/{madrasah}' }
+  readByMember: { url: '{tedris}/madrasahs/{madrasah}' }
+  notFoundPage: { url: '{tedris}/madrasahs/*' }
+  course_opened: { url: '{tedris}/courses/*' }
+  kosk_opened: { url: '{tedris}/kosks/*' }
+  discover_opened: { url: '{tedris}/discover**' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: '{tedris}/discover**' }
+
+effects:
+  getMadrasahOverview:
+    - run: [node, ../tedris/discover/readMadrasah/page-check.mjs, visitor]
+      expect: 'page-check visitor ok'
+  answers404:
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/madrasahs/00000000-0000-4000-8000-000000000001']
+      expect: 'HTTP/1.1 404'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/madrasahs/abc']
+      expect: 'HTTP/1.1 404'
+
+# Where role and name cannot find a node. The cards are data (a title, a köşk, a time), so they are found by the kit's own classes, and where
+# the graph says which words a node may hold the pattern is spelled here; a name that is the medrese's is the sample above.
+nodes:
+  # <main>; the page it leaves for (a course, a köşk) has a <main> of its own, so the notice every variant carries names this one
+  madrasahPage: { role: main, hasText: 'Her dersin kendi hocaları vardır' }
+  # the course page and the köşk page have a breadcrumb and a side card too (an exit state is checked with --absent, so the landmarks of this page
+  # must not be found on the page the walk leaves for): the breadcrumb is found by this medrese's name in it, the side card by its own words
+  breadcrumb: { role: navigation, name: Sayfa yolu, hasText: '{madrasahName}' }
+  aside: { role: complementary, hasText: '/Derslerini açtığı köşkler|Bu medresenin \d+ dersinde hoca/' }
+  # the top bar has a "Keşfet" link too
+  breadcrumbDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: 'nav.mds-breadcrumb .mds-breadcrumb__current', hasText: '{madrasahName}' }
+  eyebrow: { css: 'main p.mds-eyebrow', hasText: Medrese }
+  coursesCount: { css: 'main p.mds-body-sm > span:first-child', hasText: '/^\d+ ders/' }
+  headLine: { css: 'main p.mds-body-sm > span:nth-child(2)', hasText: '/^Başmüderris /' }
+  about: { css: 'main .mds-reading > p:not(:last-child)' }
+
+  courseTitle: { css: 'h3.mds-card__title', count: '{cards}' }
+  courseLink: { css: 'h3.mds-card__title a.mds-card__link[href^="/courses/"]', count: '{cards}' }
+  statusBadge: { css: '.mds-card__header .mds-badge', hasText: '/^(Devam ediyor|Onay bekliyor|Tamamlandı)$/', count: '{badges}' }
+  inPersonBadge: { css: '.mds-card__body .mds-badge', hasText: Yüz yüze }
+  hocaLine: { css: '.mds-card__body > p', count: '{cards}' }
+  koskLink: { css: '.mds-card__footer a[href^="/kosks/"]', count: '{cards}' }
+  nextCelse: { css: '.mds-card__footer > span:last-child', hasText: '/^Sonraki celse/', count: '{cards}' }
+  nextCelseTime: { css: '.mds-card__footer time', hasText: '/^(Paz|Pzt|Sal|Çar|Per|Cum|Cmt) \d{2}:\d{2}$/', count: '{cards}' }
+  noNextCelse: { css: '.mds-card__footer > span:last-child', hasText: Planlı celse yok }
+
+  invite: { css: 'section[aria-labelledby=madrasah-courses] > p.mds-body-sm', hasText: Bir derse başvurmak için }
+  inviteSignIn: { css: 'section[aria-labelledby=madrasah-courses] a[href^="/auth/signin?callbackUrl="]' }
+  inviteRegister: { css: 'section[aria-labelledby=madrasah-courses] a[href="/auth/register"]' }
+
+  headName: { css: 'aside p.mds-body' }
+  headCount: { css: 'aside p.mds-caption', hasText: '/^Bu medresenin \d+ dersinde hoca$/' }
+  koskAsideLink: { css: 'aside ul a[href^="/kosks/"]', count: '{koskCards}' }
+  koskAsideCourse: { css: 'aside ul span.mds-caption', count: '{cards}' }

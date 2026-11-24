@@ -32,7 +32,7 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   // the page's language, which the root layout writes on <html> (MDRS-248)
-  document.documentElement.lang = "en";
+  document.documentElement.lang = "tr";
 });
 
 afterEach(() => {
@@ -46,7 +46,7 @@ describe("sendToSignIn", () => {
     const { sendToSignIn } = await import("~/lib/send-to-sign-in");
     expect(sendToSignIn(signedOut)).toBe(true);
     expect(assign).toHaveBeenCalledWith(
-      `/api/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1?tab=sorularim#q1")}&locale=en`
+      `/api/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1?tab=sorularim#q1")}&locale=tr`
     );
   });
 
@@ -55,7 +55,7 @@ describe("sendToSignIn", () => {
     const { sendToSignIn } = await import("~/lib/send-to-sign-in");
     expect(sendToSignIn({ ...signedOut, reauth: true })).toBe(true);
     expect(assign).toHaveBeenCalledWith(
-      `/api/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1")}&locale=en&reauth=1`
+      `/api/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1")}&locale=tr&reauth=1`
     );
   });
 

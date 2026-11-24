@@ -1,0 +1,58 @@
+# What tedris.learning.schedule's bindings share: the address of each exit, the events no node sends, the samples, and where role and
+# name cannot find a node of Programım (or would find several). It carries no scenario, so it is not walked by itself:
+#   binding.yaml        the seeded talebe (the main story: the seed's three courses, celses all still to come, two windows) and a
+#                       spare talebe in no course (the week with no celse)
+#   binding.mixed.yaml  a spare talebe in a course of the walk's own that holds every look a row has (schedule-data.mjs)
+# The scenarios are in files of their own because `--to <state>` takes the shortest way from the first scenario that reaches the state,
+# and `week` is the same state for the seed's talebe and for the one with the mixed course.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learning.schedule
+
+browser: { width: 1280, height: 900 }
+
+samples:
+  zone: İstanbul # the page always says Istanbul (DSC-16)
+
+events:
+  # a person types an address whose ?from= is not a day ahead of today (e2e schedule#4): "bugün" is no date
+  OPEN_BAD_DAY: [{ goto: '{tedris}/schedule?from=bugün' }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  # RETRY (the failed-read box's "Yeniden dene") is not bound: the stack has no way to make the read fail
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. The menu of a row opens on the page itself.
+  week: { url: '{tedris}/schedule**' }
+  emptyWeek: { url: '{tedris}/schedule**' }
+  celse_opened: { url: '{tedris}/courses/*/lessons/*' }
+  calendar_menu_opened: { url: '{tedris}/schedule**' }
+  account_opened: { url: '{tedris}/account' }
+  subscription_opened: { url: '{tedris}/account/calendar' }
+  left: { url: '{tedris}/home' }
+
+# Where role and name cannot find a node. The page's <main> is found by its subtitle, because the celse page the walk leaves for has a
+# <main> of its own. The rows are data (a course, a celse, a clock), so they are found by the kit's classes and the page's own
+# hooks (data-testid on the exam badge and on the cancellation note), and where the graph says which words a node may hold
+# (`oneOf`) by a pattern of those words: the engine finds a `oneOf` node by its first word only.
+nodes:
+  schedulePage: { role: main, hasText: 'Kayıtlı olduğun derslerin' }
+  zoneNote: { css: 'main p.mds-caption', hasText: 'Saatler İstanbul saatiyle.' }
+  dayGroup: { css: 'main section[aria-labelledby^=day-]' }
+  dayTitle: { css: 'main section[aria-labelledby^=day-] h2' }
+  dayWords: { css: 'main section[aria-labelledby^=day-] > div > span.mds-caption', hasText: '/^(Bugün|Yarın|Öbür gün|\d+ gün sonra)$/' }
+  dayList: { css: 'main section[aria-labelledby^=day-] ul' }
+  rowItem: { css: 'main section[aria-labelledby^=day-] li' }
+  rowClock: { css: 'main li time', hasText: '/^\d{2}:\d{2}$/' }
+  rowLength: { css: 'main li > div:first-child > span.mds-caption', hasText: '/^\d+ dk$/' }
+  rowCourse: { css: 'main li p.mds-caption > bdi' }
+  rowWeek: { css: 'main li p.mds-caption', hasText: '/Hafta \d+/' }
+  rowTitle: { css: 'main li a.mds-h4' }
+  examBadge: { testId: exam-badge }
+  cancelNoteWhole: { testId: cancel-note, hasText: '/^Hocanın notu: /' }
+  cancelNoteNone: { testId: cancel-note, hasText: 'Bu celse iptal edildi.' }
+  rowLine: { css: 'main li div.min-inline-0 > p', hasText: '/^(Toplantı bağlantısı henüz eklenmedi\.|Bu celse yüz yüze|Bu celse YouTube|Zoom|Google Meet|Jitsi Meet|YouTube|Google Drive|Bilinmeyen platform)/' }
+  badgeScheduled: { css: 'main li span.mds-badge--secondary', hasText: 'Planlandı' }
+  badgeEnded: { css: 'main li span.mds-badge--secondary', hasText: 'Sona erdi' }
+  badgeCancelled: { css: 'main li span.mds-badge--outline', hasText: 'İptal edildi' }
+  badgeLive: { css: 'main li span.mds-badge--live', hasText: 'Şu an canlı' }

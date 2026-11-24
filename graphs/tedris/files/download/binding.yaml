@@ -1,0 +1,95 @@
+# tedris.files.download on the local stack (graphs/README.md, "The stack and the bindings"): the course page and a celse's page of a course of its
+# own, read by the spare talebe `applicantG`, who follows the file links and is told that storage does not answer, and by a visitor.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/tedris/files/download \
+#     --bind graphs/tedris/files/download/binding.yaml --to celseListed --to courseListed --to namesOnly --absent --out <dir>
+# (without `--to` the replay would take the flow's main story, which needs a file to be saved: see below). The 403 walks are binding.forbidden.yaml.
+#
+# NOT RUN in the writing phase: nothing below has been replayed. Every claim about what a page does is read from the code and marked so.
+#
+# Data. Each scenario's `setup` makes a published course of its own (helpers/course.mjs make filesdl: the second köşk, one week of two celses,
+# tomorrow and in three days at 21:00 Istanbul, anyone takes a seat) with applicantG holding a seat in it, then files-data.mjs gives it the two
+# links, the three files and the homework the flow reads, and `teardown` takes them away before the course (files-data.mjs down, then
+# course.mjs remove filesdl, which also clears the seat's mail and the notifications). Both are idempotent. The seeded courses and every other
+# account are never touched. The file rows are SQL because the stack has no storage and so no API can make one; they name no object, so every
+# download answers 503 STORAGE_NOT_CONFIGURED, which is the refusal the flow walks (files-data.mjs says why in full).
+#
+# Scenarios.
+#   celseUnavailable (the celse page, entered through the nav from the course page's "Derse devam et") the three file links of a celse's page:
+#                    its own file, the course's under "Ders geneli" and the homework's, each answered 503, the 303 coming back with
+#                    ?fileError=unavailable and the toast "Dosya indirilemedi" with "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene."
+#   courseUnavailable the course page's file link, the same answer; the page comes back on Müfredat (FILES-3)
+#   visitor          nobody signed in: opens the course page, reads the names (plain rows, "Kaynakları derse kayıtlı talebeler açar.") and, with
+#                    curl, what the routes tell a visitor who has an address
+#
+# Not walked, and why:
+#   - the main story (a file saved, `answer: saved`): the stack has no storage, so a download never succeeds. The success of the route is read
+#     only by the unit specs and tedrisat's e2e (needs.yaml names them).
+#   - `fileGone` and `pageGone`: the service asks the store first, so locally 503 comes before 404; a hidden course is the other way to a 404
+#     and is not made here.
+#   - `signedOut`: the walk cannot end the web session of the browser it drives (the route's redirect is read with curl as a visitor instead).
+#   - `failed`: no refusal of this stack is none of the four.
+#   - the links that open a new tab (OPEN_COURSE_LINK, OPEN_OWN_LINK) are bound but not on a story: the replay presses the link and does not
+#     follow the tab.
+schema: delurio-graph/0
+kind: binding
+extends: files.common.binding.yaml
+flow: tedris.files.download
+
+scenarios:
+  # Open: the course page, then the next celse by the card's "Derse devam et" (the way the nav graph's goal takes, one click).
+  celseUnavailable:
+    given: { view: celseSeat, answer: unavailable }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    setup:
+      - run: [node, helpers/course.mjs, make, filesdl, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS, --talebe, applicantG]
+        expect: '"tag":"filesdl"'
+      - run: [node, ../tedris/files/download/files-data.mjs, up]
+        expect: 'files-data up'
+    teardown:
+      - run: [node, ../tedris/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, filesdl]
+        expect: 'course remove filesdl'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+
+  # Open: the course page itself.
+  courseUnavailable:
+    given: { view: courseSeat, answer: unavailable }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, filesdl, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS, --talebe, applicantG]
+        expect: '"tag":"filesdl"'
+      - run: [node, ../tedris/files/download/files-data.mjs, up]
+        expect: 'files-data up'
+    teardown:
+      - run: [node, ../tedris/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, filesdl]
+        expect: 'course remove filesdl'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+
+  # Open: the course page with no session. `answer` stands for what a visitor who was given a file's address meets (signedOut); no link of
+  # the page leads there, so the walk reads it with curl in the effect of the arrival, not through a click.
+  visitor:
+    given: { view: courseNames, answer: signedOut }
+    open: '{tedris}/courses/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, filesdl, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --hoca, MUDERRIS, --talebe, applicantG]
+        expect: '"tag":"filesdl"'
+      - run: [node, ../tedris/files/download/files-data.mjs, up]
+        expect: 'files-data up'
+    teardown:
+      - run: [node, ../tedris/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, filesdl]
+        expect: 'course remove filesdl'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantG, clear]

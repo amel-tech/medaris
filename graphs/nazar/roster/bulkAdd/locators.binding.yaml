@@ -1,0 +1,100 @@
+# What the bindings of nazar.roster.bulkAdd share: the data sources, the events no node sends alone, the places each exit opens, the locators
+# role and name cannot find, and the checks of what a list leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml            the walks that need no change of a grant: mixed, added, unmatched, many, closed
+#   binding.forbidden.yaml  a ders nazırı loses enrollment.decide between the page and the press (AUTHZ_FORBIDDEN); a file of its own because
+#                           the loss is a `before` of the state and would run in every walk of a file that holds the others
+#   binding.noButton.yaml   a ders nazırı with enrollment.complete only reads the page and has no button; it adds no transition, so it is
+#                           walked on its own (see "binding.yaml" for the command)
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/enrolments, libs/ui/src/mds) and is unverified until a walk.
+#
+# Variables a scenario gives (`vars`; none is named `address` or `password`, which are the signed-in account's own):
+#   typed   the text put in the box of addresses (separators of every kind, a repeat, a name that is no address, an address with no account)
+#   seats   what the course must hold afterwards, `KEY=STATUS,KEY=STATUS` as bulk.mjs seats reads it
+#
+# The toasts are found by their class and text, not by role: the dialog is modal, Base UI marks everything outside it aria-hidden, and the
+# Toaster's region is outside it (BULK-1), so a role query would not see them while the dialog is open.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.roster.bulkAdd
+
+data:
+  made: { json: ../.local/made/bulkadd.json } # written by helpers/course.mjs make bulkadd
+  many: { json: ../.local/made/bulkadd-many.json } # written by bulk.mjs many: {"list": 501 distinct addresses, one a line}
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE_LIST:
+    - fill: { role: textbox, name: E-posta adresleri, value: '{typed}' }
+  CLEAR_LIST:
+    - fill: { role: textbox, name: E-posta adresleri, value: '' }
+  # the page of the course's Genel bakış, where the müderris lands from the menu's "Genel bakış"
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  roster: { url: '{nazar}/ders/*/talebeler' }
+  refreshed: { url: '{nazar}/ders/*/talebeler' }
+  # an exit with no nodes: its address is all the replay can check. `*` is one path segment.
+  left: { url: '{nazar}/ders/*' }
+  # the send is a Next server action: a POST to the page's own address, held while the busy screen is checked; a server action answers 200
+  # whatever it decides, so the HTTP status of a FAIL walk is not compared (it may need `call` taken off at the first walk)
+  sending: { call: '{nazar}/ders/*/talebeler**' }
+
+nodes:
+  # ---- the page ---------------------------------------------------------------------------------------------------------------------------
+  rosterPage: { role: main, hasText: Talebeler }
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  tabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  tabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+
+  # ---- the dialog -------------------------------------------------------------------------------------------------------------------------
+  # the eyebrow is the course's name; the page behind says it too, so it is found by its class inside the dialog
+  dialogEyebrow: { css: '.mds-dialog .mds-eyebrow', hasText: Deneme dersi bulkadd }
+  # the header's icon and the footer's "Kapat" are both named "Kapat" (F-D1-07), so each is found by where it sits
+  closeIcon: { css: '.mds-dialog__close' }
+  closeIconAnswer: { css: '.mds-dialog__close' }
+  closeButton: { role: button, name: Kapat, within: { css: '.mds-dialog__footer' } }
+  cancel: { role: button, name: Vazgeç, within: { css: '.mds-dialog__footer' } }
+  # "Ekle" is also a part of the opener's name ("Toplu talebe ekle"), so the submit is found inside the footer
+  submit: { role: button, name: Ekle, within: { css: '.mds-dialog__footer' } }
+  # the counter says how many distinct addresses the list holds, which depends on what was typed
+  counter: { testId: bulk-count, hasText: '/^\d+ adres$/' }
+  tooManyError: { text: '/En fazla 500 adres ekleyebilirsiniz; listede \d+ adres var\./' }
+  # the busy button's hidden <output>
+  busy: { css: '.mds-dialog__footer output', hasText: Yükleniyor }
+
+  # ---- the answer -------------------------------------------------------------------------------------------------------------------------
+  outcomesList: { testId: bulk-outcomes }
+  lineEnrolled: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/talebe eklendi$/' }
+  lineApproved: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/başvuru onaylandı$/' }
+  lineAlready: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/zaten kayıtlı$/' }
+  lineNotFound: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/adresle hesap bulunamadı$/' }
+  lineInvalid: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/adres e-posta adresi değil$/' }
+  lineSkipped: { role: listitem, within: { testId: bulk-outcomes }, hasText: '/adres atlandı$/' }
+  skippedList: { role: list, within: { testId: bulk-skipped } }
+  skippedLine: { role: listitem, within: { testId: bulk-skipped }, hasText: '/: Dersi tamamlamış$/' }
+
+  # ---- the toasts: the same title for every refusal, told apart by the body ---------------------------------------------------------------------
+  toastCopied: { css: '.mds-toast', hasText: Adresler kopyalandı }
+  toastCopyFailed: { css: '.mds-toast', hasText: Kopyalanamadı }
+  toastForbidden: { css: '.mds-toast', hasText: Bunu yapma izniniz yok. }
+  toastClosed: { css: '.mds-toast', hasText: ders taslakta ya da gizli }
+  toastDirectory: { css: '.mds-toast', hasText: Hesaplar şu an aranamıyor }
+  toastFailed: { css: '.mds-toast', hasText: Bir şeyler ters gitti }
+  toastClose: { css: '.mds-toast__close' }
+
+# What a list leaves outside the screen, read as each talebe: the seats the answer told. `seats` is the scenario's. A refused list leaves
+# every seat as it was (nothing is written before every lookup is made, and a refused course takes nothing).
+effects:
+  bulkEnroll:
+    - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, seats, --course, '{made.course}', '{seats}']
+      expect: seats ok
+  closedToast:
+    - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, seats, --course, '{made.course}', '{seats}']
+      expect: seats ok
+  forbiddenToast:
+    - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, seats, --course, '{made.course}', '{seats}']
+      expect: seats ok

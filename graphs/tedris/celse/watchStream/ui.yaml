@@ -1,0 +1,88 @@
+# The screens of tedris.celse.watchStream: tedris-web's watch page of a celse (/courses/<id>/lessons/<id>/izle, features/courses/components/
+# watch-view.tsx and watch-page.tsx) with a stream to watch, in its three looks: the stream called live (YouTube's player, YouTube's own chat, and
+# for a talebe the notes), the stream the player has said ended (the chat gone, "Soru sor" over the notes), and a stream that has no frame.
+# The recording's own page is the same component with a recording (tedris.celse.watchRecording); the panels' inside (the note form, the question form
+# and their lists) are tedris.learn.notes and tedris.learn.questions, drawn here only as the region and its heading.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
+# `tedrisLearn.<key>`: `WatchPage.*`, `RecordingRelease.*`, `LessonNotes.title`) or tedris.json (`tedris.<key>`: `SessionPage.liveChat*`, the chat
+# panel is shared with the celse page's namespace), the key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are
+# what the code writes from messages and data, with their placeholders:
+#   composed.WatchPage.backName        WatchPage.backSr ("Derse dön: ", a visually hidden span) and the course's title        watch-view.tsx:225-232
+#   composed.WatchPage.chatPopoutName  SessionPage.liveChatPopout, a space and SessionPage.liveChatNewTab (hidden)            live-chat.tsx:80-85
+# `changes` is not written: the flow only reads (getCourse and getSession are GETs; nothing the page does changes data, the notes' and the questions'
+# writes belong to the flows that own them).
+# Samples are invented and neutral; the binding gives the walk's own titles where it needs the real ones.
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.watchStream
+flow: tedris.celse.watchStream
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Örnek ders
+  week: "1"
+  title: Örnek celse
+  minutes: "14"
+  day: 18 Kasım Çarşamba
+  time: 21:00’de
+
+nodes:
+  # ---- the page and its header row, in every look ----
+  watchPage: { type: page, component: Page, role: main, in: [streamLive, streamEnded, streamUnframed], source: apps/tedris/features/courses/components/watch-view.tsx:223 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set); the celse's own page has a <main> too, so a replay finds this one by the player section inside it
+  backLink: { type: action, component: LinkButton, role: link, name: { key: composed.WatchPage.backName, params: { course: course } }, in: [streamLive, streamEnded, streamUnframed], emits: OPEN_COURSE, source: apps/tedris/features/courses/components/watch-view.tsx:225 } # <a href="/courses/<id>">: an arrow, the hidden "Derse dön: " and the course's title; a full page load
+  pageHeading: { type: text, component: Heading, role: heading, text: { key: WatchPage.heading, params: { week: week, title: title } }, in: [streamLive, streamEnded, streamUnframed], source: apps/tedris/features/courses/components/watch-view.tsx:233 } # h1
+  liveBadge: { type: text, component: Text, text: { key: WatchPage.liveBadge, params: { minutes: minutes } }, in: [streamLive, streamUnframed], source: apps/tedris/features/courses/components/watch-view.tsx:149 } # a red badge; "Canlı" alone (liveBadgeShort) for a celse with no start; minutes since the scheduled start, never capped (CLS-08)
+  endedBadge: { type: text, component: Text, text: { key: WatchPage.endedBadge }, in: [streamEnded], source: apps/tedris/features/courses/components/watch-view.tsx:155 }
+  liveAnnouncer: { type: status, component: Status, text: { key: WatchPage.liveBadgeShort }, in: [streamLive, streamUnframed], source: apps/tedris/features/courses/components/watch-view.tsx:245 } # span.mds-visually-hidden[aria-live=polite], no role: the page's one live region; it speaks the phase, not the minute counter
+  endedAnnouncer: { type: status, component: Status, text: { key: WatchPage.endedBadge }, in: [streamEnded], source: apps/tedris/features/courses/components/watch-view.tsx:246 }
+  releaseNote: { type: text, component: Text, text: { key: RecordingRelease.opens, params: { day: day, time: time } }, in: [streamLive, streamEnded, streamUnframed], when: recordingHeld, source: apps/tedris/features/courses/components/watch-view.tsx:237 } # a clock icon and "Ders kaydı {day} {time} açılır." (MDRS-288); a second line with the course's zone appears when the viewer's clock differs (out of view)
+  detailsLink: { type: action, component: LinkButton, role: link, text: { key: WatchPage.details }, in: [streamLive, streamEnded, streamUnframed], emits: OPEN_DETAILS, source: apps/tedris/features/courses/components/watch-view.tsx:249 } # <a href="/courses/<id>/lessons/<id>">, ms-auto: the far end of the row
+
+  # ---- the player card: a frame (or its placeholder), a title and one line ----
+  playerSection: { type: page, component: Page, role: region, name: { labelledBy: playerTitle }, in: [streamLive, streamEnded, streamUnframed], source: apps/tedris/features/courses/components/media-player.tsx:61 }
+  playerTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.streamTitle }, in: [streamLive, streamEnded, streamUnframed], source: apps/tedris/features/courses/components/media-player.tsx:92 } # h2, under the frame in the DOM
+  streamFrame: { type: page, component: Page, name: { key: WatchPage.streamTitle }, in: [streamLive, streamEnded], source: apps/tedris/features/courses/components/media-player.tsx:64 } # <iframe id="watch-frame" src="https://www.youtube.com/embed/<id>?enablejsapi=1" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups">; its title is "Canlı yayın" in the HTML and YouTube's player script rewrites it to the video's title once it has attached (WATCH-1), so a replay finds it by its id
+  livePlayerLine: { type: text, component: Text, text: { key: WatchPage.streamLiveText }, in: [streamLive, streamUnframed], source: apps/tedris/features/courses/components/watch-view.tsx:175 } # drawn for any stream called live, with a chat or not (WATCH-2)
+  endedPlayerLine: { type: text, component: Text, text: { key: WatchPage.streamEndedText }, in: [streamEnded], when: noneHeld, source: apps/tedris/features/courses/components/watch-view.tsx:178 } # "Ders kaydı eklenince burada oynar." (WATCH-3)
+  endedPlayerLineHeld: { type: text, component: Text, text: { key: WatchPage.streamEndedHeldText }, in: [streamEnded], when: recordingHeld, source: apps/tedris/features/courses/components/watch-view.tsx:177 }
+  framePlaceholder: { type: text, component: Text, text: { key: WatchPage.streamPlaceholder }, in: [streamUnframed], source: apps/tedris/features/courses/components/media-player.tsx:76 } # a play icon over the words, in the frame's place
+  openStream: { type: action, component: LinkButton, role: link, text: { key: WatchPage.streamOpen }, in: [streamUnframed], emits: OPEN_STREAM, source: apps/tedris/features/courses/components/media-player.tsx:78 } # target=_blank rel=noopener noreferrer, to the stored address; an outline button with an external-link icon; nothing says it opens a new tab
+
+  # ---- the side column: its name says what is in it ----
+  asideLive: { type: page, component: Page, role: complementary, name: { key: WatchPage.sideLive }, in: [streamLive], when: isTalebe, source: apps/tedris/features/courses/components/watch-view.tsx:263 } # a talebe, chat and notes
+  asideChatOnly: { type: page, component: Page, role: complementary, name: { key: WatchPage.chatTab }, in: [streamLive], when: isReader, source: apps/tedris/features/courses/components/watch-view.tsx:265 } # a reader, the chat only: this name is the chat's own again (WATCH-4)
+  asideQuestions: { type: page, component: Page, role: complementary, name: { key: WatchPage.sideQuestions }, in: [streamEnded, streamUnframed], when: isTalebe, source: apps/tedris/features/courses/components/watch-view.tsx:265 } # a talebe once the chat is gone; a reader has no column then
+
+  # ---- the chat: YouTube's own, in a frame (no Medaris chat API, nothing polled) ----
+  chatSection: { type: page, component: Page, role: region, name: { labelledBy: chatTitle }, in: [streamLive], source: apps/tedris/features/courses/components/live-chat.tsx:68 }
+  chatTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.liveChatTitle }, in: [streamLive], source: apps/tedris/features/courses/components/live-chat.tsx:73 } # h2
+  chatPopout: { type: action, component: LinkButton, role: link, name: { key: composed.WatchPage.chatPopoutName }, text: { key: SessionPage.liveChatPopout }, in: [streamLive], emits: OPEN_POPOUT, source: apps/tedris/features/courses/components/live-chat.tsx:78 } # target=_blank, to https://www.youtube.com/live_chat?is_popout=1&v=<id>; the hidden " (yeni sekmede açılır)" is in its name
+  chatFrame: { type: page, component: Page, name: { key: SessionPage.liveChatTitle }, in: [streamLive], source: apps/tedris/features/courses/components/live-chat.tsx:93 } # <iframe title="Canlı sohbet" src="https://www.youtube.com/live_chat?v=<id>&embed_domain=<host>">, mounted after hydration; what it shows is YouTube's
+
+  # ---- the two panels of a talebe: only their region and heading are this flow's ----
+  questionsSection: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [streamEnded, streamUnframed], when: isTalebe, source: apps/tedris/features/courses/components/lesson-questions.tsx:69 } # tedris.learn.questions; mounted when the chat is not shown, kept mounted but hidden when the chat is back
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.questionsTitle }, in: [streamEnded, streamUnframed], when: isTalebe, source: apps/tedris/features/courses/components/lesson-questions.tsx:74 } # h2
+  notesSection: { type: page, component: Page, role: region, name: { labelledBy: notesTitle }, in: [streamLive, streamEnded, streamUnframed], when: isTalebe, source: apps/tedris/features/courses/components/lesson-notes.tsx:154 } # tedris.learn.notes
+  notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [streamLive, streamEnded, streamUnframed], when: isTalebe, source: apps/tedris/features/courses/components/lesson-notes.tsx:160 } # h2
+
+edges:
+  - { labelledBy: [playerSection, playerTitle] }
+  - { labelledBy: [chatSection, chatTitle] }
+  - { labelledBy: [questionsSection, questionsTitle] }
+  - { labelledBy: [notesSection, notesTitle] }
+
+rules:
+  - { id: CLS-06, rule: "On a phone CSS `order` (max-md:order-1/2/3, watch-view.tsx:224-264) puts the video first, the header row second and the panels third while the DOM and the tab order are the back link, the h1, the badge, \"Celse ayrıntıları\", the video, the column (WCAG 1.3.2, 2.4.3). Below 768 px the two panels are two toggle buttons in a fieldset. Not walked: the walk is a desktop window. Fix: put the player first in the DOM and move the header row with CSS." }
+  - { id: CLS-08, rule: "The page starts as live whatever the clock says (watch-view.tsx:131) and only YouTube's player can end that: the badge says \"Canlı · n dk\" and the chat stays for as long as the player has said nothing. Measured on the stack: the player's frame showed a spinner and never played, and the badge kept saying \"Canlı\" and counting minutes since the scheduled start with no cap (the API sends the link up to 24 hours after the scheduled end, recording.ts:223-238, so a celse that ended hours ago is still \"Canlı · 300 dk\"). A stream with no frame is live forever. Fix: start the phase unknown, show \"Canlı\" after a player event and cap the minutes at the scheduled end. Decision D1." }
+  - { id: CLS-13, rule: "izle/page.tsx:2,24 calls the uncached `getCourse` while the segment's layout reads the course with the per-request cache (`loadCourse`, layout.tsx:25), so GET /courses/:id is made twice for each load of this page, as on the celse's page. Not an accessibility finding; recorded in the description of `readingCourse`. Fix: use `loadCourse` in the page." }
+  - { id: focus-not-set, rule: "The watch page sets no initial focus (no autoFocus and no focus() in watch-view.tsx, watch-page.tsx, live-chat.tsx, media-player.tsx), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Recorded so the silence is not read as an omission. After PLAYER_ENDED the chat frame, which may hold the focus, is unmounted and the focus falls to the document; nothing else moves it. Not measured: the player cannot be driven here." }
+  - { id: WATCH-1, rule: "The stream's frame is rendered with title=\"Canlı yayın\" (media-player.tsx:64-70), the name of the card above it, but YouTube's IFrame Player API, which the page attaches to this frame to hear the player (youtube-player.ts:100), rewrites the frame's title once it has loaded: measured on the stack, \"Canlı yayın\" in the HTML and \"Me at the zoo\" (the video's own title) four seconds after, \"YouTube video player\" (English) for a video that could not load. The same happens to a talebe's YouTube recording frame, which also gets the API. So the player's accessible name is YouTube's, not Medaris's, and it is not translated. Fix: set the title again after the API is attached (`frame.title = ...` in `attach`), or accept the video's title and say so. Proposed id; not in the inventory." }
+  - { id: WATCH-2, rule: "The line under the player, \"Soru sormak için canlı sohbete yaz.\", is drawn for any stream the page calls live (watch-view.tsx:173-179), including a stream that has no frame, where there is no chat to write in and the questions panel is what a talebe has. Measured on the stack with a stored link that is not YouTube's: the line is there, the chat is not, \"Soru sor\" is. Fix: choose the line by `chat`, not by `phase`: with no chat, tell the talebe to ask in \"Soru sor\". Proposed id; not in the inventory." }
+  - { id: WATCH-3, rule: "After the player ends the line says \"Ders kaydı eklenince burada oynar.\" (\"the recording will play here once it is added\") but the page was rendered with the stream and re-reads nothing: no refresh when the player ends, no poll, no `router.refresh()` anywhere in watch-view.tsx. The recording shows only after the person reloads. Read from the code; not walked (the end of a stream cannot be produced here). Fix: refresh the page when the player ends, and now and then while it is ended. Decision D2. Proposed id; not in the inventory." }
+  - { id: WATCH-4, rule: "For a reader (a person who may read the course but has no seat) the side column is an `aside` named \"Canlı sohbet\" (watch-view.tsx:265-267, `chatTab`), and inside it the chat card is a region named \"Canlı sohbet\", with an h2 and a frame all named \"Canlı sohbet\": measured as one complementary landmark, one region landmark and two frames-or-headings with the same name. A talebe's column is \"Sohbet ve notlar\" and does not repeat. Fix: name a chat-only column differently or give it no label. Proposed id; not in the inventory." }
+  - { id: yt-nocookie-stale, rule: "e2e celse-states#1 expects the stream frame from youtube-nocookie.com (celse-states.e2e.ts:85-88); since MDRS-293 the page frames https://www.youtube.com/embed/<id>?enablejsapi=1 (recordings-model.ts:20-21, 96-117). The graph draws the code's host; the binding's locator for `streamFrame` carries it." }
+  - { id: no-meeting-link-here, rule: "The watch page has no meeting link (the owner's decision 6 of MDRS-285, celse-states#1 check 10-11): the join card and the link stay on the celse's page. The e2e also asserts the meeting URL is not in the page's HTML; a replay sees what is shown, so that half is not carried." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the pop-out link's name starts with its visible text \"YouTube'da aç\"; \"Celse ayrıntıları\" and \"Yayını aç\" are named by their text" }

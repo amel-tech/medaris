@@ -1,0 +1,52 @@
+# The one screen of realm.auth.partnerConsent: Keycloak's login-oauth-grant.ftl on the Medaris theme
+# (apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx, the form in libs/ui/src/giris/consent-form.tsx, the card in
+# libs/ui/src/giris/auth-card.tsx), as a person meets it when a partner application sends them to Keycloak. Its words are the
+# theme's tr messages, copied with their keys from apps/keycloak-theme/src/login/i18n.ts (the `tr` object, lines 283 and
+# 319-334). The positional `{0}` of consentTitle, consentLead and consentLinksIntro is the client's display name
+# (client.name, else its client id, LoginOauthGrant.tsx:29): "Örnek Uygulama", the name the stack's example partner
+# `ornek-uygulama` carries. The partner is never named by a real product here.
+# The one message not copied from the app is `Changes.note`: the app has none that tells the person what the answer changes,
+# so it is a short factual Turkish sentence written for this graph (it keeps the `{0}` of the others).
+# The page is drawn by React in the browser from window.kcContext, so it needs JavaScript (no `script` on the page).
+# `granting` and `declining` have no node: the two answers are native form posts and the browser leaves the page.
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.partnerConsent
+flow: realm.auth.partnerConsent
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: { "0": "Örnek Uygulama" }
+changes: { key: Changes.note }
+
+nodes:
+  consentPage: { type: page, component: Page, role: main, name: { labelledBy: consentHeading }, in: [consentPage], source: libs/ui/src/giris/auth-card.tsx:41 } # no initialFocus: nothing on the page takes the focus (CONSENT-1)
+  logo: { type: text, component: Text, role: img, name: { literal: "Medaris" }, in: [consentPage], source: libs/ui/src/mds/logo.tsx:52 } # a partner's client names no app, so no "— Tedris" follows (app-of-client.ts:9)
+  consentHeading: { type: text, component: Heading, role: heading, text: { key: consentTitle, params: { "0": client.name } }, in: [consentPage], source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:51 } # the one h1, id kc-page-title; the tab's title is not this (K2)
+  consentLead: { type: text, component: Text, text: { key: consentLead, params: { "0": client.name } }, in: [consentPage], source: libs/ui/src/giris/consent-form.tsx:53 } # a p; it names the list under it
+  scopesList: { type: list, component: List, role: list, name: { labelledBy: consentLead }, in: [consentPage], source: libs/ui/src/giris/consent-form.tsx:56 } # one item per scope the client asks for, in Keycloak's order (see rule scope-order)
+  scopeGender: { type: text, component: ListItem, role: listitem, text: { key: genderScopeConsentText }, in: [consentPage], source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:57 } # scope gender: ${genderScopeConsentText}
+  scopeEmail: { type: text, component: ListItem, role: listitem, text: { key: emailScopeConsentText }, in: [consentPage], source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:57 } # scope email: Keycloak's own scope, its text reworded by the theme
+  scopeFullName: { type: text, component: ListItem, role: listitem, text: { key: fullNameScopeConsentText }, in: [consentPage], source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:57 } # scope full-name: ${fullNameScopeConsentText}; never the profile scope, which would add the user name and the language
+  linksIntro: { type: text, component: Text, text: { key: consentLinksIntro, params: { "0": client.name } }, in: [consentPage], when: "terms == 'linked'", source: libs/ui/src/giris/consent-form.tsx:71 } # only when the client's settings give a terms or a policy address starting http:// or https:// (LoginOauthGrant.tsx:34-42); the stack's example client gives none (CONSENT-3)
+  termsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: consentTerms }, in: [consentPage], when: "terms == 'linked'", source: libs/ui/src/giris/consent-form.tsx:76 } # the partner's own page, in a new tab (target=_blank); a plain link, no event
+  policyLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: consentPolicy }, in: [consentPage], when: "terms == 'linked'", source: libs/ui/src/giris/consent-form.tsx:76 }
+  linksNote: { type: text, component: Text, text: { key: privacyNoticeNewTab }, in: [consentPage], when: "terms == 'linked'", source: libs/ui/src/giris/consent-form.tsx:86 } # visually hidden; each link is described by it
+  accept: { type: action, component: Button, role: button, intent: confirm, text: { key: consentAccept }, in: [consentPage], emits: ACCEPT, source: libs/ui/src/giris/consent-form.tsx:92 } # #kc-login, name=accept; a native submit, the primary button
+  decline: { type: action, component: Button, role: button, intent: dismiss, text: { key: consentCancel }, in: [consentPage], emits: DECLINE, source: libs/ui/src/giris/consent-form.tsx:100 } # #kc-cancel, name=cancel; a native submit, the ghost button under the primary one
+
+edges:
+  - { labelledBy: [consentPage, consentHeading] }
+  - { labelledBy: [scopesList, consentLead] }
+  - { triggers: [accept, granting] }
+  - { triggers: [decline, declining] }
+
+rules:
+  - { id: CONSENT-1, rule: "login-oauth-grant.ftl gives no control the initial focus: ConsentForm has no autoFocus (libs/ui/src/giris/consent-form.tsx:45-109) and Template.tsx sets none, so the page opens with the focus on the document's body (measured on the stack's Keycloak: document.activeElement is BODY) and a keyboard or screen-reader user starts at the top. The heading is not focusable either. Fix: move the focus to the heading (tabindex -1) when the page opens; not to İzin ver, which one Enter press would then answer." }
+  - { id: K2, rule: "The tab's title is Keycloak's 'Medaris adresinde oturum açın' on this page too (Template.tsx:57; LoginOauthGrant.tsx passes no documentTitle), so the consent page cannot be told from the login form by its title (WCAG 2.4.2). Measured: page.title() on the consent page of ornek-uygulama. Not a node: the graph cannot draw a title." }
+  - { id: K12, rule: "No language control on the page: the language is what the partner sent (ui_locales, kc_locale; a partner that sends none gets the realm's default, tr) or Keycloak's cookie. The theme has the page in en and ar as well (i18n.ts:173, 459)." }
+  - { id: CONSENT-2, rule: "Once a person has answered İzin ver, the place that lets them see and take the consent back, tedris Hesap > Bağlı uygulamalar > Keycloak's account console (apps/tedris/features/account/connected-apps.ts:8), lists the scopes of the partner as '${genderScopeConsentText}' and '${fullNameScopeConsentText}': the console is Keycloak's stock theme and does not have the messages that only the login theme defines (the console's 'Örnek Uygulama' row, measured, and its REST answer GET /account/applications; only '${emailScopeConsentText}' is resolved, to Keycloak's own 'E-posta adresi'). The row also shows the client's description, an English sentence for the example client. Fix: give the account theme the three messages, or write the consent texts into the client scopes' own texts, or keep the consent in a Medaris page." }
+  - { id: CONSENT-3, rule: "The partner's terms and privacy links (the line 'Örnek Uygulama bunları nasıl kullandığını anlatıyor:' with two links) come from the client's settings tosUri and policyUri (LoginOauthGrant.tsx:34-42), and nothing sets them: config/keycloak/clients/local/ornek-uygulama.json has neither attribute and docs/runbooks/partner-application.md (section 2, client settings) never says to fill them, so a partner client made by the runbook never shows the line. The e2e check giris#17 uses a story that has them and does not assert them. Fix: add 'Terms of service URL' and 'Policy URL' to the runbook's login settings, and to the example client." }
+  - { id: scope-order, rule: "The list is in Keycloak's order, not the order of the theme's stories and of e2e giris#17: for the example client the live page lists Cinsiyetin, E-posta adresin, Adın ve soyadın (measured). Nothing depends on the order; the graph draws one node per scope and does not pin it." }
+  - { id: no-javascript, rule: "The page is drawn by React in the browser from window.kcContext; with JavaScript off it is empty (src/main.tsx:17-24). Once drawn, both answers are native submits of one form (ConsentForm), so a click needs no further script." }

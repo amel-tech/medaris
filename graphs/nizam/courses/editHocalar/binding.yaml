@@ -1,0 +1,145 @@
+# nizam.courses.editHocalar on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on http://localhost:4001, the köşk
+# nazımı of "Kubbealtı Köşkü" (seed.kosk2, the seed's second köşk, which the same account manages and which has no course of its own)
+# signed in through Keycloak's real form, on the Dersler page of the walk's own course.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/editHocalar \
+#     --bind graphs/nizam/courses/editHocalar/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. Every locator, every account fact and every expectation is from
+# the code and unverified. The file loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, hoca or setting is touched: helpers/course.mjs
+# opens "Deneme dersi editHocalar" in the köşk through the API (as the köşk's nazım; published, one week of one celse, MUDERRIS as its
+# one hoca and the imam; the ids are read from graphs/.local/made/editHocalar.json as {made.*}), and the teardown deletes it with
+# everything under it (the API deletes the müderris rows and the role rows of the course), then reads the database to see that the
+# course is gone and that none of the spares is left a MUDERRIS of a course that no longer exists. The people the walk uses are
+# spare accounts that have no other part in the stack:
+#   applicantC  the course's second hoca, seated by setup (helpers/seat-hoca.mjs; the imam stays MUDERRIS)
+#   applicantD  the account the nazım finds by e-mail address and adds
+#   applicantE  the account somebody else seats while the dialog is open (OTHER_SAVES), which moves the course's version
+# What the walk cannot undo: the audit rows (`user.lookup` of each search, `course.content_read` of each time the dialog reads the course,
+# `course.muderris_update` of each save, `course.create` and `course.delete`); the API has no way to remove them and nothing depends on them.
+#
+#   adds            (the main story) pair: MUDERRIS (imam) and applicantC. OPEN_DIALOG, SEARCH (applicantD is found and added: 3 hocas),
+#                   PICK_IMAM (applicantD is marked the imam), SAVE (courses#4). `--cover transitions` also walks, from this start, the
+#                   imam's and the other hocas' "Çıkar", the radios, the missing imam of two or three accounts, Vazgeç and the close icon,
+#                   and the refused save of a course somebody else has saved (OTHER_SAVES, then SAVE: FAIL.conflict, the dialog reads again).
+#   unknownAddress  pair; the address nobody has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and the list is as it was.
+#   alreadyListed   one hoca; MUDERRIS's own address: "Bu kişi zaten listede." and nobody is added.
+#   lone            one hoca (MUDERRIS): the radio is checked and the badge is on; "Çıkar" empties the list ("En az bir hoca olmalı.",
+#                   "Kaydet" off: courses#5); an account found is added (two hocas).
+#   forbidden       pair, as the seeded Medaris nazımı (platform.kosk_edit, not kosk.manage): the page reads the roster, draws the row's
+#                   "Hocaları düzenle", the dialog builds a list and "Kaydet" is refused 403 (F-W4-hocalar-3). Opened by address: the
+#                   Medaris nazım's menu has no köşk entries. The one scenario that is not the manager's.
+# One address does the finding (`lookupEmail`, applicantD's), so a walk adds one person: the model does not draw a second add.
+# Not bound, and why:
+#   - `read: failed`: the course always reads while its row is on the page; nothing the stack can do makes GET /courses/:id fail
+#     for a row that is drawn (deleting the course behind the page would, but the one node that opens the dialog is pressed, so no
+#     event of the binding replaces the press). A walk phase idea: make the course vanish in a second tab, then press the row's button.
+#   - `lookup: down` (the realm's directory does not answer) and `answer` unknownUser, duplicate, invalid and other: the local stack
+#     cannot be made to refuse the nazım's own list, to take an account away between the search and the save, or to lose its directory
+#     on request; the page itself never sends a duplicate or a list with no imam.
+#   - a nazım who is in the list (courses#4 puts the köşk's nazım on the course as its hoca): the seed's nazım is not a hoca here.
+#   - the dropped call, the 20-hoca limit, a hidden or a medrese's course (no button), a müderris reaching the page (F-W4-16).
+#
+# What carries the e2e courses#4 and #5 (apps/nizam/e2e/courses.e2e.ts): see the report of this flow.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.editHocalar
+
+scenarios:
+  adds:
+    given: { team: pair, read: ok, lookup: found, answer: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantC]
+        expect: 'seat-hoca APPLICANT_C'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_type = 'course' and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_D_EMAIL}'
+
+  unknownAddress:
+    given: { team: pair, read: ok, lookup: notFound, answer: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantC]
+        expect: 'seat-hoca APPLICANT_C'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_type = 'course' and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: kimse.yok@example.test
+
+  alreadyListed:
+    given: { team: lone, read: ok, lookup: listed, answer: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_type = 'course' and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: '{secret.E2E_MUDERRIS_EMAIL}'
+
+  lone:
+    given: { team: lone, read: ok, lookup: found, answer: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_type = 'course' and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_D_EMAIL}'
+
+  forbidden:
+    given: { team: pair, read: ok, lookup: found, answer: forbidden }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk2}/dersler'
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantC]
+        expect: 'seat-hoca APPLICANT_C'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_type = 'course' and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_D_EMAIL}'

@@ -1,0 +1,75 @@
+# The screens of tedris.shell.systemPages: tedris-web's not-found page (app/not-found.tsx), the root's error page (app/error.tsx) and
+# the global error document (app/global-error.tsx), the three faces of features/errors/system-page.tsx and the kit's SystemState.
+# The bar the not-found page wears and the old header the error page wears are drawn as frames only; their items belong to
+# tedris.shell.frame.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.<key>`), the key being the path inside that file. The `composed.*` keys are texts the app writes in code, in no i18n file:
+#   composed.Header.wordmark        "Medaris", the old header's <p> (components/header/header.tsx:22)
+#   composed.Header.userMenu        "<initials> <name>", the old header's menu button: the avatar's initials and the name from the session
+#                                   (components/header/user-header-menu.tsx:43-48)
+#   composed.GlobalError.title      app/global-error.tsx:38, the title as a literal
+#   composed.GlobalError.text       app/global-error.tsx:44, the sentence as a literal ("-ın"; common.globalError.text, which the file
+#                                   does not read, says "bağlantınızı ... deneyin": SHL-07)
+#   composed.GlobalError.retry      app/global-error.tsx:42, the button's label as a literal
+# Samples are invented and neutral. This flow changes nothing, so it has no `changes` note.
+schema: delurio-graph/0
+kind: ui
+id: tedris.shell.systemPages
+flow: tedris.shell.systemPages
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  initials: ÖK
+  name: Örnek Kişi
+  count: "3"
+
+nodes:
+  # ---- the not-found page (notFound): the system's bar, then the box ----
+  legacyMain: { type: page, component: Page, role: main, in: [notFound], when: "arrival == 'unknownAddress'", source: apps/tedris/components/tab-view/index.tsx:86 } # the shell's own <main data-legacy-main>, which holds the bar and the box at an address no page owns; unnamed, and no initialFocus (rule focus-not-set); at /courses, /kosks, /madrasahs and /decks there is none (SYS-1)
+  systemBar: { type: page, component: Page, role: banner, in: [notFound], when: "arrival != 'unknownAddress'", source: apps/tedris/components/phone-menu/desktop-bar.tsx:57 } # PhoneChrome's <header data-system-chrome>, from 768 px; at an unknown address it sits inside <main> and is not a banner, so it is not drawn there (SYS-1)
+  notFoundSection: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:49 } # SystemState with `shell` is a <section>
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+  homeLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: SystemPages.notFoundAction }, text: { key: SystemPages.notFoundAction }, in: [notFound], emits: GO_HOME, source: apps/tedris/features/errors/system-page.tsx:54 } # href /home for a member and / for a visitor (system-page.tsx:33); the graph has no key for an address
+
+  # ---- the error page (errorShown): the old header and tab row, then the box ----
+  legacyHeader: { type: page, component: Page, role: banner, in: [errorShown], source: apps/tedris/components/header/header.tsx:16 } # <header data-legacy-header>; hidden by PhoneChrome's style wherever PhoneChrome is mounted, and PhoneChrome is not mounted here (SHL-06)
+  legacyWordmark: { type: text, component: Text, text: { key: composed.Header.wordmark }, in: [errorShown], source: apps/tedris/components/header/header.tsx:22 }
+  legacySearch: { type: field, component: TextField, role: textbox, text: { key: Header.searchPlaceholder }, value: { literal: "" }, in: [errorShown], source: apps/tedris/components/header/header.tsx:26 } # an <Input> with no handler: what is typed goes nowhere (SHL-06)
+  legacyBell: { type: action, component: LinkButton, role: link, name: { oneOf: [UserNotifications.label, UserNotifications.labelUnread] }, in: [errorShown], when: "person == 'member'", emits: NAVIGATE, source: apps/tedris/components/header/user-notification-menu.tsx:12 } # the name carries the unread count here, unlike the system bar's bell (SHL-04)
+  legacyUserMenu: { type: action, component: Button, role: button, name: { key: composed.Header.userMenu, params: { initials: user.initials, name: user.name } }, in: [errorShown], when: "person == 'member'", source: apps/tedris/components/header/user-header-menu.tsx:42 } # opens a menu of Hesap Ayarları, Çıkış yap and three disabled items (out of view)
+  legacySignIn: { type: action, component: Button, role: button, intent: secondary, text: { key: Auth.signIn }, in: [errorShown], when: "person == 'visitor'", emits: SIGN_IN, source: apps/tedris/features/keycloak/login.tsx:21 }
+  legacyRegister: { type: action, component: Button, role: button, intent: confirm, text: { key: Auth.register }, in: [errorShown], when: "person == 'visitor'", emits: REGISTER, source: apps/tedris/features/keycloak/login.tsx:27 }
+  legacyTabHome: { type: action, component: LinkButton, role: link, text: { key: TabView.home }, in: [errorShown], when: "person == 'member'", emits: NAVIGATE, source: apps/tedris/components/tab-view/index.tsx:43 } # /home
+  legacyTabLearning: { type: action, component: LinkButton, role: link, text: { key: TabView.learning }, in: [errorShown], emits: NAVIGATE, source: apps/tedris/components/tab-view/index.tsx:54 } # /discover; the only tab a visitor has
+  legacyTabDecks: { type: action, component: LinkButton, role: link, text: { key: TabView.decks }, in: [errorShown], when: "person == 'member'", emits: NAVIGATE, source: apps/tedris/components/tab-view/index.tsx:69 } # /decks
+  errorSection: { type: page, component: Page, role: region, name: { labelledBy: errorTitle }, in: [errorShown], source: apps/tedris/features/errors/system-page.tsx:111 } # SystemState with `shell` is a <section>; at /courses nothing around it is a <main> (SYS-1)
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.errorTitle }, in: [errorShown], source: apps/tedris/features/errors/system-page.tsx:114 } # h1
+  errorText: { type: text, component: Text, text: { key: SystemPages.errorText }, in: [errorShown], source: apps/tedris/features/errors/system-page.tsx:121 } # never says what failed: only error.digest or its message goes to console.error (app/error.tsx:20)
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: SystemPages.errorAction }, in: [errorShown], emits: RETRY, source: apps/tedris/features/errors/system-page.tsx:116 }
+
+  # ---- the global error document (shellErrorShown): a page of its own ----
+  shellErrorPage: { type: page, component: Page, role: main, name: { labelledBy: shellErrorTitle }, in: [shellErrorShown], source: apps/tedris/app/global-error.tsx:37 } # SystemState without `shell` is the <main>; no initialFocus (rule focus-not-set)
+  shellErrorTitle: { type: text, component: Heading, role: heading, text: { key: composed.GlobalError.title }, in: [shellErrorShown], source: apps/tedris/app/global-error.tsx:39 } # h1
+  shellErrorText: { type: text, component: Text, text: { key: composed.GlobalError.text }, in: [shellErrorShown], source: apps/tedris/app/global-error.tsx:44 }
+  shellRetryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: composed.GlobalError.retry }, in: [shellErrorShown], emits: RETRY, source: apps/tedris/app/global-error.tsx:41 }
+
+edges:
+  - { labelledBy: [notFoundSection, notFoundTitle] }
+  - { labelledBy: [errorSection, errorTitle] }
+  - { labelledBy: [shellErrorPage, shellErrorTitle] }
+
+rules:
+  - { id: SHL-06, rule: "The only error boundary is the root's (app/error.tsx), so a page that throws replaces its segment's layout, PhoneChrome with it, and the app's old header and tab row (hidden by the style PhoneChrome writes, components/phone-menu/phone-chrome.tsx:38) show above the box: a wordmark, a search box that is wired to nothing (header.tsx:26), the bell, a menu button whose menu has three disabled items (user-header-menu.tsx:54-79) and the tabs \"Ev\", \"Öğrenme\", \"Desteler\"; a visitor gets \"Giriş yap\" and \"Kayıt ol\" instead. Seen in a browser on 15 Nov 2026 (a draft course whose time zone is \"Nope/Zone\", as the müderris): the page is a banner with the wordmark, \"Ara…\", \"Bildirimler\" and the name button, then three links, then the region. Fix: mount PhoneChrome inside ErrorState, or add an error.tsx per segment (decision D2)." }
+  - { id: SHL-07, rule: "The global error document writes its title, sentence and button as literals (app/global-error.tsx:38-45) although common.globalError.{title,text,retry} has the same words, and the sentence differs by a suffix (\"bağlantını denetleyip yeniden dene\" in the file, \"bağlantınızı denetleyip yeniden deneyin\" in common.json). MDRS-234 is the Linear key the register gives for the global error and not-found pages not being translated; the not-found page does read tedris.SystemPages, so that half looks stale (not verified in Linear). Fix: read common.globalError from the catalog the file can import." }
+  - { id: SHL-15, rule: "The not-found link's address is chosen on the client from useSession().status (features/errors/system-page.tsx:33-40): while the provider is loading a member's link is the visitor's /, which ends on Keşfet. Not verified." }
+  - { id: CLS-01, rule: "getSession maps every failure of the celse read, a 5xx and a network error included, to null (features/courses/public-reads.ts:50-56, 93-98), and the celse's layout turns null into notFound() (app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27), so a tedrisat outage on a celse reads as a missing celse with no retry. getCourse and getKosk throw, so the same outage on the course page is the error page. Not walked: the stack's tedrisat cannot be made to answer 5xx for one celse. Fix: throw on anything but a 400, 403 or 404 answer (decision D1)." }
+  - { id: DSC-10, rule: "getMadrasah and getMadrasahOverview have the same mapping (public-reads.ts:72-75, 82-86) and /madrasahs/[madrasahId] calls notFound() on null (app/madrasahs/[madrasahId]/layout.tsx:20, page.tsx:41): an outage of the medrese reads is drawn as \"Sayfa bulunamadı\", with a real 404 status. Not walked. Fix as CLS-01." }
+  - { id: SHL-01, rule: "The page sets no title of its own, so the document title is the app's: \"Medaris Tedris\" at an address no page owns and at a missing celse, \"Tedris\" at /courses/<missing> and on the error page of a course (seen), and neither tells a person or a screen reader that the page is missing or broken (WCAG 2.4.2). Both faces share SHL-01's cause (no generateMetadata)." }
+  - { id: SYS-1, rule: "The two faces are put in the document by `shell`, which assumes the shell owns <main> (libs/ui/src/mds/system-state.tsx:11), and it does not everywhere. TabView wraps its children in <main data-legacy-main> only for addresses not in ownsItsMain (components/tab-view/index.tsx:12-22, 83-92). At an address no page owns, the not-found page's bar and box are inside that <main>, so the bar's <header> is not a banner. Under /courses, /kosks, /madrasahs, /decks, /discover, /account and the other pages that own their <main> (ownsItsMain), the not-found page and the error page have no <main> at all, only a <section>: seen at /courses/<missing> (main count 0, a banner and a region) and on the error page of a draft course; the other prefixes are read from ownsItsMain, not seen. The global error document does have its <main>. Proposed id; not in the inventory. Fix: draw the two faces with SystemState's own <main> (no `shell`), or give NotFound and ErrorPage a <main> of their own." }
+  - { id: SYS-2, rule: "The celse layout says a missing or non-live celse is \"a real 404\" because it settles the answer before loading.tsx streams (app/courses/[courseId]/lessons/[lessonId]/layout.tsx:9-14), but the answer is read below the course layout's own loading.tsx boundary, and in `next dev` /courses/<id>/lessons/<missing> answers HTTP 200 with the not-found markup (seen with a member; an unknown address and /courses/<missing> answer 404). session#8 carries the text only. Not verified in a production build. Proposed id; not in the inventory." }
+  - { id: SYS-3, rule: "No face of this flow sets focus: a page opened by address leaves it on the body (seen on all three), and after \"Yeniden dene\" is pressed while the cause stays, the same error page is drawn and the focus is on the body (seen). ErrorState has no busy state and nothing announces that a retry was tried (read from the code, not tested with a screen reader). Proposed id; not in the inventory. Fix: move focus to the box's h1 when the page is drawn, and say \"yeniden denendi\" in a status when a retry fails." }
+  - { id: focus-not-set, rule: "None of the three pages has an initialFocus: no autoFocus or focus() in features/errors, app/not-found.tsx, app/error.tsx or app/global-error.tsx, so the graph says nothing of the focus when they open. Recorded so the silence is not read as an omission (SYS-3)." }

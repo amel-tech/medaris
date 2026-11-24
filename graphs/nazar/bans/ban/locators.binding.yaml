@@ -1,0 +1,107 @@
+# What the bindings of nazar.bans.ban share: the events no node sends alone, the places each exit opens, the locators role and name
+# cannot find, and the checks of what a ban leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml              the walks that write or read nothing risky: row, rowMadrasah, email, unknown, runsTheCourse
+#   binding.courseGone.yaml   the course is deleted while the ban is on its way (COURSE_NOT_FOUND), a file of its own because the deletion
+#                             is a `before` of the state and would run in every walk of a file that holds the others
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/bans, features/students, libs/ui/src/mds) and is unverified until a walk.
+#
+# Variables a scenario gives (they are `vars`, filled in everywhere below; none is named `address` or `password`, which are the signed-in
+# account's own):
+#   who, whoKey, whoSub   the spare talebe the walk bars: the account name, its key in accounts.env, its Keycloak sub
+#   personName            the name the realm gives them ("Betül Başvuran"): how the page words them
+#   personAddress         their e-mail, which a row shows and the header's search types
+#   courseTitle           the title of the course the dialog offers first
+#   reason, reasonSaved   what is typed (with the white space a person leaves) and what the server keeps (trimmed)
+#   expectedBan           the line `bans.mjs show` prints once the ban stands
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.bans.ban
+
+data:
+  made: { json: ../.local/made/bansban.json } # written by helpers/course.mjs make bansban
+
+# the words a screen is drawn with: the person, their e-mail, the course the dialog offers first, the medrese
+samples:
+  name: '{personName}'
+  email: '{personAddress}'
+  course: '{courseTitle}'
+  madrasah: '{seed.titles.madrasah}'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE_REASON:
+    - fill: { role: textbox, name: Yasaklama gerekçesi, value: '{reason}' }
+  # leaving the empty reason is what shows "Bir gerekçe yazın."; in the header's dialog the focus starts in the e-mail field, so it is clicked first
+  LEAVE_EMPTY:
+    - click: { role: textbox, name: Yasaklama gerekçesi }
+    - key: Tab
+  # the address is searched on Enter (it is also searched when the field is left: BAN-2)
+  SEARCH:
+    - fill: { role: textbox, name: Kişinin e-posta adresi, value: '{personAddress}' }
+    - key: Enter
+  # Vazgeç and the close icon both send CANCEL, so the walk says which it presses
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  # the Pano of the medrese, where the başmüderris lands
+  NAVIGATE:
+    - goto: '{nazar}/medrese/{seed.madrasah}'
+
+states:
+  # an exit with no nodes: its address is all the replay can check. `*` is one path segment.
+  left: { url: '{nazar}/medrese/*' }
+  # the server actions are POSTs to the page's own address, held while the busy screen is checked; a Next server action answers 200
+  # whatever it decides, so the HTTP status of a FAIL walk is not compared
+  headerLooking: { call: '{nazar}/medrese/*/yasaklamalar**' }
+  rowSubmitting: { call: '{nazar}/medrese/*/talebeler**' }
+  headerSubmitting: { call: '{nazar}/medrese/*/yasaklamalar**' }
+
+nodes:
+  # ---- the pages: two <main>, told apart by what is inside them ----
+  studentsPage: { role: main, hasText: '/Medrese talebeleri/' }
+  bansPage: { role: main, hasText: '/süren yasaklar/' }
+  # the new ban's row, in the person column of the Etkin table
+  bannedPerson: { text: '{personName}', within: { role: table, name: Etkin yasaklar } }
+
+  # ---- the dialog: the same words are the name of the dialog, of the submit and of the header's opener, so each is scoped ----
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: '{seed.titles.madrasah}', within: { role: dialog, name: Yasakla } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: Yasakla } } # every toast has a "Kapat" too
+  submit: { role: button, name: Yasakla, within: { role: dialog, name: Yasakla } }
+  requiredNote: { text: '/zorunlu alan/' } # "* zorunlu alan": the star is part of the paragraph's text
+  personName: { text: '{personName}', within: { testId: ban-person } }
+  personEmail: { text: '{personAddress}', within: { testId: ban-person } }
+  searching: { css: output, hasText: Aranıyor, within: { role: dialog, name: Yasakla } }
+
+  # ---- the radios: a radio's words are its label's, beside it, not inside it, so they are found by role and name ----
+  rowCourse: { role: radio, name: '{courseTitle}', count: 1 } # the talebe of the walk holds one course (students#4 has two, and counts three radios)
+  headerCourse: { role: radio, name: '{courseTitle}' } # the medrese's other courses are there too; the walk presses its own
+  madrasahRadio: { role: radio, name: Medrese düzeyi }
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; the words tell the toasts of one title apart ----
+  toastSavedCourse: { role: dialog, name: Yasak kaydedildi, hasText: '/dersine erişemez/' }
+  toastSavedMadrasah: { role: dialog, name: Yasak kaydedildi, hasText: '/medresenin hiçbir dersine erişemez/' }
+  toastForbidden: { role: alertdialog, name: Yasak konamadı, hasText: Bunu yapma izniniz yok. }
+  toastNotAllowed: { role: alertdialog, name: Yasak konamadı, hasText: Bu yasağı koymak için yetkiniz yok. }
+  toastInvalidTarget: { role: alertdialog, name: Yasak konamadı, hasText: Bu kişi yasaklanamaz }
+  toastCourseGone: { role: alertdialog, name: Yasak konamadı, hasText: Bu ders artık yok }
+  toastInvalid: { role: alertdialog, name: Yasak konamadı, hasText: Gerekçeyi denetleyip yeniden deneyin. }
+  toastFailed: { role: alertdialog, name: Yasak konamadı, hasText: Bir şeyler ters gitti }
+
+# What a ban leaves outside the screen, read through the API as the başmüderris (bans.mjs, a helper of this folder) and, for the
+# talebe's notice, through the database (no route reads another person's notifications).
+effects:
+  createMadrasahBan:
+    # students#4 a9-a10 and bans#7 a4: one open ban, with the scope, the course, the reason (trimmed) and the role she acted in
+    - run: [node, ../nazar/bans/ban/bans.mjs, show, --user, '{who}', --madrasah, '{seed.madrasah}']
+      expect: '{expectedBan}'
+    # the talebe is told their access was removed (COURSE_ACCESS_REMOVED), never why: ban.service.ts:392
+    - run: [node, helpers/sql.mjs, "select type from notifications where user_id = '{whoSub}' and target_id = '{made.course}' and type = 'COURSE_ACCESS_REMOVED'"]
+      expect: '"type":"COURSE_ACCESS_REMOVED"'
+  # a refused ban writes nothing
+  invalidTargetToast:
+    - run: [node, ../nazar/bans/ban/bans.mjs, show, --user, '{who}', --madrasah, '{seed.madrasah}']
+      expect: 'ban {whoKey} none'
+  courseGoneToast:
+    - run: [node, ../nazar/bans/ban/bans.mjs, show, --user, '{who}', --madrasah, '{seed.madrasah}']
+      expect: 'ban {whoKey} none'

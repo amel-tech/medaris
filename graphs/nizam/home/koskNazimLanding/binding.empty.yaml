@@ -1,0 +1,28 @@
+# nizam.home.koskNazimLanding on the local stack, for the empty köşk: nizam-web on :4001 in a wide window (1280 x 900), the seeded köşk
+# nazımı opening Kubbealtı Köşkü's home (seed.kosk2, the seed's second köşk, which has no course) by its address.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/home/koskNazimLanding \
+#     --bind graphs/nizam/home/koskNazimLanding/binding.empty.yaml --cover states --absent --out <dir>
+# It has a file of its own because it adds no transition to the ones binding.yaml's `seeded` takes, so `--cover transitions` would never
+# walk it. The flow's main story starts at "/" with the seeded köşk, so it is not bound here: use `--cover states`, or `--to` with
+# each of `home`, `readingTab` and `handed_over.open_course`.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Scenario `empty`: the greeting says there is no celse in the next seven days, every number is 0, there is no alert, all three tabs
+# say their empty sentence (Geçmiş and İptal edilen after a read each), and Hocalar says there is no hoca. Read only, as binding.yaml:
+# `setup` reads the numbers and fails, naming what it found, if the köşk is not empty (another walk left a course in it, or the owner
+# gave the köşk one). Nothing is created or removed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.koskNazimLanding
+
+browser: { width: 1280, height: 900 }
+
+scenarios:
+  empty:
+    given: { arrival: own, read: ok, data: empty, view: wide, tabRead: ok }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    setup:
+      - run: [node, ../nizam/home/koskNazimLanding/home-numbers.mjs, read, '{seed.kosk2}', empty]
+        expect: 'kosk-home empty'

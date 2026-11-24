@@ -1,0 +1,61 @@
+# nizam.applications.decide read by a Medaris nazımı who holds platform.kosk_application_decide, and loses it behind the page: the next
+# decision is answered 403 AUTHZ_FORBIDDEN and the toast "Karar kaydedilemedi: Bu işlem için izniniz yok." stays on (FAIL.forbidden). Of
+# the refusal it leaves the dialog open with the reason as it was; of the approval it leaves the application waiting with a köşk made
+# (F-W3-8). It is also the walk of a Medaris nazımı reading and deciding (the story's "or a Medaris nazımı"), which the seed's own
+# Medaris nazımı cannot do: she holds five other codes (`refused` of binding.yaml walks her).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/applications/decide \
+#     --bind graphs/nizam/applications/decide/binding.forbidden.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# The account. applicantE, a spare talebe, is appointed Medaris nazımı by the başnazım (POST /nizam/medaris-nazims) in `setup` with two
+# codes: platform.kosk_application_decide, and platform.kosk_create, which the köşk form needs so that "Köşk aç" can make the köşk before
+# the approval is refused. `teardown` dismisses her (DELETE, which revokes the seat and its grants in one transaction); `setup` dismisses
+# first, so a walk that died before its teardown leaves nothing to be refused as "already appointed" (409). The seed's Medaris nazımı is
+# never touched. applicantE is also the account nizam.shell.menuPerPersona appoints with five codes: walks are serial under the lock, and
+# each setup dismisses before it appoints. The application is filed by applicantG (tag ndf, kind `forbid`); the köşk the approval walk
+# opens is "ornek-fikih", removed with the application by `down`.
+# How the answer is made: the states the person decides from, `koskForm` (the approval) and `rejectFormReady` (the refusal), have the
+# başnazım take the decide code away (PUT .../grants with the other code only) when the walk reaches them, so the next press meets a
+# person who may not. `--any` makes a second visit of a state, which finds the code gone already, answer without failing the step.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.applications.decide
+
+data:
+  made: { json: ../.local/made/ndf.json }
+
+samples:
+  name: '{made.forbid.name}'
+  applicant: '{made.forbid.applicant}'
+  email: '{made.forbid.email}'
+  phone: '{made.forbid.phone}'
+
+states:
+  koskForm:
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, PUT, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}/grants', '{"permissions":["platform.kosk_create"]}', --any]
+        expect: HTTP
+  rejectFormReady:
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, PUT, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}/grants', '{"permissions":["platform.kosk_create"]}', --any]
+        expect: HTTP
+
+scenarios:
+  forbidden:
+    given: { read: ok, link: waiting, queue: some, phone: given, answered: none, answer: forbidden }
+    as: applicantE
+    open: '{nizam}/talepler/kosk-basvurulari?secili={made.forbid.id}'
+    vars: { koskHandle: ornek-fikih, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: HTTP
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /nizam/medaris-nazims, '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":["platform.kosk_application_decide","platform.kosk_create"]}']
+        expect: '"appointedAt"'
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndf, 'forbid:applicantG']
+        expect: '"tag":"ndf"'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndf]
+        expect: 'applications down ndf'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: HTTP

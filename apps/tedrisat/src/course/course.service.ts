@@ -23,6 +23,7 @@ import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
+import { ExamOneSessionError } from "../exam/errors/exam-one-session.error";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
@@ -34,6 +35,7 @@ import {
 import { StorageDeletionService } from "../storage/storage-deletion.service";
 import type { CalendarAttendance } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
+import type { IExamPlan } from "./course.repository.interface";
 import {
   ICourse,
   ICourseBadgeCounts,
@@ -59,6 +61,7 @@ import {
   IWeekHide,
 } from "./course.repository.interface";
 import { CourseNotifier } from "./course-notifier";
+import type { Tx } from "./course-purge";
 import {
   isCourseMuderris,
   isEnrolledTalebe,
@@ -98,6 +101,7 @@ import {
   IPlannedSession,
   IsoWeekday,
   IWeeklyPattern,
+  localDateOf,
   placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
@@ -118,6 +122,7 @@ import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-f
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
+import { OnlineExamSessionError } from "./errors/online-exam-session.error";
 import {
   type IStoredRecording,
   RecordingRepository,
@@ -133,6 +138,8 @@ export interface SessionBatchInput extends SessionPatternInput {
   title: string;
   durationMinutes: number;
   meetingUrl?: string;
+  /** "Sınav" (MDRS-248): the one celse planned is an exam. */
+  exam?: IExamPlan;
 }
 
 export interface StudentIdentity {
@@ -309,11 +316,15 @@ export class CourseService {
     // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
     // so a hidden course and a draft are both not-found to them, as below.
     // `resolveAnonymous` has already said so in front of the handler, and
-    // also refused every course of an unlisted köşk; this repeats the two
-    // rules a detail read can see for itself, so the answer does not rest on
-    // the guard alone.
+    // also refused an unlisted course (MDRS-248) and every course of an
+    // unlisted köşk; this repeats the three rules a detail read can see for
+    // itself, so the answer does not rest on the guard alone.
     if (user === null) {
-      if (course.archivedAt !== null || course.status === CourseStatus.DRAFT) {
+      if (
+        course.archivedAt !== null ||
+        course.status === CourseStatus.DRAFT ||
+        course.isUnlisted
+      ) {
         throw new CourseNotFoundError(id);
       }
       return course;
@@ -587,10 +598,8 @@ export class CourseService {
     return (await this.courseRepo.findPassiveScope(courseId)) === null;
   }
 
-  private contentIsOpen(
-    user: AuthenticatedUser,
-    courseId: string
-  ): Promise<boolean> {
+  /** Whether the course's content is open to the person (`course.view_details`). */
+  contentIsOpen(user: AuthenticatedUser, courseId: string): Promise<boolean> {
     return this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: courseId },
@@ -614,6 +623,8 @@ export class CourseService {
     course: ICourseDetail;
     lesson: ILesson & { scheduledAt: Date };
     attendance: CalendarAttendance;
+    /** An exam (MDRS-248), told only to a caller who may read content. */
+    isExam: boolean;
   }> {
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     if (!courseId) throw new LessonNotFoundError(lessonId);
@@ -650,6 +661,7 @@ export class CourseService {
       course,
       lesson: { ...lesson, scheduledAt: lesson.scheduledAt },
       attendance,
+      isExam: readsContent && Boolean(lesson.exam),
     };
   }
 
@@ -937,6 +949,8 @@ export class CourseService {
    * openness settings need `course.settings`; switching "requires approval" or
    * "closed" off needs the ability a policy on the köşk, the medrese or the
    * platform may have closed (`setting.approval_off`, `setting.course_open`).
+   * Listing a course or unlisting it (MDRS-248) is an openness setting:
+   * `course.settings`, with no policy over it.
    * The engine decides, so a grant from an authority above the policy opens
    * the ability for the person it was made to, and no other.
    *
@@ -947,11 +961,15 @@ export class CourseService {
   private async assertMayChangeSettings(
     id: string,
     user: AuthenticatedUser,
-    stored: Pick<ICourse, "status" | "requiresApproval" | "isClosed">,
+    stored: Pick<
+      ICourse,
+      "status" | "requiresApproval" | "isClosed" | "isUnlisted"
+    >,
     change: {
       status?: CourseStatus;
       requiresApproval?: boolean;
       isClosed?: boolean;
+      isUnlisted?: boolean;
     },
     /** A PATCH: a field it carries is a change. A whole-course save: only a field that differs from what is stored. */
     carried: boolean
@@ -967,7 +985,12 @@ export class CourseService {
     const closed =
       change.isClosed !== undefined &&
       (carried || change.isClosed !== stored.isClosed);
-    if (approval || closed) needs.push(PERMISSIONS.COURSE_SETTINGS);
+    const unlisted =
+      change.isUnlisted !== undefined &&
+      (carried || change.isUnlisted !== stored.isUnlisted);
+    if (approval || closed || unlisted) {
+      needs.push(PERMISSIONS.COURSE_SETTINGS);
+    }
     for (const code of needs) {
       if (!(await this.authz.can(user, resource, code))) {
         throw new AuthzForbiddenError(
@@ -1175,6 +1198,9 @@ export class CourseService {
     data: IUpdateLesson,
     actorId?: string
   ): Promise<ILessonMutation> {
+    if (data.scheduledAt !== undefined || data.durationMinutes !== undefined) {
+      await this.assertNotOnlineExam(lessonId);
+    }
     const before =
       data.scheduledAt === undefined
         ? null
@@ -1202,6 +1228,7 @@ export class CourseService {
     actorId: string,
     replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
+    await this.assertNotOnlineExam(lessonId.toLowerCase());
     // `ParseUUIDPipe` accepts upper case; the self-reference check compares
     // the two ids as text, so both are lower-cased.
     const cancelled = await this.courseRepo.cancelLesson(
@@ -1314,6 +1341,7 @@ export class CourseService {
   ): Promise<
     Omit<ILessonMutation, "resources"> & { resources: ILessonResourceView[] }
   > {
+    await this.assertNotOnlineExam(lessonId);
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     const level = courseId
       ? await this.courseLevel(user, courseId)
@@ -1360,6 +1388,64 @@ export class CourseService {
   // three writes above.
 
   /** The sessions a pattern would create; nothing is written. */
+  /**
+   * The celse an online exam is published with (MDRS-299): one session of
+   * the course at `scheduledAt`, placed in its week as "Celse planla" places
+   * one, with its exam row. `within` runs in the same transaction, so the
+   * exam and its celse are written together or not at all. The talebe are
+   * told as of any exam celse, and the calendar invitations go out.
+   */
+  async createExamSession(
+    courseId: string,
+    session: {
+      title: string;
+      durationMinutes: number;
+      scheduledAt: Date;
+      exam: IExamPlan;
+      within: (tx: Tx, lessonIds: string[]) => Promise<void>;
+    },
+    actorId: string
+  ): Promise<{ lessonId: string; courseVersion: number }> {
+    const result = await this.courseRepo.createSessionBatch(courseId, {
+      title: session.title,
+      durationMinutes: session.durationMinutes,
+      exam: session.exam,
+      plan: (courseZone) => [
+        {
+          scheduledAt: session.scheduledAt,
+          localDate: localDateOf(session.scheduledAt, courseZone),
+          // With no dated week to go by, it goes into week 1.
+          weekNumber: 1,
+        },
+      ],
+      within: session.within,
+    });
+    const [lesson] = result.lessons;
+    await this.notifier.examScheduled(lesson, actorId);
+    this.invitations.kick();
+    return { lessonId: lesson.id, courseVersion: result.courseVersion };
+  }
+
+  /**
+   * Deletes an online exam's celse when its publication is taken back
+   * (MDRS-299); `within` puts the exam back to a draft in the same
+   * transaction. The invitation sweep sends each talebe the CANCEL.
+   */
+  async withdrawExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<void> {
+    await this.courseRepo.deleteExamSession(lessonId, actorId, within);
+    this.invitations.kick();
+  }
+
+  /** The celse of an online exam changes only from the exam's page (MDRS-299). */
+  private async assertNotOnlineExam(lessonId: string): Promise<void> {
+    const examId = await this.courseRepo.findOnlineExamOfLesson(lessonId);
+    if (examId) throw new OnlineExamSessionError(lessonId, examId);
+  }
+
   async previewSessionBatch(
     courseId: string,
     pattern: SessionPatternInput
@@ -1380,20 +1466,31 @@ export class CourseService {
   /** Expands the pattern and inserts every session in one transaction. */
   async createSessionBatch(
     courseId: string,
-    input: SessionBatchInput
+    input: SessionBatchInput,
+    actorId?: string
   ): Promise<ISessionBatchResult & { timeZone: string }> {
-    const { title, durationMinutes, meetingUrl, ...pattern } = input;
+    const { title, durationMinutes, meetingUrl, exam, ...pattern } = input;
     let timeZone = "";
     const result = await this.courseRepo.createSessionBatch(courseId, {
       title,
       durationMinutes,
       meetingUrl,
+      exam,
       plan: (courseZone) => {
         const planned = this.expand(pattern, courseZone);
         timeZone = planned.timeZone;
+        // An exam is one celse (MDRS-248), never a weekly repeat.
+        if (exam && planned.sessions.length !== 1) {
+          throw new ExamOneSessionError(planned.sessions.length);
+        }
         return planned.sessions;
       },
     });
+    if (exam) {
+      for (const lesson of result.lessons) {
+        await this.notifier.examScheduled(lesson, actorId);
+      }
+    }
     this.invitations.kick();
     return { ...result, timeZone };
   }
@@ -1526,20 +1623,22 @@ export class CourseService {
     }
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
-    // found, and passing a link on must not hand out seats.
+    // found, and passing a link on must not hand out seats. An unlisted
+    // course (MDRS-248) is the same rule for one course.
     // The köşk's own policy (MDRS-174, nizam/24) says the same for all its
     // courses and a course's setting cannot loosen it.
     // The platform's own policy (MDRS-181, nizam/19) says it for every köşk.
     // So does a course of a medrese whose policy is "Kayıt her zaman onaylı"
     // (nazir/04), which its own settings cannot reopen.
     const koskRule = await this.koskService.findVisibility(course.koskId);
-    const unlisted =
+    const policyForcesApproval =
+      course.isUnlisted ||
       (koskRule?.isPrivate ?? false) ||
       (koskRule?.alwaysRequireApproval ?? false) ||
       (await this.platformPolicies.isOn("ALWAYS_REQUIRE_APPROVAL"));
     const status =
       course.requiresApproval ||
-      unlisted ||
+      policyForcesApproval ||
       (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;

@@ -1,0 +1,75 @@
+# common.shell.privacyNotice on the local stack: the footer link "Aydınlatma Metni" of tedris-web (:4000), of nizam-web (:4001,
+# signed out and inside the shell) and the absence of any such link in nazar-web (:4002), and the notice it leads to on
+# landing-web (:4003).
+#   node apps/engine/src/cli.ts replay graphs/common/shell/privacyNotice \
+#     --bind graphs/common/shell/privacyNotice/binding.yaml --absent --out <dir>
+#
+# Extends the tedris base (the first app FLOWS.md names for this flow). That base signs every person in at tedris-web; this
+# flow stands on three apps, so `signIn` below signs each person in at the app they work in (the account's `entry`, as the
+# shared base of all four does) and the scenario then opens that app's own page without an SSO round trip in the middle.
+#
+# What each scenario starts from (the stack's seed, STACK.md). Nothing is created and nothing removed: the walk only reads.
+#   tedris        talebe on Ana sayfa of tedris-web: the footer is under the page, a `contentinfo` landmark     (the main story)
+#   nizamShell    köşk nazımı on Bildirimler of nizam-web: the footer is inside <main>, so no `contentinfo`
+#   nazar         a hoca (müderris) on nazar-web's first page: no footer, no link
+#   (nizamBare    is not bound; see the next paragraph)
+# A visitor on nizam's welcome page ("/", footer under the page, a landmark) is the other half of `app: nizamBare`. It has no
+# scenario here: `footerBelow` is reached by tedris first, so a scenario for the same state would be walked only by
+# `--cover transitions`, in a later phase, from a small binding file of its own (CONVENTIONS.md, "Scenarios").
+# What was checked of it instead: the served page of nizam-web at "/" with nobody signed in (curl, 15 Nov 2026): one <main>
+# with the heading "Hoş geldiniz", then a <footer> that is its sibling, with the one link and the same attributes.
+#
+# What the replay cannot do: it does not follow a new tab (the engine opens the popup and stays on the page it pressed), so
+# what the tab shows is landing.site.readLegal's to walk, and here the link's address, `target` and `rel` are checked on the
+# element itself (the node's locator below), plus one `curl` of the address after the press (the `opensNoticeTab` effect).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: common.shell.privacyNotice
+
+signIn:
+  - goto: '{entry}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{entry}/**'
+
+scenarios:
+  tedris:
+    given: { app: tedris }
+    as: talebe
+    vars: { pageUrl: '{tedris}/home', leaveTo: '{tedris}/discover' }
+    open: '{tedris}/home'
+  nizamShell:
+    given: { app: nizamShell }
+    as: koskNazim
+    vars: { pageUrl: '{nizam}/bildirimler', leaveTo: '{nizam}/hesap' }
+    open: '{nizam}/bildirimler'
+  nazar:
+    given: { app: nazar }
+    as: muderris
+    vars: { pageUrl: '{nazar}/**', leaveTo: '{landing}/' }
+    open: '{nazar}/'
+
+events:
+  NAVIGATE: [{ goto: '{leaveTo}' }]
+
+states:
+  footerBelow: { url: '{pageUrl}' }
+  footerInMain: { url: '{pageUrl}' }
+  noFooter: { url: '{pageUrl}' }
+  left: { url: '{leaveTo}' }
+
+nodes:
+  # The link is found as the footer's own anchor, by what the code gives it: the notice on the landing address of the stack
+  # (WEB__LANDING_URL, which the apps read per request), a new tab and `noopener noreferrer` (apps/tedris/components/legal-footer/index.tsx:15-19).
+  # Its accessible name is its text, the graph's `text`: `hasText` holds the words to the element found.
+  noticeLink: { css: 'footer a[target=_blank][rel="noopener noreferrer"][href="{landing}/aydinlatma-metni"]', hasText: Aydınlatma Metni }
+
+# After the press, where the link leads must answer: the replay cannot read the new tab, so the same address is fetched.
+# (`-D -` prints the headers to stdout, where `expect` reads the status line; the body goes to /dev/null.)
+effects:
+  opensNoticeTab:
+    - run: [curl, -s, -D, '-', -o, /dev/null, '{landing}/aydinlatma-metni']
+      expect: 'HTTP/1.1 200'

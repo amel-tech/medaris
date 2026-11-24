@@ -26,8 +26,7 @@ export class DashboardPendingTotalsResponse {
   @ApiPropertyOptional({
     type: Number,
     nullable: true,
-    description:
-      "İtirazlar: the appeal model comes with a later phase, so the count is 0 for a viewer who would see it",
+    description: "İtirazlar: the medreses' appeals waiting for a decision",
   })
   appeals!: number | null;
 

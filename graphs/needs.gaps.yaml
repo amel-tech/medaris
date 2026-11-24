@@ -1,0 +1,1494 @@
+# Every need of the flows under graphs/ that is missing (SPEC.md §13): by flow id, the ids of its needs that say `missing`.
+# Each need's `missing` in its needs.yaml says why, or where it is tracked: the Linear issue first where there is one, then the
+# finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
+# is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
+#
+# 1299 missing needs in 181 flows, of 2764 needs in 182 flows (counted by script from the needs.yaml files, 23 Nov 2026, after
+# tedris.course.updateProgress was retired and the unlisted course of MDRS-248 was noted; `check` prints the same 1299 of 2764). 219 name
+# a Linear issue first, the most MDRS-284 (35), MDRS-299 (23, what of the online exams is not built yet), MDRS-238 (17), MDRS-140 (12),
+# MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1080 have no Linear issue, 8 of them the unlisted course's
+# "not drawn yet": its code and tests exist, and no state or node of the flow draws it.
+#
+# Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
+# `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 675 (counted by the same script, 23 Nov 2026;
+# README.md, under Gaps, gives the number of an earlier count).
+
+schema: delurio-graph/0
+kind: gaps
+id: medaris
+status: proposed
+gaps:
+  common.shell.privacyNotice:
+    - link-says-it-opens-a-tab
+    - notice-found-as-a-landmark-in-nizam
+    - notice-from-nazar
+  common.shell.theme:
+    - name-follows-the-language
+    - choice-follows-the-person-between-apps
+    - no-dead-control-without-javascript
+  landing.site.contact:
+    - page-says-why-it-failed
+    - page-limits-match-the-server
+    - the-card-is-announced-and-keeps-the-focus
+    - errors-clear-as-they-are-fixed
+    - the-form-works-without-script
+    - waitlist-signup
+  landing.site.enterApp:
+    - the-entry-says-no-in-words
+    - phone-visitor-can-register-from-any-page
+    - roadmap-from-the-header  # MDRS-246
+    - chosen-language-follows-into-the-app  # MDRS-295
+  landing.site.faq:
+    - registration-answer-says-gender
+    - answers-name-the-buttons-as-the-apps-do
+    - answers-are-named-regions
+    - answers-follow-the-apps
+  landing.site.readLegal:
+    - cookies-page-is-exact
+    - terms-acceptance-at-sign-in  # MDRS-191
+    - terms-reacceptance-after-a-change  # MDRS-191
+    - device-restriction-before-it-is-promised  # MDRS-125
+    - new-tab-is-announced
+    - counsel-approves-the-texts
+  landing.site.roadmap:
+    - public-static-page  # MDRS-246
+    - reachable-from-header-and-footer  # MDRS-246
+    - four-phases-in-order  # MDRS-246
+    - every-status-is-one-of-four  # MDRS-246
+    - items-follow-to-their-issues  # MDRS-246
+    - no-donation-wording  # MDRS-246
+    - recordings-without-the-host  # MDRS-246
+    - content-is-hand-written-data  # MDRS-246
+    - accessible-and-responsive  # MDRS-246
+    - the-test-that-pins-the-words  # MDRS-246
+    - which-issues-count-as-yayinda
+    - far-items-and-what-stays-out
+    - yayinda-is-true-while-production-waits
+    - header-link-on-a-phone
+  nazar.access.dersNazirPages:
+    - menu-offers-only-what-opens
+    - bans-page-opens-for-a-ban-code
+    - refusal-says-whom-to-ask
+    - refusal-says-the-course-is-passive
+    - refusal-is-announced-and-leads-somewhere
+    - one-name-for-the-deck-page
+  nazar.access.landingScope:
+    - admin-is-told-what-he-may-do
+    - opened-scope-is-worded-honestly
+  nazar.access.medreseNazirRefused:
+    - menu-draws-what-opens  # MDRS-223
+    - lands-on-a-page-that-opens
+    - refusal-says-how-to-ask
+    - awaiting-notice-speaks-to-the-giver
+    - partial-courses-grants-say-why
+  nazar.access.noAccess:
+    - chief-is-told-the-truth
+    - chief-is-named-by-his-role
+    - nazim-is-led-to-nizam
+    - sign-out-asks-first
+  nazar.account.settings:
+    - chief-is-told-what-they-are
+    - nazir-is-told-whom-to-ask
+    - sign-out-asks-first
+    - a-save-is-visibly-busy-and-keeps-the-focus
+    - a-failed-read-says-what-failed
+    - role-names-in-english-and-arabic  # MDRS-202
+    - v2-role-names-everywhere  # MDRS-144
+  nazar.appeals.open:
+    - a-missing-reason-is-said
+    - the-dialog-says-it-is-final
+    - appeal-is-told
+    - focus-and-a-word-after-sending
+    - other-appeals  # MDRS-139
+  nazar.archive.hideAndRestoreCourse:
+    - a-nazir-is-offered-what-they-hold
+    - focus-follows-a-hide-or-a-restore
+    - a-failed-call-is-told
+    - a-tab-name-has-its-count-apart
+    - last-row-of-a-page
+    - recordings-can-be-hidden
+  nazar.archive.hideMedrese:
+    - a-hidden-medrese-says-why-a-course-stays
+    - already-hidden-has-its-own-title
+    - focus-follows-the-hiding
+    - restore-button-says-what-it-shows
+    - no-dead-controls-while-hiding
+    - a-failed-call-is-told
+  nazar.bans.ban:
+    - the-people-above-are-told  # MDRS-113
+    - the-keycloak-account-is-disabled  # MDRS-197
+    - a-ban-notice-by-e-mail  # MDRS-189
+    - a-standing-ban-is-said
+    - the-form-says-what-is-missing
+    - the-lookup-moves-the-focus-and-says-who
+    - a-lookup-only-on-request
+  nazar.bans.courseBans:
+    - the-hoca-reads-and-uses-the-page
+    - a-permanent-request-is-answered  # MDRS-140
+    - bans-reach-the-people-above  # MDRS-113
+    - widen-refuses-a-person-who-runs-the-course
+    - a-hoca-is-not-named-over-an-open-ban
+    - the-picker-leaves-out-who-cannot-be-barred
+    - a-refused-roster-is-told-as-refused
+    - the-ban-dialog-says-who-reads-the-reason
+    - a-wider-ban-is-visible-where-its-person-vanishes
+  nazar.bans.decide:
+    - a-permanent-request-is-answered  # MDRS-140
+    - bans-reach-the-people-above  # MDRS-113
+    - widen-refuses-a-person-who-runs-the-course
+    - a-hoca-is-not-named-over-an-open-ban
+    - an-empty-reason-is-told
+    - the-focus-follows-a-decision
+    - a-busy-dialog-can-be-left-or-says-it-cannot
+  nazar.bans.review:
+    - counts-and-narrowing-are-told
+    - a-refusal-says-what-it-is
+    - the-list-is-bounded
+    - every-ban-reaches-the-people-above  # MDRS-113
+    - a-permanent-request-is-answered  # MDRS-140
+    - staff-cannot-be-barred-on-any-route
+  nazar.course.overview:
+    - box-leads-where-the-reader-may-go
+    - box-name-carries-its-number
+    - a-failed-read-is-told
+    - tab-names-the-course
+  nazar.courseNazirs.appoint:
+    - search-only-on-purpose
+    - a-search-says-what-it-did
+    - kaydet-says-why-it-is-off
+    - cancel-while-pending-answers
+    - selection-count-is-announced
+  nazar.courseNazirs.dismiss:
+    - a-post-already-gone-is-info
+    - focus-follows-the-row-leaving
+    - confirmation-is-announced-as-one
+    - a-busy-dialog-says-so
+    - blocked-row-is-reachable-and-names-who
+    - the-person-is-told
+    - adopt-or-drop-what-was-handed-on  # MDRS-201
+  nazar.courseNazirs.permissions:
+    - nothing-changed-says-so
+    - keyboard-starts-on-the-work
+    - end-problem-is-announced
+    - the-end-shows-the-hour
+    - count-is-announced
+    - focus-after-a-stale-save
+    - closing-asks-when-the-form-changed
+  nazar.courseSettings.access:
+    - stale-course-fields-told
+    - late-policy-shows-the-lock
+    - partial-save-honest
+    - zone-list-usable
+    - focus-after-save
+    - cards-have-own-kaydet-names
+    - an-unlisted-course-opens-by-its-link
+  nazar.courseSettings.hocaTitles:
+    - a-refused-save-says-what-is-stored
+    - a-save-keeps-the-place-and-says-it
+    - an-unsaved-choice-is-not-lost-silently
+    - a-button-that-is-off-says-why
+  nazar.courseSettings.partnerCodes:
+    - kosk-nazim-reaches-the-card
+    - focus-after-a-refusal
+    - a-removal-is-told-in-the-page
+    - a-card-says-why-it-is-absent
+    - a-partner-seat-follows-the-gender-quota  # MDRS-284
+  nazar.courseSettings.publish:
+    - draft-link-leads-staff-to-the-draft
+    - public-link-address-is-current
+    - drafting-says-how-many-talebe
+    - cancel-and-close-say-they-are-busy
+    - busy-words-are-in-the-catalog
+  nazar.courses.browse:
+    - a-refused-read-is-told-as-a-refusal
+    - the-controls-follow-what-the-reader-holds
+    - a-filter-says-what-it-found
+    - the-select-says-what-cuts-the-list
+    - a-course-can-be-narrowed-to-by-its-kosk
+    - a-failed-page-keeps-one-heading
+    - the-title-links-only-where-the-reader-may-open
+  nazar.courses.changeHocas:
+    - say-the-search-outcomes
+    - search-only-when-asked
+    - say-why-kaydet-is-off
+    - menu-offers-only-what-the-person-may-do
+  nazar.courses.open:
+    - every-answer-is-announced
+    - lookup-only-on-request
+    - removing-a-hoca-is-said
+    - the-last-kosk-leaving-keeps-the-work
+    - a-partial-grant-is-told-the-truth
+    - leaving-keeps-the-form
+    - naming-oneself-is-explained
+  nazar.curriculum.edit:
+    - refused-save-says-so
+    - unsaved-edits-survive-a-link
+    - a-save-keeps-the-focus-and-says-it
+    - a-failed-call-is-told
+    - read-only-says-what-stays-live
+    - conflict-is-announced
+    - leaving-a-week-out-says-it-hides-it
+    - preview-the-draft-from-the-editor
+  nazar.curriculum.hideRestore:
+    - gate-the-hide-page
+    - hoca-who-may-hide-reads-the-archive
+    - archive-is-one-click-from-the-hide-page
+    - focus-follows-hide-and-restore
+    - restore-says-what-came-back
+    - a-course-gone-is-worded
+    - a-failed-call-is-told
+    - delete-a-hidden-week-with-a-recording  # MDRS-244
+  nazar.curriculum.resources:
+    - errors-are-announced
+    - reorder-the-course-list
+    - focus-follows-the-panel-and-the-removal
+    - row-buttons-say-which-row
+    - kaydet-says-why-it-is-off
+    - save-keeps-the-place
+    - a-failed-save-is-told
+  nazar.curriculum.sessionHomework:
+    - an-unsaved-description-is-not-lost
+    - take-off-names-the-marks
+    - a-write-says-it-worked
+    - page-says-what-the-nazir-may
+    - a-stale-write-does-not-replace
+  nazar.decks.import:
+    - template-failure-is-told
+    - no-deck-says-why
+    - the-confirmation-names-the-deck
+    - rows-are-told-in-the-persons-words
+    - file-needs-are-said
+    - refusals-are-told-by-cause
+    - csv-survives-excel
+    - big-files-reach-the-api
+    - closing-while-sending-is-honest
+    - a-failed-call-is-told
+    - card-type-follows-the-deck
+    - the-dialog-is-accessible
+  nazar.decks.openAndFill:
+    - staff-change-every-card-of-a-course-deck
+    - a-refusal-says-why
+    - a-saved-edit-says-so
+    - writes-are-announced
+    - required-fields-are-said
+    - cards-have-names
+    - a-failed-call-is-told
+    - the-dialog-starts-in-the-title
+    - a-deck-page-is-told-by-its-title
+  nazar.decks.publishAndDelete:
+    - a-save-sends-only-what-was-typed
+    - a-refusal-leaves-the-page-true
+    - a-write-in-flight-keeps-the-focus
+    - a-refused-form-is-told
+    - the-page-loads-without-a-second-shell
+    - the-delete-dialog-speaks-the-catalog
+    - a-vanished-deck-is-told
+  nazar.decks.siga:
+    - a-siga-card-has-a-decided-type
+    - the-generator-knows-what-the-deck-holds
+    - a-meaning-is-asked-for-early
+    - a-problem-is-announced-and-focused
+    - going-back-keeps-the-corrections
+    - the-drafts-are-not-thrown-away-by-a-stray-click-or-key
+    - a-refusal-says-why-and-where
+    - the-dialog-meets-the-rules-of-its-primitives
+  nazar.evaluation.examScores:
+    - release-asks-first
+    - a-score-change-after-release-is-told
+    - completed-talebe-is-told
+    - page-speaks-of-exams
+    - keyboard-and-focus-follow-the-person
+    - the-board-can-be-downloaded
+    - a-refused-download-is-worded
+    - question-bank-and-timed-exams
+  nazar.evaluation.markRecited:
+    - the-talebe-is-told-of-a-mark
+    - a-save-that-cannot-pass-says-why
+    - keys-and-focus-stay-with-the-person
+    - a-mark-is-heard-by-a-screen-reader
+    - the-note-limit-is-told
+    - a-cell-has-a-row-header
+    - the-board-can-be-downloaded
+    - a-refused-download-is-worded
+  nazar.exams.edit:
+    - one-hour-and-fifty-questions-by-default  # MDRS-299
+    - topics-renamed-and-unpicked  # MDRS-299
+    - the-questions-at-a-glance  # MDRS-299
+    - seen-as-a-talebe-sees-it  # MDRS-299
+    - copy-an-earlier-exam  # MDRS-299
+    - changed-until-it-opens-and-never-after  # MDRS-299
+    - by-keyboard-and-screen-reader  # MDRS-299
+  nazar.exams.mine:
+    - in-the-menu  # MDRS-299
+    - only-the-courses-they-prepare-for  # MDRS-299
+    - the-status-of-each-exam  # MDRS-299
+    - what-each-row-says  # MDRS-299
+    - filter-by-status-and-course  # MDRS-299
+    - a-new-exam-starts-as-a-draft  # MDRS-299
+    - each-exam-opens-where-it-is-worked-on  # MDRS-299
+    - none-yet-says-so  # MDRS-299
+    - reached-from-the-course-too  # MDRS-299
+  nazar.exams.publish:
+    - opens-by-itself  # MDRS-299
+    - moved-or-taken-back-until-it-opens  # MDRS-299
+  nazar.exams.results:
+    - words-and-numbers-not-colour-alone  # MDRS-299
+  nazar.files.download:
+    - download-the-evaluation-sheet
+    - refusal-says-why-on-every-page
+    - refusal-keeps-what-i-was-doing
+    - success-is-confirmed
+    - a-download-is-walked-to-its-end
+  nazar.homework.review:
+    - the-list-change-is-announced
+    - a-refused-download-keeps-the-page
+    - file-changes-say-who-sees-them
+    - a-sent-review-is-never-emptied
+    - the-review-limit-is-worded
+    - a-typed-note-is-kept
+    - the-dialog-works-for-keyboard-and-screen-reader
+  nazar.nazirs.appoint:
+    - refused-at-the-search
+    - search-only-on-purpose
+    - a-search-says-what-it-did
+    - ata-says-why-it-is-off
+    - cancel-while-pending-answers
+  nazar.nazirs.dismiss:
+    - adopt-edit-or-drop-each-grant  # MDRS-201
+    - each-answer-names-its-person
+    - focus-after-a-dismissal
+    - an-already-gone-nazir-is-not-an-error
+    - not-appointed-by-you-is-worded
+  nazar.nazirs.groups:
+    - group-keeps-its-scope
+    - name-before-people
+    - errors-are-announced
+    - the-dialog-is-described-by-its-intro
+    - busy-controls-say-so
+    - focus-after-a-delete
+    - error-toast-over-a-modal
+  nazar.nazirs.permissions:
+    - group-the-course-permissions  # MDRS-226
+    - say-why-a-permission-is-off
+    - say-what-is-wrong-where-it-is
+    - tell-the-count-as-it-changes
+    - keep-the-ends-that-differ
+  nazar.notifications.inbox:
+    - a-refused-mark-on-a-link-is-told
+    - a-row-names-its-course
+    - a-taken-mark-is-told
+    - every-kind-has-a-sentence
+    - a-row-opens-like-a-link
+    - focus-after-a-mark
+    - d2-hocas-are-told-what-waits
+    - email-copy-of-a-notice  # MDRS-189
+  nazar.offsite.requestCourse:
+    - see-what-became-of-a-request
+    - a-failed-call-is-told
+    - a-vanished-koshk-is-deselected
+    - every-wrong-field-is-announced
+  nazar.pano.decideApplications:
+    - head-decides-what-she-lists
+    - focus-follows-a-decision
+    - a-failed-call-is-told
+    - seats-per-gender-at-approval  # MDRS-284
+  nazar.questions.answer:
+    - asker-is-told
+    - answer-keeps-a-colleagues-answer
+    - answer-is-announced
+  nazar.recordings.add:
+    - the-problem-is-heard
+    - the-medrese-policy-keeps-recordings-private  # MDRS-207
+    - a-recording-that-is-not-ready-says-so
+    - a-wrong-recording-can-be-taken-back
+    - focus-follows-a-write
+    - the-bunny-video-leaves-with-its-recording  # MDRS-260
+    - publish-to-the-medaris-channel  # MDRS-204
+  nazar.recordings.upload:
+    - release-time-saved-is-said
+    - continue-only-an-unfinished-upload
+    - unheld-videos-leave-the-library  # MDRS-260
+    - a-change-of-status-is-told
+    - a-failed-upload-stays-visible  # MDRS-259
+    - no-upload-on-a-cancelled-celse
+  nazar.roster.bulkAdd:
+    - the-answer-is-announced-and-the-focus-follows
+    - a-refusal-is-heard-over-the-dialog
+    - the-dialog-holds-still-while-it-sends
+    - a-call-that-fails-is-told
+    - one-box-says-what-it-holds
+    - the-people-added-are-told
+    - adding-by-address-says-who-it-adds-and-who-it-shows
+    - seats-per-gender-at-bulk-add  # MDRS-284
+  nazar.roster.complete:
+    - tell-the-talebe-about-a-completion
+    - say-when-a-course-was-completed
+    - a-barred-talebe-is-told-at-the-row
+    - keep-focus-after-a-decision
+    - say-a-change-out-loud
+    - icazet-record  # MDRS-149
+  nazar.roster.decide:
+    - menu-follows-the-page-rule
+    - note-says-what-makes-an-application-wait
+    - a-barred-applicant-is-shown-as-barred
+    - one-busy-mark-per-row
+    - focus-follows-a-decision
+    - a-failed-call-is-told
+    - staff-see-the-talebe-list-by-permission-or-by-default  # MDRS-203
+    - seats-per-gender-at-approval  # MDRS-284
+    - a-rejection-may-carry-a-reason
+  nazar.roster.remove:
+    - a-removal-can-be-taken-back
+    - the-reason-says-who-reads-it
+    - the-form-says-what-is-missing
+    - focus-follows-a-removal
+    - a-failed-call-is-told
+    - a-busy-dialog-says-so
+    - the-length-limit-is-said
+    - staff-see-the-roster-by-decision  # MDRS-203
+  nazar.sessions.cancel:
+    - a-stale-page-is-refused-with-a-make-up
+    - a-failed-cancel-leaves-no-stray-make-up
+    - make-up-has-a-way-in
+    - a-make-up-date-is-sane
+    - the-date-error-clears-and-names-its-field
+    - the-dialog-says-it-is-final
+    - the-confirm-looks-final
+    - the-note-limit-is-shown
+    - focus-after-a-cancel
+    - a-busy-dialog-says-so
+    - cancel-only-a-live-celse
+    - refusal-says-why-in-its-own-words
+    - a-cancel-frees-in-person-seats  # MDRS-284
+  nazar.sessions.inPersonSeats:
+    - set-the-seats-per-gender  # MDRS-284
+    - see-the-applications-in-order  # MDRS-284
+    - give-a-seat-at-approval  # MDRS-284
+    - a-full-quota-refuses-its-gender-only  # MDRS-284
+    - parallel-approvals-never-pass-the-quota  # MDRS-284
+    - a-seat-ends-with-the-course-seat  # MDRS-284
+    - move-a-talebe-between-remote-and-in-person  # MDRS-284
+    - the-same-list-in-nizam  # MDRS-284
+    - the-order-is-a-rule-or-advice
+    - seats-on-the-course-or-the-celse
+    - a-count-below-the-seats-given
+    - approve-off-when-full
+    - which-permission-gives-a-seat
+    - declining-an-application
+    - a-celse-cancelled-or-unmarked
+  nazar.sessions.manage:
+    - a-link-can-be-removed
+    - a-change-is-recorded
+    - a-change-of-way-in-is-told  # MDRS-189
+    - a-gone-celse-is-told
+    - focus-follows-a-form
+    - a-refused-send-is-announced
+    - a-field-error-goes-when-the-field-is-right
+    - a-button-is-named-by-its-words
+  nazar.sessions.plan:
+    - button-says-what-is-missing
+    - preview-is-announced
+    - a-field-in-error-is-announced
+    - no-celse-in-the-past-unasked
+    - quota-per-gender-when-planning  # MDRS-284
+  nazar.settings.edit:
+    - no-public-recordings-is-enforced
+    - leaving-a-changed-form-warns
+    - focus-stays-usable-after-vazgec-and-save
+    - a-refused-courses-read-is-told-as-a-refusal
+    - admission-rules  # MDRS-138
+  nazar.shell.errorStates:
+    - a-person-who-cannot-be-read-can-leave
+    - one-h1-per-page
+    - an-error-face-is-announced-and-focused
+    - a-face-names-its-tab
+    - a-retry-says-it-is-being-tried
+    - a-scope-404-answers-404
+  nazar.shell.scopeAndMenu:
+    - nazir-is-offered-only-what-opens  # MDRS-223
+    - the-menu-offers-only-what-opens
+    - bildirimler-has-a-name-of-its-own
+    - skip-link-first
+    - landmarks-are-named
+    - picker-rows-use-the-router
+    - picker-name-carries-the-role
+    - one-link-per-page
+  nazar.students.browse:
+    - say-a-change-out-loud
+    - say-why-it-is-refused-or-failed
+    - reading-leaves-a-trace
+    - ban-only-where-it-may-be-given
+    - a-page-change-keeps-the-place
+    - a-long-word-or-page-is-held
+    - the-course-filter-for-every-reader
+  nizam.account.settings:
+    - medaris-nazim-reads-their-permissions
+    - a-save-is-visibly-busy-and-keeps-the-focus
+    - the-second-list-follows-the-zone-held
+    - new-tab-is-said
+    - sign-out-survives-a-failed-read
+    - page-structure-is-in-order
+    - loading-is-announced
+    - choose-the-language  # MDRS-295
+  nizam.applications.decide:
+    - contact-read-only-on-request
+    - the-two-writes-are-one
+    - tabs-say-what-they-changed
+    - the-link-says-when-its-application-is-gone
+    - the-applicant-is-led-to-the-kosk
+    - the-answered-application-names-its-kosk
+    - focus-follows-a-decision
+    - a-failed-read-keeps-the-way-back
+    - the-lists-are-whole
+  nizam.courseRequests.decide:
+    - kabul-et-says-what-it-does
+    - the-reasons-error-is-announced
+    - the-medrese-is-told-of-the-answer
+    - an-accepted-request-names-its-course
+    - a-failed-read-keeps-the-tabs
+    - the-page-says-which-kosk
+    - a-change-of-tab-or-row-is-announced
+    - the-focus-follows-an-answer
+  nizam.courses.curriculum:
+    - a-refused-save-says-so
+    - hiding-says-what-it-does-and-keeps-the-place
+    - reorder-the-course-list
+    - a-refused-download-keeps-the-edits
+    - a-conflict-offers-the-current-course
+    - unsaved-edits-survive-a-link
+    - a-save-keeps-the-focus-and-says-it
+    - a-failed-call-is-told
+    - name-each-row-and-field
+    - buttons-land-on-the-page-they-name
+  nizam.courses.decideApplications:
+    - reject-asks-once-and-may-carry-a-reason
+    - a-barred-talebe-is-told-so
+    - a-row-in-flight-says-so
+    - one-busy-mark-per-row
+    - a-talebe-who-applies-again-is-listed
+    - focus-follows-a-decision
+    - the-menus-number-costs-no-roster-read
+    - the-basnazim-reads-the-list-or-is-told-why-not
+    - the-note-says-why-an-application-waits
+    - one-set-of-words-for-a-decision
+    - an-unreadable-roster-is-an-alert
+    - seats-per-gender-at-approval  # MDRS-284
+  nizam.courses.editHocalar:
+    - search-only-when-asked
+    - say-the-search-outcomes
+    - say-why-kaydet-is-off
+    - offer-the-button-to-those-who-may
+    - keep-what-the-dialog-does-not-show
+    - read-only-the-hocas
+    - a-gone-course-is-told
+  nizam.courses.list:
+    - hide-says-how-many-talebe-lose-access
+    - a-failed-hide-is-told-in-the-window
+    - focus-follows-a-hide-or-a-restore
+    - a-tab-name-has-its-count-apart
+    - closing-follows-the-busy-state
+    - a-medrese-course-can-always-be-opened
+    - the-page-names-the-kosk-in-its-title
+  nizam.courses.manageSessions:
+    - a-link-can-be-removed
+    - a-change-is-recorded
+    - a-change-of-way-in-is-told  # MDRS-189
+    - a-cancel-carries-a-note-and-a-make-up
+    - a-cancel-says-it-is-final
+    - a-refusal-reads-the-page-again
+    - the-title-opens-the-celse
+    - a-time-cannot-be-moved-into-the-past
+    - focus-follows-a-form
+    - a-refused-send-is-announced
+    - a-button-is-named-by-its-words
+  nizam.courses.open:
+    - every-answer-is-announced
+    - the-required-fields-are-exposed
+    - lookup-only-on-request
+    - removing-a-hoca-is-said
+    - a-schedule-the-server-refuses-is-said-before
+    - a-request-answer-that-failed-is-told-truly
+    - a-request-that-is-gone-is-said
+    - a-refused-course-is-said-with-its-reason
+    - a-refused-celse-plan-is-explained-and-kept
+    - the-days-have-names
+    - kontenjan-per-gender  # MDRS-284
+    - gender-is-always-required
+  nizam.courses.overview:
+    - cards-link-to-talebeler  # MDRS-291
+    - links-open-the-page-they-name
+    - numbers-say-what-they-count
+    - a-failed-read-is-not-a-refusal
+    - a-link-only-where-it-opens
+    - the-tab-names-the-course
+    - kontenjan-per-gender  # MDRS-284
+    - gender-always-required  # MDRS-284
+  nizam.courses.planSessions:
+    - button-says-what-is-missing
+    - preview-is-announced
+    - a-field-in-error-is-announced
+    - a-course-that-is-not-there-is-said-so
+    - no-celse-in-the-past-unasked
+    - the-page-names-its-course
+    - quota-per-gender-when-planning  # MDRS-284
+  nizam.courses.roster:
+    - a-removal-can-be-taken-back
+    - the-dialog-tells-the-truth-about-applying-again
+    - removing-and-barring-go-together
+    - the-reason-says-who-reads-it
+    - a-completion-is-told-to-the-talebe
+    - say-when-a-course-was-completed  # MDRS-149
+    - a-barred-talebe-is-told-at-the-row
+    - a-stale-row-is-read-again
+    - an-unreadable-roster-says-why
+    - the-form-says-what-is-missing
+    - focus-and-words-follow-a-decision
+    - a-busy-dialog-says-so
+    - the-length-limit-is-said
+    - a-failed-call-is-told
+    - the-page-names-its-course
+    - back-goes-to-the-course
+    - a-reinstated-seat-follows-the-kontenjan  # MDRS-284
+  nizam.courses.settingsAndPublish:
+    - the-recordings-policy-is-kept-on-the-write
+    - the-policy-saves-with-its-own-word
+    - a-locked-rule-is-worded
+    - a-refusal-reads-the-page-again
+    - the-warning-says-who-loses-the-course
+    - a-new-tab-is-said
+    - opening-the-page-writes-no-second-audit-row
+    - focus-after-a-save
+    - leaving-a-changed-form-asks
+    - the-tab-names-the-course
+    - cancel-and-close-say-they-are-busy
+    - a-hidden-course-says-so
+    - the-page-has-its-own-skeleton
+    - the-zone-list-is-usable
+    - an-unlisted-course-opens-by-its-link
+  nizam.decks.koskDecks:
+    - the-page-links-to-the-archive
+    - edit-the-cards-on-the-design-system
+    - the-proposer-is-told-of-an-acceptance
+    - a-stale-proposal-link-says-so
+    - a-failed-read-explains-itself
+    - a-failed-write-is-told-where-it-happens
+    - the-focus-follows-an-answer
+    - the-hide-dialog-says-who-can-undo-it
+    - a-proposal-card-says-its-card-type
+    - the-edit-link-says-its-words
+    - hiding-is-audited
+  nizam.decks.legacyCards:
+    - only-what-is-yours-is-offered
+    - a-bad-value-is-told-on-the-field
+    - a-refused-save-is-undone
+    - a-saved-change-is-said-in-the-persons-words
+    - the-table-keeps-the-right-text
+    - big-files-can-be-imported
+    - the-import-says-it-is-working
+    - a-failure-says-why-in-the-persons-words
+    - every-control-has-a-name
+    - every-word-is-the-persons-own
+    - the-table-keeps-an-order
+    - a-page-has-a-title-and-a-loading-state
+    - one-place-to-edit-a-deck
+  nizam.grants.appoint:
+    - warn-before-naming-oneself
+    - a-refused-write-reads-the-list-again
+    - text-that-is-no-address-is-told
+    - kaydet-says-why-it-is-off
+    - the-count-is-announced
+    - a-post-with-no-permission-reads-izin-yok
+    - a-dismissal-names-who-stands-in-the-way
+    - the-end-shows-its-hour
+    - the-tab-names-the-kosk
+    - the-dialogs-open-on-their-first-field
+  nizam.home.chiefOverview:
+    - every-waiting-request-has-a-way-in
+    - a-row-opens-its-own-item
+    - the-warning-names-every-scope
+    - a-failed-home-has-a-heading
+    - a-failed-roles-read-says-so
+    - every-word-is-in-the-catalog
+    - the-greeting-fits-the-person
+    - reports-and-dashboards
+  nizam.home.decideApplications:
+    - the-reason-reaches-who-the-dialog-says
+    - a-barred-talebe-is-told-so
+    - a-failed-save-is-told-in-the-dialog
+    - the-list-follows-the-server
+    - one-busy-mark-per-row
+    - focus-follows-a-decision
+    - a-locked-page-says-why
+    - seats-per-gender-at-approval  # MDRS-284
+  nizam.home.koskNazimLanding:
+    - cancelled-celse-says-so-in-words
+    - row-button-reaches-the-celse
+    - no-heading-when-the-read-fails
+    - list-says-how-much-it-shows  # MDRS-211
+    - tab-switch-is-not-an-audited-read
+    - tabs-control-a-panel
+    - loading-is-announced
+  nizam.home.medarisNazimCut:
+    - an-open-page-stops-offering-what-was-taken
+    - the-home-greets-the-person
+    - every-counted-request-has-a-way-in
+    - permanent-ban-requests-exist-before-they-are-offered  # MDRS-194
+    - the-footnote-names-who-gave
+    - the-menu-and-the-permissions-agree
+  nizam.hosting.grantAndRevoke:
+    - the-reason-a-button-is-off-is-said
+    - the-focus-survives-a-withdrawal
+    - a-refusal-brings-the-page-up-to-date
+    - a-failed-list-can-be-tried-again-in-place
+    - a-call-in-flight-is-not-answered-by-a-live-button
+    - the-grant-window-starts-on-its-list
+    - the-page-names-its-kosk
+    - the-list-of-medreses-is-read-when-needed
+    - appeal-a-withdrawn-right  # MDRS-139
+  nizam.inactive.reassign:
+    - a-filter-says-what-it-did
+    - a-permitted-medaris-nazim-has-a-menu-entry
+    - the-button-says-why-it-is-off
+    - the-window-starts-on-the-first-field
+    - a-search-says-what-it-did
+    - a-refusal-has-its-own-words
+    - a-stale-row-goes-after-a-refusal
+    - cancel-while-sending-answers
+    - the-focus-goes-somewhere-after-an-assignment
+    - a-scope-that-never-had-a-manager-is-refused
+  nizam.inactive.viewContent:
+    - openings-found-in-the-audit-page
+    - list-follows-the-refusal
+    - refusal-is-announced
+    - one-press-one-opening
+    - medaris-nazim-opens-what-they-may
+    - medaris-nazim-finds-the-page
+  nizam.kosks.browse:
+    - role-aware-navigation  # MDRS-107
+    - a-nazim-reaches-the-list-by-the-menu  # MDRS-107
+    - a-medaris-nazim-may-open
+    - the-list-says-how-many-and-when-it-changes
+    - the-numbers-follow-the-filter
+    - a-page-past-the-end-has-a-way-back
+    - a-bad-address-is-a-refusal-not-a-crash
+    - a-failure-of-the-viewer-read-is-said
+    - the-focus-survives-a-restore
+  nizam.kosks.editAndHide:
+    - a-locked-platform-policy-is-said-in-words
+    - a-refused-save-is-announced-and-the-focus-goes-to-it
+    - a-save-is-confirmed-in-a-way-that-stays
+    - the-person-lands-where-the-kosk-went
+    - a-hidden-kosk-says-so-on-its-settings
+    - the-page-names-its-kosk
+    - a-busy-dialog-is-not-closed-by-mistake
+  nizam.kosks.manage:
+    - the-view-offers-only-what-the-reader-can-do
+    - a-stale-page-is-read-again
+    - a-write-is-said-where-the-person-is
+    - the-tab-names-the-kosk
+    - a-disabled-button-says-why
+    - a-lookup-runs-on-request
+    - a-hidden-kosk-cannot-be-followed-from-here
+  nizam.kosks.nazims:
+    - the-page-says-a-passive-kosk-is-reopened
+    - a-medaris-nazim-who-may-add-can-add-here
+    - a-person-who-is-a-nazim-already-is-told-at-once
+    - the-picker-stops-at-ten
+  nizam.kosks.open:
+    - the-form-says-what-is-missing
+    - lookup-only-on-request
+    - a-refusal-is-announced
+    - a-medaris-nazim-opens
+    - focus-returns-when-the-form-was-opened-by-the-address
+  nizam.madrasahs.browse:
+    - an-unread-viewer-is-not-trusted
+    - a-passive-medrese-says-why-it-is-passive
+    - a-medrese-with-no-head-is-in-the-passive-list
+    - the-numbers-say-what-they-count
+    - a-change-of-rows-is-announced
+    - the-rest-of-a-long-list-is-reachable
+    - a-tab-is-chosen-not-passed
+  nizam.madrasahs.headMuderris:
+    - say-why-the-button-is-off
+    - refuse-the-same-head-in-words
+    - name-a-permission-in-words
+    - say-a-second-search-found-nobody
+    - tell-naming-oneself-from-a-take-over
+    - answer-each-person-by-a-radio
+    - open-on-the-first-field
+    - keep-the-focus-after-a-change
+    - search-on-a-button-not-on-blur
+    - answer-for-each-item  # MDRS-201
+  nizam.madrasahs.open:
+    - an-empty-short-name-is-explained
+    - the-refusal-of-self-naming-says-what-happened
+    - the-form-says-what-is-missing
+    - lookup-only-on-request
+    - a-search-answer-is-always-said
+    - a-refusal-is-announced
+    - the-head-is-an-account-of-the-realm
+    - the-list-names-every-head
+  nizam.madrasahs.passivate:
+    - refusals-of-the-preview-are-told-apart
+    - the-list-says-why-a-medrese-is-passive
+    - passive-is-one-rule
+    - the-result-and-the-stale-notice-are-announced
+    - the-closing-is-told-to-those-it-closes
+  nizam.madrasahs.restore:
+    - a-viewer-who-cannot-restore-is-told-why
+    - a-refusal-brings-the-page-up-to-date
+    - the-page-does-not-offer-what-the-api-refuses
+    - focus-follows-the-restore
+    - the-busy-word-is-in-the-catalog
+  nizam.moderation.banStudent:
+    - the-hoca-bars-the-course
+    - the-check-of-who-may-be-barred-is-complete
+    - a-ban-that-stands-is-told
+    - a-refusal-is-told-inside-the-window
+    - the-button-says-why-it-is-off
+    - the-window-waits-while-it-sends
+    - the-focus-goes-somewhere-after-a-ban
+    - the-roster-names-the-scope-it-shows
+    - a-ban-is-placed-at-the-platform-level  # MDRS-197
+    - the-talebe-is-told-by-mail  # MDRS-189
+    - the-ban-is-recognised-on-another-device  # MDRS-125
+  nizam.moderation.decideAppeal:
+    - every-holder-is-led-to-the-list
+    - the-deciders-are-told-an-appeal-waits
+    - the-card-names-the-author-and-the-day
+    - accept-asks-first-and-may-carry-a-note
+    - the-koskss-card-says-it-was-sent-back
+    - a-second-refusal-is-appealable-or-said
+    - the-note-has-its-own-error
+    - the-notes-error-is-announced
+    - the-people-concerned-are-told-the-decision
+    - one-decision-at-a-time
+    - a-failed-decision-is-told-where-it-is-read
+    - the-focus-and-a-word-follow-a-decision
+    - appeals-of-other-decisions  # MDRS-139
+  nizam.moderation.decideBan:
+    - widen-refuses-a-person-who-runs-a-course
+    - a-hoca-is-not-named-over-an-open-ban
+    - one-widening-asks-the-same-way-everywhere
+    - a-widening-names-the-ban-it-widens
+    - a-refusal-is-told-in-the-dialog-and-the-list-follows
+    - the-list-and-the-focus-follow-a-decision
+    - an-empty-reason-is-told
+    - the-lift-says-what-it-lifts
+    - the-note-under-a-ban-tells-the-true-reason
+    - a-medrese-ban-reads-as-one
+    - bans-at-every-level-reach-the-people-above  # MDRS-113
+    - a-ban-at-platform-level  # MDRS-113
+    - a-ban-recognises-the-device  # MDRS-125
+    - a-ban-can-close-the-account  # MDRS-197
+  nizam.moderation.decidePermanentBan:
+    - who-may-ask
+    - page-behind-the-menu-entry  # MDRS-140
+    - decider-holds-the-ban-permission  # MDRS-140
+    - deciders-are-told-and-read-the-request  # MDRS-140
+    - person-is-checked-where-it-bites  # MDRS-140
+    - approve-closes-the-account  # MDRS-197
+    - closing-is-fail-closed-and-repeatable  # MDRS-197
+    - the-service-account-may-disable-only
+    - closed-account-keeps-no-session  # MDRS-197
+    - closed-account-is-not-appointed  # MDRS-197
+    - reject-with-a-note-ban-stays  # MDRS-140
+    - requester-sees-the-outcome  # MDRS-140
+    - every-step-is-audited  # MDRS-140
+    - a-lifted-ban-withdraws-its-request
+    - platform-ban-is-listed
+    - a-lift-reopens-the-account  # MDRS-197
+    - medaris-home-card-counts  # MDRS-140
+    - device-follows-the-platform-ban  # MDRS-125
+  nizam.moderation.deleteArchived:
+    - the-count-names-everything-that-goes
+    - already-gone-is-a-notice-not-an-error
+    - a-refused-delete-is-told-in-the-dialog
+    - a-week-or-session-with-a-recording-can-be-deleted  # MDRS-244
+    - the-focus-goes-somewhere-after-a-delete
+    - a-delete-does-not-skip-a-row-of-the-next-page
+    - a-busy-dialog-is-not-closed-by-mistake
+    - a-late-count-does-not-fill-another-dialog
+  nizam.moderation.restoreArchived:
+    - focus-follows-a-restore
+    - every-row-is-reachable
+    - the-type-filter-offers-only-what-can-list
+    - a-flipped-row-names-the-real-level
+    - every-refusal-has-turkish-words
+    - a-hidden-parent-is-named
+  nizam.moderation.reviewBans:
+    - a-change-of-the-list-is-told
+    - the-last-page-keeps-the-focus
+    - a-medrese-wide-ban-reads-as-medrese
+    - platform-level-bans-have-a-chip  # MDRS-113
+    - a-widening-is-offered-only-where-it-changes-something
+    - a-row-says-what-it-lacks
+    - the-lifted-tab-is-ordered-as-it-shows
+    - a-reader-sees-only-what-her-permission-is-for
+    - a-banned-device-is-read-here  # MDRS-125
+  nizam.moderation.reviewDeckPublication:
+    - look-only-when-asked
+    - answers-are-on-the-record
+    - answered-request-says-when-it-was-asked
+    - decision-follows-the-cards
+    - a-change-is-announced
+  nizam.nazims.appoint:
+    - lookup-only-on-request
+    - kaydet-says-why-it-is-off
+    - the-person-is-checked-before-sending
+    - only-a-known-account-is-appointed
+    - a-refusal-is-announced
+    - the-dialog-opens-on-its-field
+    - a-ceiling-on-what-a-medaris-nazim-may-give  # MDRS-209
+  nizam.nazims.dismiss:
+    - adopt-edit-or-drop-each-grant  # MDRS-201
+    - say-why-the-button-is-off
+    - each-answer-names-its-person
+    - focus-after-a-dismissal
+    - a-person-who-is-gone-is-not-an-error
+    - loading-is-announced
+    - a-refusal-names-whose-rows-block-it
+    - a-person-without-a-name-has-a-name-in-the-buttons
+  nizam.nazims.editPermissions:
+    - a-wrong-end-is-announced
+    - a-refusal-says-what-is-true-now
+    - a-save-that-changes-nothing-says-so
+    - the-dialog-starts-on-the-work
+    - the-table-shows-the-hour
+    - the-count-is-announced
+    - the-checks-do-not-expire
+  nizam.nazims.groups:
+    - group-the-course-permissions  # MDRS-226
+    - warn-before-an-edit-is-dropped
+    - the-question-is-described-by-its-intro
+    - the-list-is-a-list
+    - busy-buttons-say-so
+    - a-stale-count-can-be-answered
+    - focus-after-a-make-or-a-delete
+    - say-why-one-course-is-off
+    - no-call-when-nothing-changed
+  nizam.notifications.triage:
+    - the-basnazim-is-told
+    - a-notice-leads-where-the-person-may-read
+    - a-taken-mark-is-told
+    - a-retry-says-it-ran
+    - a-title-opens-with-its-mark-kept
+    - a-chip-narrows-or-is-not-drawn
+    - a-failed-read-never-leaves-the-skeleton
+    - more-kinds-of-notice
+    - email-copy-of-a-ban-notice  # MDRS-189
+  nizam.partners.registerAndScope:
+    - a-refusal-is-announced
+    - a-switch-keeps-the-focus
+    - removing-a-kosk-asks-first
+    - a-dialog-starts-in-its-field
+    - a-wrong-partner-can-be-removed
+    - a-medaris-nazim-with-the-permission-finds-the-page
+  nizam.platform.auditLog:
+    - the-export-says-how-much-it-holds
+    - a-failed-export-says-so
+    - the-log-says-how-long-it-is-kept
+    - a-change-of-rows-is-announced
+    - the-filter-form-keeps-its-place
+    - a-granted-medaris-nazim-finds-the-page
+    - every-kind-the-log-lists-can-be-chosen
+    - a-deleted-scope-is-named-as-deleted
+    - a-name-too-long-is-refused-in-words
+    - the-notice-says-who-sees-the-log
+  nizam.platform.policies:
+    - a-medaris-nazim-with-the-permission-finds-the-page
+    - a-switch-says-it-is-saving
+    - ask-before-a-platform-wide-change
+    - a-switch-names-who-applies-it
+    - the-table-covers-medreses
+    - a-change-that-changes-nothing-is-not-logged
+  nizam.shell.landingByRole:
+    - a-failed-read-on-the-root-says-so
+    - a-failed-no-role-page-has-a-heading
+    - a-failed-hand-over-announces-once
+    - the-role-line-is-not-claimed-while-unread
+    - one-spelling-of-nazir
+    - the-welcome-page-has-its-own-title
+  nizam.shell.menuPerPersona:
+    - medaris-menu-offers-each-permitted-page
+    - menu-offers-only-pages-that-exist
+    - the-whole-kosk-menu-has-its-pages  # MDRS-211
+    - one-kosk-is-not-a-choice
+    - menu-keeps-the-kosk-the-person-works-in
+    - badge-is-not-an-audited-roster-read
+    - sheet-opens-on-a-safe-control
+    - skip-link-first
+    - links-use-the-router
+    - landmarks-are-named
+    - role-names-in-english-and-arabic  # MDRS-202
+    - v2-role-names  # MDRS-144
+    - grant-ceiling-for-a-medaris-nazim  # MDRS-209
+    - course-permissions-in-groups  # MDRS-226
+  nizam.shell.noAccessAndNotFound:
+    - the-kalici-yasak-entry-opens-a-page  # MDRS-140
+    - the-youtube-entry-opens-a-page  # MDRS-195
+    - a-refusal-and-a-missing-page-are-announced-and-focused
+    - a-refusal-is-served-as-a-refusal
+    - a-face-names-its-tab
+    - a-refusal-names-whom-to-ask-only-to-someone-who-can-ask
+  nizam.youtube.liveBroadcasts:
+    - menu-entry-opens-the-page  # MDRS-238
+    - owner-setup-is-done  # MDRS-237
+    - legal-pages-name-youtube-api-services  # MDRS-237
+    - paid-courses-answer-is-recorded
+    - connect-the-channel  # MDRS-238
+    - only-a-holder-connects  # MDRS-238
+    - who-else-may-connect
+    - connection-status-and-reconnect  # MDRS-238
+    - the-connect-failures-are-told  # MDRS-238
+    - the-token-is-kept-encrypted  # MDRS-238
+    - disconnect-the-channel
+    - where-the-callback-lives
+    - open-where-the-hoca-runs-it
+    - course-choice-youtube  # MDRS-238
+    - visibility-is-stated-explicitly  # MDRS-238
+    - public-broadcast-under-the-platform-policy
+    - a-broadcast-per-celse  # MDRS-238
+    - a-celse-with-none-can-be-given-one
+    - one-stream-per-hoca  # MDRS-238
+    - whose-stream-a-ders-nazir-uses
+    - the-quota-is-guarded  # MDRS-238
+    - reschedule-and-cancel-reach-the-broadcast  # MDRS-238
+    - when-youtube-does-not-answer
+    - every-call-on-the-channel-is-audited  # MDRS-238
+    - the-stream-key-panel  # MDRS-238
+    - the-key-is-masked-shown-and-copied  # MDRS-238
+    - how-the-key-is-shown-is-decided
+    - only-the-streams-people-see-the-key  # MDRS-238
+    - the-key-is-never-stored-logged-or-sampled  # MDRS-238
+    - follow-the-life-of-the-broadcast  # MDRS-239
+    - states-in-plain-words  # MDRS-239
+    - missed-start-warns  # MDRS-239
+    - youtube-starts-and-stops-by-itself  # MDRS-239
+    - one-worker-shared-by-all-lessons  # MDRS-239
+    - polling-or-sse
+    - the-talebes-player-shows-the-state  # MDRS-239
+    - monitor-preview  # MDRS-239
+    - a-never-started-broadcast
+    - attach-the-recording-when-the-broadcast-ends  # MDRS-240
+    - ready-only-when-youtube-has-processed  # MDRS-240
+    - which-notification-the-talebe-get
+    - a-failed-archive-is-told  # MDRS-240
+    - the-recording-visibility-follows-the-course  # MDRS-240
+    - a-hocas-recording-is-kept
+    - the-manual-link-beside-a-broadcast
+    - live-chat-feed-in-medaris-ui  # MDRS-241
+    - live-lesson-in-tedris-with-timestamp-and-chat  # MDRS-147
+    - publish-to-the-medaris-channel  # MDRS-204
+  realm.auth.forgotPassword:
+    - confirmation-names-the-way-on
+    - a-link-works-once
+    - email-rule-before-posting
+    - length-from-the-realm
+    - reset-reason-is-linked
+    - password-change-is-told
+    - smtp-reset-mail  # MDRS-188
+  realm.auth.partnerConsent:
+    - partner-client-gives-terms
+    - consent-texts-read-in-the-console
+    - the-page-opens-where-they-read
+    - a-language-of-their-own  # MDRS-202
+  realm.auth.profileUpdate:
+    - tell-what-is-missing-near-the-button
+    - a-box-to-tick-says-so-in-its-own-words
+    - one-title-per-page
+    - focus-on-the-first-missing-field
+    - busy-state-while-saving
+    - the-notice-link-is-the-environments-own
+  realm.auth.register:
+    - focus-stays-while-typing
+    - form-opens-where-they-type
+    - reasons-are-announced
+    - password-rules-stay-and-are-announced
+    - accounts-are-not-enumerated
+    - resend-is-offered-when-it-works
+    - verify-in-another-browser-ends-signed-in
+    - a-mistyped-address-can-be-corrected
+    - one-title-for-each-page
+    - one-way-of-speaking
+    - change-of-address-mail  # MDRS-188
+    - terms-and-consent-at-registration  # MDRS-191
+  realm.auth.sessionEnded:
+    - the-text-they-typed-is-not-lost
+    - the-page-says-the-session-ended
+  realm.auth.signIn:
+    - remember-me
+    - one-sign-in-for-the-three-apps
+    - the-form-opens-where-they-type
+    - one-title-for-each-page
+    - the-form-works-without-script
+    - a-language-of-their-own  # MDRS-202
+    - a-banned-device-is-refused  # MDRS-125
+    - second-step-with-a-one-time-code  # MDRS-190
+  realm.auth.signInFailures:
+    - a-way-out-that-is-not-the-same-failure
+    - the-box-is-announced
+    - each-page-has-its-own-title
+    - a-refusal-moves-the-focus
+    - a-pause-says-how-long-and-who-to-ask
+    - a-refusal-does-not-tell-strangers-the-account-exists
+    - a-ban-switches-the-account-off  # MDRS-197
+    - the-error-link-goes-to-sign-in
+  realm.auth.signOut:
+    - tell-the-person-when-sign-out-cannot-start
+    - nazar-asks-before-signing-out
+    - a-sign-out-page-has-its-own-title
+    - focus-starts-on-the-question
+    - nothing-cancels-a-sign-out-in-flight
+  tedris.account.calendarFeed:
+    - masked-link-is-readable-to-a-screen-reader
+    - a-refused-renewal-says-the-old-link-still-works
+    - making-the-link-is-announced
+    - a-lost-connection-is-answered-on-the-page
+    - the-words-of-the-kit-are-in-the-persons-language
+    - switch-the-feed-off
+  tedris.account.notifications:
+    - bell-says-how-many
+    - marking-says-it-is-done
+    - focus-stays-after-a-mark
+    - failed-retry-says-so
+    - every-kind-has-words
+    - the-help-lists-every-kind
+    - loading-says-so
+    - a-network-failure-is-handled
+    - a-mark-by-link-is-not-lost
+    - two-marks-do-not-undo-each-other
+    - lists-have-their-own-names
+    - title-says-the-site
+    - labels-are-the-apps-own
+    - answers-match-the-contract
+    - unknown-type-keeps-its-code
+    - repeated-types-is-a-400
+    - cancelled-celse-leads-to-its-make-up
+    - email-preferences
+  tedris.account.profile:
+    - page-survives-a-failed-read
+    - name-seen-everywhere
+    - say-what-the-profile-link-edits
+    - blank-name-is-announced
+    - long-name-is-stopped-early
+    - a-lost-connection-is-told
+    - controls-keep-focus-and-say-where-they-lead
+    - choose-the-language  # MDRS-295
+    - delete-my-account  # MDRS-243
+  tedris.account.publicProfile:
+    - kunye-is-chosen  # MDRS-141
+    - kunye-is-unique  # MDRS-141
+    - kunye-null-is-a-400
+    - kunye-at-registration  # MDRS-141
+    - gender-follows-the-account  # MDRS-141
+    - gender-is-always-set
+    - others-are-private-by-default  # MDRS-141
+    - preview-of-what-others-see  # MDRS-141
+    - others-see-only-what-is-open  # MDRS-141
+    - a-profile-has-a-page-to-read  # MDRS-141
+    - consent-covers-the-kunye  # MDRS-141
+    - gender-decision-before-switch-on  # MDRS-141
+    - switched-on-from-one-place
+    - personal-data-reads-are-permissioned-and-audited  # MDRS-141
+    - icazet-visibility  # MDRS-149
+  tedris.account.rolesOverview:
+    - platform-permissions-in-words
+    - new-tab-is-announced
+    - chief-finds-their-role
+  tedris.celse.attend:
+    - the-meeting-link-waits-for-the-window
+    - the-stream-card-says-in-person
+    - an-in-person-celse-names-its-place
+    - a-seat-at-an-in-person-celse-is-per-gender  # MDRS-284
+    - the-page-says-when-it-changes
+    - the-page-has-its-own-title
+    - a-failed-read-is-not-a-missing-celse
+  tedris.celse.browseCurriculum:
+    - the-popup-is-named-and-announced
+    - rows-follow-the-clock
+  tedris.celse.cancelled:
+    - cancelled-celse-recording-is-offered
+    - title-says-which-celse
+    - whole-note-from-the-row
+    - read-failure-is-not-a-missing-celse
+    - cancel-only-a-live-celse
+    - refusal-says-why-in-its-own-words
+  tedris.celse.locked:
+    - enrolled-locked-talebe-is-told-why  # MDRS-265
+    - pending-card-says-the-right-thing
+    - applicant-can-take-it-back-here
+    - focus-and-announcement-after-applying
+    - every-locked-celse-offers-the-way-in
+    - seats-are-separate-per-gender  # MDRS-284
+  tedris.celse.watchRecording:
+    - recording-public-honours-medrese-policy
+    - failed-recording-seen-by-team
+    - notes-position-on-bunny  # MDRS-264
+    - bunny-watching-is-recorded
+    - the-counter-is-perceived-by-everyone
+    - a-failed-save-says-what-happened
+  tedris.celse.watchStream:
+    - the-page-says-live-only-when-it-is
+    - the-frame-keeps-its-name
+    - the-line-matches-the-panel
+    - the-page-finds-the-recording-by-itself
+    - a-chat-only-column-is-not-named-twice
+    - stream-states-come-from-the-broadcast  # MDRS-239
+    - a-live-lesson-shows-its-timestamp-and-chat  # MDRS-147
+  tedris.course.apply:
+    - apply-card-says-what-will-happen
+    - kontenjan-per-gender  # MDRS-284
+    - gender-required-before-a-seat  # MDRS-284
+    - admission-rules  # MDRS-138
+    - an-unlisted-course-waits-for-approval
+  tedris.course.deckTab:
+    - decks-read-failure-is-told
+    - a-round-survives-a-change-of-view
+    - card-side-is-told-without-colour
+    - tab-is-in-the-address
+  tedris.course.draftPreview:
+    - preview-says-when-no-celse-is-dated
+    - back-to-the-draft-in-nazar
+    - preview-tab-names-the-draft
+    - preview-sample-row-leads-nowhere
+  tedris.course.grades:
+    - tab-is-in-the-address
+    - failed-read-is-told
+    - release-leads-to-grades
+    - completed-talebe-is-told
+    - grades-have-one-name
+  tedris.course.leave:
+    - the-confirmation-names-the-progress
+    - taking-back-never-removes-an-approved-seat
+    - success-is-said-and-the-focus-goes-somewhere
+    - a-left-seat-frees-the-gender-count  # MDRS-284
+  tedris.course.readProgramme:
+    - completion-is-the-teams
+    - the-progress-follows-the-programme
+    - the-tab-is-in-the-address
+    - a-closed-seat-is-told-why
+    - a-week-shows-its-number-once
+    - loading-is-announced
+  tedris.course.recordings:
+    - retry-says-what-happened
+    - medrese-policy-hides-public-recordings
+    - failed-upload-is-seen-by-staff  # MDRS-259
+    - public-and-host-reach-the-name
+  tedris.decks.accessRefusals:
+    - hidden-public-deck-is-gone
+    - forbidden-words-are-true
+    - one-screen-for-every-refusal
+    - refusals-are-a-page
+  tedris.decks.browse:
+    - the-count-is-announced
+    - the-failed-read-has-a-heading
+    - loading-is-announced
+    - the-empty-sentence-names-its-cause
+    - study-needs-a-card
+    - a-long-list-is-paged
+    - words-come-from-the-catalog
+  tedris.decks.create:
+    - a-refusal-says-why
+    - limits-counted-as-the-api-counts
+    - errors-are-announced
+  tedris.decks.editOrDelete:
+    - delete-confirms-it-is-done
+    - edit-is-dated
+    - an-accepted-edit-is-never-a-500
+    - a-deck-name-is-never-blank-in-the-api
+    - the-dialog-gives-the-focus-back
+    - a-refused-name-is-announced
+    - published-edit-is-told-or-reviewed
+    - delete-says-what-goes-with-the-deck
+  tedris.decks.explore:
+    - collect-is-announced
+    - filtering-is-announced
+    - failed-read-is-a-page
+    - lists-are-paged
+    - collection-state-is-the-api
+    - refusal-says-why
+  tedris.decks.importExport:
+    - export-in-both-formats
+    - export-failure-is-told
+    - export-file-keeps-the-name
+    - template-links-say-what-they-are
+    - file-needs-are-said
+    - refusals-are-told-by-cause
+    - csv-is-read-by-its-name
+    - csv-survives-excel
+    - a-cell-is-told-as-what-it-is
+    - the-dialog-is-accessible
+  tedris.decks.manageCards:
+    - the-refusal-is-said-and-the-focus-goes-to-it
+    - faces-are-required-for-assistive-technology
+    - an-edit-that-changes-nothing-writes-nothing
+    - deleting-says-what-happens-to-the-progress
+    - the-list-has-an-order-the-buttons-can-name
+    - the-focus-goes-somewhere-after-a-card-is-added-or-deleted
+    - the-api-takes-only-the-fields-of-a-card
+    - a-card-id-that-is-no-uuid-is-a-400
+    - an-accepted-write-is-never-a-500
+    - a-decks-type-is-fixed-and-every-card-has-it
+    - course-staff-write-the-cards-of-their-course-decks
+    - the-kits-own-words-are-in-the-catalog
+  tedris.decks.publish:
+    - refused-deck-says-why-and-asks-again
+    - stale-page-tells-the-truth
+    - course-deck-is-not-offered-to-the-public
+  tedris.decks.readAndCopy:
+    - staff-and-the-bashnazim-are-not-offered-the-collection
+    - a-refusal-tells-its-cause
+    - changes-are-announced
+    - the-copy-dialog-starts-in-its-form
+  tedris.decks.study:
+    - refused-write-can-be-skipped
+    - network-failure-resets-the-buttons
+    - turn-and-rate-are-announced
+    - empty-deck-says-so
+    - hard-card-returns-in-the-round
+    - caption-counts-the-round
+  tedris.decks.visitorPublicDeck:
+    - find-a-public-deck-from-the-app
+    - empty-deck-says-it-is-empty
+    - closed-deck-is-a-real-redirect
+  tedris.discover.applyForKosk:
+    - the-form-says-what-is-missing-to-everyone
+    - a-refusal-names-the-field
+    - the-applicant-is-led-to-the-kosk
+  tedris.discover.browse:
+    - a-failure-the-address-causes-can-be-left
+    - a-page-past-the-end-is-answered
+    - an-unknown-medrese-in-the-address-is-not-shown-as-an-id
+    - loading-is-announced
+    - the-notice-region-has-a-turkish-name
+    - an-unlisted-course-is-not-in-kesfet
+  tedris.discover.followKosk:
+    - hidden-kosk-cannot-be-followed
+    - follow-keeps-focus-and-says-its-state-once
+  tedris.discover.readKosk:
+    - kosk-ids-of-people-stay-off-reads
+    - failed-read-box-has-a-heading-and-a-way-back
+    - cover-label-is-not-read-aloud
+    - loading-says-so
+    - not-found-has-a-main
+    - nazim-sees-which-course-is-a-draft
+    - an-unlisted-course-is-not-on-the-kosk-page
+  tedris.discover.readMadrasah:
+    - outage-is-not-a-404
+    - approval-notice-is-true
+    - head-id-is-not-public
+    - address-by-handle  # MDRS-294
+    - an-unlisted-course-is-not-on-the-medrese-page
+  tedris.discover.visitorPath:
+    - registration-returns-to-the-page
+    - medrese-notice-is-true
+    - programme-names-a-week-once
+    - sample-row-does-not-say-completed
+    - loading-is-heard
+    - an-unlisted-course-opens-by-its-link
+  tedris.exams.mine:
+    - reached-from-the-course-too  # MDRS-299
+    - readable-by-keyboard-and-screen-reader  # MDRS-299
+  tedris.exams.result:
+    - in-notlarim-with-the-other-exams  # MDRS-299
+  tedris.exams.take:
+    - keyboard-and-screen-reader  # MDRS-299
+  tedris.files.download:
+    - refusal-keeps-what-i-was-doing
+    - refusal-reason-reaches-everyone
+    - refusal-is-announced-in-their-language
+    - success-is-confirmed
+    - a-download-is-walked-to-its-end
+  tedris.learn.homeworkHandIn:
+    - quota-closes-the-picker-safely
+    - refusals-are-said-in-words
+    - steps-are-announced-and-keep-focus
+    - a-typed-note-is-kept
+    - a-seat-that-ended-is-told
+  tedris.learn.homeworkMemorize:
+    - told-when-marked
+    - failed-read-can-be-retried
+    - mark-is-named-as-the-hocas
+    - kind-of-homework-is-content
+    - earlier-heading-says-what-it-lists
+  tedris.learn.homeworkReview:
+    - refused-download-keeps-the-page
+    - review-appears-without-reload
+    - a-sent-review-is-never-empty
+    - change-after-review-is-announced
+  tedris.learn.notes:
+    - player-position-on-bunny  # MDRS-264
+    - saved-note-is-announced
+    - drafts-are-kept
+    - notes-shared-as-hasiye
+  tedris.learn.questions:
+    - ask-from-the-celse-page  # MDRS-267
+    - player-position-on-a-question  # MDRS-264
+  tedris.learn.writingGating:
+    - removed-talebe-sees-own-writing  # MDRS-268
+    - passive-course-is-explained  # MDRS-265
+    - barred-talebe-is-told-the-access-is-gone
+    - refusal-says-why
+    - hidden-celse-takes-no-writing
+  tedris.learning.addToCalendar:
+    - the-event-names-the-celse-in-the-celse-words
+    - a-saved-file-says-so
+    - a-refused-file-never-replaces-the-course-page
+    - one-menu-wherever-it-stands
+    - the-feed-holds-every-course-i-run
+  tedris.learning.myCourses:
+    - withdraw-never-removes-an-approved-seat
+    - completed-link-names-its-course
+    - cover-is-not-read-aloud
+    - loading-says-so
+    - every-course-is-a-heading
+  tedris.learning.schedule:
+    - the-weeks-have-an-end
+    - an-in-person-celse-offers-a-seat  # MDRS-284
+    - the-cancellation-note-can-be-read-in-full
+    - a-live-row-names-its-celse
+    - times-in-the-viewers-zone
+    - an-empty-week-says-why-and-leads-on
+    - the-week-links-have-a-fitting-name
+    - loading-is-announced
+  tedris.session.registerInPerson:
+    - apply-for-an-in-person-seat  # MDRS-284
+    - kontenjan-per-gender-per-celse  # MDRS-284
+    - gender-reaches-the-api-and-is-checked  # MDRS-284
+    - only-an-enrolled-talebe-asks  # MDRS-284
+    - seat-given-at-approval-in-order  # MDRS-284
+    - take-back-and-let-go  # MDRS-284
+    - full-quota-says-so-for-the-callers-gender  # MDRS-284
+    - calendar-location  # MDRS-284
+    - waiting-list-or-remote-only
+    - registration-window
+    - registering-enrols-or-not
+    - place-of-the-seat-and-its-visibility
+    - talebe-sees-their-place-in-line
+    - team-hears-of-an-application
+    - letting-a-seat-go-asks-first
+  tedris.shell.frame:
+    - the-visitors-current-place-is-honest
+    - the-bar-marks-hesabim-and-bildirimler
+    - bell-says-how-many-are-unread  # MDRS-167
+    - the-error-page-keeps-the-bar
+    - the-error-page-has-a-main
+    - the-person-row-says-who-they-are  # MDRS-235
+    - a-skip-link-comes-first
+    - a-language-menu  # MDRS-295
+  tedris.shell.home:
+    - retry-one-section
+    - failed-celses-are-an-alert
+    - a-visitor-takes-one-hop
+    - an-in-person-celse-is-called-so
+    - the-page-has-its-own-title
+    - an-unlisted-course-is-not-offered-to-followers
+  tedris.shell.systemPages:
+    - outage-is-not-a-missing-page
+    - error-page-keeps-the-system-frame
+    - retry-that-fails-says-so
+    - app-failure-page-is-translatable  # MDRS-234
+    - faces-are-landmarks
+    - missing-celse-answers-404
+    - faces-name-themselves-in-the-title

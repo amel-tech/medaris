@@ -1,6 +1,6 @@
 {
-  "id": "8dd9d03c-a1aa-4d77-8031-7b5ba083213a",
-  "prevId": "a09afc45-ce84-4bff-991a-a66abd6f1e73",
+  "id": "d9d5e8c6-08d0-4083-aa0b-be0cd3e75de2",
+  "prevId": "5d433af7-31a0-45f9-be89-792176c8a1fe",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -581,123 +581,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.course_sarf_roots": {
-      "name": "course_sarf_roots",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "course_id": {
-          "name": "course_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kok": {
-          "name": "kok",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bab": {
-          "name": "bab",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "mastar": {
-          "name": "mastar",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "masdar_vezin": {
-          "name": "masdar_vezin",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "course_sarf_roots_course_kok_bab_idx": {
-          "name": "course_sarf_roots_course_kok_bab_idx",
-          "columns": [
-            {
-              "expression": "course_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "kok",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bab",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "course_sarf_roots_course_id_courses_id_fk": {
-          "name": "course_sarf_roots_course_id_courses_id_fk",
-          "tableFrom": "course_sarf_roots",
-          "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "course_sarf_roots_bab_known": {
-          "name": "course_sarf_roots_bab_known",
-          "value": "\"course_sarf_roots\".\"bab\" in ('nasara', 'daraba', 'fataha', 'semia', 'hasune', 'hasibe')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.bunny_video_removals": {
@@ -3400,6 +3283,106 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.assignment_evaluations": {
+      "name": "assignment_evaluations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "evaluation_status",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluated_by": {
+          "name": "evaluated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assignment_evaluations_assignment_user_uq": {
+          "name": "assignment_evaluations_assignment_user_uq",
+          "columns": [
+            {
+              "expression": "assignment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assignment_evaluations_assignment_id_lesson_assignments_id_fk": {
+          "name": "assignment_evaluations_assignment_id_lesson_assignments_id_fk",
+          "tableFrom": "assignment_evaluations",
+          "tableTo": "lesson_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.lesson_assignment_files": {
       "name": "lesson_assignment_files",
       "schema": "",
@@ -3524,6 +3507,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "assignment_kind",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'FILE'"
         },
         "created_at": {
           "name": "created_at",
@@ -3781,190 +3771,6 @@
           "value": "\"lesson_notes\".\"offset_seconds\" is null or \"lesson_notes\".\"offset_seconds\" >= 0"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.lesson_board_files": {
-      "name": "lesson_board_files",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "lesson_id": {
-          "name": "lesson_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_key": {
-          "name": "file_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "storage_key": {
-          "name": "storage_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_name": {
-          "name": "file_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content_type": {
-          "name": "content_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "size_bytes": {
-          "name": "size_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uploaded_by": {
-          "name": "uploaded_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "lesson_board_files_lesson_key_idx": {
-          "name": "lesson_board_files_lesson_key_idx",
-          "columns": [
-            {
-              "expression": "lesson_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_board_files_storage_key_idx": {
-          "name": "lesson_board_files_storage_key_idx",
-          "columns": [
-            {
-              "expression": "storage_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_board_files_lesson_id_lessons_id_fk": {
-          "name": "lesson_board_files_lesson_id_lessons_id_fk",
-          "tableFrom": "lesson_board_files",
-          "tableTo": "lessons",
-          "columnsFrom": [
-            "lesson_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_board_files_size_positive": {
-          "name": "lesson_board_files_size_positive",
-          "value": "\"lesson_board_files\".\"size_bytes\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lesson_boards": {
-      "name": "lesson_boards",
-      "schema": "",
-      "columns": {
-        "lesson_id": {
-          "name": "lesson_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "scene": {
-          "name": "scene",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "lesson_boards_lesson_id_lessons_id_fk": {
-          "name": "lesson_boards_lesson_id_lessons_id_fk",
-          "tableFrom": "lesson_boards",
-          "tableTo": "lessons",
-          "columnsFrom": [
-            "lesson_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.lesson_questions": {
@@ -5992,6 +5798,151 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.appeals": {
+      "name": "appeals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "madrasah_id": {
+          "name": "madrasah_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_request_id": {
+          "name": "course_request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decision_note": {
+          "name": "decision_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "appeals_course_request_uq": {
+          "name": "appeals_course_request_uq",
+          "columns": [
+            {
+              "expression": "course_request_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "appeals_status_idx": {
+          "name": "appeals_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "appeals_madrasah_id_madrasahs_id_fk": {
+          "name": "appeals_madrasah_id_madrasahs_id_fk",
+          "tableFrom": "appeals",
+          "tableTo": "madrasahs",
+          "columnsFrom": [
+            "madrasah_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "appeals_course_request_id_course_requests_id_fk": {
+          "name": "appeals_course_request_id_course_requests_id_fk",
+          "tableFrom": "appeals",
+          "tableTo": "course_requests",
+          "columnsFrom": [
+            "course_request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "appeals_reason_length": {
+          "name": "appeals_reason_length",
+          "value": "char_length(\"appeals\".\"reason\") <= 1000"
+        }
+      },
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -6097,6 +6048,23 @@
       "values": [
         "VOCABULARY",
         "HADEETH"
+      ]
+    },
+    "public.assignment_kind": {
+      "name": "assignment_kind",
+      "schema": "public",
+      "values": [
+        "FILE",
+        "MEMORIZE"
+      ]
+    },
+    "public.evaluation_status": {
+      "name": "evaluation_status",
+      "schema": "public",
+      "values": [
+        "FULL",
+        "INCOMPLETE",
+        "ABSENT"
       ]
     },
     "public.offsite_request_status": {

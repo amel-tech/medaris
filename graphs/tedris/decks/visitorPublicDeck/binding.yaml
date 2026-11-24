@@ -1,0 +1,168 @@
+# tedris.decks.visitorPublicDeck on the local stack: tedris-web on :4000, nobody signed in, a public deck made by the walk itself.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/visitorPublicDeck --bind graphs/tedris/decks/visitorPublicDeck/binding.yaml --absent --out <dir>
+#   ... --cover transitions    walks a path to each transition the scenarios below can drive (the other files of this folder add the rest)
+# The visitor is an empty account and `signIn` is emptied, so the base's real sign-in through Keycloak never runs (landing's and
+# tedris.discover.visitorPath's bindings do the same). `--absent` matters: what a visitor does not have (the collection button, the copy
+# button, the card's status badge, the reader's progress) is drawn as nodes that the visitor's session never shows.
+#
+# NOT REPLAYED in this phase (the owner's rule: replays run once, after every graph is written). The file loads (`--emit-spec` writes a
+# spec and walks nothing) and what it says about the app comes from the code and from read-only looks on 15 Nov 2026: curl as a visitor
+# for the statuses of the addresses and the HTML of the closed deck's redirect.
+#
+# What a walk makes and gives back. The stack's seed has no public deck, so `setup` makes one the way a person gets one (public-deck.mjs:
+# the spare talebe APPLICANT_B makes it, adds its cards one request each, asks for it to be published, and `systemAdmin` approves the request),
+# and `teardown` deletes it as its author, after the notification that approving the request wrote for them (one SQL DELETE: no route removes
+# a notification; and one SELECT that finds an old deck by title). APPLICANT_B is the one spare account that no other deck flow of its batch uses.
+# `setup` removes an earlier deck of that title first, so a walk that died half way leaves nothing behind. The deck is "Açık deste denemesi":
+# `manyCards` has twelve cards (six rows first, the round cut to ten), `oneCard` one (the round ends after one rating), `emptyDeck` none.
+# The closed-deck scenarios use the seed's own private deck, "Kelime Defterim", and change nothing. Only APPLICANT_B is touched; no seeded
+# course, deck, köşk or application is.
+#
+# What each scenario is (a `given` of a file is taken by its first scenario only, so the scenarios that reach the same screen as another
+# are in files of their own: binding.few.yaml, binding.create.yaml, binding.explore.yaml):
+#   manyCards     (the main story) /decks/<id> of a twelve-card public deck: "12 karttan 6’sı gösteriliyor", "Daha fazla göster", "Çalış",
+#                 the round of ten ("Kart 1 / 10"), Space and the button turn the card, a rating moves on, "Çalışmayı bitir", and the note's
+#                 link, which leaves for Keycloak. An effect after each rating counts the deck's progress rows: none (e2e learn#14).
+#   oneCard       a one-card deck: the one rating ends the round ("Tur bitti", "1 kartı çalıştın."), then "Desteye dön".
+#   emptyDeck     a deck with no card: "Bu destede henüz kart yok." and, after "Çalış", "Bugün için bitti" (DCK-27). Not verified that the
+#                 API lets a deck with no card be published; if it does not, `make --cards 0` stops with its answer.
+#   privateDeck   nobody signed in opens the seed's private deck at /decks/<id>: sent to sign in, nothing of the deck in the page
+#                 (e2e learn#15; the setup asks the API as nobody and expects 404).
+#   privateStudy  the same for /decks/study/<id>.
+#   memberPage    /decks, a member address: the proxy's redirect (e2e learn#16; /decks/create and /decks/explore are binding.create.yaml
+#                 and binding.explore.yaml; /decks/<id>/cards and /decks/<id>/edit answer the same 307, seen with curl, and are not bound).
+# Not bound, so the replay cannot reach them (reported): `deck: refused` (no 403 can be made: the API's second lock is reached by a race).
+# `call` is used on no state: the reads are server-side, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.visitorPublicDeck
+
+data:
+  pd: { json: ../.local/public-deck.json }
+
+accounts:
+  visitor: {}
+signIn: []
+
+# the deck's name is a constant of public-deck.mjs; the numbers of the page are given by each scenario, or matched by a regex below
+samples:
+  deck: Açık deste denemesi
+  title: Açık deste denemesi
+
+scenarios:
+  manyCards:
+    given: { address: deck, deck: many }
+    as: visitor
+    open: '{tedris}/decks/{pd.id}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, make, --cards, '12']
+        expect: 'public-deck made'
+    teardown:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, remove]
+  oneCard:
+    given: { address: deck, deck: one }
+    as: visitor
+    open: '{tedris}/decks/{pd.id}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, make, --cards, '1']
+        expect: 'public-deck made'
+    teardown:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, remove]
+  emptyDeck:
+    given: { address: deck, deck: empty }
+    as: visitor
+    open: '{tedris}/decks/{pd.id}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, make, --cards, '0']
+        expect: 'public-deck made'
+    teardown:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, remove]
+  # a deck nobody gives a visitor: the seed's private deck, which the API answers 404 for a caller with no token
+  privateDeck:
+    given: { address: deck, deck: closed }
+    as: visitor
+    open: '{tedris}/decks/{seed.decks.own}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, anon, '{seed.decks.own}']
+        expect: 'public-deck anon 404 DECK_NOT_FOUND'
+  privateStudy:
+    given: { address: study, deck: closed }
+    as: visitor
+    open: '{tedris}/decks/study/{seed.decks.own}'
+    setup:
+      - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, anon, '{seed.decks.own}']
+        expect: 'public-deck anon 404 DECK_NOT_FOUND'
+  memberPage:
+    given: { address: memberOnly, deck: closed }
+    as: visitor
+    open: '{tedris}/decks'
+
+events:
+  # Space turns the card over and back: a window listener that ignores a press while a button, link or field has the focus, so it
+  # works when nothing has (after a load, and after the button that was pressed has gone)
+  FLIP: [{ key: Space }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+# what the redirect's page holds is the answer to e2e learn#15's "gizli anlam": the deck's name and every card's back, read as the deck's
+# author, are in neither address's page for a visitor; and what a rating leaves in the database is the answer to learn#14's progress count
+effects:
+  sentAway:
+    - run: [node, ../tedris/decks/visitorPublicDeck/public-deck.mjs, hidden, '{seed.decks.own}', talebe]
+      expect: 'none in the pages'
+  nextCard:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from flashcard_progress where flashcard_id in (select id from flashcards where deck_id = '{pd.id}')"]
+      expect: '"n":0'
+  endsRound:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from flashcard_progress where flashcard_id in (select id from flashcards where deck_id = '{pd.id}')"]
+      expect: '"n":0'
+
+states:
+  deckPage: { url: '{tedris}/decks/{pd.id}' }
+  studying: { url: '{tedris}/decks/study/{pd.id}' }
+  studyOver: { url: '{tedris}/decks/study/{pd.id}' }
+  # the app's own /auth/signin page answers with the way to Keycloak, which is where the browser ends
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.redirected: { url: '{keycloak}/realms/medaris/**' }
+  discover_opened: { url: '{tedris}/discover' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot tell a node from its twin on another state of the walk (`--absent` looks for every node in every state it
+# is not drawn in), from the bar around the page (its "Giriş yap", "Kayıt ol" and "Keşfet" are outside <main>) or where a number changes
+# between states (the card's, the round's, the rows shown): a regex.
+nodes:
+  # ---- the deck's page ----
+  deckMain: { role: main, hasText: '/Deste hakkında/' }
+  crumbDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  crumbDeckHere: { css: 'nav[aria-label="Sayfa yolu"] [aria-current=page]', hasText: Açık deste denemesi }
+  publicBadge: { css: 'main header .mds-badge', hasText: Herkese açık }
+  deckCount: { css: 'main header span.mds-caption', hasText: '/ezber kartı/' }
+  deckKind: { css: 'main header span.mds-caption', hasText: '/Kelime/' }
+  studyLink: { role: link, name: '/^Çalış$/' }
+  cardsCaption: { css: 'section[aria-labelledby="deck-cards"] span.mds-caption', hasText: '/ kart$/' }
+  cardsTable: { role: table, name: '/destesinin kartları$/' }
+  frontCell: { css: 'table[role=table] tbody td:first-child' }
+  backCell: { css: 'table[role=table] tbody td:last-child' }
+  showing: { css: 'main p.mds-caption', hasText: '/karttan .+ gösteriliyor/' }
+  collectButton: { role: button, name: '/Koleksiyona ekle/' }
+  copyButton: { role: button, name: '/Kendi desteme kopyala/' }
+  # ---- the study page ----
+  studyMain: { role: main, hasText: '/Çalışmayı bitir/' }
+  crumbDeck: { role: link, name: Açık deste denemesi, within: { role: navigation, name: Sayfa yolu } }
+  crumbStudyHere: { css: 'nav[aria-label="Sayfa yolu"] [aria-current=page]', hasText: Çalışma }
+  studyTitle: { role: heading, name: '/^Çalışma$/' }
+  studySubtitle: { css: 'main header p.mds-caption', hasText: '/· \d+ kart$/' }
+  roundBar: { role: progressbar, name: '/^Bu tur: \d+ \/ \d+ kart$/' }
+  cardRegion: { role: region, name: '/^Kart \d+ \/ \d+$/' }
+  cardCaption: { css: 'section .mds-caption', hasText: '/^Kart \d+ \/ \d+$/' }
+  cardStatus: { css: 'section .mds-badge' }
+  frontFace: { css: 'section div.cursor-pointer' }
+  backEyebrow: { css: 'section .mds-eyebrow', hasText: Arka yüz }
+  backFace: { css: 'section p.mds-reading' }
+  rateHard: { role: button, name: '/^Zor$/' }
+  rateMedium: { role: button, name: '/^Orta$/' }
+  rateEasy: { role: button, name: '/^Kolay$/' }
+  doneTitle: { css: 'main strong', hasText: Tur bitti }
+  doneText: { css: 'main p.mds-empty__text', hasText: '/kartı çalıştın/' }
+  nothingTitle: { css: 'main strong', hasText: Bugün için bitti }
+  nothingText: { css: 'main p.mds-empty__text', hasText: '/Yarın yeniden bak/' }

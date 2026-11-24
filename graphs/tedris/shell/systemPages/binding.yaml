@@ -1,0 +1,115 @@
+# tedris.shell.systemPages on the local stack: tedris-web (:4000) as a member who asks for an address no page owns (the main
+# story), as a visitor who asks for a course that is not there (sent to sign in since #401), and as a hoca whose draft course throws when
+# it is drawn.
+#   node apps/engine/src/cli.ts replay graphs/tedris/shell/systemPages \
+#     --bind graphs/tedris/shell/systemPages/binding.yaml --absent --out <dir>              (the main story)
+#   ... --to page_shown   (the error page, the old header, and "Yeniden dene": scenario hocaPageThrows)
+#   ... --to sign_in_opened    (a visitor who asks for a course that is not there is sent to sign in: scenario visitorMissingCourse)
+#
+# Data. Nothing the seed holds is changed. The error page needs a course that throws, which the seed has not got, so
+# helpers/draft-course.mjs makes a DRAFT köşk course of its own, "Sistem sayfaları denemesi", as the köşk's nazım, with the
+# müderris account as its hoca and one scheduled celse; `break` then gives it the time zone "Nope/Zone" with SQL (courses.time_zone:
+# the API takes only a real zone when a course is made), because the preview card formats the first celse's time in the course's zone
+# and throws a RangeError (e2e system-pages#10 does the same). "Yeniden dene" is pressed after `fix` has put the zone back, so the
+# retry has something to read (node `retryButton`, `before`). The teardown deletes the course (DELETE /courses/{id} as the başnazım).
+# `make` first deletes any course of that title, so a walk that crashed leaves nothing in the way. The course's id is
+# graphs/.local/system-pages.json, read as {sp.draft}.
+#
+# Not bound, so the replay cannot reach them (reported): the global error document (shellThrows: nothing in the stack makes the root
+# layout throw), the failed reads of a celse or a medrese (readFailed: the stack's tedrisat cannot be made to answer 5xx for one
+# of them), the retry that fails again (recovery: stays; the node's `before` always repairs the course), the visitor's error page
+# (the old header's "Giriş yap" and "Kayıt ol"), and HTTP statuses (the replay does not read a navigation's status).
+# What was walked (15 Nov 2026, with --absent, 3 runs): the main story (the first run found `systemBar` shown on /home, where the
+# walk leaves for; the locator was narrowed and the second run passed) and --to page_shown (hocaPageThrows). Not walked:
+# visitorMissingCourse (its not-found page and its way to Keşfet were counted in the running app on 15 Nov 2026, before #401 sent a visitor
+# of a course to sign in instead), memberMissingCelse, memberMissingCourse and visitorUnknownAddress (looked at in a browser only). A later
+# walk takes them.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.shell.systemPages
+
+data:
+  sp: { json: ../.local/system-pages.json }
+
+scenarios:
+  # The main story: a member types an address no page owns (e2e system-pages#7).
+  memberUnknownAddress:
+    given: { arrival: unknownAddress, person: member, recovery: gone }
+    as: talebe
+    open: '{tedris}/olmayan-sayfa'
+
+  # A visitor asks for a course the API does not know (the visitor's half of system-pages#8, and the case SP-04 says nothing tests):
+  # since #401 the course segment sends them to sign in and back.
+  visitorMissingCourse:
+    given: { arrival: missingCourse, person: visitor, recovery: gone }
+    open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'
+
+  # A hoca opens their draft course, which throws, mends it and presses "Yeniden dene" (system-pages#10).
+  hocaPageThrows:
+    given: { arrival: pageThrows, person: member, recovery: gone }
+    as: muderris
+    open: '{tedris}/courses/{sp.draft}'
+    setup:
+      - run: [node, helpers/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, break]
+    teardown:
+      - run: [node, helpers/draft-course.mjs, remove]
+
+  # A member opens a celse that does not exist, of a course they are enrolled in (session#8).
+  memberMissingCelse:
+    given: { arrival: missingCelse, person: member, recovery: gone }
+    as: talebe
+    open: '{tedris}/courses/{seed.courses.open}/lessons/00000000-0000-4000-8000-00000000dead'
+
+  # A member asks for a course the API does not know (system-pages#8).
+  memberMissingCourse:
+    given: { arrival: missingCourse, person: member, recovery: gone }
+    as: talebe
+    open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'
+
+  # A visitor types an address no page owns: the gate sends them to sign in.
+  visitorUnknownAddress:
+    given: { arrival: unknownAddress, person: visitor, recovery: gone }
+    open: '{tedris}/olmayan-sayfa'
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  home_opened: { url: '{tedris}/home' }
+  # the link is "/", which the page redirects to Keşfet for a visitor
+  discover_opened: { url: '{tedris}/discover' }
+  sign_in_opened: { url: '{keycloak}/realms/medaris/**' }
+  register_opened: { url: '{keycloak}/realms/medaris/**' }
+  # the same address as the error page, so the preview card's heading is what proves the page was read again
+  page_shown: { url: '{tedris}/courses/{sp.draft}', text: 'Ders yayımlandığında' }
+  left: { url: '{tedris}/discover' }
+
+# Where role and name cannot find a node, or would find the wrong one when the graph says a node is absent (--absent): the old
+# header and the system's bar are both banners, and the not-found page's own words are the error page's in the global document.
+nodes:
+  # the shell's wrapper, at an address no page owns
+  legacyMain: { css: 'main[data-legacy-main]' }
+  # PhoneChrome's bar, when it is not inside a <main> (at an unknown address it is, and is no banner), and the box follows it. The page
+  # the walk leaves for has the same bar, and --absent would find it there, so the box is part of what finds it.
+  systemBar: { css: 'header[data-system-chrome]:not(main header):has(~ section.mds-system-state)' }
+  legacyHeader: { css: 'header[data-legacy-header]' }
+  legacyWordmark: { css: 'header[data-legacy-header] > div:first-child > p' }
+  # the unread count may be in the name, so the link is found by its address
+  legacyBell: { css: 'header[data-legacy-header] a[href="/notifications"]' }
+  # the name is the avatar's initials and the person's name, which are the walk's own account's
+  legacyUserMenu: { css: 'header[data-legacy-header] button' }
+  # the system bar's menu has links of the same names, so the old tab row is found by its own wrapper
+  legacyTabHome: { css: '[data-legacy-tabs] a[href="/home"]' }
+  legacyTabLearning: { css: '[data-legacy-tabs] a[href="/discover"]' }
+  legacyTabDecks: { css: '[data-legacy-tabs] a[href="/decks"]' }
+  # "Yeniden dene" is pressed after the course's zone is put back, so the segment has something to read
+  retryButton:
+    before:
+      - run: [node, helpers/draft-course.mjs, fix]
+  # the global document's words are the error page's; its own <main> tells them apart
+  shellErrorPage: { css: 'main.mds-system-state--page' }
+  shellErrorTitle: { css: 'main.mds-system-state--page h1' }
+  shellErrorText: { css: 'main.mds-system-state--page p' }
+  shellRetryButton: { css: 'main.mds-system-state--page button' }

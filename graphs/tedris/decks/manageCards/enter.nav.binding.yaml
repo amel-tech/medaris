@@ -1,0 +1,11 @@
+# The way into tedris.decks.manageCards: the deck's own page (/decks/<id>) and its tab "Kartlar" (tedris.nav entry deck->deckCards, label key Decks.tabCards).
+# tedris.nav's own binding gives no locator for an entry that needs an item (`data: true`), and three entries share these ends (the tab, "Bütün kartlar" of
+# a deck that has cards, "Kart ekle" of one that has none), so this file names the tab by the words of its name, "Kartlar" and the count, inside the
+# navigation "Deste bölümleri".
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'deck->deckCards Decks.tabCards': { role: link, name: '/^Kartlar/', within: { role: navigation, name: Deste bölümleri } }

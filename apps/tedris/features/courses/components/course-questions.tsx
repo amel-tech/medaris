@@ -306,6 +306,7 @@ export const QuestionCard = ({
             <Button
               variant="ghost"
               size="small"
+              disabled={busy}
               onClick={() => setMode("view")}
             >
               {t("cancel")}
@@ -350,6 +351,7 @@ export const QuestionCard = ({
               <Button
                 variant="ghost"
                 size="mini"
+                disabled={busy}
                 onClick={() => setMode("view")}
               >
                 {t("cancel")}

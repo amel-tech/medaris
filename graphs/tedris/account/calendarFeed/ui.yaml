@@ -1,0 +1,123 @@
+# The screens of tedris.account.calendarFeed: tedris-web's Takvim aboneliği (/account/calendar, app/account/calendar/page.tsx and
+# features/courses/components/calendar-subscription.tsx) as it draws a person with no link, with a link that cannot be shown again,
+# with a status it could not read, and with a link just made, the confirmation dialog before a renewal, and the two toasts of the
+# copy buttons. The bars above the page belong to tedris.shell.frame.
+#
+# Words: every `CalendarSubscription.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.CalendarSubscription`), the key being the path inside that file, by <scratchpad>/calfeed/gen-catalog.py. Four texts are in
+# no i18n file and are `composed.*`, written with the words the page shows:
+#   composed.CalendarSubscription.mask  the 32 bullets of a hidden link, calendar-subscription.tsx:22
+#   composed.Button.loading             "Yükleniyor", the busy status of a button, libs/ui/src/mds/button.tsx:62 (CALFEED-1)
+#   composed.AlertDialog.close          "Kapat", the dialog's cross, libs/ui/src/mds/alert-dialog.tsx:50 (CALFEED-1)
+#   composed.Toast.close                "Kapat", the toast's cross, libs/ui/src/mds/toast.tsx:97 (CALFEED-1, as ADDCAL-2)
+# `changes` is the app's own message that says what renewing does (confirmText): the step that cannot be undone is the renewal, and the
+# first link replaces nothing. No message is authored for this flow.
+# The date in "Oluşturuldu: {date}" is the viewer's long date and short time; its sample is one made-up moment and the binding finds the
+# text by its prefix. Samples are invented.
+schema: delurio-graph/0
+kind: ui
+id: tedris.account.calendarFeed
+flow: tedris.account.calendarFeed
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: CalendarSubscription.confirmText }
+samples:
+  date: 15 Kasım 2026 Pazar 21:00
+# The two buttons that keep the focus through a call: "Bağlantı oluştur" while busy (aria-disabled, never `disabled`), and the dialog's
+# "Yenile". What happens to the focus on the other steps is `returnsFocus` below or nothing: the page sets no focus on load, and a
+# button that was pressed keeps it (focus-not-set).
+focus:
+  issuing: create
+  renewing: confirm
+
+nodes:
+  # ---- the page and what is always on it ----
+  calendarMain: { type: page, component: Page, role: main, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/app/account/calendar/page.tsx:21 } # the <main> has no name and nothing moves the focus when the page opens (focus-not-set)
+  trail: { type: page, component: Page, role: navigation, name: { key: CalendarSubscription.trail }, in: [noLink, masked, unknown, issuing, issued], source: libs/ui/src/mds/breadcrumb.tsx:25 } # <nav aria-label>, an <ol> of two items; below 768 px only the parent shows
+  crumbAccount: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CalendarSubscription.breadcrumbAccount }, in: [noLink, masked, unknown, issuing, issued], emits: OPEN_ACCOUNT, source: apps/tedris/app/account/calendar/page.tsx:26 } # a plain <a href="/account">, so a full page load
+  crumbCurrent: { type: text, component: Text, text: { key: CalendarSubscription.breadcrumb }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/app/account/calendar/page.tsx:27 } # aria-current=page; the same words as the h1
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.title }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/app/account/calendar/page.tsx:31 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: CalendarSubscription.subtitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/app/account/calendar/page.tsx:32 }
+
+  # ---- the card "Kişisel takvim bağlantın" ----
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.cardTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:152 } # h2 of a Card, which is no landmark
+  createHelp: { type: text, component: Text, text: { key: CalendarSubscription.createHelp }, in: [noLink, issuing], source: apps/tedris/features/courses/components/calendar-subscription.tsx:205 }
+  unknownText: { type: text, component: Text, text: { key: CalendarSubscription.unknown }, in: [unknown], source: apps/tedris/features/courses/components/calendar-subscription.tsx:205 }
+  copyNowAlert: { type: alert, component: Alert, role: status, text: { key: CalendarSubscription.copyNowText }, in: [issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:154 } # a warning Alert is a status, not an alert; it arrives with its text (CALFEED-3)
+  copyNowTitle: { type: text, component: Text, text: { key: CalendarSubscription.copyNowTitle }, in: [issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:155 } # the Alert's title, a <p>
+  googleFieldHidden: { type: field, component: TextField, role: textbox, text: { key: CalendarSubscription.googleFor }, value: { key: composed.CalendarSubscription.mask }, in: [masked], source: apps/tedris/features/courses/components/calendar-subscription.tsx:57 } # read-only, 32 bullets as its value (ACC-11); id calendar-google
+  googleField: { type: field, component: TextField, role: textbox, text: { key: CalendarSubscription.googleFor }, in: [issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:57 } # read-only, left to right, selects its text on focus; its value is the address, which the replay does not know
+  googleHelp: { type: text, component: Text, text: { key: CalendarSubscription.googleHelp }, in: [masked, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:55 } # the Field's description
+  copyGoogle: { type: action, component: Button, role: button, intent: secondary, name: { key: CalendarSubscription.copyGoogle }, text: { key: CalendarSubscription.copy }, in: [masked, issued], disabledIn: [masked], emits: COPY_GOOGLE, source: apps/tedris/features/courses/components/calendar-subscription.tsx:65 } # off while the field is hidden
+  appleFieldHidden: { type: field, component: TextField, role: textbox, text: { key: CalendarSubscription.appleFor }, value: { key: composed.CalendarSubscription.mask }, in: [masked], source: apps/tedris/features/courses/components/calendar-subscription.tsx:57 } # id calendar-apple (ACC-11)
+  appleField: { type: field, component: TextField, role: textbox, text: { key: CalendarSubscription.appleFor }, in: [issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:57 } # the webcal: address
+  appleHelp: { type: text, component: Text, text: { key: CalendarSubscription.appleHelp }, in: [masked, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:55 }
+  copyApple: { type: action, component: Button, role: button, intent: secondary, name: { key: CalendarSubscription.copyApple }, text: { key: CalendarSubscription.copy }, in: [masked, issued], disabledIn: [masked], emits: COPY_APPLE, source: apps/tedris/features/courses/components/calendar-subscription.tsx:65 }
+  hiddenNote: { type: text, component: Text, text: { key: CalendarSubscription.hidden }, in: [masked], source: apps/tedris/features/courses/components/calendar-subscription.tsx:179 }
+  openApple: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CalendarSubscription.appleOpen }, in: [issued], emits: OPEN_APPLE, source: apps/tedris/features/courses/components/calendar-subscription.tsx:183 } # href is the webcal: address; drawn only for a link made in this visit
+  createdAt: { type: text, component: Text, text: { key: CalendarSubscription.createdAt, params: { date: issuedAt } }, in: [masked, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:192 } # the long date and the short time, in the viewer's zone
+  create: { type: action, component: Button, role: button, intent: confirm, text: { key: CalendarSubscription.create }, in: [noLink, issuing], disabledIn: [issuing], emits: CREATE, source: apps/tedris/features/courses/components/calendar-subscription.tsx:220 } # busy while the call runs: aria-busy and aria-disabled, not `disabled`; makes the link at once, with no question
+  busyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [issuing], source: libs/ui/src/mds/button.tsx:113 } # a visually hidden <output> beside the busy button; its words are a kit default (CALFEED-1)
+  regenerate: { type: action, component: Button, role: button, intent: secondary, text: { key: CalendarSubscription.regenerate }, in: [masked, unknown, issued], emits: REGENERATE, source: apps/tedris/features/courses/components/calendar-subscription.tsx:211 } # outline; it only opens the dialog. After a link is made it is the same button as "Bağlantı oluştur" with a new name (CALFEED-3)
+  regenerateHelp: { type: text, component: Text, text: { key: CalendarSubscription.regenerateHelp }, in: [masked, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:230 } # a caption; not drawn while the status is unreadable
+  createFailed: { type: alert, component: Alert, role: alert, text: { key: CalendarSubscription.failed }, in: [noLink, masked, unknown, issued], when: "notice == 'failed'", source: apps/tedris/features/courses/components/calendar-subscription.tsx:233 } # an error Alert, role=alert; the same words for a failed creation and for a failed renewal (CALFEED-2)
+
+  # ---- the two toasts of the copy buttons: the kit's Toaster (Base UI), a region "Bildirimler" at the page's foot; a low-priority toast is a dialog, a high-priority one an alertdialog aria-hidden until it is focused ----
+  copiedToast: { type: status, component: Status, role: dialog, name: { labelledBy: copiedTitle }, in: [issued], when: "toast == 'copied'", source: apps/tedris/features/courses/components/calendar-subscription.tsx:45 } # success: closes by itself after 6 seconds (libs/ui/src/mds/toast.tsx:36)
+  copiedTitle: { type: text, component: Text, text: { key: CalendarSubscription.copied }, in: [issued], when: "toast == 'copied'", source: apps/tedris/features/courses/components/calendar-subscription.tsx:45 }
+  copyFailedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: copyFailedTitle }, in: [issued], when: "toast == 'copyFailed'", source: apps/tedris/features/courses/components/calendar-subscription.tsx:50 } # warning: stays until closed; aria-hidden until it is focused (toast-aria-hidden)
+  copyFailedTitle: { type: text, component: Text, text: { key: CalendarSubscription.copyFailed }, in: [issued], when: "toast == 'copyFailed'", source: apps/tedris/features/courses/components/calendar-subscription.tsx:50 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [issued], when: toasting, emits: CLOSE_TOAST, source: libs/ui/src/mds/toast.tsx:95 } # an icon only; its label is a kit constant (CALFEED-1)
+
+  # ---- the explanations, the same on every state of the page ----
+  howTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.howTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:241 } # h2
+  googleTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.googleTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:244 } # h3
+  googleStep1: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.googleStep1 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:247 } # an <ol> item; the catalog text holds a <code> tag around calendar.google.com, so the binding finds it by its words
+  googleStep2: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.googleStep2 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:248 } # an <ol> item
+  googleStep3: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.googleStep3 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:249 } # an <ol> item
+  googlePhone: { type: text, component: Text, text: { key: CalendarSubscription.googlePhone }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:252 }
+  appleTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.appleTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:255 } # h3
+  appleStep1: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.appleStep1 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:257 } # an <ol> item
+  appleStep2: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.appleStep2 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:257 } # an <ol> item
+  appleStep3: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.appleStep3 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:257 } # an <ol> item
+  delayAlert: { type: alert, component: Alert, role: status, text: { key: CalendarSubscription.delayText }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:263 } # a neutral Alert is a status
+  delayTitle: { type: text, component: Text, text: { key: CalendarSubscription.delayTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:263 }
+  whatTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.whatTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:269 } # h2 of the <aside>, which has no name
+  what1: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.what1 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:271 } # an <li> with an icon
+  what2: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.what2 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:272 } # an <li> with an icon
+  what3: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.what3 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:273 } # an <li> with an icon
+  what4: { type: text, component: Text, role: listitem, text: { key: CalendarSubscription.what4 }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:274 } # an <li> with an icon
+  privateTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.privateTitle }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:277 } # h2
+  privateText: { type: text, component: Text, text: { key: CalendarSubscription.privateText }, in: [noLink, masked, unknown, issuing, issued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:278 }
+
+  # ---- the dialog that guards a renewal: Base UI's AlertDialog, opened from state; the page behind it is inert ----
+  confirmDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: confirmTitle }, in: [confirming, renewing], initialFocus: cancel, source: libs/ui/src/mds/alert-dialog.tsx:68 } # the scrim does not close it
+  confirmTitle: { type: text, component: Heading, role: heading, text: { key: CalendarSubscription.confirmTitle }, in: [confirming, renewing], source: libs/ui/src/mds/alert-dialog.tsx:80 } # h2
+  confirmText: { type: text, component: Text, text: { key: CalendarSubscription.confirmText }, in: [confirming, renewing], source: libs/ui/src/mds/alert-dialog.tsx:95 } # the Description, a <div>
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CalendarSubscription.confirmCancel }, in: [confirming, renewing], disabledIn: [renewing], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 }  # the focus starts here; disabled while the call runs, with the cross, and Esc does nothing (the window's dismissDisabled, calendar-subscription.tsx:291): closing would not stop the renewal, which ends the old link (renewing-can-be-dismissed, fixed)
+  confirm: { type: action, component: Button, role: button, intent: confirm, text: { key: CalendarSubscription.confirmAction }, in: [confirming, renewing], disabledIn: [renewing], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:109 } # busy while the call runs: aria-busy and aria-disabled
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.AlertDialog.close }, in: [confirming, renewing], disabledIn: [renewing], emits: CLOSE_DIALOG, source: libs/ui/src/mds/alert-dialog.tsx:88 }  # an icon only; "Kapat" is the kit's default (CALFEED-1); disabled while the call runs, as Vazgeç (renewing-can-be-dismissed, fixed)
+  dialogBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [renewing], source: libs/ui/src/mds/button.tsx:113 } # the busy button's hidden <output>, inside the dialog (the page's own button behind it also says it)
+
+edges:
+  - { labelledBy: [confirmDialog, confirmTitle] }
+  - { labelledBy: [copiedToast, copiedTitle] }
+  - { labelledBy: [copyFailedToast, copyFailedTitle] }
+  - { triggers: [create, issuing] }
+  - { triggers: [regenerate, confirming] }
+  - { triggers: [confirm, renewing] }
+  - { returnsFocus: [confirmDialog, regenerate] } # Vazgeç, the cross, Esc or a finished call: the button that opened it is on every page the dialog closes into; Base UI's default, not seen in a browser
+
+rules:
+  - { id: ACC-11, rule: "While a link exists the two read-only fields hold 32 bullets as their value (calendar-subscription.tsx:22, :62), and the copy buttons beside them are `disabled`. A screen reader reads a long run of \"bullet\" (or nothing) as the value of \"Google Takvim için\"; the sentence that says the link is hidden is a separate paragraph, not the field's description. Fix: draw the hidden state as text outside the input, or give the field a short value such as \"Gizli, yeniden gösterilmez\"." }
+  - { id: ACC-12, rule: "`issue()` calls the Server Action inside `startTransition(async ...)` with no try/catch (calendar-subscription.tsx:122-135). A request that never reaches Next rejects, React hands the rejection to the nearest error boundary, and the person ends on app/error.tsx instead of the page's own \"Bağlantı oluşturulamadı\" alert. The inventory lists ACC-12 for account-settings.tsx, public-profile-page.tsx and notifications-page.tsx, not for this file. Not seen in a browser. Fix: catch the rejection and treat it as a refusal." }
+  - { id: CALFEED-1, rule: "Four words of this page are constants of the kit and in no catalog: the dialog's cross is named \"Kapat\" (alert-dialog.tsx:50, `closeLabel` is not passed), the busy status says \"Yükleniyor\" (button.tsx:62, `loadingLabel` is not passed), the toast's cross is \"Kapat\" (toast.tsx:97) and the Toaster's region is \"Bildirimler\" (toast.tsx:127). They stay Turkish in en and ar; latent while tr is the only locale a screen can show. New, provisional id; the same family as LEAVE-2, ADDCAL-2 and MDRS-233. Fix: pass the labels from the catalog." }
+  - { id: CALFEED-2, rule: "A refused renewal closes the dialog and draws \"Bağlantı oluşturulamadı. Lütfen tekrar dene.\" (calendar-subscription.tsx:127-131, :233-237): the words of a failed creation, for a call that changed nothing. It never says that the old link is still the one that works, and a link shown in this visit stays on the page, unmasked, under its \"Bağlantını şimdi kopyala\" warning, with the red alert below. The inventory notes the missing sentence but gives it no id. New, provisional id. Fix: after a refused renewal say that the old link is unchanged." }
+  - { id: CALFEED-3, rule: "\"Bağlantı oluştur\" shows the new link and its \"Bağlantını şimdi kopyala\" warning by rendering them: the warning is a role=status node that arrives with its text (alert.tsx:23), which a live region does not reliably announce, and nothing else says it worked. The focus stays on the button, whose name changes from \"Bağlantı oluştur\" to \"Bağlantıyı yenile\" (the same <Button> in the same place, calendar-subscription.tsx:210-228). Not verified with a screen reader. New, provisional id. Fix: mount a status region first and write the sentence into it, or move the focus to the warning." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (no autoFocus and no focus() in app/account/calendar or in calendar-subscription.tsx), so the page node has no `initialFocus`, and no state names a focus except the busy buttons. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: toast-aria-hidden, rule: "The warning toast \"Kopyalanamadı. Alan seçili; elle kopyalayabilirsin.\" is high priority: Base UI gives it role=alertdialog and aria-hidden until it is focused (ToastRoot: `aria-hidden: isHighPriority && !focused`), and announces it through the viewport's own live region. Whether a screen reader says it was not verified; the replay finds it by its attribute, not by role." }
+  - { id: renewing-can-be-dismissed, rule: "Fixed on 23 Nov 2026. While the renewing call ran the dialog's Vazgeç, its cross and Esc still closed it and the call went on, so the old link stopped working and the new link or the red alert landed on a page the person thought they had left unchanged. Now the window's dismissDisabled is `pending` (calendar-subscription.tsx:291): Vazgeç and the cross are disabled and Esc does nothing until the answer; test: calendar-subscription.spec.ts, 'while the link is renewed, Vazgeç, Kapat and Esc are off, so nobody believes the old link still works'." }
+  - { id: label-in-name, rule: "The visible text of a button is contained in its accessible name: \"Kopyala\" in \"Google Takvim bağlantısını kopyala\" and \"Apple Takvim bağlantısını kopyala\" (case aside); the other buttons have no aria-label (WCAG 2.5.3). Holds. The two buttons look the same, so a voice-control user who says \"Kopyala\" meets two." }
+  - { id: renewal-asks-first, rule: "\"Bağlantıyı yenile\" never calls the API: it opens a dialog that says what stops working, with the focus on Vazgeç; only \"Yenile\" calls. \"Bağlantı oluştur\" asks nothing, and only when the page knows there is no link (`needsConfirmation`, calendar-subscription.tsx:139): an unreadable status makes the first link a renewal." }

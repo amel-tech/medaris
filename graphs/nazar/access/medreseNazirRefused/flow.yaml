@@ -1,0 +1,288 @@
+# What a medrese nazırı meets on the pages of the medrese they hold no grant for (nazar-web /medrese/<id>, /dersler,
+# /dersler/yeni, /dersler/talep, /arsiv, /talebeler, /nazirlar, /yasaklamalar, /itirazlar, /ayarlar), read from the code of PR
+# #394 on 15 Nov 2026 (apps/nazar, the nine reads of apps/tedrisat). Nothing here was walked in a browser: every behaviour is
+# "from the code" until the walk phase, and the unit tests named in needs.yaml are the only thing that ran it.
+#   - It says what the code does today. The seeded MEDRESE_NAZIR holds no code (ROLE_DEFAULT_PERMISSIONS gives the nazır
+#     nothing, libs/common/src/authz/permissions.ts:359), so every page of the medrese answers its read with 403 and draws
+#     the same thing: the page's own title and line, then an alert that says "Bu sayfaya izniniz yok", and no table, form or
+#     button of the page.
+#   - The one page that can open for such a person is Medrese nazırları, once the başmüderris has given them
+#     madrasah.nazir_appoint: the table opens, and "Görevden al" is on the rows they appointed and on none else.
+#   - Findings it carries: MDRS-223 and F-L-20 (the menu draws every entry; the nav graph's `menu-refused` check reports the
+#     same), F-D2c-2 (the course menu does it for a ders nazırı: drawn in nazar.access.dersNazirPages), F-A-8 (not drawn: it
+#     needs the partial grants of the courses family), F-A-16 and F-B-13 (the refusal is a polite status line, not a
+#     heading, with no way out), F-B-15 (not drawn: reachable only by a stale list) and F-A-17 (the greeting says "Hoca").
+#     Three are this flow's own: REFUSED-1, REFUSED-2 and REFUSED-3 (ui.yaml `rules`).
+#   - The `reader` is who looks: a nazır the başmüderris gave nothing (`bare`, the seeded account), a nazır given
+#     madrasah.nazir_appoint (`appointer`), and the başmüderris, for contrast (`head`), whose pages open. The contrast draws
+#     one control of each page, the one the e2e checks say a nazır is not given; the pages themselves are other flows.
+schema: delurio-graph/0
+kind: flow
+id: nazar.access.medreseNazirRefused
+status: captured
+domain: medaris.api
+ui: nazar.access.medreseNazirRefused
+title: Open the medrese pages without a grant
+summary: >-
+  A medrese nazırı whom the başmüderris gave nothing signs in and is sent to the Pano of the medrese. The page keeps its
+  title, its greeting and the card of the medrese, leaves out "Medrese dersi aç" and the tables, and says "Bu sayfaya izniniz
+  yok" under the cards. The menu still draws all nine entries; each of Dersler, Talebeler, Medrese nazırları, Yasaklamalar,
+  İtirazlar, Arşiv and Medrese ayarları keeps its title and says the same under it, with no list, form or button, and so do
+  the two pages the nazır can only reach by typing the address, Medrese dersi aç and Medrese dışı ders talebi. Only
+  Bildirimler opens. A nazır given madrasah.nazir_appoint is let into Medrese nazırları, where "Görevden al" is on the
+  rows they seated and on no other, there is no "İzin ver" and no group button, and every other page still refuses. The
+  başmüderris opens every page, which is the contrast. The words are one verdict for every page and say to ask the başmüderris;
+  nothing on the page says how (F-B-13).
+
+scope:
+  shows: >-
+    the Pano and the nine other pages of a medrese as a medrese nazırı meets them (the title and line of the page, the verdict,
+    the menu with its nine entries), the roster a nazır given madrasah.nazir_appoint is let into, and one control of each page
+    that the başmüderris has and the nazır has not
+  world: open
+  outOfView:
+    - "a person with no seat in this medrese: the 404 page, or /erisim-yok when they hold no scope at all (nazar.access.noAccess, nazar.shell.errorStates)"
+    - "a read that fails for another reason (\"Pano okunamadı\", \"Dersler okunamadı\" and the like, with \"Yeniden dene\"): the retry state of nazar.shell.errorStates, never worded as \"no access\""
+    - "a nazır given another code (madrasah.students_view, madrasah.course_open, madrasah.settings_edit and the rest): the page of that code opens and the others still refuse; only madrasah.nazir_appoint is drawn, as the reader `appointer`"
+    - "the same person opening a course of their medrese by address: the course menu draws twelve entries and nine of them refuse (F-D2c-2, F-L-20), drawn in nazar.access.dersNazirPages"
+    - "the shell around the page: the scope picker (a card, one scope), the person row, the phone bar and its sheet (nazar.shell.scopeAndMenu)"
+    - "the two pages that open for a nazır, Bildirimler and Hesap (nazar.notifications.inbox, nazar.account.settings)"
+    - "the dialogs and writes of the pages a person may open: appoint, give permission, dismiss, groups (nazar.nazirs.*), ban, hide, open a course, request a course (nazar.bans.*, nazar.archive.*, nazar.courses.open, nazar.offsite.requestCourse)"
+    - "a medrese with no hosting köşk, a hidden medrese, a passive medrese (no başmüderris): they change what the başmüderris sees, not what a nazır with no grant is told"
+
+decisions:
+  D1:
+    question: >-
+      Should the medrese menu draw only the entries whose page opens for the person (MDRS-223)? Today it draws nine for every
+      holder of the medrese scope and a nazır with no grant meets eight refusals behind them; the course menu already draws
+      Ödevler, Değerlendirme and Ders destesi only to those who hold the code (MDRS-290).
+    recommend: >-
+      Yes: read what the person holds in the medrese (GET /me/effective-permissions already lists it by scope) and draw each
+      entry for the codes its page asks, as the course menu does. Where an entry stays, mark it ("izin gerekir") instead of
+      letting the page say no. The nav graph's `menu-refused` check then goes green for the nazır.
+    affects: [shown]
+  D2:
+    question: >-
+      Where should a nazır with no grant land? `/` and the sign-in both send them to the Pano of the medrese, which is the
+      first page that refuses them (REFUSED-1).
+    recommend: >-
+      Land on the first page the held codes open (Bildirimler at the least), or let the Pano draw what it already draws
+      without the dashboard (the greeting and the scope cards) and say what the person may do instead of "Bu sayfaya izniniz
+      yok".
+    affects: [opened]
+
+context:
+  reader:
+    values: [bare, appointer, head]
+    initial: any
+    say:
+      bare: "a medrese nazırı the başmüderris gave nothing: the seeded account, who holds no code"
+      appointer: "a medrese nazırı given madrasah.nazir_appoint and no other code, who has seated one person"
+      head: "the medrese's başmüderris, whose pages open (the contrast)"
+  page:
+    values: [pano, courses, courseNew, offsite, archive, students, nazirs, bans, appeals, settings]
+    initial: pano
+    say:
+      pano: "the Pano, /medrese/<id>"
+      courses: "Dersler, /dersler"
+      courseNew: "Medrese dersi aç, /dersler/yeni (reached by address)"
+      offsite: "Medrese dışı ders talebi, /dersler/talep (reached by address)"
+      archive: "Arşiv"
+      students: "Talebeler"
+      nazirs: "Medrese nazırları"
+      bans: "Yasaklamalar"
+      appeals: "İtirazlar"
+      settings: "Medrese ayarları"
+  body:
+    values: [refused, drawn]
+    initial: refused
+    say:
+      refused: "the page keeps its title and says \"Bu sayfaya izniniz yok\" in place of its body"
+      drawn: "the page draws its body: the read was allowed"
+
+guards:
+  mayRead: "reader == 'head' or (reader == 'appointer' and page == 'nazirs')"
+
+effects:
+  atPano: { set: { page: pano } }
+  atCourses: { set: { page: courses } }
+  atCourseNew: { set: { page: courseNew } }
+  atOffsite: { set: { page: offsite } }
+  atArchive: { set: { page: archive } }
+  atStudents: { set: { page: students } }
+  atNazirs: { set: { page: nazirs } }
+  atBans: { set: { page: bans } }
+  atAppeals: { set: { page: appeals } }
+  atSettings: { set: { page: settings } }
+  bodyDrawn: { set: { body: drawn } }
+  bodyRefused: { set: { body: refused } }
+
+failures:
+  opened:
+    from: getMadrasahDashboard
+    forbidden: [AUTHZ_FORBIDDEN]
+
+# The story the page tells first: the seeded nazır lands on a Pano that refuses them, then tries each page of the menu and the
+# two addresses the Pano and Dersler would have linked to, and meets the same verdict every time.
+main:
+  given: { reader: bare }
+  events:
+    - FAIL.forbidden
+    - OPEN_COURSES
+    - GO_OPEN_COURSE
+    - GO_OFFSITE
+    - OPEN_ARCHIVE
+    - OPEN_STUDENTS
+    - OPEN_NAZIRS
+    - OPEN_BANS
+    - OPEN_APPEALS
+    - OPEN_SETTINGS
+    - OPEN_PANO
+
+initial: opened
+
+states:
+  opened:
+    title: The Pano is read
+    description: >-
+      `/` sends a medrese nazırı to the medrese they hold (the remembered scope, else the first medrese), whose page is the
+      Pano, and the Pano starts with GET /madrasahs/:id/dashboard, which asks madrasah.students_view. The başmüderris holds it by
+      role default and a nazır only once given it, so the seeded nazır is answered 403 (AUTHZ_FORBIDDEN) and the page does not
+      throw: readOnce turns a 403 into `forbidden`, "expected and quiet" (lib/tedrisat-read.ts:45). The same happens on every
+      page of the medrese with its own read. The first page a nazır with no grant meets is therefore the first one that refuses
+      them (REFUSED-1). A 404 is Next's not-found page and any other failure is the retry state: both out of view.
+    invoke: { action: getMadrasahDashboard }
+    on:
+      DONE:
+        guard: "reader == 'head'"
+        target: judged
+        effect: [atPano]
+        say: "the başmüderris's dashboard is read"
+        source: apps/nazar/features/pano/components/pano-page.tsx:77
+      FAIL.forbidden:
+        guard: "reader != 'head'"
+        target: judged
+        effect: [atPano]
+        say: "403: the nazır holds no madrasah.students_view"
+        source: apps/nazar/lib/tedrisat-read.ts:45
+    source: apps/nazar/features/pano/components/pano-page.tsx:77
+
+  judged:
+    title: The page decides what it draws
+    description: >-
+      Classification only. Each page asks the API for the one thing it shows and draws its body only when the read is allowed.
+      The başmüderris is allowed every read of the nine pages. A nazır holding only madrasah.nazir_appoint is allowed the
+      nazırs roster and the permission groups under it (both reads ask that code or platform.madrasah_nazir_grant) and none of
+      the others, whose codes (students_view, course_open, offsite_course_request, course_hide, ban, appeal_open,
+      settings_edit) the nazır does not hold.
+    always:
+      - guard: mayRead
+        target: shown
+        effect: [bodyDrawn]
+        say: "the read is allowed"
+        source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:74
+      - target: shown
+        effect: [bodyRefused]
+        say: "the read answers 403"
+        source: apps/nazar/features/shell/components/page-problem.tsx:23
+    source: apps/nazar/lib/tedrisat-read.ts:43
+
+  shown:
+    title: The page is on the screen
+    by: human
+    goal: true
+    description: >-
+      The shell stays whatever the read said: the sidebar with its menu of nine entries (the nazır's menu is the medrese's,
+      drawn in full to every holder of the medrese scope: MDRS-223, F-L-20; the nav graph's `menu-refused` check counts eight
+      refusals behind it) and the page's header. With `body` refused the page keeps its `<h1>` and the line under it (the
+      tab title too, "Talebeler · Medaris Nazar" and so on), leaves out the header buttons that need the read ("Medrese
+      dersi aç" and the köşk request on Pano and Dersler, "Medrese nazırı ata", "Yasakla"), and draws in place of its body an
+      alert that says "Bu sayfaya izniniz yok" and "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin
+      başmüderrisine başvurun." It is a neutral Alert, so a `role=status` that is in the page already when it loads, with its
+      title in a `<p>`, no heading and no link (F-A-16, F-B-13); a screen-reader user who lands on the page hears nothing of it
+      until they browse. The Pano is the one page that also keeps what it draws without the dashboard: the greeting
+      ("Selâmün aleyküm, {name} Hoca.", which says "Hoca" to a nazır too, F-A-17) and the card of the medrese with the role
+      "Medrese nazırı". Medrese ayarları keeps its header link "Medrese sayfasını gör" to the public page (REFUSED-3). Dersler's
+      header keeps neither of its two buttons (they are drawn only when the course list was read). The two address-only
+      pages keep their breadcrumb, whose "Dersler" leads to a page that refuses too (REFUSED-3). With `body` drawn the page is
+      the başmüderris's (the other flows of graphs/nazar) and the nazır's roster: the table of nazırs named by its caption,
+      "Medrese nazırı ata", "Görevden al" on the rows the nazır seated and no "İzin ver", "İzinleri düzenle" or "Grup
+      tanımla", and the warning that the person they seated "henüz izin almadı", which says "Siz izin verene kadar", to a person
+      who may not give permission (REFUSED-2). No page moves the focus on load (nothing in the pages sets it). A menu link
+      is a plain link: the page the nazır leaves is not kept.
+    on:
+      OPEN_PANO:
+        target: judged
+        effect: [atPano]
+        say: "they press Pano in the menu"
+        source: apps/nazar/features/shell/nav.ts:56
+      OPEN_COURSES:
+        target: judged
+        effect: [atCourses]
+        say: "they press Dersler in the menu"
+        source: apps/nazar/features/shell/nav.ts:78
+      OPEN_STUDENTS:
+        target: judged
+        effect: [atStudents]
+        say: "they press Talebeler in the menu"
+        source: apps/nazar/features/shell/nav.ts:83
+      OPEN_NAZIRS:
+        target: judged
+        effect: [atNazirs]
+        say: "they press Medrese nazırları in the menu"
+        source: apps/nazar/features/shell/nav.ts:84
+      OPEN_BANS:
+        target: judged
+        effect: [atBans]
+        say: "they press Yasaklamalar in the menu"
+        source: apps/nazar/features/shell/nav.ts:85
+      OPEN_APPEALS:
+        target: judged
+        effect: [atAppeals]
+        say: "they press İtirazlar in the menu"
+        source: apps/nazar/features/shell/nav.ts:86
+      OPEN_ARCHIVE:
+        target: judged
+        effect: [atArchive]
+        say: "they press Arşiv in the menu"
+        source: apps/nazar/features/shell/nav.ts:87
+      OPEN_SETTINGS:
+        target: judged
+        effect: [atSettings]
+        say: "they press Medrese ayarları in the menu"
+        source: apps/nazar/features/shell/nav.ts:92
+      GO_OPEN_COURSE:
+        target: judged
+        effect: [atCourseNew]
+        say: "they type /dersler/yeni (the başmüderris reaches it from Pano and Dersler; for a nazır both buttons are left out)"
+        source: "apps/nazar/app/medrese/[medreseId]/dersler/yeni/page.tsx"
+      GO_OFFSITE:
+        target: judged
+        effect: [atOffsite]
+        say: "they type /dersler/talep (the başmüderris reaches it from Dersler and the Pano's köşk section)"
+        source: "apps/nazar/app/medrese/[medreseId]/dersler/talep/page.tsx"
+      NAVIGATE: { target: left, say: "they follow Bildirimler, the person row, a link or leave the portal" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  left:
+    title: They leave the pages of the medrese
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-nazir-with-no-grant-meets-no-body
+    never: "reader == 'bare' and state == 'shown' and body == 'drawn'"
+    say: A nazır the başmüderris gave nothing is never shown the body of a medrese page; every one of them says "Bu sayfaya izniniz yok".
+    source: apps/nazar/lib/tedrisat-read.ts:45
+  - id: madrasah-nazir-appoint-opens-the-roster-only
+    never: "reader == 'appointer' and state == 'shown' and body == 'drawn' and page != 'nazirs'"
+    say: A nazır given only madrasah.nazir_appoint is let into Medrese nazırları and into no other page of the medrese.
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:74
+  - id: madrasah-nazir-appoint-opens-the-roster
+    never: "reader == 'appointer' and state == 'shown' and page == 'nazirs' and body == 'refused'"
+    say: A nazır given madrasah.nazir_appoint is not refused the roster.
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:74
+  - id: the-head-is-never-refused
+    never: "reader == 'head' and state == 'shown' and body == 'refused'"
+    say: The başmüderris holds every medrese code by role default, so none of the nine pages refuses them.
+    source: libs/common/src/authz/permissions.ts:358

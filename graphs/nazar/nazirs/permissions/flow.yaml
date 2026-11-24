@@ -1,0 +1,389 @@
+# Giving a medrese nazırı permissions, from "Medrese nazırları" in nazar-web (/medrese/<id>/nazirlar), read from the code of PR #394
+# on 15 Nov 2026 (apps/nazar/features/nazirs/components/{nazirs-page,nazirs-table,permission-editor,permission-section}.tsx,
+# permissions.ts, nazirs.ts, actions.ts and libs/utils/src/end-instant.ts; the API's GET /madrasahs/:id/nazirs, /permissions,
+# /permission-groups, /nazirs/:userId/permissions, /courses and PUT /madrasahs/:id/nazirs/:userId/permissions). Nothing here was
+# walked in a browser: every behaviour is "from the code" until the walk phase; the three reads of the stack that were looked at
+# (the roster, the dictionary, the groups) are GETs as the başmüderris.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "İzin ver: <name>" (a nazır who holds nothing) and "İzinleri düzenle: <name>" (one who holds something) open one dialog,
+#     "İzinleri düzenle". It reads four things together (the dictionary, the medrese's groups, what the nazır holds, the courses) and
+#     says "İzinler okunamadı" with "Yeniden dene" if any of them fails; it saves nothing from a form half read.
+#   - A ready group comes ticked and locked ("Gruptan gelir."); single permissions are ticked on top; "Hangi derslerde" limits the
+#     course permissions to chosen courses; the end is a moment (date and time) on the viewer's clock. A blocked save writes nothing:
+#     "En az bir ders seçin." is a live alert, the end's message is not announced and the focus does not move (F-B-5).
+#   - Vazgeç, the close icon and Esc close the editor and drop whatever was ticked, with no question.
+#   - The editor lists 34 permissions today (11 of the medrese, 23 of its courses); the e2e counts 33 (PERM-1).
+#   - The count in the footer ("Gruptan 2 izin ve 1 ek izin") changes as boxes are ticked and is not a live region (PERM-2).
+#   - Every save writes ONE end for every permission the nazır holds: the editor opens with the earliest end among them (PERM-3, not
+#     verified).
+# The seeded roster is one nazır who holds nothing (Seher Medrese Nazırı), so the band above the table names her and, once the
+# walk's own nazır is appointed, counts two. The e2e seed hides that (nazirs.e2e.ts:25-27): its roster has none to start with.
+#
+# Which nazır the walk gives permissions to: not a seeded one. The walk's setup appoints a spare talebe account (applicantF) as
+# nazır through the API, with a group of its own and a course of its own; `held` below is what that nazır holds on the screen.
+schema: delurio-graph/0
+kind: flow
+id: nazar.nazirs.permissions
+status: captured
+domain: medaris.api
+ui: nazar.nazirs.permissions
+title: Give a nazır permissions
+summary: >-
+  The başmüderris opens "Medrese nazırları" and presses "İzin ver" on a nazır who holds nothing (or "İzinleri düzenle" on one who
+  holds something). A dialog opens and reads what it needs; then she picks a ready group (its permissions come ticked and locked),
+  ticks a single permission on top, lets the course permissions hold in every course or only in the courses she chooses, sets an
+  end if she wants one, and presses "Kaydet". A toast says "İzinler kaydedildi", the dialog closes and the row shows the group, "Ayrıca 1 izin",
+  the courses and the end; the band that counted two nazırs who hold nothing names one. She reopens it and sees it as she left
+  it. A chosen-courses limit with no course ticked, or an end that is not in the future, is refused on the page and nothing is
+  written; Vazgeç writes nothing. The server can still refuse (the group or the nazır is gone, a permission is not hers to give).
+
+scope:
+  shows: >-
+    the roster page with its band and the nazır's row, the permission editor (its reads, the group, the single permissions, "Hangi
+    derslerde", the end, the footer count), the page's own refusals, the toasts that follow, and the editor opened again
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a medrese nazırı who holds nothing, or a person with no seat, meets the notice 'Bu sayfaya izniniz yok' or the 404 page: nazar.access.medreseNazirRefused; a nazır given madrasah.nazir_appoint has no 'İzin ver' button at all (the roster read is an exit here)"
+    - "appointing the nazır: nazar.nazirs.appoint (which starts this flow); taking the permissions away by dismissing them: nazar.nazirs.dismiss; the groups under the table and their dialog: nazar.nazirs.groups"
+    - "a group that carries a medrese permission: 'Hangi derslerde' is forced to 'Bütün medrese dersleri' and disabled, and no course list is drawn (permissions.ts:119-131 and :155-167); the walk's group has course permissions only, so the editor of this flow always lets the person limit courses"
+    - "'Bitiş zamanı, görevin bitişinden sonra olamaz.' (the end of a nazır who was appointed with an end): a nazır appointed here has no end of its own, so only the Medaris routes make one"
+    - "a half-typed end ('Bitiş tarihini ve saatini tamamlayın.'): a datetime-local field the walk fills whole; permissions.ts:157-161 reads it"
+    - "the other 30 of the 34 permission boxes, and a box the caller may not give (disabled, with no word why: F-B-10); the başmüderris and the başnazım, who are the only people the page lets in here, may give all 34"
+    - "the end rules of the other two giving routes (a köşk's grants, a Medaris nazım's): nizam.grants.appoint, nizam.nazims.editPermissions. Two findings of the domain's end rules, grant-end-not-an-instant and an-edit-cannot-lift-an-end-by-accident, are not reachable from this page: the editor sends an instant or null and the route is a PUT (ui.yaml rules)"
+    - "a session that has ended: the server actions send the person to sign in (realm.auth.signIn) instead of drawing a message"
+
+decisions:
+  D1:
+    question: >-
+      Should closing the editor ask when something was ticked or typed? Vazgeç, the close icon and Esc drop a form of up to 34 boxes
+      and an end at once, and nothing says so.
+    recommend: >-
+      Ask only when the form differs from what the nazır holds, as a confirmation (an alertdialog whose focus starts on 'Vazgeç'), the
+      way Reddet asks on the Pano; or leave it, since the nazır's permissions are one save away and nothing is lost.
+    affects: [editing, loadFailed]
+  D2:
+    question: >-
+      Should a permission the person may not give say so? It is a disabled box with no description; the locked ones say "Gruptan gelir."
+    recommend: >-
+      Yes: a description, "Bu izni veremezsiniz.", as the locked boxes have (F-B-10). Not reachable today by anyone the page lets in,
+      since the başmüderris and the başnazım may give all 34.
+    affects: [editing]
+
+context:
+  row:
+    values: [awaiting, holds]
+    initial: any
+    say:
+      awaiting: "the nazır the walk opens holds nothing: the row says 'İzin yok' and its button is 'İzin ver'"
+      holds: "the nazır already holds a group, a single permission, one chosen course and an end: its button is 'İzinleri düzenle'"
+  reads:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the four reads of the editor answer"
+      failed: "one of them is refused or not found (for example the nazır was dismissed meanwhile): the editor says so and saves nothing"
+  answer:
+    values: [saved, groupGone, nazirGone, refused]
+    initial: any
+    say:
+      saved: "the server writes what the form says"
+      groupGone: "the chosen group was deleted after the editor read it"
+      nazirGone: "the person is not a nazır of the medrese any more"
+      refused: "the server refuses for another reason: it is not the caller's to give, the ceiling, a permission it does not know, courses that are not the medrese's, an end that is not in the future"
+  held:
+    values: [nothing, profile, other]
+    initial: nothing
+    say:
+      nothing: "the nazır holds nothing"
+      profile: "the nazır holds the one selection this graph draws: the walk's group, one single permission, the walk's course only, and an end ahead"
+      other: "the nazır holds something else that was just saved: the row and the reopened editor are not drawn"
+  group:
+    values: [none, course]
+    initial: none
+    say: { none: "the group box says 'Grup yok'", course: "the walk's group is picked: its two course permissions are ticked and locked" }
+  extra:
+    values: [none, madrasah, course]
+    initial: none
+    say:
+      none: "no single permission is ticked"
+      madrasah: "one single permission of the medrese is ticked (Medrese nazırı ata)"
+      course: "one single permission of the courses is ticked (Hafta ve celse gizle, geri al)"
+  limit:
+    values: [all, chosen]
+    initial: all
+    say: { all: "'Hangi derslerde' says 'Bütün medrese dersleri'", chosen: "it says 'Seçtiğim dersler' and the courses are listed" }
+  courses:
+    values: [none, some]
+    initial: none
+    say: { none: "no course of the list is ticked", some: "the walk's course is ticked" }
+  expires:
+    values: [none, future, past]
+    initial: none
+    say: { none: "the end field is empty", future: "it holds a moment ahead", past: "it holds a moment that is not after now" }
+  tried:
+    values: [true, false]
+    initial: false
+    say: { "true": "'Kaydet' was pressed and a rule on the page stopped it: the messages show", "false": "no save was tried since the editor opened" }
+  toast:
+    values: [none, saved, groupGone, nazirGone, refused]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      saved: "'İzinler kaydedildi' (it closes by itself after 6 seconds)"
+      groupGone: "'İzinler kaydedilemedi: Bu grup artık yok.' (an error toast stays)"
+      nazirGone: "'İzinler kaydedilemedi: Bu kişi artık bu medresenin nazırı değil.'"
+      refused: "'İzinler kaydedilemedi' and the sentence of the refusal"
+
+guards:
+  # coursePermission: notLimitable() of permissions.ts:155 returns "no-course-permission" when neither the group nor the single permissions hold a course code
+  coursePermission: "group == 'course' or extra == 'course'"
+  # editorProblems() of permissions.ts:229: courses is `limited !== null && limited.length === 0`, and limitedCourses is null when nothing limits
+  noCourseChosen: "limit == 'chosen' and courses == 'none' and coursePermission"
+  endIsPast: "expires == 'past'"
+  blocked: "noCourseChosen or endIsPast"
+  nothingTicked: "group == 'none' and extra == 'none'"
+  # what the walk saves, whole: the group, one single course permission, the chosen course, an end ahead
+  isProfile: "group == 'course' and extra == 'course' and limit == 'chosen' and courses == 'some' and expires == 'future'"
+
+effects:
+  holdsProfile: { set: { held: profile } }
+  # initialDraft() of permissions.ts:83: the draft is what the API holds; nothing held is an empty draft
+  blank: { set: { group: none, extra: none, limit: all, courses: none, expires: none, tried: false } }
+  profileForm: { set: { group: course, extra: course, limit: chosen, courses: some, expires: future, tried: false } }
+  clearToast: { set: { toast: none } }
+  pickedGroup: { set: { group: course } }
+  pickedNoGroup: { set: { group: none } }
+  tickedCourseCode: { set: { extra: course } }
+  tickedMadrasahCode: { set: { extra: madrasah } }
+  limitedToChosen: { set: { limit: chosen } }
+  limitedToAll: { set: { limit: all } }
+  tickedCourse: { set: { courses: some } }
+  typedFutureEnd: { set: { expires: future } }
+  typedPastEnd: { set: { expires: past } }
+  clearedEnd: { set: { expires: none } }
+  tryFailed: { set: { tried: true } }
+  discard: { set: { tried: false } }
+  savedNothing: { set: { held: nothing, toast: saved } }
+  savedProfile: { set: { held: profile, toast: saved } }
+  savedOther: { set: { held: other, toast: saved } }
+  groupGoneToast: { set: { toast: groupGone } }
+  refusedToast: { set: { toast: refused } }
+
+failures:
+  reading:
+    from: listMadrasahNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  opening:
+    from: getMadrasahNazirPermissions
+    failed: [AUTHZ_FORBIDDEN, MADRASAH_NOT_FOUND, MADRASAH_NAZIR_NOT_FOUND, HTTP_400]
+  saving:
+    from: setMadrasahNazirPermissions
+    groupGone: [PERMISSION_GROUP_NOT_FOUND]
+    nazirGone: [MADRASAH_NAZIR_NOT_FOUND]
+    refused: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER, SELF_GRANT_REFUSED, PERMISSION_UNKNOWN, NAZIR_COURSE_SCOPE_INVALID, GRANT_EXPIRY_INVALID, VALIDATION_ERROR, HTTP_400, MADRASAH_NOT_FOUND]
+
+# The story the page tells first: the başmüderris gives a nazır who holds nothing a ready group, one single permission, the walk's
+# course only and an end ahead; saves; and opens the editor again to see it as she left it.
+main:
+  given: { row: awaiting, reads: ok, answer: saved }
+  events: [DONE, OPEN_EDITOR, DONE, PICK_GROUP, TICK_COURSE_PERMISSION, CHOOSE_CHOSEN, TICK_COURSE, TYPE_FUTURE_END, SAVE, DONE, OPEN_EDITOR, DONE, CANCEL]
+
+initial: reading
+states:
+  reading:
+    title: The roster is read
+    description: >-
+      The page reads GET /madrasahs/:id/nazirs and /permission-groups on the server, together with the person's name and
+      assignments, behind a loading page of skeletons. Nothing is on the screen of this step. The başmüderris (and the
+      başnazım) read it; a nazır who holds nothing is refused and meets the notice in place of the table (state forbidden), and
+      an unknown medrese is the 404 page. Any other failure draws "Medrese nazırları okunamadı" with a retry (not drawn here: the
+      retry state of nazar.shell.errorStates).
+    invoke: { action: listMadrasahNazirs }
+    on:
+      DONE:
+        - { guard: "row == 'holds'", target: listed, effect: [holdsProfile], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:83, say: "the nazır of the walk holds the group, the single permission, the one course and an end" }
+        - { target: listed, source: apps/nazar/features/nazirs/components/nazirs-page.tsx:83, say: "the nazır of the walk holds nothing" }
+      FAIL.forbidden: forbidden
+      FAIL.missing: not_found
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:37
+
+  forbidden:
+    title: The roster refuses the person
+    description: >-
+      The header and the intro stay and an alert says "Bu sayfaya izniniz yok" in place of the table; "Medrese nazırı ata" is left
+      out with everything else that needs the roster. The nazır's whole story is nazar.access.medreseNazirRefused. Drawn here only so that
+      the refusal of the read is an answer of this flow; the walk does not reach it.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:69
+
+  listed:
+    title: The roster, with the nazır's row
+    description: >-
+      The page: "Medrese nazırları" and its intro, "Medrese nazırı ata", the band that names the nazırs who hold nothing (two while
+      the walk's nazır holds nothing: the seeded Seher Medrese Nazırı and the walk's; one once the walk's holds something), the
+      table with one row per nazır, and under it the permission groups (not drawn). The walk's row says "İzin yok" with who
+      appointed it and when, and its button is "İzin ver: <name>"; after a save the row says the group, "Ayrıca 1 izin: ...", "Ders
+      izinleri yalnız şu derslerde: ..." and the end, and its button is "İzinleri düzenle: <name>". The buttons are on whatever the date (MDRS-215).
+      A toast "İzinler kaydedildi" of 6 seconds stands over the page after a save. Closing the dialog gives the focus back to the row's button,
+      which keeps its place and changes its words after a save (F-B-9; not verified in a browser). The groups under the table and their
+      buttons belong to nazar.nazirs.groups and are not drawn.
+    by: human
+    goal: true
+    on:
+      OPEN_EDITOR:
+        - { guard: "held == 'other'", target: opened_other, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:157, say: "they open the editor of a nazır who holds a selection this graph does not draw" }
+        - { target: opening, effect: [clearToast], source: apps/nazar/features/nazirs/components/nazirs-table.tsx:157, say: "they press 'İzin ver' or 'İzinleri düzenle' on the nazır's row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-table.tsx:183
+
+  opening:
+    title: The editor reads what it needs
+    description: >-
+      The dialog "İzinleri düzenle" is open over the page and is a skeleton: three bars and a hidden "Yükleniyor". Its focus starts on the
+      close icon (the first thing it can focus; the page sets no initialFocus). loadEditor reads, together and all or nothing, the
+      dictionary (GET /madrasahs/:id/permissions), the groups, what the nazır holds (GET .../nazirs/:userId/permissions) and the
+      courses (GET /madrasahs/:id/courses); this state invokes the one read that is about the nazır, and `failed` stands for any of
+      the four. "Kaydet" is natively disabled. The scrim does not close the dialog. A toast of a group that was gone stays over it
+      while the editor is read again.
+    invoke: { action: getMadrasahNazirPermissions }
+    on:
+      DONE:
+        - { guard: "reads == 'ok'", target: opened, source: apps/nazar/features/nazirs/components/permission-editor.tsx:104, say: "the four reads answer" }
+      FAIL.failed:
+        - { guard: "reads == 'failed'", target: loadFailed, source: apps/nazar/features/nazirs/components/permission-editor.tsx:108, say: "one of them fails: the editor says so and keeps its form shut" }
+      CANCEL: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "Vazgeç or Esc while the editor is read: the dialog closes" }
+      CLOSE: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "the close icon while the editor is read: the dialog closes" }
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:96
+
+  opened:
+    title: The form is made from what the nazır holds
+    description: >-
+      Not a screen: initialDraft() turns what the API holds into the form. A nazır who holds nothing gives an empty form (no
+      group, nothing ticked, every course, no end). The nazır of the walk who holds the profile gives the group, the single
+      permission, "Seçtiğim dersler" with the walk's course ticked, and the end. Then document.getElementById(groupId).focus() moves
+      the focus to the group box (permission-editor.tsx:125; not drawn as a `focus`: a refused save also returns to `editing`, and the
+      code leaves the focus on "Kaydet" then).
+    always:
+      - { guard: "held == 'nothing'", target: editing, effect: [blank], source: apps/nazar/features/nazirs/permissions.ts:83, say: "the nazır holds nothing: an empty form" }
+      - { target: editing, effect: [profileForm], source: apps/nazar/features/nazirs/permissions.ts:83, say: "the nazır holds what the walk gave: the form reopens as it was left" }
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:106
+
+  loadFailed:
+    title: The editor could not read
+    description: >-
+      The dialog keeps its header and says in an alert, "İzinler okunamadı" and "Bu kişinin izinleri şu an okunamıyor. Biraz sonra yeniden
+      deneyin.", with "Yeniden dene". No form is drawn and "Kaydet" stays off, since a form half read would save over what it did not
+      show. "Vazgeç" and the close icon close it.
+    by: human
+    on:
+      RETRY: { target: opening, source: apps/nazar/features/nazirs/components/permission-editor.tsx:247, say: "they press 'Yeniden dene': the four reads are made again" }
+      CANCEL: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:210, say: "Vazgeç or Esc: the dialog closes" }
+      CLOSE: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:206, say: "the close icon: the dialog closes" }
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:244
+
+  editing:
+    title: The editor, the form is open
+    description: >-
+      The dialog with the person (name, address, "Medrese nazırı · Atayan: ..."), the group box ("Grup yok" or the walk's group), the
+      permissions in two groups of boxes ("Medrese", 11, and "Medrese dersleri", 23: 34 in all), "Hangi derslerde" with the courses it
+      names, the end field ("Bitiş tarihi ve saati (isteğe bağlı)"), a note, and the footer with the count and "Vazgeç" / "Kaydet".
+      A group's permissions come ticked and locked ("Gruptan gelir."); a locked box is `disabled`, so the keyboard skips it (PERM-4).
+      The footer counts what is ticked ("Hiç izin seçilmedi", "1 izin", "Gruptan 2 izin", "Gruptan 2 izin ve 1 ek izin") and is not a
+      live region (PERM-2). The permissions are one flat list of 34 boxes (P-17, MDRS-226), and the dialog is described by its whole
+      body (F-B-12). "Kaydet" is on whatever the form says; it checks first. The scrim does not close the dialog. After a save was
+      tried against a rule of the page (`tried`), the messages show and follow the form: "En az bir ders seçin." (a live alert) when
+      "Seçtiğim dersler" has no course ticked and a course permission is given, and "Bitiş zamanı şu andan sonra olmalı." under the
+      end (not announced, the focus stays on "Kaydet": F-B-5). With "Seçtiğim dersler" and no course permission the course list
+      is drawn and the help says the choice counts once a course permission is ticked; the save then goes through as every course
+      (permissions.ts:170-178). Esc, Vazgeç and the close icon close it and drop the form, with no question (decision D1).
+    by: human
+    on:
+      PICK_GROUP: { target: editing, effect: [pickedGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:265, say: "they open 'Hazır izin grubu' and pick the walk's group: its two permissions are ticked and locked and the footer counts them" }
+      PICK_NO_GROUP: { target: editing, effect: [pickedNoGroup], source: apps/nazar/features/nazirs/components/permission-editor.tsx:265, say: "they pick 'Grup yok': the locked boxes are free again" }
+      TICK_COURSE_PERMISSION: { guard: "extra == 'none'", target: editing, effect: [tickedCourseCode], source: apps/nazar/features/nazirs/permissions.ts:110, say: "they tick 'Hafta ve celse gizle, geri al'" }
+      TICK_MADRASAH_PERMISSION: { guard: "extra == 'none'", target: editing, effect: [tickedMadrasahCode], source: apps/nazar/features/nazirs/permissions.ts:110, say: "they tick 'Medrese nazırı ata'" }
+      CHOOSE_CHOSEN: { guard: "limit == 'all'", target: editing, effect: [limitedToChosen], source: apps/nazar/features/nazirs/components/permission-editor.tsx:323, say: "they choose 'Seçtiğim dersler' in 'Hangi derslerde': the courses are listed" }
+      CHOOSE_ALL: { guard: "limit == 'chosen'", target: editing, effect: [limitedToAll], source: apps/nazar/features/nazirs/components/permission-editor.tsx:323, say: "they go back to 'Bütün medrese dersleri'" }
+      TICK_COURSE: { guard: "limit == 'chosen' and courses == 'none'", target: editing, effect: [tickedCourse], source: apps/nazar/features/nazirs/components/permission-editor.tsx:343, say: "they tick the walk's course" }
+      TYPE_FUTURE_END: { target: editing, effect: [typedFutureEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they type a moment ahead in the end field" }
+      TYPE_PAST_END: { target: editing, effect: [typedPastEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they type a moment that is not after now" }
+      CLEAR_END: { target: editing, effect: [clearedEnd], source: apps/nazar/features/nazirs/components/permission-editor.tsx:373, say: "they empty the end field: the permissions then have no end" }
+      SAVE:
+        - { guard: blocked, target: editing, effect: [tryFailed], source: apps/nazar/features/nazirs/components/permission-editor.tsx:156, say: "they press 'Kaydet' against a rule of the page: nothing is sent and the messages show" }
+        - { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:163, say: "they press 'Kaydet'" }
+      CANCEL: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:210, say: "Vazgeç or Esc: the dialog closes and nothing is written" }
+      CLOSE: { target: listed, effect: [discard], source: apps/nazar/features/nazirs/components/permission-editor.tsx:206, say: "the close icon: the dialog closes and nothing is written" }
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:251
+
+  saving:
+    title: The permissions are on their way
+    description: >-
+      saveNazirPermissions calls PUT /madrasahs/:id/nazirs/:userId/permissions with the group, the single permissions in the
+      dictionary's order (the group's own left out), the courses (null for every course) and the end as an instant. "Kaydet" is
+      busy (aria-disabled, a hidden "Yükleniyor" that is hard-coded: F-B-2) and every field of the form is disabled, so the form
+      shown is the form sent; Vazgeç, the close icon and
+      Esc do nothing while it runs (permission-editor.tsx:199). One transaction replaces what the nazır held: kept rows stay, others
+      are revoked or made, and every permission ends at the one end the form carries.
+    invoke: { action: setMadrasahNazirPermissions }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and nothingTicked", target: listed, effect: [savedNothing], source: apps/nazar/features/nazirs/components/permission-editor.tsx:166, say: "nothing was ticked: the server takes everything away, the toast says it is saved and the row is 'İzin yok' again" }
+        - { guard: "answer == 'saved' and isProfile", target: listed, effect: [savedProfile], source: apps/nazar/features/nazirs/components/permission-editor.tsx:166, say: "the nazır now holds the group, the single permission, the one course and the end: a toast, the dialog closes, the roster is read again" }
+        - { guard: "answer == 'saved'", target: listed, effect: [savedOther], source: apps/nazar/features/nazirs/components/permission-editor.tsx:166, say: "another selection is saved: the same, the row's words are not drawn" }
+      FAIL.groupGone:
+        - { guard: "answer == 'groupGone'", target: opening, effect: [groupGoneToast], source: apps/nazar/features/nazirs/components/permission-editor.tsx:181, say: "PERMISSION_GROUP_NOT_FOUND: an error toast 'Bu grup artık yok. Gruplar yenilendi; yeniden seçin.' and the editor reads everything again; the focus goes to the group box" }
+      FAIL.nazirGone:
+        - { guard: "answer == 'nazirGone'", target: nazir_gone, source: apps/nazar/features/nazirs/components/permission-editor.tsx:183, say: "MADRASAH_NAZIR_NOT_FOUND: an error toast 'Bu kişi artık bu medresenin nazırı değil.', the dialog closes and the roster is read again without the row" }
+      FAIL.refused:
+        - { guard: "answer == 'refused'", target: editing, effect: [refusedToast], source: apps/nazar/features/nazirs/components/permission-editor.tsx:176, say: "an error toast 'İzinler kaydedilemedi' with the sentence of the code; the dialog stays open and the form is as it was" }
+      CANCEL: { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "Vazgeç or Esc: nothing happens, the save goes on" }
+      CLOSE: { target: saving, source: apps/nazar/features/nazirs/components/permission-editor.tsx:199, say: "the close icon: nothing happens, the save goes on" }
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:163
+
+  opened_other:
+    title: The editor of a selection this graph does not draw
+    description: >-
+      The nazır holds something that was saved from a form other than the profile (or nothing): the editor opens with it, and the
+      graph does not know its boxes. Read from the code, not drawn.
+    type: final
+    source: apps/nazar/features/nazirs/permissions.ts:83
+
+  nazir_gone:
+    title: The nazır is not on the roster any more
+    description: >-
+      The toast says "Bu kişi artık bu medresenin nazırı değil.", the dialog is closed and the roster has been read again without the
+      row. Not drawn: the same page as `listed` without that row.
+    type: final
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the roster read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-blocked-form-is-never-sent
+    never: "state == 'saving' and blocked"
+    say: A form that breaks a rule of the page (no course chosen, an end that is not ahead) is never sent; nothing is written.
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:156
+  - id: an-end-in-the-past-is-never-sent
+    never: "state == 'saving' and expires == 'past'"
+    say: An end that is not after now is stopped on the page.
+    source: apps/nazar/features/nazirs/permissions.ts:196
+  - id: a-chosen-course-limit-needs-a-course
+    never: "state == 'saving' and noCourseChosen"
+    say: Course permissions limited to chosen courses are never sent with no course.
+    source: apps/nazar/features/nazirs/permissions.ts:229
+  - id: the-editor-is-drawn-only-for-a-known-selection
+    never: "state == 'editing' and held == 'other'"
+    say: The editor is drawn only for a nazır whose selection the graph knows; any other opens the exit opened_other.
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:105

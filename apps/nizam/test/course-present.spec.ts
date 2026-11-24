@@ -1378,6 +1378,7 @@ describe("how a session is attended (MDRS-283)", () => {
   it("reads and sends 'Celseler yüz yüze yapılır' with the other settings, only when it changed", () => {
     const stored = settingsOf({
       isClosed: false,
+      isUnlisted: false,
       requiresApproval: true,
       inPerson: false,
       timeZone: "Europe/Istanbul",
@@ -1397,6 +1398,22 @@ describe("how a session is attended (MDRS-283)", () => {
     expect(settingsOf({ ...stored, inPerson: true, weeks: [] }).inPerson).toBe(
       true
     );
+  });
+
+  it("reads and sends 'Listelenmeyen ders' only when it changed (MDRS-248)", () => {
+    const stored = settingsOf({
+      isClosed: false,
+      isUnlisted: true,
+      requiresApproval: false,
+      inPerson: false,
+      timeZone: "Europe/Istanbul",
+      weeks: [],
+    });
+    expect(stored.isUnlisted).toBe(true);
+    expect(settingsPatch(stored, stored)).toBeNull();
+    expect(settingsPatch({ ...stored, isUnlisted: false }, stored)).toEqual({
+      isUnlisted: false,
+    });
   });
 });
 

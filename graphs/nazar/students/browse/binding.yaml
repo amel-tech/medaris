@@ -1,0 +1,162 @@
+# nazar.students.browse on the local stack, in a wide window: Talebeler of "Hadis ve Siyer Medresesi" in nazar-web
+# (http://localhost:4002), 1440 x 900 (the size the e2e uses; the sidebar shows from 768 px). Every scenario arrives as a person
+# does, by the sidebar's "Talebeler" (the nazar navigation graph's entry frame:medrese->medreseStudents).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/students/browse \
+#     --bind graphs/nazar/students/browse/binding.yaml [--main] [--cover transitions] [--absent] --out <dir>
+# NOT WALKED YET: this file was written in the writing phase, when no replay is run (the owner's word); it was checked only for
+# loading (`replay ... --emit-spec`). Every locator below is from the code and the page's markup; a walk may find one wrong.
+#
+# Data. The page is read-only, so what a walk needs is a medrese with the right number of talebe; none of the seed is changed.
+#   many     (the main story) `setup` makes two courses of the seeded medrese through the API (`helpers/course.mjs`, "Deneme dersi
+#            browseA" and "... browseB", published, taking anyone) and, with ./students.mjs (SQL on tedrisat's database, as the
+#            e2e's own seed does: no route makes a talebe with no account), 26 talebe with a seat in them: the newest, "Deneme Talebe
+#            01 browse", attends A and has finished B; 02 to 08 attend A; 09 to 26 attend B. With the seed's two talebe (TALEBE and
+#            TALEBE_MALE, left alone) that is 28 talebe on three pages of 10, 10 and 8; the helper refuses to go on if the medrese
+#            does not end up with 21 to 30, because the graph draws three pages. The names are in the e2e's mould (`E2E Talebe NN`)
+#            and the walk's numbers are its own: 28 on three pages, where the e2e has 48 on five (the graph's pager has a first, a
+#            middle and a last page). `teardown` takes the rows away first and then the two courses: a crashed walk leaves nothing
+#            the next `setup` does not clear (`rows-remove`, and `course.mjs make` removes a tag made before).
+#   small    nothing is made: the seeded medrese holds two talebe (TALEBE and TALEBE_MALE), one page with both pager links off. The
+#            helper's `total --between 1 10` stops the walk if somebody else's walk has left more.
+#   none     a medrese of its own with nobody in it ("Boş Medrese Denemesi", `students.mjs medrese up`), opened by the başnazım with
+#            the stack's başmüderris as its head. While it exists she holds two medrese seats; `teardown` deletes it.
+#   refused  nothing is made: the stack's medrese nazırı holds no code, so the API answers 403 and the page draws the refusal.
+# Not bound, with the reason:
+#   roster: down           the stack has no way to make the API fail for one account (the retry state `loadFailed`, `RETRY`)
+#   FAIL.missing           the layout answers a missing medrese with the 404 page before the page reads anything
+#   FAIL.forbidden and FAIL.failed of `narrowing`   a second read refused after a first that answered
+#   the list's "Devam ediyor"   drawn in the popup, never pressed (flow `outOfView`)
+#   NAVIGATE               bound to a blank page, as the other nazar bindings do
+# The `call` of the invoke states is not set: the reads are the server's own (a render of the page), not a fetch of the browser, and a
+# router.replace answers with the page's own payload, so there is no call to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.students.browse
+
+browser: { width: 1440, height: 900 }
+
+# {browse.total}, {browse.last}, {browse.pages} and {browse.a} are written by `students.mjs rows`; {empty.madrasah} by `medrese up`
+data:
+  browse: { json: ../.local/made/browse.json }
+  empty: { json: ../.local/made/browseEmpty.json }
+
+scenarios:
+  many:
+    given: { roster: many }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    setup:
+      - run: [node, ../nazar/students/browse/students.mjs, rows-remove]
+        expect: 'rows removed'
+      - run: [node, helpers/course.mjs, make, browseA, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi browseA"'
+      - run: [node, helpers/course.mjs, make, browseB, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi browseB"'
+      - run: [node, ../nazar/students/browse/students.mjs, rows, browseA, browseB]
+        expect: 'pages: 3'
+    teardown:
+      - run: [node, ../nazar/students/browse/students.mjs, rows-remove]
+        expect: 'rows removed'
+      - run: [node, helpers/course.mjs, remove, browseA]
+        expect: 'course remove browseA'
+      - run: [node, helpers/course.mjs, remove, browseB]
+        expect: 'course remove browseB'
+  small:
+    given: { roster: small }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    setup:
+      - run: [node, ../nazar/students/browse/students.mjs, rows-remove]
+        expect: 'rows removed'
+      - run: [node, ../nazar/students/browse/students.mjs, total, --between, '1', '10']
+        expect: 'pages: 1'
+  none:
+    given: { roster: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{empty.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    samples: { nameGenitive: Boş Medrese Denemesi’nin }
+    setup:
+      - run: [node, ../nazar/students/browse/students.mjs, medrese, up, browseEmpty]
+        expect: 'medrese up browseEmpty'
+      - run: [node, ../nazar/students/browse/students.mjs, total, --madrasah, '{empty.madrasah}', --between, '0', '0']
+        expect: 'pages: 0'
+    teardown:
+      - run: [node, ../nazar/students/browse/students.mjs, medrese, down, browseEmpty]
+        expect: 'medrese down browseEmpty'
+  refused:
+    given: { roster: refused }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+
+# The events no node sends: the person leaves, Esc closes a list, the box is filled in, and the last page is opened by its address.
+# A word is typed at once and the page waits 350 ms before it asks (students-table.tsx:25), which the replay's own wait covers.
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  DISMISS: [{ key: Escape }]
+  OPEN_LAST: [{ goto: '{nazar}/medrese/{seed.madrasah}/talebeler?sayfa={browse.pages}' }]
+  TYPE_NAME: [{ fill: { role: searchbox, name: Talebe ara, value: Talebe 07 browse } }]
+  TYPE_NOBODY: [{ fill: { role: searchbox, name: Talebe ara, value: böyle biri yok } }]
+  ERASE: [{ fill: { role: searchbox, name: Talebe ara, value: '' } }]
+
+# The address and the words each state must show. The numbers of the three pages follow what `rows` counted (e2e students#1 a2, a8,
+# a11: "Sayfa 1 / 5 · 48 talebeden 1–10" of the e2e's world, here three pages). A filtered list's address carries its filter, so it is
+# matched loosely; a word is written percent-encoded by the browser.
+states:
+  firstPage: { url: '{nazar}/medrese/*/talebeler', text: 'Sayfa 1 / 3 · {browse.total} talebeden 1–10' }
+  middlePage: { url: '{nazar}/medrese/*/talebeler?sayfa=2', text: 'Sayfa 2 / 3 · {browse.total} talebeden 11–20' }
+  lastPage: { url: '{nazar}/medrese/*/talebeler?sayfa=3', text: 'Sayfa 3 / 3 · {browse.total} talebeden 21–{browse.total}' }
+  onePage: { url: '{nazar}/medrese/*/talebeler**' }
+  empty: { url: '{nazar}/medrese/*/talebeler' }
+  nobody: { url: '{nazar}/medrese/*/talebeler**' }
+  forbidden: { url: '{nazar}/medrese/*/talebeler' }
+  loadFailed: { url: '{nazar}/medrese/*/talebeler**' }
+  # an exit has no nodes of this flow: each needs an address. The dialog opens over the same address.
+  handed_over.ban: { url: '{nazar}/medrese/*/talebeler**' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node, or find too many. The page's own rows are scoped by the wrapper `data-testid=students`
+# (students-table.tsx:185), which the table's states draw and the refusal does not. The numbers and the names are the walk's data.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for: the page's own words start the text of its main
+  studentsPage: { role: main, hasText: '/^Talebeler/' }
+  # the counter and the range are not the whole text of a message the catalog can fill with one sample
+  counter: { testId: counter, hasText: '/^\d+ talebe$/' }
+  pagerRange: { testId: pager-range, hasText: '/^Sayfa \d+ \/ \d+ · \d+ talebeden \d+–\d+$/' }
+  # the rows: the talebe's name is the row header; the first page and the second are full, the last holds the rest
+  rowsFull: { role: rowheader, within: { testId: students }, count: 10 }
+  rowsLast: { role: rowheader, within: { testId: students }, count: '{browse.last}' }
+  rowsOne: { role: rowheader, within: { testId: students } }
+  rowNewest: { role: rowheader, within: { testId: students }, hasText: Deneme Talebe 01 browse, nth: 0 }
+  rowEleventh: { role: rowheader, within: { testId: students }, hasText: Deneme Talebe 11 browse, nth: 0 }
+  rowFinisher: { role: rowheader, within: { testId: students }, hasText: Deneme Talebe 01 browse, nth: 0 }
+  rowFound: { role: rowheader, within: { testId: students }, hasText: Deneme Talebe 07 browse, nth: 0 }
+  # the newest row's "Devam ettiği dersler" cell (the third of the row): the course they still attend
+  finishedOngoing: { css: 'tbody tr:first-child td:nth-child(3)', within: { testId: students }, hasText: Deneme dersi browseA }
+  # the newest row's "Tamamladığı dersler" cell (the fourth of the row: the name is a <th>): the course and the day
+  finishedCourse: { css: 'tbody tr:first-child td:nth-child(4)', within: { testId: students }, hasText: Deneme dersi browseB }
+  finishedDay: { css: 'tbody tr:first-child td:nth-child(4) .mds-caption', within: { testId: students }, hasText: '/^\d{1,2} \S+/' }
+  # one "Yasakla: <name>" a row; the first is the newest talebe's, which the walk presses
+  ban: { role: button, name: '/^Yasakla: /' }
+  # the course the walk narrows to; the list also holds the seeded courses and any other walk's
+  courseEach: { role: option, name: Deneme dersi browseA }
+
+# What the narrowing means in the API, read as the başmüderris: the counter the page draws is the API's total (e2e students#3: the
+# counter follows the filter). The key order of the answer is items, total, page, limit, so `"total":8,"page"` is exactly 8.
+effects:
+  byState:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/students?status=COMPLETED&limit=1']
+      expect: '"total":1,"page"'
+  byCourse:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/students?courseId={browse.a}&limit=1']
+      expect: '"total":8,"page"'
+  bySearch:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/students?q=Talebe%2007%20browse&limit=1']
+      expect: '"total":1,"page"'
+  byNobody:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/students?q=b%C3%B6yle%20biri%20yok&limit=1']
+      expect: '"total":0,"page"'

@@ -1,0 +1,366 @@
+# Sorular of a course in nazar-web (/ders/<id>/sorular), read by the müderris of the course, who answers a talebe's waiting question,
+# changes the answer later, and pages through a long list. Read from the code of PR #394 (apps/nazar/features/questions, the API's
+# GET /courses/:id/questions and PUT /questions/:questionId/answer) on 15 Nov 2026; nothing here was seen in a browser, every
+# behaviour is "from the code" until the walk phase. The unit spec apps/nazar/test/questions.spec.tsx and the e2e questions#1 are what
+# ran it before. It says what the code does today:
+#   - the page lists every question asked in the course, the ones still waiting first (oldest first), then the answered ones, twenty a
+#     page. A waiting card is its own form: a text area "Cevabınız" and "Cevapla". An answered card shows the answer with "Cevap: <hoca>"
+#     and "Cevabı değiştir", which turns the answer back into a form ("Kaydet", "Vazgeç").
+#   - nothing says an answer was saved: the form is replaced by the answer and the badge changes, with no toast, no live region and no
+#     focus move (F-D1-08). The two refusals the page words itself ("Cevap boş olamaz.", "Bu soru artık yok ...") are paragraphs with
+#     role=alert, not tied to the field.
+#   - the page is a snapshot. An answer a colleague gave meanwhile is not shown, and "Cevapla" writes over it (the API replaces the
+#     earlier answer and keeps no history): ANSWER-2. A question the talebe deleted meanwhile is told only when the answer is sent.
+#   - the first value of `waiting` is the hand-over of tedris.learn.questions: a talebe sent a question, and it is the first card here.
+#     This flow starts nothing; the talebe reads the answer in tedris.learn.questions (its TEAM_ANSWERS step is this flow's "Cevapla").
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   F-D1-08  no announcement and no focus after an answer is saved; "Cevabı değiştir" does not focus the new field; the alert is not
+#            tied to the text area
+#   F-D1-01  a failed read draws a second <h1> under the page's own
+#   F-D1-29  the course menu offers "Sorular" to a ders nazırı who holds no question.answer, and the page then refuses her
+#   F-D1-30  a link in a question or an answer opens a new tab with no word of it
+#   ANSWER-1 (new) every card's field is "Cevabınız" and every card's button "Cevapla" or "Cevabı değiştir"; the card is named by the
+#            asker alone, so twenty questions by one talebe have one name
+#   ANSWER-2 (new) a card answered or deleted meanwhile is not shown so; "Cevapla" replaces a colleague's answer with no word
+#   ANSWER-3 (new) "Daha fazla göster" adds cards silently and, on the last page, its button unmounts and the focus falls to the document
+#   ANSWER-4 (new) answerErrorKey words COURSE_NOT_FOUND as "try again later", and words AUTHZ_FORBIDDEN, which the route never answers
+# E2E carried: questions#1 a1-a13 (a14, the badge gone after a reload, is the reload step under --absent); the edit, cancel and paging
+# steps have no e2e. Not carried here: questions#2 and #3 (the ders nazırı: refused, then granted, then closed by a passive course), which
+# are nazar.access.dersNazirPages; the refusal is drawn once, as `forbidden`, and walked as a ders nazırı with no grant.
+schema: delurio-graph/0
+kind: flow
+id: nazar.questions.answer
+status: captured
+domain: medaris.api
+ui: nazar.questions.answer
+title: Answer a talebe's question
+summary: >-
+  The müderris opens Sorular from the course menu. The page says whose talebe's questions these are and lists them, the waiting ones
+  first: each card has the lesson line ("Hafta 1 · Celse 1"), a badge ("Bekliyor" or "Cevaplandı"), who asked and when, and the question.
+  A waiting card is a form with a text area "Cevabınız" and "Cevapla"; pressed with nothing written it says "Cevap boş olamaz." and sends
+  nothing. Sent with text, the card turns into the answer with "Cevap: <hoca>", the time, the badge "Cevaplandı" and "Cevabı değiştir";
+  nothing else says it happened. "Cevabı değiştir" turns the answer back into a form holding it, with "Kaydet" and "Vazgeç"; "Vazgeç"
+  keeps the stored answer. When the course has more than twenty questions "Daha fazla göster" adds the next twenty. A question the talebe
+  deleted while the page was open is told when the answer is sent ("Bu soru artık yok ya da cevaplama izniniz yok. Sayfayı yenileyin.").
+  A reader who may not answer (a ders nazırı with no question.answer) meets "Bu sayfaya izniniz yok" under the heading; a read that
+  fails draws the retry state; a course with no question says so. The talebe finds the answer in their own list, in tedris, and is sent
+  no notification.
+
+scope:
+  shows: >-
+    Sorular of one course for the people who answer it: the heading, the cards with their badges and answers, the answer form of a
+    waiting card and of a card being changed, the alerts of a refused answer, "Daha fazla göster", the empty line, the refusal of a
+    reader without the permission, and the failed read
+  world: open
+  outOfView:
+    - "the talebe asking, rewriting, deleting and reading the answer: tedris.learn.questions, which starts this flow with `waiting: true`; its TEAM_ANSWERS step is this flow's Cevapla"
+    - "who may open the page and how the permission is given (question.answer by a grant to a ders nazırı, the passive course that takes it away again; e2e questions#2 and #3): nazar.access.dersNazirPages"
+    - "the sidebar, the scope picker and the phone bar around the page: nazar.shell.scopeAndMenu"
+    - "a second waiting card beside the one this flow follows: it repeats the same nodes, and the walk answers the first"
+    - "the question's and the answer's own words, which are the talebe's and the hoca's: Markdown, drawn without HTML, with links that open a new tab (F-D1-30)"
+    - "a talebe or a hoca with no name: the card says \"Adı bilinmeyen talebe\" and \"Cevap\" alone (Questions.unknownAuthor, Questions.answer); a course with no name: Questions.subtitleUnnamed"
+    - "the loading skeleton (QuestionsLoading, three bars and a hidden \"Yükleniyor\"), which a replay cannot hold"
+    - "the page after a reload that drops a card the talebe deleted, and a second deleted question"
+
+decisions:
+  D1:
+    question: >-
+      Should the talebe be told when their question is answered? The API says it sends no notification (answerLessonQuestion), tedris
+      draws the answer only when its list is read again, and the page is not live, so a talebe learns of an answer by chance.
+    recommend: >-
+      Yes: send the asker a notification (the way "Kayıt eklendi" and the decisions on applications reach them) when an answer is first
+      given, and read the list again when the talebe's page gains focus. Until then the hoca's page may say that no one is told.
+    affects: [sending, listed]
+  D2:
+    question: >-
+      Should answering a question that was answered meanwhile ask first? PUT /questions/:id/answer replaces the earlier answer with no
+      version check and no history, and the page shows the card as it was read, so a colleague's answer is overwritten unseen (ANSWER-2).
+    recommend: >-
+      Carry the answer's time (or a version) with the answer, refuse a stale one with a 409, and let the page show the answer that is
+      there and ask whether to replace it.
+    affects: [listed, sending]
+
+context:
+  waiting:
+    values: [true, false]
+    initial: any
+    say:
+      "true": "a question waits for an answer: it is the first card (tedris.learn.questions starts this flow with it when a talebe sends one)"
+      "false": "no question waits: the list is empty, or every question in it is answered"
+  answered:
+    values: [none, some, many]
+    initial: any
+    say:
+      none: "no question of the course is answered"
+      some: "a few questions are answered, and the list fits one page"
+      many: "answered questions run to more than one page: the first page holds twenty and \"Daha fazla göster\" follows"
+  read:
+    values: [ok, refused, down]
+    initial: any
+    say:
+      ok: "the API gives the list"
+      refused: "the reader holds no question.answer in the course (a ders nazırı who was given nothing): the API answers 403"
+      down: "the API answers with a failure that is neither a refusal nor a 404, or does not answer"
+  phase:
+    values: [waiting, answered, changing]
+    initial: waiting
+    say:
+      waiting: "the first card waits: its form is open"
+      answered: "the first card shows its answer"
+      changing: "the first card's answer is open as a form, with Kaydet and Vazgeç"
+  typed:
+    values: [blank, text]
+    initial: blank
+    say:
+      blank: "the open form's text area is empty"
+      text: "the open form's text area holds an answer"
+  note:
+    values: [none, blank, gone, invalid, failed]
+    initial: none
+    say:
+      none: "the open form shows no alert"
+      blank: "the form says \"Cevap boş olamaz.\""
+      gone: "the form says \"Bu soru artık yok ya da cevaplama izniniz yok. Sayfayı yenileyin.\""
+      invalid: "the form says \"Cevap boş olamaz ve çok uzun olamaz.\""
+      failed: "the form says \"Cevap kaydedilemedi. Biraz sonra yeniden deneyin.\""
+  loaded:
+    values: [first, all]
+    initial: first
+    say:
+      first: "only the first page of the list is on the screen"
+      all: "the list has been read to its end"
+  moreNote:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no alert stands over \"Daha fazla göster\""
+      failed: "the alert \"Diğer sorular yüklenemedi. Yeniden deneyin.\" stands over it"
+  question:
+    values: [kept, deleted]
+    initial: kept
+    say:
+      kept: "the talebe still has the question the first card shows"
+      deleted: "the talebe deleted it while the page was open: this page does not know"
+
+guards:
+  holdsForm: "phase != 'answered'"
+  viewShown: "phase == 'answered' or answered != 'none'"
+  anyAnswered: "phase != 'waiting' or answered != 'none'"
+  moreLeft: "answered == 'many' and loaded == 'first'"
+
+effects:
+  firstWaiting: { set: { phase: waiting, typed: blank, note: none, loaded: first, moreNote: none, question: kept } }
+  firstAnswered: { set: { phase: answered, typed: blank, note: none, loaded: first, moreNote: none, question: kept } }
+  reread: { set: { phase: answered, typed: blank, note: none, loaded: first, moreNote: none } }
+  typedText: { set: { typed: text } }
+  emptied: { set: { typed: blank } }
+  needAnswer: { set: { note: blank } }
+  clearNote: { set: { note: none } }
+  stored: { set: { phase: answered, typed: blank, note: none } }
+  replaced: { set: { phase: answered, typed: blank, note: none } }
+  openChange: { set: { phase: changing, typed: text, note: none } }
+  closeChange: { set: { phase: answered, typed: blank, note: none } }
+  goneNote: { set: { note: gone } }
+  invalidNote: { set: { note: invalid } }
+  failedNote: { set: { note: failed } }
+  clearMore: { set: { moreNote: none } }
+  loadedAll: { set: { loaded: all, moreNote: none } }
+  moreFailed: { set: { moreNote: failed } }
+  askerDeleted: { set: { question: deleted } }
+
+failures:
+  opened:
+    from: listCourseQuestions
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    failed: [INVALID_QUESTION_CURSOR, HTTP_400]
+  sending:
+    from: answerLessonQuestion
+    signedOut: [HTTP_401]
+    gone: [LESSON_QUESTION_NOT_FOUND]
+    invalid: [VALIDATION_ERROR]
+    failed: [COURSE_NOT_FOUND]
+  loadingMore:
+    from: listCourseQuestions
+    signedOut: [HTTP_401]
+    failed: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, INVALID_QUESTION_CURSOR, HTTP_400]
+
+# The story the page tells first, as the e2e tells it and a little further: the waiting question is first, an empty answer is refused,
+# an answer is sent and the card turns into it; the müderris changes it, cancels a second change, and reads the page again.
+main:
+  given: { waiting: true, answered: some, read: ok }
+  events: [DONE, SUBMIT, TYPE, SUBMIT, DONE, CHANGE, REWRITE, SUBMIT, DONE, CHANGE, CANCEL, RELOAD, DONE]
+
+initial: opened
+states:
+  opened:
+    title: The page reads the questions
+    source: apps/nazar/features/questions/components/questions-page.tsx:27
+    description: >-
+      The page is rendered on the server: it reads GET /courses/:id/questions (the first twenty: still-waiting questions oldest first,
+      then the answered ones, each with who asked) together with the course's name and the person's time zone, and draws behind a
+      loading.tsx of skeletons. The same state is a first visit, a reload and "Yeniden dene". The list is read by whoever holds
+      question.answer in the course: the müderris, the başmüderris and the köşk's nazım by role, a ders nazırı by a grant, and the
+      başnazım. A 403 is the refusal under the heading (`forbidden`), a 404 is Next's not-found page, and any other failure is the retry
+      state (`loadFailed`). Nothing is on the screen of this step, so nothing is checked in it.
+    invoke: { action: listCourseQuestions }
+    on:
+      DONE: { guard: "read == 'ok'", target: shown }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: "read == 'refused'", target: forbidden }
+      FAIL.missing: not_found
+      FAIL.failed: { guard: "read == 'down'", target: loadFailed }
+
+  shown:
+    title: The list settles
+    source: apps/nazar/features/questions/components/questions-list.tsx:30
+    description: >-
+      What the server drew follows from the answer: a course with no question is the empty line; a list read again after an answer
+      keeps its first card as the answered one it has become; otherwise the first card is the waiting question, or, when none waits,
+      the oldest answered one.
+    always:
+      - { guard: "waiting == false and answered == 'none'", target: empty, source: "apps/nazar/features/questions/components/questions-list.tsx:71" }
+      - { guard: "phase == 'answered'", target: listed, effect: [reread], say: "the page is read again after an answer: the first card is the answered one", source: "apps/nazar/features/questions/components/questions-page.tsx:56" }
+      - { guard: "waiting == false", target: listed, effect: [firstAnswered], say: "nothing waits: the first card is an answered one", source: "apps/nazar/features/questions/components/questions-page.tsx:56" }
+      - { target: listed, effect: [firstWaiting], say: "a question waits: it is the first card", source: "apps/nazar/features/questions/components/questions-page.tsx:56" }
+
+  empty:
+    title: The course has no question
+    by: human
+    source: apps/nazar/features/questions/components/questions-list.tsx:72
+    description: >-
+      The heading and its line stay, and the list is one sentence, "Bu derste henüz soru sorulmadı.", in an empty-state block with no
+      action. A question a talebe sends later is not shown until the page is read again.
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  forbidden:
+    title: The page refuses the list
+    by: human
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+    description: >-
+      The heading and its line stay and an alert says "Bu sayfaya izniniz yok" under them, with the sentence that sends the person to the
+      başmüderris; nothing of the list is drawn, nor the question's words. The course menu offered "Sorular" to this reader all the same,
+      because the entry carries no `requires` (F-D1-29). The alert is a neutral Alert, a status with no accessible name. A ders nazırı
+      whose müderris seat is gone (a passive course) meets the same words again (nazar.access.dersNazirPages).
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  loadFailed:
+    title: The list could not be read
+    by: human
+    source: apps/nazar/features/shell/components/load-failed.tsx:27
+    description: >-
+      Under the heading the retry state says "Sorular okunamadı" with its sentence and "Yeniden dene", which reads the page again
+      (router.refresh). Its title is a second <h1> beside the page's own (F-D1-01). The stack cannot make tedrisat fail this read, so a
+      replay does not walk it.
+    on:
+      RETRY: { target: opened, say: "the button asks the server again" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  listed:
+    title: The questions are listed
+    by: human
+    goal: true
+    source: apps/nazar/features/questions/components/questions-list.tsx:74
+    description: >-
+      The list in a <ul>, one <li> and one <article> per question. A card has the lesson line, the badge, "who · when" and the question.
+      A waiting card is a form: "Cevabınız" with its help ("Markdown yazabilirsiniz. En çok 4000 karakter."), "Cevapla" and, once
+      "Cevapla" was pressed on an empty box, "Cevap boş olamaz." under the box. An answered card shows "Cevap: <hoca>" (the name with the
+      unvan the hoca carries in this course; a ders nazırı or the köşk's nazım by name alone), the answer, its time and "Cevabı
+      değiştir". A card being changed is the form again, holding the answer, with "Kaydet" and "Vazgeç". The first card is the one this
+      flow follows (`phase`); the others repeat their nodes. Under the list "Daha fazla göster" stands while the API gave a cursor.
+      The page does not move the focus anywhere and does not announce what was done (F-D1-08); a card is named by its asker and every
+      form and button is named the same on every card (ANSWER-1); a card answered or deleted by someone else meanwhile is shown as it
+      was read (ANSWER-2). Markdown links in a question open a new tab (F-D1-30).
+    on:
+      TYPE: { guard: "phase == 'waiting'", target: listed, effect: [typedText], say: "they write an answer under the waiting question", source: "apps/nazar/features/questions/components/questions-list.tsx:226" }
+      REWRITE: { guard: "phase == 'changing'", target: listed, effect: [typedText], say: "they rewrite the answer in the open form", source: "apps/nazar/features/questions/components/questions-list.tsx:226" }
+      EMPTY: { guard: "holdsForm and typed == 'text'", target: listed, effect: [emptied], say: "they empty the text area", source: "apps/nazar/features/questions/components/questions-list.tsx:226" }
+      SUBMIT:
+        - { guard: "holdsForm and typed == 'blank'", target: listed, effect: [needAnswer], say: "\"Cevap boş olamaz.\" under the box and nothing is sent", source: "apps/nazar/features/questions/components/questions-list.tsx:128" }
+        - { guard: holdsForm, target: sending, effect: [clearNote], say: "they press Cevapla, or Kaydet on a card being changed" }
+      CHANGE: { guard: "phase == 'answered'", target: listed, effect: [openChange], say: "they press Cevabı değiştir: the answer is a form holding the stored answer; the field is not focused (F-D1-08)", source: "apps/nazar/features/questions/components/questions-list.tsx:198" }
+      CANCEL: { guard: "phase == 'changing'", target: listed, effect: [closeChange], say: "they press Vazgeç: the stored answer is shown again, whatever was typed", source: "apps/nazar/features/questions/components/questions-list.tsx:250" }
+      LOAD_MORE: { guard: moreLeft, target: loadingMore, effect: [clearMore], say: "they press Daha fazla göster", source: "apps/nazar/features/questions/components/questions-list.tsx:99" }
+      QUESTION_DELETED: { guard: "question == 'kept'", target: listed, effect: [askerDeleted], say: "the talebe deletes the question in tedris; this page does not know", source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:259" }
+      RELOAD: { guard: "phase == 'answered' and question == 'kept'", target: opened, say: "the page is read again: the answered card moves behind the waiting ones, and the Bekliyor badge is gone", source: "apps/nazar/features/questions/components/questions-page.tsx:27" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  sending:
+    title: The answer is on its way
+    source: apps/nazar/features/questions/components/questions-list.tsx:132
+    description: >-
+      The server action answerQuestion, PUT /questions/:questionId/answer with the text as typed (a blank is stopped before the call;
+      the API trims it and keeps 1 to 4000 characters; the box's maxLength is 4000 too). The button is busy ("Gönderiliyor" through a
+      hidden status) and stays focusable; "Vazgeç" of a card being changed is disabled until the answer is back, so a refusal is shown in
+      the form it was sent from. A 200 puts the API's question back in the card's place: the form goes, the answer, the
+      answerer, the time, the badge "Cevaplandı" and "Cevabı değiştir" come, and nothing says so (F-D1-08); the card does not move in
+      the list until the page is read again. The answer replaces any earlier one with no history (ANSWER-2). A 404 LESSON_QUESTION_NOT_FOUND
+      (the question is gone, or the caller may not answer it: the same answer for both) says "Bu soru artık yok ya da cevaplama izniniz
+      yok. Sayfayı yenileyin."; a 400 says "Cevap boş olamaz ve çok uzun olamaz." (the page stops both before the call, so the stack
+      cannot make it); any other code, and a call that throws, says "Cevap kaydedilemedi. Biraz sonra yeniden deneyin." (ANSWER-4). The
+      text stays in the form in each refusal. A session that is over sends the person to sign in and back.
+    invoke: { action: answerLessonQuestion }
+    on:
+      DONE:
+        - { guard: "question == 'kept' and phase == 'waiting'", target: listed, effect: [stored], say: "the card turns into the answer", source: "apps/nazar/features/questions/components/questions-list.tsx:134" }
+        - { guard: "question == 'kept' and phase == 'changing'", target: listed, effect: [replaced], say: "the card shows the new answer in place of the old", source: "apps/nazar/features/questions/components/questions-list.tsx:134" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { guard: "question == 'deleted'", target: listed, effect: [goneNote], source: apps/nazar/features/questions/questions.ts:56 }
+      FAIL.invalid: { target: listed, effect: [invalidNote], source: apps/nazar/features/questions/questions.ts:58 }
+      FAIL.failed: { target: listed, effect: [failedNote], source: apps/nazar/features/questions/questions.ts:62 }
+
+  loadingMore:
+    title: The next page is on its way
+    source: apps/nazar/features/questions/components/questions-list.tsx:50
+    description: >-
+      The server action loadQuestions, GET /courses/:id/questions?cursor= with the cursor the last page came with. The button is busy
+      ("Yükleniyor" through a hidden status). A page adds its cards under the list (a question already shown is kept once); when it is the
+      last the button goes, and the focus with it (ANSWER-3). A refusal or a call that throws says "Diğer sorular yüklenemedi.
+      Yeniden deneyin." over the button, keeps the list, and the button stays for another try. The stack cannot make this read fail, so
+      the refusal is not walked.
+    invoke: { action: listCourseQuestions }
+    on:
+      DONE: { target: listed, effect: [loadedAll], say: "the next page's cards are under the others; the button is gone", source: "apps/nazar/features/questions/components/questions-list.tsx:52" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { target: listed, effect: [moreFailed], source: "apps/nazar/features/questions/components/questions-list.tsx:56" }
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  not_found:
+    title: The course is not there
+    type: final
+    leavesPage: true
+    description: "A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:46); the course layout answers a missing course with it before this page reads anything."
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The read went out with a token tedrisat refused, or the action answered "unauthenticated": the person is sent to sign in, and back
+      to this address, with no alert (lib/tedrisat-read.ts:40, lib/unauthenticated.ts:25). realm.auth.signIn takes over.
+
+assertions:
+  - id: send-only-from-a-form
+    never: "state == 'sending' and phase == 'answered'"
+    say: "an answer is sent only from a card whose form is open: one that waits, or one being changed"
+    source: apps/nazar/features/questions/components/questions-list.tsx:180
+  - id: send-needs-text
+    never: "state == 'sending' and typed == 'blank'"
+    say: "an answer is sent only with text in the box"
+    source: apps/nazar/features/questions/components/questions-list.tsx:128
+  - id: empty-means-no-question
+    never: "state == 'empty' and (waiting == true or answered != 'none')"
+    say: "the empty line shows only for a course with no question"
+    source: apps/nazar/features/questions/components/questions-list.tsx:71
+  - id: more-only-with-many
+    never: "state == 'loadingMore' and answered != 'many'"
+    say: "the next page is asked for only while the API gave a cursor"
+    source: apps/nazar/features/questions/components/questions-list.tsx:87

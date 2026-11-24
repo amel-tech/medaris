@@ -1,0 +1,185 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.shell.landingByRole
+status: proposed
+summary: >-
+  What must exist for a person who opens nizam-web to be sent where their roles say: nizam.shell.landingByRole. Each need is what
+  the product must do, from the flow's story; none is read off what the pages do today. Nothing here comes from planned.md: no
+  planned feature (P-nn) names the root address, /yetki-yok or /nazar-yonlendirme. No replay has run in this phase, so no scenario
+  is named as walked; the scenarios are bound (binding.yaml and the binding.<x>.yaml files beside it) and wait for the walk phase.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, or code that does the opposite): a-failed-read-on-the-root-says-so (F-P0-9), a-failed-no-role-page-has-a-heading
+# (F-P0-6), a-failed-hand-over-announces-once (F-P0-7), the-role-line-is-not-claimed-while-unread (LBR-1),
+# one-spelling-of-nazir (LBR-2), the-welcome-page-has-its-own-title (F-P0-3)
+# unwalked (code, and no e2e check and no replay takes it): a-failed-read-is-told-not-denied (the unit specs no-role.spec.tsx and
+# nazar-redirect.spec.ts only: the stack cannot make the read fail). a-nazim-lands-in-nizam is walked for the köşk nazımı only
+# (assignments#3); the başnazım and the Medaris nazımı stay on "/", whose page is the e2e of nizam.home.chiefOverview and
+# nizam.home.medarisNazimCut (dashboard#1-#3), and the scenarios medaris and chief here only check where they land.
+# not carried from the e2e: shell#1's `toHaveTitle` (the graph has no node for the tab title), assignments#1's row count `3 + standing`
+# (it counts the e2e's own seed; the stack's müderris has three course rows and the replay does not count) and its "no star on a
+# course with one müderris" (the star is out of view: `--absent` checks only nodes the graph draws). The e2e's own `page.route`
+# stub of Tedris in shell#1 is replaced by the check that the button's href is Tedris's address.
+
+needs:
+  - id: no-role-is-told-plainly
+    need: >-
+      A person who holds no role in Medaris is told so in one plain sentence on a page of their own, with the e-mail address they
+      signed in as, and is offered a way back to Tedris; they are shown no menu and no bell.
+    evidence:
+      - state: noRolePage
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nizam/features/assignments/components/no-role-page.tsx:42
+      - source: apps/nizam/app/yetki-yok/page.tsx:23
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/03 — an account with no role lands on 'Yönetim yetkiniz yok': no menu, its own e-mail, 'Tedris'e dön'"
+      - test: apps/nizam/test/no-role.spec.tsx
+    note: |-
+      Also drawn as the assertion no-role-page-only-for-no-role, the rule sidebar-has-no-menu.
+      shell.e2e.ts shell#1 (a1-a9: the address, the h1 and its focus, the sentence, no <nav>, the role line "Talebe", the account
+      line, and "Tedris’e dön", whose address the replay reads; the tab title is not carried)
+      the scenario noRole is bound and was not walked
+
+  - id: only-the-roleless-are-told-they-have-none
+    need: >-
+      A person who holds a role, in any app, is never told they have none: opening the page of the roleless sends them to the page
+      that belongs to them.
+    evidence:
+      - state: sorting
+      - state: landing
+      - source: apps/nizam/app/yetki-yok/page.tsx:26
+      - source: apps/nizam/features/assignments/landing.ts:18
+      - test: apps/nizam/e2e/assignments.e2e.ts
+        name: "a köşk nazım is not sent to Nazar"
+      - test: apps/nizam/test/no-role.spec.tsx
+    note: |-
+      Also drawn as the assertion no-role-page-only-for-no-role.
+      assignments.e2e.ts assignments#3 (a2: a köşk nazımı who opens /nazar-yonlendirme is sent to their köşk; the same redirect on
+      /yetki-yok is bound in the scenarios chiefAtNoRole and nazarAtNoRole)
+      the scenarios chiefAtNoRole, nazarAtNoRole and noRoleAtOwn are bound and were not walked
+
+  - id: nazar-people-are-handed-over
+    need: >-
+      A person whose roles are all a medrese's or a course's is told that their work is in Nazar, is shown what they hold (the
+      role, the köşk and how many talebe, "Taslak" for a course not yet published) and has one button to Nazar.
+    evidence:
+      - state: nazarList
+      - node: goToNazar
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:43
+      - source: apps/nizam/features/assignments/landing.ts:47
+      - test: apps/nizam/e2e/assignments.e2e.ts
+        name: "a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the same roles the API returns"
+      - test: apps/nizam/e2e/assignments.e2e.ts
+        name: "'Nazar'a git' goes to the Nazar address"
+      - test: apps/nizam/test/nazar-redirect.spec.ts
+    note: |-
+      Also drawn as the assertion nazar-list-only-for-nazar-roles.
+      assignments.e2e.ts assignments#1 (the address, the h1, the course rows with their caption, the draft row, the medrese row;
+      not carried: the row count and the absence of the imam star), assignments#2 (the button goes to Nazar's address)
+      the scenarios hoca, madrasah (binding.madrasah.yaml) and draft (binding.draft.yaml) are bound and were not walked
+
+  - id: a-nazim-lands-in-nizam
+    need: >-
+      A köşk nazımı opens Nizam on the home of their köşk, and the başnazım and a Medaris nazımı on the Medaris home; none of them
+      is handed over to Nazar or told they have no role, whatever else they hold.
+    evidence:
+      - state: landing
+      - state: home_opened.kosk
+      - state: home_opened.medaris
+      - state: home_opened.chief
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:52
+      - source: "apps/nizam/app/(home)/page.tsx:44"
+      - source: apps/nizam/features/assignments/landing.ts:18
+      - test: apps/nizam/e2e/assignments.e2e.ts
+        name: "a köşk nazım is not sent to Nazar"
+      - test: apps/nizam/test/nazar-redirect.spec.ts
+    note: |-
+      Also drawn as the assertion nazar-list-only-for-nazar-roles.
+      assignments.e2e.ts assignments#3 (a1: "/" ends on the first köşk's home; a2: /nazar-yonlendirme does too)
+      the scenarios kosk, koskAtNazar, medaris and chief are bound and were not walked; the Medaris home itself is nizam.home.*
+
+  - id: a-visitor-is-asked-to-sign-in
+    need: >-
+      A visitor who opens Nizam's root is welcomed and offered the way to sign in; one who opens any other page is sent to sign in
+      and, once signed in, lands on the page they asked for.
+    evidence:
+      - state: visitorWelcome
+      - state: start
+      - state: handed_over.sign_in
+      - state: handed_over.sign_in_gate
+      - source: apps/nizam/proxy.ts:25
+      - source: apps/nizam/lib/public-paths.ts:19
+      - source: "apps/nizam/app/(home)/page.tsx:22"
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/03 — signed out, /yetki-yok sends to sign-in, not to the screen"
+      - test: apps/nizam/test/welcome.spec.tsx
+    note: |-
+      Also drawn as the assertion visitor-never-reads.
+      shell.e2e.ts shell#2 (a visitor who opens /yetki-yok is not left on it and meets Keycloak's form)
+      the scenarios visitor and visitorGate are bound and were not walked; the round trip itself is realm.auth.signIn
+
+  - id: a-failed-read-is-told-not-denied
+    need: >-
+      When the roles cannot be read, the person is told so and offered a retry on the page they asked for; they are never told
+      they hold no role, never handed over to Nazar and never sent to a home.
+    evidence:
+      - state: noRoleUnread
+      - state: nazarUnread
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nizam/features/assignments/components/no-role-page.tsx:29
+      - source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:48
+      - test: apps/nizam/test/no-role.spec.tsx
+      - test: apps/nizam/test/nazar-redirect.spec.ts
+    note: |-
+      Also drawn as the assertion failed-read-never-claims-an-outcome.
+      no e2e check and no replay makes tedrisat fail, and the stack cannot make it refuse a read: the states are not walked
+
+  - id: a-failed-read-on-the-root-says-so
+    need: >-
+      When the roles cannot be read, the root address says so and offers a retry, as the other two pages do, instead of a bare
+      "Hoş geldiniz" for a person who may be a nazım.
+    missing: F-P0-9, decision D1 of the flow; no Linear issue
+    note: >-
+      Drawn on the state rootUnread, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-failed-no-role-page-has-a-heading
+    need: >-
+      The page that says the roles could not be read has a heading and says it to a screen reader, as the page it replaces does.
+    missing: F-P0-6; no Linear issue
+    note: >-
+      Drawn on the state noRoleUnread, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-failed-hand-over-announces-once
+    need: The page that says the list could not be read announces it once, not as a toast and an alert with the same words.
+    missing: "F-P0-7: the component's comment says the design asks for the toast, so the owner decides; no Linear issue"
+    note: >-
+      Drawn on the state nazarUnread, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-role-line-is-not-claimed-while-unread
+    need: >-
+      The sidebar names a person's role only when it knows it: it does not call a nazım or a hoca "Talebe" while their roles have
+      not been read.
+    missing: LBR-1; no Linear issue
+    note: >-
+      Drawn on the states noRoleUnread, nazarUnread and rootUnread, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: one-spelling-of-nazir
+    need: A role is spelled one way in every place Nizam writes it, and on the page that shows two of them side by side.
+    missing: LBR-2, decision D2 of the flow; no Linear issue
+    note: >-
+      Drawn on the state nazarList, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-welcome-page-has-its-own-title
+    need: The tab and the history name the page, and the welcome page says more than the name of the app.
+    missing: F-P0-3; no Linear issue
+    note: >-
+      Drawn on the state visitorWelcome, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

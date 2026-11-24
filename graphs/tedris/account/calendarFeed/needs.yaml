@@ -1,0 +1,207 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.account.calendarFeed
+status: proposed
+summary: >-
+  What must exist for a talebe who wants Google or Apple Calendar to follow their celses on its own: tedris.account.calendarFeed.
+  Each need is what the product must do, from the flow's story and from what its findings ask for; none is read off what the page
+  does today. P-38 (the personal feed, MDRS-120, "In Review") is this flow's and is built; nothing else in planned.md belongs
+  here. Gender separation is not in play: no seat is decided on this page.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code), for the gaps merge: masked-link-is-readable-to-a-screen-reader (ACC-11), a-refused-renewal-says-the-old-link-still-works
+# (CALFEED-2), making-the-link-is-announced (CALFEED-3), a-lost-connection-is-answered-on-the-page (ACC-12),
+# the-words-of-the-kit-are-in-the-persons-language (CALFEED-1), switch-the-feed-off (a question for the owner).
+# Unwalked (code, no e2e check and no replay that passed; every replay of this flow is walk phase, and the unit spec
+# apps/tedris/test/calendar-subscription.spec.ts proves the markup of the first three without a browser): copy-refusal-says-so,
+# an-unreadable-status-asks-before-making-a-link, a-refused-call-is-told-in-red, the-session-ending-sends-to-sign-in.
+# Walked by an e2e check only (no replay yet, so unwalked as a replay): every other built need below.
+
+needs:
+  - id: make-my-personal-link
+    need: >-
+      A signed-in talebe makes a personal calendar link with one press, and is asked nothing first when they have none. The link
+      belongs to them alone: no one else's press makes, shows or replaces it.
+    evidence:
+      - state: noLink
+      - state: issuing
+      - state: issued
+      - source: apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:61
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:122
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+
+  - id: the-link-is-shown-once-with-a-warning
+    need: >-
+      The link is shown in full only at the moment it is made, with a plain warning to copy it now, in the two forms the two
+      calendars take (https for Google, webcal for Apple). The service keeps only a hash of the secret, so no one, the person
+      included, can be shown it again.
+    evidence:
+      - state: issued
+      - state: masked
+      - source: apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:61
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:154
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+
+  - id: copy-the-link-and-say-so
+    need: A person copies either address with one press and is told, in words that go away by themselves, that it was copied.
+    evidence:
+      - state: issued
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:42
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "'Kopyala' puts the address on the clipboard"
+    note: Also drawn as the assertion a-copy-toast-needs-the-fields.
+
+  - id: copy-refusal-says-so
+    need: >-
+      When the browser refuses the clipboard, the address is left selected and the person is told, in words that stay until they
+      close them, to copy it by hand.
+    evidence:
+      - state: issued
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:46
+    note: >-
+      walked: nothing. The unit spec "leaves the field selected and says so when the clipboard refuses" proves the markup; the e2e
+      check schedule#11 grants the clipboard, and no binding can make a browser refuse it.
+
+  - id: a-return-visit-says-a-link-exists
+    need: >-
+      A person who comes back is told that a link exists and since when, is not given it again, and cannot copy a value that is
+      not there.
+    evidence:
+      - state: masked
+      - source: apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:43
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:160
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+
+  - id: masked-link-is-readable-to-a-screen-reader
+    need: >-
+      A person who uses a screen reader hears that the link is hidden and cannot be shown again, from the field itself, not a run
+      of bullet characters.
+    missing: "ACC-11: the fields hold 32 bullets as their value; no Linear issue"
+    note: >-
+      Drawn on the state masked, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: renewing-asks-first-and-vazgec-keeps-the-link
+    need: >-
+      Renewing a link asks first, in words that say what stops working and what the person must do again, with the focus on the
+      answer that changes nothing. Declining leaves the link, and every calendar subscribed to it, as it was.
+    evidence:
+      - state: confirming
+      - state: returned
+      - state: masked
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:283
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:291
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+      - test: apps/tedris/test/calendar-subscription.spec.ts
+        name: "while the link is renewed, Vazgeç, Kapat and Esc are off, so nobody believes the old link still works"
+
+  - id: renewing-replaces-the-link-and-the-old-one-stops
+    need: >-
+      Confirming a renewal makes a new link, shows it once, and the old address answers "not found" from that moment, so a leaked
+      link is ended by making another.
+    evidence:
+      - state: renewing
+      - state: issued
+      - state: pollingOld
+      - source: apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:61
+      - source: apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts:58
+      - source: "apps/tedris/app/calendar/[file]/route.ts:17"
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+    note: Also drawn as the assertion the-replaced-address-is-only-read-after-a-renewal.
+
+  - id: a-calendar-app-reads-the-kept-link
+    need: >-
+      A calendar app that holds the person's link reads it with no sign-in, at any hour, and gets the feed; the page needs no
+      visit for that. What the feed holds is the flow tedris.learning.addToCalendar's.
+    evidence:
+      - state: pollingCurrent
+      - source: "apps/tedris/app/calendar/[file]/route.ts:17"
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+
+  - id: an-unreadable-status-asks-before-making-a-link
+    need: >-
+      When the service cannot say whether the person has a link, the page says so and treats making one as a renewal, because it
+      may replace a link that works.
+    evidence:
+      - state: unknown
+      - source: apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:43
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:139
+    note: >-
+      walked: nothing. The unit spec "asks before creating when it could not read whether a link exists" proves the markup; the
+      stack's tedrisat answers every read, and nothing in a binding makes it fail one.
+
+  - id: a-refused-call-is-told-in-red
+    need: When making or renewing a link fails, the person is told once, in an alert that is announced, and the busy state ends.
+    evidence:
+      - state: noLink
+      - state: masked
+      - state: unknown
+      - state: issued
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:233
+    note: |-
+      Also drawn as the assertion a-red-alert-never-stands-while-the-call-runs.
+      walked: nothing. The unit spec "says so when the link could not be created" proves the markup; no binding makes the call
+      fail.
+
+  - id: a-refused-renewal-says-the-old-link-still-works
+    need: >-
+      When a renewal is refused, the person is told that nothing changed and that their old link is still the one that works, and
+      is not told that a link "could not be created".
+    missing: "CALFEED-2: the words are those of a failed creation; no Linear issue"
+    note: >-
+      Drawn on the state renewing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: making-the-link-is-announced
+    need: >-
+      When the link has been made, a person who cannot see the page is told so, and told to copy it now, at the moment it appears
+      and without hunting for it.
+    missing: "CALFEED-3: a status node that arrives with its text; not verified with a screen reader; no Linear issue"
+    note: >-
+      Drawn on the state issued, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-lost-connection-is-answered-on-the-page
+    need: >-
+      When the browser cannot reach the app at all, making or renewing a link ends on the page's own failed alert and the busy
+      state clears, not on the app's error page.
+    missing: "ACC-12: issue() has no try/catch; no Linear issue"
+    note: >-
+      Drawn on the states issuing and renewing, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-session-ending-sends-to-sign-in
+    need: >-
+      A session that ended while the person was on the page sends them to sign in and brings them back to it, instead of showing a
+      failure.
+    evidence:
+      - state: sent_to_sign_in
+      - source: apps/tedris/lib/send-to-sign-in.ts:25
+      - source: apps/tedris/features/courses/components/calendar-subscription.tsx:126
+    note: "walked: nothing. The stack cannot end a session in the middle of a step."
+
+  - id: the-words-of-the-kit-are-in-the-persons-language
+    need: >-
+      Every word the page shows, the dialog's close button, the busy status and the toast's close button included, comes from the
+      person's own language, so that a screen in English or Arabic never says "Kapat" or "Yükleniyor".
+    missing: CALFEED-1, as LEAVE-2 and ADDCAL-2; MDRS-233 names the toast's default; no Linear issue of its own
+    note: >-
+      Drawn on the states confirming, renewing and issuing, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: switch-the-feed-off
+    need: >-
+      A person who shared the link by mistake, or who no longer wants their calendar to follow Medaris, can switch the feed off
+      without being handed a new link. Today renewing is the only way to stop the old address, and it makes a new one.
+    missing: a question for the owner (the page says "paylaştıysan yenile"), no Linear issue
+    note: >-
+      Drawn on the state masked, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

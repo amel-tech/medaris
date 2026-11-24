@@ -1,0 +1,14 @@
+{
+  "NoAccess.title": "Bu portala erişiminiz yok",
+  "NoAccess.text": "Nazar, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır.",
+  "NoAccess.account": "Giriş yaptığınız hesap:",
+  "NoAccess.back": "Tedris’e dön",
+  "Account.signOut": "Çıkış yap",
+  "Roles.STUDENT": "Talebe",
+  "Roles.KOSK_NAZIM": "Köşk nazımı",
+  "Roles.MEDARIS_NAZIM": "Medaris nazımı",
+  "composed.Shell.logo": "Medaris — Nazar",
+  "composed.Shell.themeDark": "Koyu temaya geç",
+  "composed.Shell.userName": "{name}",
+  "composed.NoAccess.email": "{email}"
+}

@@ -20,10 +20,17 @@ const props = (bolum: string) => ({ params: Promise.resolve({ bolum }) });
 
 /**
  * The medrese's sections that have a page of their own (MDRS-184, MDRS-185,
- * MDRS-187): a static route folder wins over the placeholder's `[bolum]`, so
+ * MDRS-187, and İtirazlar): a static route folder wins over the placeholder's `[bolum]`, so
  * these never reach it.
  */
-const BUILT = ["nazirlar", "ayarlar", "arsiv", "talebeler", "yasaklamalar"];
+const BUILT = [
+  "nazirlar",
+  "ayarlar",
+  "arsiv",
+  "talebeler",
+  "yasaklamalar",
+  "itirazlar",
+];
 
 /** The pages no package has built yet: one placeholder per kind of scope. */
 describe("the shared placeholder under a medrese", () => {
@@ -39,9 +46,11 @@ describe("the shared placeholder under a medrese", () => {
       expect(text, segment).toContain("Bu sayfa henüz hazır değil.");
     }
     expect(textOf(await html(await page("dersler")))).toMatch(/^Dersler /);
-    expect(textOf(await html(await page("kabul-kurallari")))).toMatch(
-      /^Kabul kuralları /
-    );
+    expect(textOf(await html(await page("itirazlar")))).toMatch(/^İtirazlar /);
+  });
+
+  it("answers 404 for kabul-kurallari, which is no longer in the menu", async () => {
+    await expect(page("kabul-kurallari")).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
   it("leaves the sections that have a page to their own route folder", () => {
@@ -71,7 +80,7 @@ describe("the shared placeholder under a medrese", () => {
   });
 });
 
-/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247), Ders nazırları and Ders ayarları (MDRS-270), Ödevler (MDRS-290). */
+/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247), Ders nazırları and Ders ayarları (MDRS-270), Ödevler (MDRS-290), Değerlendirme (MDRS-248). */
 const DERS_BUILT = [
   "celseler",
   "talebeler",
@@ -80,6 +89,7 @@ const DERS_BUILT = [
   "nazirlar",
   "ayarlar",
   "odevler",
+  "degerlendirme",
 ];
 
 describe("the shared placeholder under a course", () => {
@@ -116,18 +126,9 @@ describe("the shared placeholder under a course", () => {
   });
 
   it("answers 404 for a segment of the medrese's menu", async () => {
-    for (const segment of ["dersler", "itirazlar", "kabul-kurallari"]) {
+    for (const segment of ["dersler", "itirazlar"]) {
       await expect(page(segment), segment).rejects.toThrow("NEXT_NOT_FOUND");
     }
-  });
-});
-
-describe("the scope's own pages", () => {
-  it("are placeholders named Genel bakış and Bildirimler until their packages arrive", async () => {
-    const overview = (await import("../app/ders/[dersId]/page")).default();
-    expect(textOf(await html(overview))).toMatch(/^Genel bakış /);
-    const bell = (await import("../app/(global)/bildirimler/page")).default();
-    expect(textOf(await html(bell))).toMatch(/^Bildirimler /);
   });
 });
 

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createElement, isValidElement, type ReactElement } from "react";
+import { act, createElement, isValidElement, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { connectedAppsHref } from "~/features/account/connected-apps";
 import {
@@ -125,16 +125,15 @@ describe("profile model", () => {
 });
 
 describe("Hesap cards (design tedris/34)", () => {
-  it("shows the names, a read-only e-mail, the language choice, the calendar link and the sign-out link", async () => {
+  it("shows the names, a read-only e-mail, no language choice, the calendar link and the sign-out link", async () => {
     const host = await mount();
     expect(input(host, "givenName").value).toBe("Zeynep Betül");
     expect(input(host, "familyName").value).toBe("Karahanlı");
     const email = input(host, "email");
     expect(email.value).toBe("zeynep.karahanli@example.com");
     expect(email.readOnly).toBe(true);
-    // MDRS-275: a language select on the page's locale, not a read-only field
-    const language = host.querySelector('[aria-label="Dil"]');
-    expect(language?.textContent).toContain("Türkçe");
+    // Turkish only: the language select is gone
+    expect(host.querySelector('[aria-label="Dil"]')).toBeNull();
     expect(host.querySelector('input[name="language"]')).toBeNull();
     const hrefs = [...host.querySelectorAll("a")].map((a) =>
       a.getAttribute("href")
@@ -193,6 +192,50 @@ describe("Hesap cards (design tedris/34)", () => {
   it("opens the full zone list for a saved zone outside the presets", async () => {
     const host = await mount({ timeZone: "Asia/Tokyo" });
     expect(host.textContent).toContain("Diğer saat dilimi");
+  });
+
+  it("saves one zone at a time: both lists are off while a save runs", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.updateZone.mockReturnValue(
+      new Promise((resolve) => (answer = resolve))
+    );
+    const host = await mount({ timeZone: "Asia/Tokyo" });
+    const list = (id: string) =>
+      host.querySelector(`#${id}`) as HTMLButtonElement;
+    await click(list("account-time-zone"));
+    await settle(50);
+    // The rows follow TIME_ZONE_PRESETS: the second is Berlin.
+    await click(document.querySelectorAll(".mds-option")[1] as HTMLElement);
+    await settle(50);
+    expect(mocks.updateZone).toHaveBeenCalledWith("Europe/Berlin");
+    // Two saves in flight could leave the list on a zone that is not stored.
+    expect(list("account-time-zone").disabled).toBe(true);
+
+    await act(async () => answer({ success: true, data: {} }));
+    expect(list("account-time-zone").disabled).toBe(false);
+    expect(mocks.updateZone).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds the full zone list too while its save runs", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.updateZone.mockReturnValue(
+      new Promise((resolve) => (answer = resolve))
+    );
+    const host = await mount({ timeZone: "Asia/Tokyo" });
+    const other = host.querySelector(
+      "#account-time-zone-other"
+    ) as HTMLButtonElement;
+    await click(other);
+    await settle(50);
+    await click(document.querySelector(".mds-option") as HTMLElement);
+    await settle(50);
+    expect(mocks.updateZone).toHaveBeenCalledTimes(1);
+    expect(other.disabled).toBe(true);
+    expect(
+      (host.querySelector("#account-time-zone") as HTMLButtonElement).disabled
+    ).toBe(true);
+    await act(async () => answer({ success: true, data: {} }));
+    expect(other.disabled).toBe(false);
   });
 });
 

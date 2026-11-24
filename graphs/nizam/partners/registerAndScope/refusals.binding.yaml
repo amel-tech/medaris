@@ -1,0 +1,150 @@
+# nizam.partners.registerAndScope, the refusals and the köşk that holds a code. It extends binding.yaml and adds the three scenarios that
+# walk a refusal the server gives, with the `call` of the states that invoke a Next server action dropped: a server action answers 200 on
+# the page's own address whatever it decided, and the replay compares a FAIL class with the call's HTTP status (SPEC.md section 7), which
+# cannot pass here (409 and 404 against 200). The busy states are walked in binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/partners/registerAndScope \
+#     --bind graphs/nizam/partners/registerAndScope/refusals.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml). The scenarios of binding.yaml are inherited and walk here without their busy checks.
+#
+#   scoped     the partner is registered, open and works with Kubbealtı Köşkü, and a course of that köşk holds one of its codes (partner.mjs and
+#              helpers/course.mjs make them in `setup`, the course as "Deneme dersi regscope"). The başnazım types that client id into the add
+#              form: 409 PARTNER_EXISTS, said under it. In "Köşkleri seç" the box of the köşk is ticked; unticking it and pressing Kaydet takes
+#              the köşk and the code away (`show` says kosks=0 codes=0). "Adını değiştir" is saved empty first: "Bir ad yazın." under the
+#              field and nothing sent, then with a name.
+#   frontEnd   the başnazım types `nizam-local`, the client of nizam-web itself, which is one of the front-ends of KEYCLOAK_ALLOWED_CLIENTS: 409
+#              PARTNER_FRONT_END_CLIENT, said under the client id. Nothing is registered, so there is nothing to remove.
+#   goneOff    as `gone`, with the partner switched off first: the switch is pressed to switch it on and is answered 404 (the only way to reach
+#              turningOn's refusal, since a refused write never leaves the switch off).
+#   gone       the partner is registered, then taken away (partner.mjs race gone, the `before` of `listed`) after the page was read: the switch
+#              is answered 404 PARTNER_UNKNOWN and goes back with a toast; "Adını değiştir" and "Köşkleri seç" say the same inside their dialogs.
+#              That is the one refusal the stack can be made to give on request.
+# Not bound, with the reason (as binding.yaml): `loadFailed` and its RETRY; every write answered forbidden or failed.
+# An error toast stays until it is closed, so in `gone` a later state's `--absent` check would still find it: walk this file without --absent.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nizam.partners.registerAndScope
+
+scenarios:
+  scoped:
+    given: { read: ok, held: scoped, entry: valid, answer: exists, write: saved, renameTo: empty }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, regscope, --weeks, '1', --lessons, '1']
+        expect: '"tag":"regscope"'
+      - run: [node, helpers/partner.mjs, add, --client, deneme-kayit-uygulamasi, --course, '{made.course}', --codes, deneme-kayit-kod-1]
+        expect: 'codes'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'kosks=1 codes=1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, regscope]
+        expect: 'course remove regscope'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi regscope%'"]
+        expect: '"n":0'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi-b
+      validName: Deneme kayıt uygulaması
+      renameValue: ''
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+  frontEnd:
+    given: { read: ok, held: none, entry: valid, answer: frontEnd, write: saved, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: nizam-local
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+  gone:
+    given: { read: ok, held: one, entry: valid, answer: added, write: gone, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması']
+        expect: 'bound to 0'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: gone
+
+  goneOff:
+    given: { read: ok, held: off, entry: valid, answer: added, write: gone, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması']
+        expect: 'bound to 0'
+      - run: [node, helpers/partner.mjs, switch, --client, deneme-kayit-uygulamasi, 'off']
+        expect: 'partner off'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: gone
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  adding: {}
+  turningOff: {}
+  turningOn: {}
+  renaming: {}
+  savingKosks: {}
+  # the partner is taken away once the page is read and drawn, before the first press; `race none` does nothing
+  listed:
+    before:
+      - run: [node, helpers/partner.mjs, race, --client, deneme-kayit-uygulamasi, '{race}']
+        expect: 'race'

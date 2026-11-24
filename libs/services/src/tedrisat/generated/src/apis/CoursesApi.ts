@@ -2466,8 +2466,9 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.
+     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course. Deprecated (MDRS-248): progress is worked out from the talebe\'s watch records (`PUT /lessons/:id/view`), which overwrite a number written here the next time a celse is watched; tedris no longer offers it.
      * Update the current talebe\'s progress in a course
+     * @deprecated
      */
     async updateCourseProgressRaw(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EnrollmentResponse>> {
         if (requestParameters['id'] == null) {
@@ -2511,8 +2512,9 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course.
+     * Records progress only. Reaching 100 does not complete the course, and `status` is refused unless it is the current one (MDRS-105): the course team completes a course. Deprecated (MDRS-248): progress is worked out from the talebe\'s watch records (`PUT /lessons/:id/view`), which overwrite a number written here the next time a celse is watched; tedris no longer offers it.
      * Update the current talebe\'s progress in a course
+     * @deprecated
      */
     async updateCourseProgress(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
         const response = await this.updateCourseProgressRaw(requestParameters, initOverrides);

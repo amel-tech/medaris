@@ -1,0 +1,32 @@
+# nizam.kosks.browse, the refusal of "Geri al" that says a higher kademe hid it again (403 ARCHIVE_RESTORE_LEVEL), in a binding of its own (it adds no transition to binding.yaml's scenarios and
+# needs a `before` on the state `restoring`, which a scenario cannot carry):
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/browse \
+#     --bind graphs/nizam/kosks/browse/binding.level.yaml --cover transitions --out <dir>
+# The page is opened with the hidden köşk and its "Geri al"; when the walk presses it, the replay holds the server action (the `call` of
+# `restoring`), runs the `before` below as a second person through the API, then lets the action go, so it meets the world that the başnazım hid it again after the köşk nazımı did (Medaris yönetimi is above his kademe).
+# NOT RUN: written without a replay (the first walks are a later phase); the `before` and the answer are from the code
+# (kosk-admin.service.ts:263-286, kosk-admin.repository.ts:489-541), never seen. Nothing outside the walk's own köşk is touched; `teardown` removes it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.browse
+
+scenarios:
+  level:
+    given: { viewer: koskOwn, world: mixed, answer: level, taught: none }
+    as: koskNazim
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brsl, hiddenOwn]
+        expect: '"tag":"brsl"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brsl]
+        expect: 'kosk remove brsl removed'
+    vars: { tag: brsl, typeActive: Süleymaniye, typePassive: brsl pasif, typeHidden: brsl gizli, typeNobody: zzz yok }
+
+states:
+  restoring:
+    call: '{nizam}/kosks**'
+    before:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, rehide, brsl]
+        expect: 'rehidden brsl'

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.3...teskilat-v0.2.4) (2026-11-24)
+
+
+### Bug Fixes
+
+* **tedrisat, teskilat, tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 SigNoz OTLP ([#404](https://github.com/amel-tech/medaris/issues/404)) ([f99321f](https://github.com/amel-tech/medaris/commit/f99321f51b897bbe3491d16b0f759f1bab02799d))
+
 ## [0.2.3](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.2...teskilat-v0.2.3) (2026-10-13)
 
 

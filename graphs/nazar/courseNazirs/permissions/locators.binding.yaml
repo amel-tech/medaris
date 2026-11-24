@@ -1,0 +1,144 @@
+# What the bindings of nazar.courseNazirs.permissions share: the data sources, the events no node sends (the end field is not a thing a node of the
+# graph presses), the places each exit opens, where role and name cannot find a node, and what a step leaves outside the screen. It carries no
+# scenario, so it is not walked by itself:
+#   binding.yaml          the main story and the post that has no end (`edits`, `forever`)
+#   binding.gone.yaml     the post is ended elsewhere while the dialog is open (`answer: gone`, COURSE_NAZIR_NOT_FOUND)
+#   binding.refused.yaml  the hoca loses her seat while the dialog is open (`answer: refused`, AUTHZ_FORBIDDEN)
+#   binding.failed.yaml   the course is deleted while the dialog is open (`answer: failed`, COURSE_NOT_FOUND)
+# The three last each only change what happens before one button is pressed (a `before` on "Kaydet", which is the binding's and not a scenario's),
+# so each needs a file of its own; two scenarios must not share a `given`, and `--cover transitions` walks the shortest scenario per transition.
+# The page is `/ders/<id>/nazirlar` of nazar-web at http://localhost:4002, read by the course's müderris (Hamdi Müderris) in a wide window
+# (1440 x 900, as the e2e).
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every command
+# below comes from the code, the catalog and the helpers' own read of the API, and is unverified until a walk. Where the walk may need a fix, a comment
+# says so. The binding loads: `replay <dir> --bind <file> --emit-spec --out <dir>` writes a spec and walks nothing.
+#
+# Data. Each scenario's `setup` makes the walk's own, and `teardown` takes it away; no seeded course, post or setting is touched:
+#   - the course "Deneme dersi cnperm" (helpers/course.mjs make cnperm: published, one week of one celse, MUDERRIS as its one hoca, opened in the
+#     seed's second köşk, "Kubbealtı Köşkü", which no seeded flow reads);
+#   - the spare talebe applicantH ("Rıza Başvuran") as its ders nazırı, appointed by the hoca through the API with "Ders kaydı ekle..." and "Celse ekle..." and an
+#     end thirty days ahead (`up --forever`: no end), and the days the end field is typed with, by ./post-data.mjs up into graphs/.local/cnperm.json
+#     ({cn.course}, {cn.title}, {cn.sub}, {cn.name}, {cn.email}, {cn.hoca}, {cn.today}, {cn.futureLabel}, {cn.later}, {cn.laterLabel}, {cn.past}).
+#     The seeded ders nazırı, Rukiye Ders Nazırı, is never touched.
+#   `teardown` dismisses the post (DELETE /courses/:id/nazirs/:postId as the başnazım) and removes the course (which takes its posts, the grants of the
+#   posts and the course's invitation mails with it as far as the API can); `setup` starts with the same dismissal, so that a walk that died leaves
+#   nothing the next one trips on. What it cannot undo: the audit rows (course_nazir.assign, course_nazir.update, course_nazir.revoke), the revoked
+#   role and grant rows kept as history, and the invitation mails of the course.
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   forbidden   the list is refused to a reader the page had let in (the page turns away a reader without course_nazir.assign before it reads the list:
+#               nazar.access.dersNazirPages walks that); the walk would have to take her seat away between the gate and the read
+#   not_found   a course that is not there is the 404 page (nazar.shell.errorStates); the failed read is the retry state, which a running API does not give
+# Not drawn but bound: the ids `held` checks (post-data.mjs held ...) are what the page's rows say, read through the API.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseNazirs.permissions
+
+browser: { width: 1440, height: 900 }
+
+data:
+  cn: { json: ../.local/cnperm.json }
+
+# Where the page has one answer for a whole scenario, it is given here. The count and the sentences differ by step (2 izin, then 1; the sentences
+# follow the codes), so they are left out: the replay matches any text for them, and the nodes below say the shape.
+samples:
+  course: '{cn.title}'
+  name: '{cn.name}'
+  email: '{cn.email}'
+  giver: '{cn.hoca}'
+  date: '{cn.today}'
+
+events:
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`; "" empties it. It has no role, so it is found by its label (the e2e's getByLabel).
+  CLEAR_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '' } }]
+  TYPE_FUTURE_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{cn.later}' } }]
+  TYPE_PAST_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{cn.past}' } }]
+  # the menu's "Genel bakış" of the same course: a page of the app that is not this one
+  NAVIGATE: [{ goto: '{nazar}/ders/{cn.course}' }]
+
+states:
+  listed: { url: '{nazar}/ders/*/nazirlar' }
+  postGone: { url: '{nazar}/ders/*/nazirlar' }
+  # "Kaydet" is a Next server action: a POST to the page's own address, held while the busy state is checked. A server action answers 200 on that
+  # address, whatever the API said, so a walk through FAIL.<class> reports "HTTP 200" for the status it compares: an engine limit, not the app.
+  saving: { call: '{nazar}/ders/*/nazirlar' }
+  left: { url: '{nazar}/ders/*' }
+
+nodes:
+  # --- the page: found by what is in it, since a bare role main is the page a walk leaves for as well; the intro line is this page's own
+  page: { role: main, hasText: '/dersinin ders nazırları\. Ders nazırı yalnız/' }
+  # "Ders nazırı ata" is the button; "Ders nazırı atandı" and "Ders nazırı atanamadı" are toasts of the other flow: the whole name
+  appointButton: { role: button, name: '/^Ders nazırı ata$/' }
+  # the caption is "<course> dersinin ders nazırları", hidden; the name is found by its end
+  table: { role: table, name: '/ dersinin ders nazırları$/' }
+  # --- the post's row: one post in the walk's course, found by its address
+  rowPerson: { text: '{cn.name}', within: { role: row, hasText: '{cn.email}' } }
+  rowEmail: { text: '{cn.email}', within: { role: row } }
+  # "2 izin", then "1 izin" once "Celse" is taken away: the number is the step's, and the helper's `held` says which it is
+  rowCount: { text: '/^\d+ izin$/', within: { role: row, hasText: '{cn.email}' } }
+  rowSentences: { testId: permissions-line }
+  # the Bitiş cell's <time> has no class; the Atayan cell's has `mds-caption`, and both say a day
+  rowEnd: { css: 'time:not(.mds-caption)', within: { role: row, hasText: '{cn.email}' } }
+  rowForever: { text: '/^Süresiz$/', within: { role: row, hasText: '{cn.email}' } }
+  rowGiver: { text: '{cn.hoca}', within: { role: row, hasText: '{cn.email}' } }
+  rowGiverYou: { text: '(siz)', within: { role: row, hasText: '{cn.email}' } }
+  # the row's buttons carry the person's name; "Görevden al: ..." is the other flow's
+  editButton: { role: button, name: 'İzinleri düzenle: {cn.name}' }
+  endButton: { role: button, name: 'Görevden al: {cn.name}' }
+  # a toast names itself and says its words in a second paragraph; an error toast is told from another by its sentence
+  toastGone: { role: alertdialog, name: İzinler kaydedilemedi, hasText: Bu ders nazırı artık yok }
+  toastRefused: { role: alertdialog, name: İzinler kaydedilemedi, hasText: '/Bunu yapma izniniz yok|Kendinizde olmayan bir izni veremezsiniz|Kendinize rol ya da izin veremezsiniz|Seçtiğiniz izinlerden biri tanınmıyor|Bitiş zamanı şu andan sonra olmalı/' }
+  toastFailed: { role: alertdialog, name: İzinler kaydedilemedi, hasText: Bir şeyler ters gitti }
+  # --- the dialog: its words are said in the page too, so they are looked for inside it
+  editor: { role: dialog, name: İzinleri düzenle }
+  editorEyebrow: { css: '.mds-eyebrow', hasText: '{cn.title}', within: { role: dialog, name: İzinleri düzenle } }
+  editorPerson: { text: '{cn.name}', within: { testId: course-nazir } }
+  editorEmail: { text: '{cn.email}', within: { testId: course-nazir } }
+  editorRole: { text: '/^Ders nazırı · Atayan: /', within: { testId: course-nazir } }
+  # a toast has a "Kapat" button of its own: the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: İzinleri düzenle } }
+  # <input type=datetime-local> has no role
+  endBox: { label: 'Bitiş tarihi ve saati (isteğe bağlı)' }
+  # "2 izin seçili" or "1 izin seçili", in the footer
+  summary: { text: '/^\d+ izin seçili$/' }
+  # the hidden <output> beside the busy button; its words are the app's own
+  busy: { role: status, hasText: Kaydediliyor }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: İzinleri düzenle } }
+  save: { role: button, name: '/^Kaydet$/', within: { role: dialog, name: İzinleri düzenle } }
+
+# What a step leaves outside the screen: `held` reads the post through the API as the başnazım (post-data.mjs) and compares it with what the
+# graph says the step did. After a step that must write nothing (a blocked form, a save with nothing changed, Vazgeç, a refusal of the server)
+# the post holds what it held at the last check.
+effects:
+  savedWithSessionAhead:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, two-dated]
+      expect: held two-dated
+  savedWithSessionForever:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, two-forever]
+      expect: held two-forever
+  savedWithoutSessionAhead:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, one-dated]
+      expect: held one-dated
+  savedWithoutSessionForever:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, one-forever]
+      expect: held one-forever
+  goneToast:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, gone]
+      expect: held gone
+  blocked:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, same]
+      expect: held same
+  closedUnchanged:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, same]
+      expect: held same
+  discarded:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, same]
+      expect: held same
+  refusedToast:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, same]
+      expect: held same
+  failedToast:
+    - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, held, same]
+      expect: held same

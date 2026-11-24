@@ -1,0 +1,44 @@
+# nazar.archive.hideAndRestoreCourse: the course is hidden by someone else after the window opened, so "Gizle" is answered with 409
+# MADRASAH_COURSE_ALREADY_HIDDEN, the info toast "Ders zaten gizli" and the list read again without the course (FAIL.already).
+#   node apps/engine/src/cli.ts replay graphs/nazar/archive/hideAndRestoreCourse \
+#     --bind graphs/nazar/archive/hideAndRestoreCourse/binding.staleHide.yaml --cover transitions --out <dir>
+# NOT RUN. Read only the walk that covers `FAIL.already` in this file's report: the others repeat the main file's with other data.
+#
+# How the answer is made: the event FAIL.already is no node's, so the binding gives it: the helper hides the course as the başmüderris
+# through the API (POST /courses/:id/archive), and the held call of the window then finds it hidden. That the replay runs an event's actions
+# before it releases the held call is not verified; if it runs them after, the call is already answered (204) and the walk reports the
+# success branch instead, which means this event needs `states.hiding.before` to do it (see SPEC §7). `FAIL.vanished`
+# (MADRASAH_COURSE_NOT_FOUND) is not bound: a course of the medrese cannot stop being one without being deleted under the open page.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.archive.hideAndRestoreCourse
+
+data:
+  hrcStale: { json: ../.local/made/hrcStale.json }
+
+events:
+  FAIL.already:
+    - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcStale]
+      expect: 'hide-course hrcStale'
+
+scenarios:
+  staleHide:
+    given: { start: courses, enrolled: none, held: courses, locks: none, pages: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hrcStale, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcStale"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hrcStale]
+        expect: 'course remove hrcStale'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi hrc%'"]
+        expect: '"n":0'
+
+nodes:
+  rowMenu: { role: button, name: 'Diğer işlemler: Deneme dersi hrcStale' }
+  menuList: { role: menu, name: 'Diğer işlemler: Deneme dersi hrcStale' }
+  toastAlready: { role: dialog, name: Ders zaten gizli }
+  hideBody: { css: '[role=alertdialog] p', hasText: '/^Deneme dersi hrcStale talebelerden, ziyaretçilerden ve .+ sayfasından gizlenecek; celseleri talebelerin takviminden düşecek\.$/' }

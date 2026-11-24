@@ -1,0 +1,320 @@
+# "Dersten çıkar" on a course's Talebeler page in nazar-web (/ders/<id>/talebeler), read from the code of PR #394
+# (apps/nazar/features/enrolments: the page, the tabs, the roster table, RemoveDialog and RemovedTable, and the API's
+# POST /courses/:id/enrollments/:userId/remove and GET /courses/:id/enrollments/removed in apps/tedrisat/src/course). The
+# müderris of a course opens Talebeler, opens the Kayıtlı tab, presses "Dersten çıkar: {name}" on a row, writes the reason the
+# dialog requires and sends it. The seat turns REVOKED (the row stays as the record), a toast says so, and the talebe appears
+# under "Erişimi kaldırılanlar" with the reason and who wrote it. It says what the code does today. Where that is wrong for the
+# people who use it, the finding is in ui.yaml `rules` and in the description of the state it touches:
+#   - RMV-1  the reason is written "for the course team" (the dialog's help line says so) but the talebe is sent it too, word for
+#            word, in their notice "Dersten çıkarıldın ... Gerekçe: {reason}".
+#   - RMV-2  the dialog and the removed tab promise "yeri ancak ders kadrosu onaylarsa geri gelir" (the seat comes back only if the
+#            team approves it) and no screen in nazar (nor in nizam) approves a REVOKED seat: a removal cannot be taken back from
+#            the product; only the API's POST .../approve, called by hand, does it.
+#   - RMV-3  while the removal is sent, "Vazgeç", the close icon and Escape stay on and do nothing, and the reason box is disabled
+#            (the ban dialog of nazar.bans.ban does the same: BAN-3).
+#   - F-D1-05, F-D1-06, F-D1-20 of the inventory: see ui.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nazar.roster.remove
+status: captured
+domain: medaris.api
+ui: nazar.roster.remove
+title: Take a talebe out of a course, with a reason
+summary: >-
+  The müderris opens Talebeler of her course and its Kayıtlı tab, and presses "Dersten çıkar" on a talebe's row. A dialog names
+  the talebe and the course, says that the celses, the meeting links and the recordings close to them and that they cannot apply
+  again until the course team approves the seat, and asks for a reason. The button stays off until the reason holds something
+  other than white space, and "Bir gerekçe yazın." appears under the field only once it has been left empty, silently (F-D1-06).
+  Sending closes the dialog, a toast says "Talebe dersten çıkarıldı", the row leaves the Kayıtlı list and the "Erişimi
+  kaldırılanlar" tab counts one more; its table lists the talebe with the day, the reason and who took them out. The talebe is told
+  in a notice that includes the reason (RMV-1). Where the seat is no longer as the page showed it (the talebe left, or the
+  course was completed for them), the dialog closes with an info notice and the list is read again; where she lost the permission
+  or the call fails, an error toast stays over the dialog, which keeps what she typed. A person who holds `enrollment.complete`
+  and not `enrollment.remove` sees the list with no "Dersten çıkar". Nothing in the product brings a removed talebe back (RMV-2).
+
+scope:
+  shows: >-
+    Talebeler of one course as far as the removal needs it: the Başvurular tab it opens on, the Kayıtlı tab with its rows and the
+    "Dersten çıkar" button, the dialog, the toasts of the answer, and the Erişimi kaldırılanlar tab with the new row
+  world: open
+  outOfView:
+    - "deciding a waiting application (Onayla, Reddet) and the 'Toplu talebe ekle' button the page draws for a holder of enrollment.decide: nazar.roster.decide, nazar.roster.bulkAdd"
+    - "'Tamamladı say' and 'Yeniden aç', the Tamamlayanlar tab, the search, the sort and the 'Daha fazla göster' paging of the Kayıtlı list: nazar.roster.complete"
+    - "the talebe's side: the notice (with the reason), the locked course page, the refused 'apply' and 'leave' (409): tedris.account.notifications, tedris.course.readProgramme, tedris.course.apply, tedris.course.leave"
+    - "a ders nazırı with no roster code meets the forbidden alert (drawn here as `forbidden`); the other pages of a nazır: nazar.access.dersNazirPages, nazar.courseNazirs.permissions"
+    - "a course that is not there is Next's 404 page: nazar.shell.errorStates; the removed list or the course unreadable (the page then says 'Dersten çıkarılan talebeler şu an okunamadı' or leaves the course name to the portal) cannot be made on the local stack"
+    - "the same removal from nizam: nizam.courses.roster"
+    - "a talebe barred from the course: nazar.bans.courseBans; the removal does not look at bans"
+    - "a call that fails outright, such as a dropped network, is caught nowhere on the page (F-D1-20): no toast and the button stays busy; not verified in a browser"
+
+decisions:
+  D1:
+    question: >-
+      Should the course team be able to bring a removed talebe back from a screen? The dialog and the removed tab say that the seat
+      comes back "ancak ders kadrosu onaylarsa", and the only way is the API's approve route called by hand: the Başvurular tab lists
+      waiting applications only, "Toplu talebe ekle" skips a removed seat ("Ders kadrosu dersten çıkarmış") and the removed tab is
+      read-only (RMV-2).
+    recommend: >-
+      Yes: a "Yeniden kabul et" on a row of Erişimi kaldırılanlar that calls approveEnrollment (the API reinstates a REVOKED seat and
+      tells the talebe). If not, change the two sentences to say that only the platform's team can undo it.
+    affects: [form, formReady, removedList]
+  D2:
+    question: >-
+      Should the reason reach the talebe? tedrisat sends REMOVED_FROM_COURSE with the reason and tedris shows it ("Gerekçe: ..."),
+      and the dialog's help line says only that the course team sees it (RMV-1).
+    recommend: >-
+      Say it where it is written: "Gerekçe, talebeye de bildirilir ve ders kadrosuna görünür." If the reason is meant for the team
+      alone, stop sending it in the notice.
+    affects: [form, formReady]
+
+context:
+  viewer:
+    values: [remover, completer, none]
+    initial: any
+    say:
+      remover: "she holds enrollment.remove in the course: a müderris (every course code by default) or a ders nazırı the müderris gave it"
+      completer: "she holds enrollment.complete and not enrollment.remove: the rows carry 'Tamamladı say' and no 'Dersten çıkar'"
+      none: "she holds no roster code of the course (a ders nazırı whose post has no permission): the page is the forbidden alert"
+  answer:
+    values: [removed, gone, refused, failed]
+    initial: any
+    say:
+      removed: "the server takes the seat away and keeps the reason"
+      gone: "the seat is not as the page showed it: the talebe left meanwhile (ENROLLMENT_NOT_FOUND), or it is no longer an active seat (ENROLLMENT_STATE_CONFLICT)"
+      refused: "she holds enrollment.remove no more when she presses (AUTHZ_FORBIDDEN)"
+      failed: "any other answer: the course is gone (COURSE_NOT_FOUND), the reason is refused (VALIDATION_ERROR), the server does not answer well"
+  others:
+    values: [some, none]
+    initial: any
+    say:
+      some: "other talebe still hold a seat, so the Kayıtlı list is not empty after this one is gone"
+      none: "this was the only enrolled talebe: the Kayıtlı list says 'Kayıtlı talebe yok' afterwards"
+  typed: { values: [true, false], initial: false } # the reason holds something other than white space
+  said: { values: [none, required], initial: none } # "Bir gerekçe yazın." under the reason, after the field was left empty
+  toast: { values: [none, removed, gone, refused, failed], initial: none } # the last notice, while it is up
+
+effects:
+  openedDialog: { set: { typed: false, said: none, toast: none } } # a new dialog: RemoveDialog is mounted fresh, with an empty reason
+  typedReason: { set: { typed: true, said: none } }
+  leftEmpty: { set: { said: required } }
+  removedToast: { set: { toast: removed } }
+  goneToast: { set: { toast: gone } }
+  refusedToast: { set: { toast: refused } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: listCourseEnrollments
+    forbidden: [AUTHZ_FORBIDDEN]
+  submitting:
+    from: removeEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    refused: [AUTHZ_FORBIDDEN]
+    failed: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the müderris opens Talebeler, the Kayıtlı tab and a row's "Dersten çıkar", writes the reason, sends
+# it, and finds the talebe under Erişimi kaldırılanlar.
+main:
+  given: { viewer: remover, answer: removed, others: some }
+  events: [DONE, SHOW_ENROLLED, REMOVE, TYPE_REASON, SUBMIT, DONE, DONE, SHOW_REMOVED]
+
+initial: opened
+
+states:
+  opened:
+    title: The Talebeler page is read
+    description: >-
+      The page reads, on the server, GET /courses/:id/my-permissions (what the person holds in this course), and only when she holds
+      a roster code (any of course.staff_read, enrollment.decide, enrollment.complete, enrollment.remove) the roster, GET
+      /courses/:id/enrollments, and the removed list, GET /courses/:id/enrollments/removed; the course, GET /courses/:id, names it in
+      the subtitle. A person with no roster code gets the forbidden alert (state forbidden) and the API is not asked for the roster; a
+      read that fails otherwise draws "Talebeler okunamadı" with a retry, and a 404 is the 404 page (both out of view). Nothing is on
+      the screen of this step but the skeleton of `loading.tsx`.
+    invoke: { action: listCourseEnrollments }
+    on:
+      DONE: { guard: "viewer != 'none'", target: applications }
+      FAIL.forbidden: { guard: "viewer == 'none'", target: forbidden }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:48
+
+  forbidden:
+    title: The page refuses the roster
+    by: human
+    description: >-
+      The header ("Talebeler" and its subtitle) stays and an alert says "Bu sayfaya izniniz yok" under it, with no tabs and no heading
+      of its own; a ders nazırı whose post holds no permission meets it, and the menu still lists "Talebeler" for her. A neutral
+      Alert is a status, not an alert. The other pages of such a nazır: nazar.access.dersNazirPages.
+    on:
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:85
+
+  applications:
+    title: Talebeler opens on Başvurular
+    by: human
+    description: >-
+      The header, the tab strip named "Talebe durumu" (Başvurular, Kayıtlı, Tamamlayanlar, Erişimi kaldırılanlar, each with its count)
+      and the first panel: for the course of this story, which takes anyone, the note "Bu ders onay istemiyor; talebeler başvurur
+      başvurmaz kaydolur." and an empty table, "Onay bekleyen başvuru yok". A holder of enrollment.decide also gets "Toplu talebe ekle"
+      above the tabs (out of view). Başvurular is the tab the page opens on whatever the address says: the person has to press
+      "Kayıtlı". No code of the page sets a focus.
+    on:
+      SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Kayıtlı tab" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab before taking anyone out" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234
+
+  enrolled:
+    title: The Kayıtlı list, with "Dersten çıkar" on each row
+    by: human
+    description: >-
+      The roster of seats the talebe hold (ENROLLED), by name in Turkish order, ten at a time, each row with the e-mail, the day they
+      joined, their own progress and the buttons the person's codes allow: "Tamamladı say: {name}" for enrollment.complete and
+      "Dersten çıkar: {name}" for enrollment.remove, named by aria-label with the visible word in the name (WCAG 2.5.3). Where she
+      holds neither, the table has no actions column; where she holds `enrollment.complete` alone, only "Tamamladı say" is drawn
+      (`viewer: completer`). The list is the one the page read: the search and the paging are the browser's (nazar.roster.complete).
+      The row's button opens the dialog; Base UI hands the focus back to it when the dialog closes without a removal.
+    on:
+      REMOVE: { guard: "viewer == 'remover'", target: form, effect: [openedDialog], source: apps/nazar/features/enrolments/components/roster-table.tsx:107, say: "she presses 'Dersten çıkar' on a talebe's row" }
+      SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Kayıtlı, the tab she is on: nothing changes" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab before taking anyone out" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:223
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the reason the button is on or off. "Dersten çıkar" in the dialog is natively disabled while
+      the reason is blank (`disabled={blank}`, white space does not count), and nothing says that is why (F-D1-06).
+    always:
+      - { guard: typed, target: formReady, say: "the reason holds something: the button is on" }
+      - { target: form, say: "the reason is empty: the button is off" }
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:102
+
+  form:
+    title: The dialog is open, the reason empty, the button off
+    by: human
+    description: >-
+      A dialog named "Dersten çıkar" over the page; above its title the course's name. Its body: "{name} adlı talebe {course}
+      dersinden çıkarılacak. Celselere, toplantı bağlantılarına ve ders kayıtlarına erişimi kalkar; dersin celseleri takviminden de
+      düşer.", a neutral note "Talebe bu derse yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir." (RMV-2), "*
+      zorunlu alan", and the field "Çıkarma gerekçesi" (a textarea of 4 rows, at most 500 characters, `required`) with the help line
+      "Gerekçe, Erişimi kaldırılanlar sekmesinde ders kadrosuna görünür." (RMV-1: the talebe reads it too). The focus starts in the
+      reason. The scrim does not close the dialog; Escape, "Vazgeç" and the close icon do. "Dersten çıkar" is natively disabled, so a
+      person can only meet "Bir gerekçe yazın." by leaving the empty field, and it is not announced (no live region; F-D1-06).
+      The whole body is the dialog's description (F-B-12 of the ban dialog, the same primitive).
+    on:
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/enrolments/components/remove-dialog.tsx:136, say: "she writes the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/enrolments/components/remove-dialog.tsx:137, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently, and the button stays off" }
+      CANCEL: { target: enrolled, source: apps/nazar/features/enrolments/components/remove-dialog.tsx:89, say: "Vazgeç, the close icon or Escape: nothing is sent; the focus goes back to the row's button (Base UI; not verified)" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:86
+
+  formReady:
+    title: The dialog is open, the reason written, the button on
+    by: human
+    description: >-
+      The same dialog with "Dersten çıkar" on; pressing it sends the removal. An error toast of a refused removal stands over it,
+      with the reason still typed. Emptying the reason again turns the button off (not drawn).
+    on:
+      SUBMIT: { target: submitting, source: apps/nazar/features/enrolments/components/remove-dialog.tsx:49, say: "she presses 'Dersten çıkar' in the dialog" }
+      CANCEL: { target: enrolled, source: apps/nazar/features/enrolments/components/remove-dialog.tsx:89, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:102
+
+  submitting:
+    title: The removal is on its way
+    description: >-
+      The server action removeStudent calls POST /courses/:id/enrollments/:userId/remove with the trimmed reason (at most 500
+      characters, not blank). The reason box is disabled and the button is busy (aria-disabled, "Yükleniyor" from the primitive's
+      default); "Vazgeç", the close icon and Escape stay on and do nothing (RMV-3). On success the API turns the seat REVOKED, writes
+      one `enrollment.remove` row to the audit log in the same transaction, sends the talebe REMOVED_FROM_COURSE with the reason
+      (RMV-1) and has the calendar invitations cancelled; the dialog closes, a toast says "Talebe dersten çıkarıldı" and the page
+      reads its lists again. ENROLLMENT_NOT_FOUND or ENROLLMENT_STATE_CONFLICT (the talebe left, or the seat is no longer ENROLLED,
+      for example it was completed meanwhile) close the dialog the same way with an info notice and the same reading. AUTHZ_FORBIDDEN
+      and every other answer leave the dialog open with an error toast that stays until it is closed. A call that cannot reach the
+      server at all is caught nowhere (F-D1-20): no toast, and the button stays busy.
+    invoke: { action: removeEnrollment }
+    on:
+      DONE: { guard: "answer == 'removed'", target: reading, effect: [removedToast], source: apps/nazar/features/enrolments/components/remove-dialog.tsx:63, say: "the seat is revoked and the reason kept" }
+      FAIL.gone: { guard: "answer == 'gone'", target: reading, effect: [goneToast], source: apps/nazar/features/enrolments/components/remove-dialog.tsx:79, say: "the seat has moved: an info notice, the dialog closes" }
+      FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refusedToast], source: apps/nazar/features/enrolments/enrolments.ts:213, say: "'Bunu yapma izniniz yok.': the dialog stays with the reason" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nazar/features/enrolments/enrolments.ts:218, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.': the dialog stays" }
+      CANCEL: { target: submitting, source: apps/nazar/features/enrolments/components/remove-dialog.tsx:90, say: "Vazgeç, the close icon or Escape: nothing happens, the removal is still sent (RMV-3)" }
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:56
+
+  reading:
+    title: The lists are read again
+    description: >-
+      The dialog is closed (onClose) and `router.refresh()` reads the server components again: the permissions, the course, the
+      roster and the removed list (GET /courses/:id/enrollments/removed: the audit rows `enrollment.remove` joined to the seats that
+      are still REVOKED, one row a person, newest first; a talebe approved back since is not listed). The tab the person was on
+      (Kayıtlı) is kept; the page does not move her to the tab the toast names. Nothing is on the screen of this step but the page.
+    invoke: { action: listRemovedEnrollments }
+    on:
+      DONE: afterRemoval
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:51
+
+  afterRemoval:
+    title: The Kayıtlı list without the talebe, and the toast
+    by: human
+    description: >-
+      Kayıtlı, drawn again: the removed talebe's row is gone, and either the other talebe's rows stay or the table says "Kayıtlı talebe
+      yok" (`others`). The tab counts follow ("Kayıtlı" one less, "Erişimi kaldırılanlar" one more). A toast of the answer stands in
+      the page for about 6 seconds (a success and an info notice close by themselves): "Talebe dersten çıkarıldı" with "{name}
+      Erişimi kaldırılanlar sekmesine taşındı.", or the info notice "Talebe dersten çıkarılamadı" with "Bu talebenin kaydı artık böyle
+      değil; liste yenilendi." Focus: the row's button that opened the dialog left with its row, so the focus Base UI gave back to it
+      has nowhere to be and falls to the document (F-D1-05; not verified in a browser), and the toast is the only word of the
+      removal on this tab. The talebe is not told here that they were sent the reason (RMV-1).
+    on:
+      SHOW_REMOVED: { target: removedList, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses the Erişimi kaldırılanlar tab" }
+      SHOW_ENROLLED: { target: afterRemoval, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Kayıtlı, the tab she is on: nothing changes" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:223
+
+  removedList:
+    title: The talebe is under Erişimi kaldırılanlar
+    by: human
+    goal: true
+    description: >-
+      The tab's note ("Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvuramaz; yeri ancak ders
+      kadrosu onaylarsa geri gelir." RMV-2) and a table named "Dersten erişimi kaldırılan talebeler": the talebe's name and e-mail,
+      the day they were taken out, the reason (as the server kept it, trimmed) and who took them out ("Çıkaran", the name of the
+      person who pressed). The table is read-only: no button on a row brings the seat back (RMV-2). After a removal that did not
+      happen (the seat had moved) the tab holds no new row and says "Erişimi kaldırılan talebe yok". The toast of the removal may
+      still be up. The talebe's own side of this is tedris.course.readProgramme (access withdrawn).
+    on:
+      SHOW_ENROLLED: { target: afterRemoval, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she goes back to Kayıtlı: the list is the one without the talebe" }
+      SHOW_REMOVED: { target: removedList, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Erişimi kaldırılanlar, the tab she is on: nothing changes" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/removed-table.tsx:70
+
+  removedEarlier:
+    title: Erişimi kaldırılanlar before this removal
+    by: human
+    description: >-
+      The same tab opened before the dialog was: its note (RMV-2) and the table "Dersten erişimi kaldırılan talebeler" with the people
+      taken out earlier, or "Erişimi kaldırılan talebe yok"; which of the two is not this story's (the earlier rows are not drawn). The
+      talebe of this story is still on Kayıtlı.
+    on:
+      SHOW_ENROLLED: { target: enrolled, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she goes back to Kayıtlı" }
+      SHOW_REMOVED: { target: removedEarlier, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:210, say: "she presses Erişimi kaldırılanlar, the tab she is on: nothing changes" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:272
+
+  left:
+    title: She leaves the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-remover-opens-the-dialog
+    never: "state in ['form', 'formReady', 'submitting'] and viewer != 'remover'"
+    say: The dialog is opened only from a button the person's codes allow; a holder of enrollment.complete alone is not offered "Dersten çıkar".
+    source: apps/nazar/features/enrolments/enrolments.ts:187
+  - id: never-without-a-reason
+    never: "state == 'submitting' and not typed"
+    say: A removal is never sent without a reason, which has to hold something other than white space.
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:52
+  - id: the-removal-toast-is-for-a-removal
+    never: "toast == 'removed' and answer != 'removed'"
+    say: The success toast is shown only for an answer that took the seat away.
+    source: apps/nazar/features/enrolments/components/remove-dialog.tsx:64

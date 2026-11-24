@@ -1,0 +1,146 @@
+{
+  "background-neutral-page": {
+    "$value": "{murekkep-950}"
+  },
+  "background-neutral-surface": {
+    "$value": "{murekkep-900}"
+  },
+  "background-neutral-sunken": {
+    "$value": "{murekkep-1000}"
+  },
+  "background-neutral-field": {
+    "$value": "{murekkep-950}"
+  },
+  "background-neutral-hover": {
+    "$value": "{murekkep-850}"
+  },
+  "background-neutral-scrim": {
+    "$value": "rgb(5 7 10 / 0.72)"
+  },
+  "background-action-bold": {
+    "$value": "{kagit-150}"
+  },
+  "background-action-bold-hover": {
+    "$value": "{kagit-50}"
+  },
+  "text-neutral-default": {
+    "$value": "{kagit-150}"
+  },
+  "text-neutral-muted": {
+    "$value": "{kagit-300}"
+  },
+  "text-neutral-subtle": {
+    "$value": "{kagit-500}"
+  },
+  "text-neutral-disabled": {
+    "$value": "{murekkep-400}"
+  },
+  "text-neutral-on-bold": {
+    "$value": "{murekkep-950}"
+  },
+  "border-neutral-subtle": {
+    "$value": "{murekkep-800}"
+  },
+  "border-neutral-control": {
+    "$value": "{murekkep-400}"
+  },
+  "border-neutral-strong": {
+    "$value": "{kagit-400}"
+  },
+  "background-brand-subtle": {
+    "$value": "{laciverd-950}"
+  },
+  "background-brand-bold": {
+    "$value": "{laciverd-300}"
+  },
+  "text-brand-default": {
+    "$value": "{laciverd-300}"
+  },
+  "border-brand-default": {
+    "$value": "{laciverd-400}"
+  },
+  "background-success-subtle": {
+    "$value": "{zumrut-950}"
+  },
+  "background-success-bold": {
+    "$value": "{zumrut-300}"
+  },
+  "text-success-default": {
+    "$value": "{zumrut-300}"
+  },
+  "border-success-default": {
+    "$value": "{zumrut-400}"
+  },
+  "background-warning-subtle": {
+    "$value": "{safran-950}"
+  },
+  "background-warning-bold": {
+    "$value": "{safran-300}"
+  },
+  "text-warning-default": {
+    "$value": "{safran-300}"
+  },
+  "border-warning-default": {
+    "$value": "{safran-400}"
+  },
+  "background-error-subtle": {
+    "$value": "{lal-950}"
+  },
+  "background-error-bold": {
+    "$value": "{lal-300}"
+  },
+  "text-error-default": {
+    "$value": "{lal-300}"
+  },
+  "border-error-default": {
+    "$value": "{lal-400}"
+  },
+  "background-info-subtle": {
+    "$value": "{laciverd-950}"
+  },
+  "background-info-bold": {
+    "$value": "{laciverd-300}"
+  },
+  "text-info-default": {
+    "$value": "{laciverd-300}"
+  },
+  "border-info-default": {
+    "$value": "{laciverd-400}"
+  },
+  "background-live-subtle": {
+    "$value": "{lal-950}"
+  },
+  "background-live-bold": {
+    "$value": "{lal-400}"
+  },
+  "text-live-default": {
+    "$value": "{lal-300}"
+  },
+  "border-live-default": {
+    "$value": "{lal-400}"
+  },
+  "ring-focus-color": {
+    "$value": "{laciverd-300}"
+  },
+  "ring-focus-gap": {
+    "$value": "{murekkep-950}"
+  },
+  "theme": {
+    "$value": "dark"
+  },
+  "elevation-overlay": {
+    "$value": "0 0 0 1px rgb(0 0 0 / 0.4), 0 12px 32px -8px rgb(0 0 0 / 0.6)"
+  },
+  "elevation-raised": {
+    "$value": "0 0 0 1px rgb(0 0 0 / 0.45), 0 16px 40px -12px rgb(0 0 0 / 0.65)"
+  },
+  "elevation-modal": {
+    "$value": "0 0 0 1px rgb(0 0 0 / 0.5), 0 32px 80px -16px rgb(0 0 0 / 0.75)"
+  },
+  "ring-focus": {
+    "$value": "0 0 0 var(--ring-focus-offset) var(--ring-focus-gap), 0 0 0 calc(var(--ring-focus-offset) + var(--ring-focus-width)) var(--ring-focus-color)"
+  },
+  "icon-rating": {
+    "$value": "{safran-500}"
+  }
+}

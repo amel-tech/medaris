@@ -1,0 +1,177 @@
+# What every binding of nizam.courses.open shares: the data of the walk's own köşk, how an event with no node of its own is made, the locators
+# that role and name cannot find, the addresses of the states, and the checks of what a step leaves outside the screen. It has no scenario:
+# binding.yaml and the three small files beside it extend it and bring theirs (a binding with a different node `before` or different
+# events is a binding of its own).
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator below is from the code and unverified until the walk
+# phase. Where it is a guess it says so. What was looked at on the running app: one `curl` without a session answers 307 to
+# /auth/signin?callbackUrl=%2Fkosks%2F<id>%2Fcourses%2Fnew%3Ftalep%3D<id>, so the form is behind the sign-in and keeps its address and its
+# query.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.open
+
+# the köşk a scenario makes in `setup` (walk-data.mjs): {made.kosk}, {made.request}; a walk on the seeded köşk does not read it
+data:
+  made: { json: ../.local/made/nizam-courses-open.json }
+
+# Events no node sends. The fields have no node that emits: the binding types in them. Hamdi Müderris is the stack's MUDERRIS account and Esma
+# Başvuran its spare talebe APPLICANT_C, found by the addresses in the scenario's `vars`.
+events:
+  FILL_IN:
+    - fill: { role: textbox, name: '/^Ders adı/', value: '{courseTitle}' }
+  # the address is searched on Enter (and also when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: '/^Hoca$/', value: '{hocaA}' }
+    - key: Enter
+  SEARCH_ANOTHER:
+    - fill: { role: textbox, name: '/^Hoca$/', value: '{hocaB}' }
+    - key: Enter
+  PICK_IMAM:
+    - click: { role: radio, name: Esma Başvuran dersin imamı olsun }
+  # a Base UI select: the trigger, then the option in the list it opens
+  CHOOSE_UNVAN:
+    - click: { role: combobox, name: Hamdi Müderris için unvan }
+    - click: { role: option, name: 'Doç. Dr.' }
+  CHOOSE_LABEL:
+    - click: { role: combobox, name: '/^Kapak ibaresi/' }
+    - click: { role: option, name: Nahiv }
+  # the date, and the length in weeks beside it (the weeks field has no event of its own: the walk's schedule is one thing)
+  SET_DATE:
+    - fill: { label: Başlangıç tarihi, value: '{startDate}' }
+    - fill: { role: spinbutton, name: '/^Süre \(hafta\)/', value: '{weeks}' }
+  PICK_DAY:
+    - click: { role: button, name: '{day}' }
+  TOGGLE_CLOSED:
+    - click: { role: checkbox, name: Kapalı ders }
+  TOGGLE_APPROVAL:
+    - click: { role: checkbox, name: Kayıt onayı gereksin }
+  TOGGLE_IN_PERSON:
+    - click: { role: checkbox, name: Celseler yüz yüze yapılır }
+  NAVIGATE:
+    - goto: '{nizam}/hesap'
+
+nodes:
+  # the form's <main> is told from Dersler's and Celse planla's by what only it holds. A bare role main would match each of them
+  page: { css: 'main:has([data-testid=course-create])' }
+  listPage: { css: 'main:has([data-testid=kosk-courses])' }
+  plannerPage: { css: 'main:has([data-testid=session-plan])' }
+  # the sidebar has a link "Dersler" too, and its current page carries aria-current as well
+  breadcrumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: '[aria-current=page]', within: { role: navigation, name: Sayfa yolu } }
+  title: { role: heading, name: '/^Ders aç$/' }
+  # the throwaway köşk's name is the walk's own; only its shape is held
+  intro: { text: '/^Ders .+ kendi dersi olarak açılır\./' }
+  # "* zorunlu alan": the star is part of the paragraph's text, so the default exact match would miss it
+  requiredNote: { text: '/zorunlu alan$/' }
+  courseHeading: { role: heading, name: '/^Ders$/' }
+  muderrisHeading: { role: heading, name: '/^Hocalar$/' }
+  timeHeading: { role: heading, name: '/^Zaman$/' }
+  settingsHeading: { role: heading, name: '/^Ders ayarları$/' }
+  courseRegion: { role: region, name: '/^Ders$/' }
+  muderrisRegion: { role: region, name: '/^Hocalar$/' }
+  timeRegion: { role: region, name: '/^Zaman$/' }
+  # the label of the title field carries an aria-hidden star, which the accessible name leaves out
+  nameField: { role: textbox, name: '/^Ders adı/' }
+  descField: { role: textbox, name: Kısa açıklama }
+  labelField: { role: combobox, name: '/^Kapak ibaresi/' }
+  hocaField: { role: textbox, name: '/^Hoca$/' }
+  hocaListed: { role: alert, hasText: Bu kişi zaten listede. }
+  # the picker's one hidden <output>, told from the Button's own (mds-visually-hidden too) by its words
+  searching: { css: 'output.mds-visually-hidden', hasText: '/^Aranıyor/' }
+  addedA: { css: 'output.mds-visually-hidden', hasText: Hamdi Müderris seçildi }
+  addedB: { css: 'output.mds-visually-hidden', hasText: Esma Başvuran seçildi }
+  teamEmpty: { testId: team-empty }
+  teamList: { testId: team-list }
+  imamBadge: { css: '.mds-badge', hasText: Dersin imamı, within: { testId: team-list } }
+  startDateField: { label: Başlangıç tarihi }
+  startTimeField: { label: Başlangıç saati }
+  weeksField: { role: spinbutton, name: '/^Süre \(hafta\)/' }
+  durationField: { role: spinbutton, name: '/^Celse süresi/' }
+  zoneField: { role: combobox, name: '/^Saat dilimi/' }
+  daysGroup: { role: group, name: '/^Haftalık celse günü/' }
+  daysError: { role: alert, hasText: En az bir celse günü seçin. }
+  # the summary is one Alert (data-testid=schedule-summary): its title says how many, so the two nodes differ by that. The count and the
+  # dates of a walk are its own (two Mondays, or 208 celses), so only the shapes are held
+  summaryNone: { testId: schedule-summary, hasText: '/^0 celse planlanacak/' }
+  summary: { testId: schedule-summary, hasText: '/^[1-9]\d* celse planlanacak/' }
+  summaryEmpty: { text: 'Başlangıç tarihini, süreyi ve günleri girince celseler burada sayılır.' }
+  summaryBody: { css: '[data-testid=schedule-summary] p', hasText: '/^.+ – .+, her .+ \d\d:\d\d, \d+ dk\./' }
+  summaryNote: { css: '[data-testid=schedule-summary] p', hasText: Toplantı bağlantısını hocalar celseleri düzenlerken ekler. }
+  settingsRegion: { role: complementary, name: Ders ayarları }
+  # the button's hidden <output> "Kaydediliyor…"
+  saving: { css: 'output.mds-visually-hidden', hasText: '/^Kaydediliyor/' }
+  # sonner's toasts: <li data-sonner-toast> with a [data-title] and a [data-description]; the titles are anchored, because "Ders açıldı" is
+  # also the start of "Ders açıldı, celseler eklenemedi"
+  failedToast: { css: '[data-sonner-toast] [data-title]', hasText: '/^Ders açılamadı$/' }
+  toastForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için yetkiniz yok. }
+  toastUnknownUser: { css: '[data-sonner-toast] [data-description]', hasText: Seçtiğiniz hocalardan birinin hesabı bulunamadı. }
+  toastFailed: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+  requestLeftToast: { css: '[data-sonner-toast] [data-title]', hasText: '/^Talep yanıtlanamadı$/' }
+  requestLeftBody: { css: '[data-sonner-toast] [data-description]', hasText: talep artık beklemiyor }
+  createdToast: { css: '[data-sonner-toast] [data-title]', hasText: '/^Ders açıldı$/' }
+  createdBody: { css: '[data-sonner-toast] [data-description]', hasText: '/açıldı\.$/' }
+  sessionsFailedToast: { css: '[data-sonner-toast] [data-title]', hasText: '/^Ders açıldı, celseler eklenemedi$/' }
+  sessionsFailedBody: { css: '[data-sonner-toast] [data-description]', hasText: celseler eklenemedi. Celse planla sayfasından ekleyebilirsiniz. }
+  # Dersler: the new row is found by what it was named (the title of a walk from a request ends in " talep", so a part of it is held), and
+  # each of its words by the row it sits in; the same words are in the tabs and in the toast
+  listTitle: { role: heading, name: '/^Dersler$/' }
+  newRowTitle: { css: 'tbody tr a', hasText: Deneme dersi nizam-courses-open }
+  newRowWeeks: { text: '/^\d+ hafta/', within: { css: tr, hasText: Deneme dersi nizam-courses-open } }
+  newRowDraft: { text: Taslak, within: { css: tr, hasText: Deneme dersi nizam-courses-open } }
+  newRowPublished: { text: Yayında, within: { css: tr, hasText: Deneme dersi nizam-courses-open } }
+  plannerTitle: { role: heading, name: '/^Celse planla$/' }
+
+states:
+  # the form's address keeps ?talep=; `**` lets the query through
+  readFailed: { url: '{nizam}/kosks/*/courses/new**' }
+  form: { url: '{nizam}/kosks/*/courses/new**' }
+  # the lookups and the three calls of one press are Next server actions: POSTs to the page's own address, held while the busy state is
+  # checked (their answer is 200 whatever the API said, so the replay cannot compare statuses there). Three in a row (`opening`,
+  # `answering`, `planning`) is a case no earlier walk had: whether the hold arms in time for the second and the third is not known
+  looking: { call: '{nizam}/kosks/*/courses/new**' }
+  lookingAnother: { call: '{nizam}/kosks/*/courses/new**' }
+  opening: { call: '{nizam}/kosks/*/courses/new**' }
+  answering: { call: '{nizam}/kosks/*/courses/new**' }
+  planning: { call: '{nizam}/kosks/*/courses/new**' }
+  # exits with no screen of their own are checked by their address
+  opened: { url: '{nizam}/kosks/*/dersler' }
+  session_planner: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  courses_listed: { url: '{nizam}/kosks/*/dersler' }
+  left: { url: '{nizam}/hesap' }
+  # one screen for both: a section that is refused and a köşk that is not there (nizam.shell.noAccessAndNotFound)
+  no_access: { text: Bu bölüm için izniniz yok }
+  not_found: { text: Bu bölüm için izniniz yok }
+
+# What a step leaves outside the screen, read through the database (courses#1 a6, #2 a4-a7, #3 a2; the request's answer).
+effects:
+  # a press that was refused sent nothing: no course of the walk exists (courses#1 a6)
+  attempt:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from courses where title like 'Deneme dersi nizam-courses-open%'"]
+      expect: '"n":0'
+  # a refused course made nothing either (the answer `forbidden`, once the nazım was taken off the köşk)
+  forbiddenToast:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from courses where kosk_id = '{made.kosk}'"]
+      expect: '"n":0'
+  # the course, as the walk's one köşk holds it: in the form's zone, and the policy's approval (`wantApproval`, the whole expectation under a
+  # policy and only the key without one). Whether it is a draft, closed or in person depends on the boxes the path pressed, so the row
+  # badge of Dersler says the first (courses#2 a5, #3 a2) and these three are checked as keys
+  createCourse:
+    - run: [node, helpers/sql.mjs, "select status, is_closed, requires_approval, time_zone from courses where kosk_id = '{made.kosk}'"]
+      expect: '"time_zone":"Europe/Istanbul"'
+    - run: [node, helpers/sql.mjs, "select status, is_closed, requires_approval, time_zone from courses where kosk_id = '{made.kosk}'"]
+      expect: '{wantApproval}'
+    - run: [node, helpers/sql.mjs, "select status, is_closed, requires_approval, time_zone from courses where kosk_id = '{made.kosk}'"]
+      expect: '"is_closed":'
+    # exactly one imam among the hocas, whichever way the walk chose (courses#2 a7, in part: which hoca is the walk's)
+    - run: [node, helpers/sql.mjs, "select count(*) filter (where ra.is_imam) as imams from role_assignments ra join courses c on c.id = ra.scope_id where c.kosk_id = '{made.kosk}' and ra.role = 'MUDERRIS' and ra.revoked_at is null"]
+      expect: '"imams":1'
+  # the celses, in their weeks (courses#2 a6): the walk's schedule is `weeks` weeks of one day (`wantLessons`)
+  createSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*) as lessons from lessons l join course_weeks w on w.id = l.week_id join courses c on c.id = w.course_id where c.kosk_id = '{made.kosk}'"]
+      expect: '{wantLessons}'
+  # the request is accepted and points at the course the form made
+  acceptCourseRequest:
+    - run: [node, helpers/sql.mjs, "select cr.status from course_requests cr join courses c on c.id = cr.course_id where cr.id = '{made.request}' and c.kosk_id = '{made.kosk}'"]
+      expect: '"status":"ACCEPTED"'

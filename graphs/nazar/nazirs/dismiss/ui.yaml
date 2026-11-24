@@ -1,0 +1,100 @@
+# The screens of nazar.nazirs.dismiss: Medrese nazırları (/medrese/<id>/nazirlar) with its "Görevden al" row buttons, and the dismissal dialog over it. Read
+# from apps/nazar/features/nazirs; the words are copied from libs/i18n/src/locales/tr/nazar.json.
+#   - Changes.note is the one message of this catalog that is not the app's: no app message says all that a dismissal changes (Dismiss.answersNote
+#     covers the answers, Dismiss.dismissedBody the end of the seat), so one factual sentence set was authored.
+#   - Two composed.* messages are text the app builds in code from data and pieces of other messages: composed.Dismiss.eyebrow (the medrese's name above the
+#     dialog title, dismiss-dialog.tsx:153) and composed.Dismiss.roleLine (nazirs.ts:300-309, which joins Roles.<ROLE>, the scope's name, Dismiss.noEnd or
+#     Dismiss.until, and Dismiss.givenAt with " · ").
+#   - The sample of {name} is the nazır being dismissed, so the caption of the table (whose {name} is the medrese's) reads wrongly on the wireframe; the
+#     binding finds the table by its ending. {what} of the callout is built by dropSummary (nazirs.ts:316-351) from Dismiss.drops.*.
+# Where a node says "repeat", the page draws it once per row; the replay finds the rows through the binding.
+schema: delurio-graph/0
+kind: ui
+id: nazar.nazirs.dismiss
+flow: nazar.nazirs.dismiss
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Aylin Başvuran
+  count: "3"
+  person: Ferhat Başvuran
+  madrasah: Hadis ve Siyer Medresesi
+  role: Medrese nazırı
+  scope: Hadis ve Siyer Medresesi
+  end: süresiz
+  given: verildi 15 Kasım 2026
+  what: 2 ek izin
+
+# Nothing sets the focus when the roster loads (no code in features/nazirs does), so the page has no `initialFocus`; the dialog does (Vazgeç), and says
+# where it hands the focus back to (`returnsFocus`), though after a success there is nothing to hand it to (F-B-9).
+nodes:
+  # --- the roster ---------------------------------------------------------------------------------------------------------------
+  nazirsPage: { type: page, component: Page, role: main, in: [roster, settled, forbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  nazirsTitle: { type: text, component: Heading, role: heading, text: { key: Nazirs.title }, in: [roster, settled, forbidden], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:57 } # h1
+  nazirsIntro: { type: text, component: Text, text: { key: Nazirs.intro }, in: [roster, settled, forbidden], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:58 }
+  appointButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazirs.appoint }, in: [roster, settled], source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:128 } # left out when the roster could not be read; its dialog is nazar.nazirs.appoint
+  awaitingBand: { type: alert, component: Alert, role: status, text: { key: Nazirs.awaitingManyTitle, params: { count: nazirs.awaitingCount } }, in: [roster, settled], source: apps/nazar/features/nazirs/components/nazirs-page.tsx:79 } # a warning band: one name ('X henüz izin almadı') or a count; the seeded nazır holds nothing, so it is always there
+  nazirsTable: { type: list, component: List, role: table, name: { key: Nazirs.caption, params: { name: madrasah.name } }, in: [roster, settled], source: apps/nazar/features/nazirs/components/nazirs-table.tsx:183 }
+  dismissRow: { type: action, component: Button, role: button, intent: dismiss, name: { key: Nazirs.dismissLabel, params: { name: nazir.name } }, text: { key: Nazirs.dismiss }, in: [roster, settled], repeat: nazirs, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:167 } # one per row, enabled whatever the date (dismiss#1); the walk presses only the row of the nazır it made, in dismissThis
+  dismissThis: { type: action, component: Button, role: button, intent: dismiss, name: { key: Nazirs.dismissLabel, params: { name: nazir.name } }, text: { key: Nazirs.dismiss }, in: [roster], emits: DISMISS, source: apps/nazar/features/nazirs/components/nazirs-table.tsx:167 } # the row of the nazır being dismissed: the same button as one item of dismissRow
+
+  # --- the roster is refused (a nazır with no grant) -----------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:24 }
+
+  # --- the toasts of a dismissal: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays ----------------
+  toastDismissed: { type: status, component: Status, role: dialog, name: { key: Dismiss.dismissed }, text: { key: Dismiss.dismissedBody, params: { name: nazir.name } }, in: [settled], when: "last == 'dismissed'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:120 } # success: closes after 6 seconds
+  toastChanged: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Dismiss.changed }, in: [roster, asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered], when: "last == 'changed'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129 } # an error toast stays until closed, so it is still on the screen when the dialog has been read again, and after Vazgeç
+  toastCascade: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Dismiss.cascade }, in: [roster, nothingToAsk, answered], when: "last == 'cascade'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129 }
+  toastGone: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Dismiss.gone }, in: [settled], when: "last == 'gone'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:137 } # tone error although the person is no longer a nazır, which is what was asked (DISMISS-1)
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Problems.actionForbidden }, in: [roster, nothingToAsk, answered], when: "last == 'refused'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129 }
+  toastSelfGrant: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Problems.selfGrant }, in: [roster, nothingToAsk, answered], when: "last == 'selfGrant'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Dismiss.failedTitle }, text: { key: Problems.actionGeneric }, in: [roster, nothingToAsk, answered], when: "last == 'failed'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129 } # also the answer to NAZIR_NOT_APPOINTED_BY_YOU, which has no sentence of its own (F-B-15)
+
+  # --- the dialog -------------------------------------------------------------------------------------------------------------------
+  dismissDialog: { type: page, component: Page, role: dialog, name: { labelledBy: dismissTitle }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], initialFocus: dismissCancel, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:145 } # always mounted, open while a row is chosen; a form; the scrim does not close it
+  dismissTitle: { type: text, component: Heading, role: heading, text: { key: Dismiss.title, params: { name: nazir.name } }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:154 } # h2
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.Dismiss.eyebrow, params: { madrasah: madrasah.name } }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:153 }
+  dismissClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], emits: CLOSE, source: libs/ui/src/mds/dialog.tsx:100 } # an icon button named only by aria-label; ignored while the call is in flight (DISMISS-2)
+  dismissCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dismiss.cancel }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], emits: CANCEL, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:160 } # the focus starts here; ignored while the call is in flight (DISMISS-2)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Dismiss.submit }, in: [asking, loadFailed, nothingToAsk, choosing, partlyAnswered, answered, dismissing], disabledIn: [asking, loadFailed, choosing, partlyAnswered, dismissing], emits: SUBMIT, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:161 } # off until the list is read and every row has an answer; ready at once when nobody is listed; busy (aria-disabled) while the call is in flight. The page also has a button named "Görevden al: {name}" on every row: this one is found by its exact name.
+  submitBusy: { type: status, component: Status, role: status, text: { key: Shell.loadingLabel }, in: [dismissing], source: libs/ui/src/mds/button.tsx:114 } # the button's own hidden <output>: empty while idle, 'Yükleniyor' while busy (F-A-14 of the Pano: the word is a default of the kit, not the catalog)
+  loadingStatus: { type: status, component: Status, role: status, text: { key: Shell.loadingLabel }, in: [asking], source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:168 } # <output aria-busy> with a hidden word and two bars
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Dismiss.loadFailedTitle }, in: [loadFailed], source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:174 }
+  loadFailedText: { type: text, component: Text, text: { key: Dismiss.loadFailed }, in: [loadFailed], source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:175 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:176 }
+  introText: { type: text, component: Text, text: { key: Dismiss.intro, params: { name: nazir.name } }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:182 }
+  introNoneText: { type: text, component: Text, text: { key: Dismiss.introNone, params: { name: nazir.name } }, in: [nothingToAsk, dismissing], when: gaveNothing, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:183 }
+  givenList: { type: list, component: List, role: list, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:189 } # <ul data-testid="given-people">, one <li data-testid="given-person"> per person
+  givenPerson: { type: list, component: ListItem, role: listitem, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, repeat: given.people, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:201 }
+  personRole: { type: text, component: Text, text: { key: composed.Dismiss.roleLine, params: { role: role.label, scope: role.scopeName, end: role.end, given: role.givenAt } }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, repeat: given.roles, source: apps/nazar/features/nazirs/nazirs.ts:292 } # one line per role given, in the order they were given
+  personNoPermissions: { type: text, component: Text, text: { key: Dismiss.noPermissions }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:237 } # only on the rows of a medrese nazır who holds nothing: not a post in a course
+  answerGroup: { type: list, component: List, role: group, name: { key: Dismiss.answerLegend, params: { person: person.name } }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, repeat: given.people, source: libs/ui/src/mds/choice-chips.tsx:70 } # a toggle group labelled by a hidden legend; the person is only here (F-B-3)
+  takeOver: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.takeOver }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, repeat: given.people, source: libs/ui/src/mds/choice-chips.tsx:83 } # aria-pressed; none pressed at the start; every row's button has the same name (F-B-3). Pressed by the events ANSWER and ANSWER_LAST, which the binding says (the same node cannot say which row); CLEAR is sent by pressedChip
+  drop: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.drop }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, repeat: given.people, source: libs/ui/src/mds/choice-chips.tsx:83 }
+  pressedChip: { type: action, component: Button, role: button, intent: secondary, in: [partlyAnswered, answered, dismissing], when: gaveSome, emits: CLEAR, duringStep: true, source: libs/ui/src/mds/choice-chips.tsx:83 } # a chip that is pressed (aria-pressed=true): there is none in `choosing` (dismiss#2 a15: nothing is chosen for her), and pressing one again clears its row. The chips are not disabled while the dismissal is on its way (dismiss-dialog.tsx:244): a press clears the answer at once, and the call carries the answers sent
+  answersNote: { type: text, component: Text, text: { key: Dismiss.answersNote }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:264 }
+  gateNote: { type: text, component: Text, text: { key: Dismiss.gateNote }, in: [choosing, partlyAnswered, answered, dismissing], when: gaveSome, source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:157 } # the footer's line, drawn while the list has rows
+  dropSummary: { type: alert, component: Alert, role: status, text: { key: Dismiss.drops.summary, params: { name: nazir.name, what: nazir.dropWhat } }, in: [nothingToAsk, choosing, partlyAnswered, answered, dismissing], when: "nazir != 'bare'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:269 } # what falls with the seat: groups and single permissions
+  dropNothing: { type: alert, component: Alert, role: status, text: { key: Dismiss.drops.nothing, params: { name: nazir.name } }, in: [nothingToAsk, dismissing], when: "nazir == 'bare'", source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:269 }
+
+edges:
+  - { labelledBy: [dismissDialog, dismissTitle] }
+  - { triggers: [dismissThis, asking] }
+  - { triggers: [submit, dismissing] }
+  - { returnsFocus: [dismissDialog, dismissThis] } # Vazgeç, Esc or the close icon: the row's button is still there; not verified in the browser. After a success the button is gone (F-B-9) and the graph says nothing of the focus
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in features/nazirs moves the focus when the roster loads, so the page has no initialFocus; the dialog's focus is on 'Vazgeç' (dismiss-dialog.tsx:156) from the moment it opens, while the list is still being read." }
+  - { id: F-B-3, rule: "In a list of N people the chips are N pairs of buttons all named 'Devral' and 'Düşür'; the person is only in each group's aria-labelledby hidden legend (libs/ui/src/mds/choice-chips.tsx:70-79), so a button list or voice control cannot tell them apart and the e2e has to scope by person. Fix: give each chip an accessible name with the person, like the row buttons do ('Devral: {person}')." }
+  - { id: F-B-9, rule: "After a success the dialog closes and the roster is read again; the pressed 'Görevden al: {name}' button is gone with its row, so Base UI's return focus (DialogPopup.js:96) has no target and the focus falls to the document (not verified in a browser). Fix: move the focus to the table's caption or the next row's button, and say so in the toast." }
+  - { id: F-B-15, rule: "NAZIR_NOT_APPOINTED_BY_YOU (403, a nazır holding madrasah.nazir_appoint dismissing one they did not seat) has no case in nazirErrorKey (nazirs.ts:357-389), so it reads 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.', which wrongly invites a retry. The roster never offers the button on such a row, so only a stale list reaches it. Not verified that the API sends it as `code`. Fix: a case with 'bu görevi siz atamadınız'. Not drawn as its own toast: it is toastFailed." }
+  - { id: DISMISS-1, rule: "A dismissal that finds the person already gone (MADRASAH_NAZIR_NOT_FOUND) shows an error toast titled 'Görevden alınamadı' with 'Bu kişi artık bu medresenin nazırı değil.', and closes the dialog and reads the roster again (dismiss-dialog.tsx:129-140). The outcome is the one the başmüderris wanted, yet the toast is tone error, so it never closes by itself and its title says it failed; the Pano's equivalent for an application someone decided first is an info toast that closes (apps/nazar/features/pano/components/pano-tables.tsx:198). New finding, not in the inventory. Fix: tone info with a title like 'Zaten görevden alınmış'." }
+  - { id: DISMISS-2, rule: "While the call is in flight the dialog keeps 'Vazgeç', the close icon and Esc live to the eye: onOpenChange ignores a close while `pending` (dismiss-dialog.tsx:148) but DialogClose has no disabled state, so a press does nothing and nothing says why; only 'Görevden al' is busy. New finding, not in the inventory; not verified in a browser. Fix: disable them while pending, or let the cancel stop the wait." }
+  - { id: scrim-does-not-close, rule: "A click on the scrim does not close the dialog (a form dialog sets disablePointerDismissal, dialog.tsx:63), so a stray click does not lose the answers; Esc and Vazgeç do close it (dismiss#2 a4). Holds." }
+  - { id: no-date-gate, rule: "dismiss#2 is still titled 'after the gate', and both specs pin the browser's clock (BEFORE 2026-10-02, AFTER 2026-10-05) so dates are stable: the 4 Ekim 2026 version gate is gone (MDRS-215) and nothing in nazirs-table.tsx or dismiss-dialog.tsx reads a date, so 'Görevden al' is on every row today. The graph carries the code's behaviour and does not pin a clock (the dates the dialog shows are those of the walk's own rows)." }
+  - { id: label-in-name, rule: "The row button's visible text 'Görevden al' is contained in its accessible name 'Görevden al: {name}' (WCAG 2.5.3); the dialog's own 'Görevden al' is named the same as its text. Holds. The e2e needs exact:true to tell the two apart." }
+  - { id: confirm-with-consequences, rule: "The dismissal asks once, in a dialog that lists what the nazır handed on and what falls with the seat, with the focus on 'Vazgeç'; the button stays off until every row is answered. Nothing is written until 'Görevden al' (dismiss#5)." }

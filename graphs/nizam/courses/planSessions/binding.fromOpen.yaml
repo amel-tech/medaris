@@ -1,0 +1,60 @@
+# nizam.courses.planSessions as the page is reached from Ders aç: the celses of the new course were refused (nizam.courses.open's `sessionsFailed`),
+# and the person lands on the course's Celse planla with the toast "Ders açıldı, celseler eklenemedi" (`fromOpen: true`). nizam.courses.open's
+# FAIL.refused transition starts this flow with that given, so the walk comes in through it: `enter: { flow: ../open, ... }` walks the open flow's own
+# binding (binding.sessionsFailed.yaml: 52 weeks of four days make 208 celses, and a batch holds 200) to that transition, and this flow goes on from its
+# first screen. It is a file of its own because its only new thing is how the walk comes in: the course is the open flow's, not nzPlan's.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/planSessions \
+#     --bind graphs/nizam/courses/planSessions/binding.fromOpen.yaml --to landed --out <dir>
+#
+# NOT RUN: written without a replay (the owner has put the walk phase on hold), and the replay's reading of `enter: { flow }` with a binding that carries its
+# own `setup` is not verified: whether the open flow's scenario runs its `setup` and `teardown` when it is entered (this file counts on it, as the köşk of
+# `../open/walk-data.mjs make nizam-courses-open` is that scenario's), and whether `vars` and `data` are the entered flow's or this scenario's (this file
+# gives the vars it needs itself). The course the open flow makes is "Deneme dersi nizam-courses-open"; its id is not recorded by that helper, so the
+# effects below find it by its title.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.planSessions
+
+data:
+  made: { json: ../.local/made/nizam-courses-open.json }
+
+effects:
+  previewSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id join courses c on c.id = w.course_id where c.title = 'Deneme dersi nizam-courses-open'"]
+      expect: '"n":0'
+  createSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id join courses c on c.id = w.course_id where c.title = 'Deneme dersi nizam-courses-open' and l.title = '{createdTitle}'"]
+      expect: '"n":{planned}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id join courses c on c.id = w.course_id where c.title = 'Deneme dersi nizam-courses-open' and l.meeting_url = '{madeUrl}'"]
+      expect: '"n":{linksMade}'
+
+scenarios:
+  # The page is reached from Ders aç with the toast; the person plans the same weekly repeat as the main story, with the link on the first celse.
+  fromOpen:
+    given: { fromOpen: true, read: ok, plan: weekly, fields: linked, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { flow: ../open, bind: ../open/binding.sessionsFailed.yaml, given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: free, answer: sessionsFailed }, event: FAIL.refused }
+    setup:
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '1'
+      madeUrl: 'https://meet.example.test/plan/ilk'

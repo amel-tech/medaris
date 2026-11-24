@@ -1,0 +1,135 @@
+# The screens of nizam.kosks.editAndHide: Köşk ayarları, Genel (/kosks/<id>/ayarlar), the "Köşkü gizle" alertdialog over it, and the
+# Köşkler list (/kosks) the page lands on. Read from apps/nizam/features/kosks/components/{kosk-settings,hide-kosk-dialog,
+# kosks-directory}.tsx on 15 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nizam.json (namespaces KoskSettings,
+# HideKoskDialog, KoskDirectory). The one message that is not the app's is Changes.note, which no app message replaces: it says what
+# saving and hiding change. A text the app builds in code would be `composed.*`; there is none here.
+#
+# The dialog is modal, so the page behind it is inert: the page nodes are not listed in `confirmHide` or `hiding`. The three toasts that
+# stand over the page (saved, refused, hidden) are Sonner's (libs/ui/src/components/sonner.tsx), a title and a body each; a Sonner toast
+# has no role of its own, so they are `status` nodes and the binding finds them by their text.
+#
+# What a name is on this page: the köşk's own name, which changes with a save. The graph draws "Ayar Deneme Köşkü" (the köşk the walk
+# makes); where the page says the name after a rename (the intro, the toast, the dialog, the list row) the binding matches the words
+# that do not change.
+schema: delurio-graph/0
+kind: ui
+id: nizam.kosks.editAndHide
+flow: nizam.kosks.editAndHide
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: "Ayar Deneme Köşkü" # the köşk's name; after a save it reads "Ayar Deneme Köşkü II" (the binding matches the part that stays)
+  koskGenitive: "Ayar Deneme Köşkü’nün" # koskCase(name, "tr", "genitive") of admin-present.ts:401
+  dateAblative: "16 Kasım’dan" # the day the köşk was hidden, in the ablative; the binding matches " beri"
+changes: { key: Changes.note }
+
+nodes:
+  # ---- the settings page --------------------------------------------------------------------------------------------------------
+  settingsPage: { type: page, component: Page, role: main, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:94 } # the shell's <main>, no name; the page sets no initial focus (focus-not-set)
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: KoskSettings.title }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:99 } # h1; the same for every köşk (F-W3-9)
+  settingsIntro: { type: text, component: Text, text: { key: KoskSettings.intro, params: { koskGenitive: kosk.koskGenitive } }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:100 } # the only words that name the köşk
+  tabsNav: { type: list, component: List, role: navigation, name: { key: KoskSettings.tabsLabel }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:107 } # Tabs mode=links: a nav of links, no tab roles
+  tabGeneral: { type: action, component: LinkButton, role: link, text: { key: KoskSettings.tabs.general }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:113 } # aria-current=page
+  tabNazims: { type: action, component: LinkButton, role: link, text: { key: KoskSettings.tabs.nazims }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:114 } # its name carries the number of nazımlar; nizam.kosks.nazims
+  tabHosting: { type: action, component: LinkButton, role: link, text: { key: KoskSettings.tabs.hosting }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:120 } # its name carries the number of hosting rights; nizam.hosting.grantAndRevoke
+  requiredNote: { type: text, component: Text, text: { key: KoskSettings.requiredNote }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:134 } # drawn as "* zorunlu alan"
+
+  # ---- Köşk bilgileri ---------------------------------------------------------------------------------------------------------------
+  infoHeading: { type: text, component: Heading, role: heading, text: { key: KoskSettings.infoHeading }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:137 } # h2
+  nameField: { type: field, component: TextField, role: textbox, text: { key: KoskSettings.nameLabel }, value: { literal: "Ayar Deneme Köşkü" }, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:146 } # required (aria-required), maxLength 120; the form is noValidate
+  nameHelp: { type: text, component: Text, text: { key: KoskSettings.nameHelp }, in: [form, formDirty, saving], when: "said != 'noName' and said != 'shortName'", source: apps/nizam/features/kosks/components/kosk-settings.tsx:143 } # the error replaces the help line
+  nameRequired: { type: text, component: Text, text: { key: KoskSettings.errors.nameRequired }, in: [form, formDirty, saving], when: "said == 'noName'", source: apps/nizam/features/kosks/admin-present.ts:245 } # only after "Kaydet" was pressed (`sent`); not a live region, the focus stays on "Kaydet" (F-W3-13, F-UI-W3-1)
+  nameShort: { type: text, component: Text, text: { key: KoskSettings.errors.nameShort }, in: [form, formDirty, saving], when: "said == 'shortName'", source: apps/nizam/features/kosks/admin-present.ts:246 }
+  handleField: { type: field, component: TextField, role: textbox, text: { key: KoskSettings.handleLabel }, value: { literal: "@ayar-deneme" }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:156 } # readOnly: focusable, not editable; the köşk's short name with an "@" in front, in the mono face
+  handleHelp: { type: text, component: Text, text: { key: KoskSettings.handleHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:155 }
+  tagsField: { type: field, component: TextField, role: textbox, text: { key: KoskSettings.tagsLabel }, value: { literal: "Akaid" }, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:169 } # the tags joined by ", "
+  tagsHelp: { type: text, component: Text, text: { key: KoskSettings.tagsHelp }, in: [form, formDirty, saving], when: "said != 'manyTags'", source: apps/nizam/features/kosks/components/kosk-settings.tsx:166 }
+  tagsFull: { type: text, component: Text, text: { key: KoskSettings.errors.tagsFull }, in: [form, formDirty, saving], when: "said == 'manyTags'", source: apps/nizam/features/kosks/admin-present.ts:205 } # a tag of over 40 characters says "Bir etiket en çok 40 karakter olabilir." in the same place (not walked)
+  coverGroup: { type: list, component: List, role: radiogroup, name: { key: KoskSettings.coverLegend }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:177 } # a cover colour, not an image: four radios
+  coverLaciverd: { type: field, component: ListItem, role: radio, text: { key: KoskSettings.covers.laciverd }, checked: "cover == 'laciverd'", in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:184 }
+  coverBordo: { type: field, component: ListItem, role: radio, text: { key: KoskSettings.covers.bordo }, checked: "cover == 'bordo'", in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:184 }
+  coverZumrut: { type: field, component: ListItem, role: radio, text: { key: KoskSettings.covers.zumrut }, checked: "cover == 'zumrut'", in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:184 }
+  coverMurekkep: { type: field, component: ListItem, role: radio, text: { key: KoskSettings.covers.murekkep }, checked: "cover == 'murekkep'", in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:184 }
+  coverHelp: { type: text, component: Text, text: { key: KoskSettings.coverHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:190 } # a plain paragraph beside the group, not tied to the radios
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: KoskSettings.descriptionLabel }, value: { literal: "Deneme için açılmış köşk." }, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:193 } # a textarea, up to 1000 characters
+  descriptionHelp: { type: text, component: Text, text: { key: KoskSettings.descriptionHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:192 }
+
+  # ---- Görünürlük and Politikalar ---------------------------------------------------------------------------------------------------
+  visibilityHeading: { type: text, component: Heading, role: heading, text: { key: KoskSettings.visibilityHeading }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:206 } # h2
+  unlistedCheckbox: { type: field, component: TextField, role: checkbox, text: { key: KoskSettings.unlistedLabel }, checked: unlisted, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:207 } # the description is wired with aria-describedby
+  unlistedHelp: { type: text, component: Text, text: { key: KoskSettings.unlistedHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:210 }
+  policiesHeading: { type: text, component: Heading, role: heading, text: { key: KoskSettings.policiesHeading }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:220 } # h2
+  policiesIntro: { type: text, component: Text, text: { key: KoskSettings.policiesIntro }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:221 }
+  approvalCheckbox: { type: field, component: TextField, role: checkbox, text: { key: KoskSettings.approvalLabel }, checked: approval, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:223 } # never disabled for a platform policy that is on; the save is refused instead (F-W3-3)
+  approvalHelp: { type: text, component: Text, text: { key: KoskSettings.approvalHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:226 }
+  recordingsCheckbox: { type: field, component: TextField, role: checkbox, text: { key: KoskSettings.recordingsLabel }, checked: recordings, in: [form, formDirty, saving], disabledIn: [saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:234 }
+  recordingsHelp: { type: text, component: Text, text: { key: KoskSettings.recordingsHelp }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:237 }
+
+  # ---- the footer of the form ---------------------------------------------------------------------------------------------------------
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskSettings.cancel }, in: [form, formDirty, saving], disabledIn: [form, saving], emits: RESET, source: apps/nizam/features/kosks/components/kosk-settings.tsx:248 } # natively disabled until a field differs
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskSettings.save }, in: [form, formDirty, saving], disabledIn: [form, saving], emits: SUBMIT, source: apps/nizam/features/kosks/components/kosk-settings.tsx:259 } # natively disabled in `form`; busy (aria-disabled, aria-busy) in `saving`; pressed while a field is wrong it sends nothing and says why
+
+  # ---- Köşkü gizle: the card -----------------------------------------------------------------------------------------------------------
+  dangerRegion: { type: text, component: Text, role: region, name: { labelledBy: dangerHeading }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:265 } # <section aria-labelledby="hide-heading">
+  dangerHeading: { type: text, component: Heading, role: heading, text: { key: KoskSettings.dangerHeading }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:269 } # h2
+  dangerBody: { type: text, component: Text, text: { key: KoskSettings.dangerBody }, in: [form, formDirty, saving], source: apps/nizam/features/kosks/components/kosk-settings.tsx:272 }
+  hideButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskSettings.hide }, in: [form, formDirty], emits: HIDE, source: apps/nizam/features/kosks/components/kosk-settings.tsx:274 } # always on, also for a köşk that is hidden already (F-W3-hide-3) and while a save runs (not drawn there)
+
+  # ---- the toasts over the page ----------------------------------------------------------------------------------------------------------
+  savedTitle: { type: status, component: Status, text: { key: KoskSettings.saved }, in: [form], when: "toast == 'saved'", source: apps/nizam/features/kosks/components/kosk-settings.tsx:87 } # a Sonner toast of 6 seconds
+  savedBody: { type: status, component: Status, text: { key: KoskSettings.savedBody, params: { name: kosk.name } }, in: [form], when: "toast == 'saved'", source: apps/nizam/features/kosks/components/kosk-settings.tsx:88 } # names the köşk as it is now: the new name
+  failedTitle: { type: status, component: Status, text: { key: KoskSettings.failed }, in: [form, formDirty], when: "toast != 'none' and toast != 'saved'", source: apps/nizam/features/kosks/components/kosk-settings.tsx:78 } # stays until it is closed (duration Infinity)
+  failedGeneric: { type: status, component: Status, text: { key: KoskSettings.errors.generic }, in: [form, formDirty], when: "toast == 'generic'", source: apps/nizam/features/kosks/admin-present.ts:436 } # also what a locked platform policy says (F-W3-3)
+  failedGone: { type: status, component: Status, text: { key: KoskSettings.errors.notFound }, in: [form, formDirty], when: "toast == 'gone'", source: apps/nizam/features/kosks/admin-present.ts:423 }
+  failedForbidden: { type: status, component: Status, text: { key: KoskSettings.errors.forbidden }, in: [form, formDirty], when: "toast == 'forbidden'", source: apps/nizam/features/kosks/admin-present.ts:425 }
+
+  # ---- the confirmation --------------------------------------------------------------------------------------------------------------------
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: hideTitle }, in: [confirmHide, hiding], initialFocus: hideCancel, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57 } # focus starts on "Vazgeç"; the scrim does not close it
+  hideEyebrow: { type: text, component: Text, text: { literal: "Ayar Deneme Köşkü" }, in: [confirmHide, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:62 } # the köşk's name above the title, as the form was last saved
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: HideKoskDialog.title }, in: [confirmHide, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:63 }
+  hideClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: HideKoskDialog.close }, in: [confirmHide], emits: CANCEL, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:66 } # stays on and does nothing while the call runs (F-W3-hide-1)
+  hideBody: { type: text, component: Text, text: { key: HideKoskDialog.body, params: { name: kosk.name } }, in: [confirmHide, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:70 }
+  hideWay: { type: text, component: Text, text: { key: HideKoskDialog.way }, in: [confirmHide, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:71 }
+  hideCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: HideKoskDialog.cancel }, in: [confirmHide], emits: CANCEL, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:65 } # the first button, with the focus
+  hideConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: HideKoskDialog.confirm }, in: [confirmHide, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:64 } # primary, not destructive; busy in `hiding`
+  hideFailedTitle: { type: status, component: Status, text: { key: HideKoskDialog.failed }, in: [confirmHide], when: "hideToast != 'none'", source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:43 } # a toast over the open dialog; it stays
+  hideFailedAlready: { type: status, component: Status, text: { key: HideKoskDialog.errors.alreadyHidden }, in: [confirmHide], when: "hideToast == 'alreadyHidden'", source: apps/nizam/features/kosks/admin-present.ts:420 }
+  hideFailedGone: { type: status, component: Status, text: { key: HideKoskDialog.errors.notFound }, in: [confirmHide], when: "hideToast == 'gone'", source: apps/nizam/features/kosks/admin-present.ts:423 }
+  hideFailedForbidden: { type: status, component: Status, text: { key: HideKoskDialog.errors.forbidden }, in: [confirmHide], when: "hideToast == 'forbidden'", source: apps/nizam/features/kosks/admin-present.ts:425 }
+  hideFailedGeneric: { type: status, component: Status, text: { key: HideKoskDialog.errors.generic }, in: [confirmHide], when: "hideToast == 'generic'", source: apps/nizam/features/kosks/admin-present.ts:436 }
+
+  # ---- the Köşkler list the page lands on --------------------------------------------------------------------------------------------------
+  listPage: { type: page, component: Page, role: main, in: [hidden], source: apps/nizam/app/kosks/page.tsx:70 }
+  listTitle: { type: text, component: Heading, role: heading, text: { key: KoskDirectory.title }, in: [hidden], source: apps/nizam/features/kosks/components/kosks-directory.tsx:290 } # h1
+  hiddenTitle: { type: status, component: Status, text: { key: HideKoskDialog.hidden }, in: [hidden], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:49 } # a Sonner toast of 6 seconds
+  hiddenBody: { type: status, component: Status, text: { key: HideKoskDialog.hiddenBody, params: { name: kosk.name } }, in: [hidden], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:50 }
+  listRowName: { type: action, component: LinkButton, role: link, text: { literal: "Ayar Deneme Köşkü" }, in: [hidden], source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 } # the köşk's row, a link to /kosks/{id}; the list is nizam.kosks.browse's
+  listRowStatus: { type: text, component: Text, text: { key: KoskDirectory.status.HIDDEN }, in: [hidden], source: apps/nizam/features/kosks/components/kosks-directory.tsx:239 } # plain text with an eye-off glyph, no badge
+  listRowSince: { type: text, component: Text, text: { key: KoskDirectory.since, params: { dateAblative: hidden.dateAblative } }, in: [hidden], source: apps/nizam/features/kosks/components/kosks-directory.tsx:242 }
+  listRowRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskDirectory.restoreLabel, params: { name: kosk.name } }, text: { key: KoskDirectory.restore }, in: [hidden], source: apps/nizam/features/kosks/components/kosks-directory.tsx:256 } # drawn because the nazım hid the köşk themselves (row.canRestore); what it does is nizam.kosks.browse
+
+edges:
+  - { labelledBy: [hideDialog, hideTitle] }
+  - { labelledBy: [dangerRegion, dangerHeading] }
+  - { triggers: [save, saving] }
+  - { triggers: [hideButton, confirmHide] }
+  - { triggers: [hideConfirm, hiding] }
+  - { returnsFocus: [hideDialog, hideButton] } # Base UI gives the focus back to the element that had it when the dialog opened: the "Köşkü gizle" button (not verified)
+
+rules:
+  - { id: no-default-accept, rule: "no page has initialFocus on an action with intent confirm: the hide confirmation starts on Vazgeç" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: focus-not-set, rule: "The settings page sets no initial focus: nothing in kosk-settings.tsx or page.tsx moves it on load, so a keyboard or screen-reader user starts from the top of the document and tabs through the whole sidebar first (F-UI-P0-1). Not drawn as an initialFocus, because the app gives none." }
+  - { id: F-W3-3, rule: "kosk-settings.tsx:223-244, admin-present.ts:416-428, kosk.service.ts:235: a köşk nazımı can untick 'Kayıt her zaman onaylı' or 'Ders kayıtları herkese açılamaz' while the platform policy of the same name is on. The box accepts it, 'Kaydet' sends it, tedrisat answers 409 PLATFORM_POLICY_LOCKED, and koskErrorKey has no entry for the code, so the toast says 'Ayarlar kaydedilemedi' with 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' and the person is told to try again. The catalog has 'Bu ayar platform politikasıyla kapalı.' (KoskApplicationsPage.errors.locked), unused here. A köşk whose own value is off while the platform's is on reads 'off' though the rule is in force. Fix: map the code to its own sentence, and draw a locked box ticked and disabled with the reason beside it. The başnazım is never refused (kosk.service.ts:235)." }
+  - { id: F-W3-9, rule: "app/kosks/[id]/ayarlar/page.tsx:15-18: the tab and history title is 'Köşk ayarları' for every köşk, and the h1 is the same; only the intro paragraph and, on a wide screen, the scope picker name the köşk. A nazım of several köşks cannot tell two settings tabs apart. Fix: put the köşk's name in the title (generateMetadata reading the köşk) and in the h1 or an eyebrow." }
+  - { id: F-W3-13, rule: "kosk-settings.tsx:67-72, 129-133: the form is noValidate; 'Kaydet' pressed with a wrong name or tags sets `sent` and draws the message in the Field's error slot, and the focus stays on 'Kaydet'. Field.Error has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-53: F-UI-W3-1, F-X-2), so the message is read only if the person goes back to the field, and nothing says which field. Fix: focus the first invalid control after a refused submit, or an error summary with role=alert." }
+  - { id: F-UI-W3-1, rule: "libs/ui/src/mds/field.tsx:50-53: Field's error element has no role=alert and no live region: 'Bir ad yazın.', 'Ad en az 2 karakter olmalı.' and the tags messages are announced only if the focus moves to the field" }
+  - { id: F-X-2, rule: "the family of F-UI-W3-1 and F-W3-13 in every form of the app" }
+  - { id: F-UI-W1-3, rule: "libs/ui/src/mds/button.tsx: a busy button's hidden status says 'Yükleniyor' from a hard-coded default (neither 'Kaydet' nor 'Gizle' passes loadingLabel), and the toast's close button says 'Kapat' from the kit, not from the catalog" }
+  - { id: F-UI-W1-2, rule: "libs/ui/src/components/sonner.tsx: the Sonner host region is named in English ('Notifications') and the three toasts of this flow (saved, refused, hidden) are announced in it" }
+  - { id: F-W3-edit-1, rule: "new: kosk-settings.tsx:259: after an accepted save the form is the saved köşk again, so `disabled={!dirty}` turns the pressed 'Kaydet' off while it has the focus; in a browser a focused control that becomes disabled loses keyboard focus or keeps it on a dead button (the same as F-W3-6; not verified). The only word that the save worked is a toast of 6 seconds. Fix: keep the button enabled and busy, or move the focus to the toast's heading or the h1 after a save." }
+  - { id: F-W3-hide-1, rule: "new: hide-kosk-dialog.tsx:59-61: 'Vazgeç' and the close icon stay enabled while the köşk is being hidden and do nothing (`if (!saving) onOpenChange(next)`); only 'Gizle' is busy. The same as F-W3-open-2 in the opening form. Fix: disable them while the call runs, or let them cancel the call." }
+  - { id: F-W3-hide-2, rule: "new: kosk-settings.tsx:289, hide-kosk-dialog.tsx:52-53: after 'Gizle' the dialog closes and the page goes to /kosks. The page, 'Köşkü gizle' (the element Base UI would give the focus back to) and the dialog are all gone, so the focus is on nothing (not verified), and the person is told in a toast of 6 seconds that is announced by Sonner's English-named region. The list is the unfiltered 'Tümü'; the hidden köşk is among the others, not first (D2). A köşk nazımı has no menu link to this list, so nothing else tells them it exists. Fix: go to /kosks?durum=gizli and put the focus on the list's heading." }
+  - { id: F-W3-hide-3, rule: "new: kosk-settings.tsx:274-281: the page never reads whether the köşk is hidden. A nazım who opens the settings of a köşk that is hidden already (a bookmark, Medaris yönetimi hid it) sees the same form and the same 'Köşkü gizle', and 'Gizle' answers 409 KOSK_ALREADY_HIDDEN, told as 'Bu köşk zaten gizli.' in a toast. The page offers no 'Geri al' and does not say the köşk is hidden. Fix: read the status, say it at the top, and offer 'Geri al' (or hide the button)." }

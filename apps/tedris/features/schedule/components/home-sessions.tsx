@@ -1,4 +1,5 @@
 import type { ScheduleSessionResponse } from "@medaris/services/tedrisat";
+import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
@@ -6,6 +7,7 @@ import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { SessionJoinLive } from "~/features/courses/components/session-join-live";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { joinRun } from "~/features/courses/join-run";
 import { formatSessionMoment } from "~/features/courses/my-courses";
 import {
@@ -51,6 +53,10 @@ const whenText = (
  * `sessions` is the caller's `GET /me/upcoming-lessons`, null when tedrisat
  * could not answer.
  */
+/** Where a session leads: an online exam to its exam page (MDRS-299), any other celse to its page. */
+const sessionHref = (s: ScheduleSessionResponse): string =>
+  `/courses/${s.courseId}/lessons/${s.id}${s.isOnlineExam ? "/sinav" : ""}`;
+
 export const HomeSessions = async ({
   name,
   sessions,
@@ -85,7 +91,12 @@ export const HomeSessions = async ({
           {sessions === null
             ? t("PhoneMenu.loadFailed")
             : next?.status === "LIVE"
-              ? t("PhoneMenu.liveIntro", { course: next.courseTitle })
+              ? t(
+                  next.isOnlineExam
+                    ? "PhoneMenu.examOpenIntro"
+                    : "PhoneMenu.liveIntro",
+                  { course: next.courseTitle }
+                )
               : next
                 ? t("PhoneMenu.nextIntro", {
                     when: whenText(next, now, t, locale, timeZone),
@@ -107,13 +118,20 @@ export const HomeSessions = async ({
                 </h2>
                 <Link
                   className="mds-btn mds-btn--link"
-                  href={`/courses/${next.courseId}/lessons/${next.id}`}
+                  href={sessionHref(next)}
                 >
-                  {t("PhoneMenu.sessionPage")}
+                  {t(
+                    next.isOnlineExam
+                      ? "PhoneMenu.examPage"
+                      : "PhoneMenu.sessionPage"
+                  )}
                 </Link>
               </div>
               <p className="mds-body-sm" dir="auto">
                 {joinRun([
+                  ...(next.isExam
+                    ? [examRunLabel(t, next.startsAt, now, timeZone)]
+                    : []),
                   <Link
                     key="c"
                     href={`/courses/${next.courseId}`}
@@ -125,34 +143,54 @@ export const HomeSessions = async ({
                   <bdi key="k">{next.koskName}</bdi>,
                 ])}
               </p>
-              <SessionJoinLive
-                renderedAt={now.toISOString()}
-                startsAt={new Date(next.startsAt).toISOString()}
-                durationMinutes={next.durationMinutes ?? undefined}
-                cancelled={false}
-                title={next.title}
-                headingLevel={3}
-                courseId={next.courseId}
-                courseTitle={next.courseTitle}
-                lessonId={next.id}
-                meetingUrl={next.meetingUrl ?? undefined}
-                platform={platform?.id}
-                platformHost={
-                  next.meetingUrl ? hostOf(next.meetingUrl) : undefined
-                }
-                inPerson={next.inPerson}
-                hasLiveStream={next.hasLiveStream}
-                locale={locale}
-                timeZone={timeZone}
-                courseTimeZone={timeZone}
-                calendar={calendarLabels(t)}
-                // Programım's words: the stream and the recording are on the
-                // session page, not on this card (MDRS-283).
-                labels={{
-                  ...sessionJoinLabels(t),
-                  ...elsewhereJoinLabels(t),
-                }}
-              />
+              {next.isOnlineExam ? (
+                // MDRS-299: an online exam is taken on its exam page; it has
+                // no meeting, so the join card's "no link yet" would mislead.
+                <Card className="flex flex-col items-start gap-3">
+                  <h3 className="mds-h3" dir="auto">
+                    {next.title}
+                  </h3>
+                  <Button
+                    href={sessionHref(next)}
+                    variant={next.status === "LIVE" ? "primary" : "outline"}
+                  >
+                    {t(
+                      next.status === "LIVE"
+                        ? "PhoneMenu.examEnter"
+                        : "PhoneMenu.examPage"
+                    )}
+                  </Button>
+                </Card>
+              ) : (
+                <SessionJoinLive
+                  renderedAt={now.toISOString()}
+                  startsAt={new Date(next.startsAt).toISOString()}
+                  durationMinutes={next.durationMinutes ?? undefined}
+                  cancelled={false}
+                  title={next.title}
+                  headingLevel={3}
+                  courseId={next.courseId}
+                  courseTitle={next.courseTitle}
+                  lessonId={next.id}
+                  meetingUrl={next.meetingUrl ?? undefined}
+                  platform={platform?.id}
+                  platformHost={
+                    next.meetingUrl ? hostOf(next.meetingUrl) : undefined
+                  }
+                  inPerson={next.inPerson}
+                  hasLiveStream={next.hasLiveStream}
+                  locale={locale}
+                  timeZone={timeZone}
+                  courseTimeZone={timeZone}
+                  calendar={calendarLabels(t)}
+                  // Programım's words: the stream and the recording are on the
+                  // session page, not on this card (MDRS-283).
+                  labels={{
+                    ...sessionJoinLabels(t),
+                    ...elsewhereJoinLabels(t),
+                  }}
+                />
+              )}
             </section>
           ) : null}
 
@@ -181,11 +219,13 @@ export const HomeSessions = async ({
                           className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-sunken"
                           aria-hidden="true"
                         >
-                          <Icon name="video" />
+                          <Icon
+                            name={session.isOnlineExam ? "quiz" : "video"}
+                          />
                         </span>
                         <div className="flex min-inline-0 flex-col gap-1">
                           <Link
-                            href={`/courses/${session.courseId}/lessons/${session.id}`}
+                            href={sessionHref(session)}
                             className="mds-h4"
                             dir="auto"
                           >
@@ -193,7 +233,15 @@ export const HomeSessions = async ({
                           </Link>
                           <span className="mds-caption" dir="auto">
                             {joinRun([
-                              t("PhoneMenu.liveBadge"),
+                              // MDRS-248: an exam says so on Pano.
+                              session.isExam
+                                ? examRunLabel(
+                                    t,
+                                    session.startsAt,
+                                    now,
+                                    timeZone
+                                  )
+                                : t("PhoneMenu.liveBadge"),
                               <bdi key="c">{session.courseTitle}</bdi>,
                               t("SchedulePage.week", {
                                 week: session.weekNumber,

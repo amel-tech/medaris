@@ -1,0 +1,134 @@
+schema: delurio-graph/0
+kind: needs
+id: common.shell.privacyNotice
+status: proposed
+summary: >-
+  What must exist for a person who looks for the privacy notice from inside a Medaris app: common.shell.privacyNotice. Each need
+  is what the product must do, from the flow's story and from the law the notice is for (KVKK Art. 10); none is read off what the
+  footer does today. Nothing here comes from planned.md: no planned feature (P-nn) names this link (MDRS-102 and MDRS-248, which
+  built it, are not in it either).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code; no Linear key searched, so `none`):
+# link-says-it-opens-a-tab (SHL-12, CLS-14, PN-1), notice-found-as-a-landmark-in-nizam (F-P0-5, F-X-13), notice-from-nazar (PN-2)
+# unwalked (code, and no e2e or replay walks it):
+# notice-for-a-visitor: the footer for someone not signed in. The replay always signs a person in; the tedris half
+# (the same footer, in the root layout) and nizam's welcome page were read from the served page with curl, not walked
+# (nizamBare has no scenario; see the header of binding.yaml).
+# Walked in part: notice-opens-beside-the-page (the replay checks the link's `target` and `rel`, it cannot follow the tab).
+
+needs:
+  - id: notice-from-the-footer-of-tedris-and-nizam
+    need: >-
+      A person who is signed in to Tedris or Nizam finds the link to the privacy notice in the footer of the page they are on,
+      whichever page it is, so they never have to leave the app to look for it.
+    evidence:
+      - state: footerBelow
+      - state: footerInMain
+      - node: noticeLink
+      - source: apps/tedris/components/legal-footer/index.tsx:9
+      - source: apps/nizam/components/legal-footer/index.tsx:9
+      - source: apps/tedris/app/layout.tsx:61
+      - source: apps/nizam/app/layout.tsx:54
+      - test: apps/tedris/test/legal-footer.spec.ts
+      - test: apps/nizam/test/legal-footer.spec.ts
+      - scenario: tedris
+      - scenario: nizamShell
+    note: |-
+      legal-footer.spec.ts legal-footer#4 (Vitest, numbered here by the order of the it()s: the root layout renders the footer;
+      the inventory numbers no spec of this file)
+      legal-footer.spec.ts legal-footer#4 (the same spec for nizam)
+
+  - id: notice-for-a-visitor
+    need: >-
+      A person who has not signed in finds the same link in the footer too: on every page of Tedris, and on Nizam's welcome page,
+      where the notice matters most, since a visitor is about to give their data.
+    evidence:
+      - state: footerBelow
+      - source: apps/tedris/app/layout.tsx:61
+      - source: apps/nizam/components/shell/nizam-shell.tsx:52
+    note: "walked: []: none: the replay signs a person in, and nizamBare has no scenario (see the header)"
+
+  - id: notice-opens-beside-the-page
+    need: The notice opens in a new tab, so the person keeps the page they were on, and the new tab cannot reach back into it.
+    evidence:
+      - state: footerBelow
+      - state: footerInMain
+      - node: noticeLink
+      - source: apps/tedris/components/legal-footer/index.tsx:15
+      - source: apps/nizam/components/legal-footer/index.tsx:15
+      - test: apps/tedris/test/legal-footer.spec.ts
+        name: "opens the notice on landing in a new tab"
+      - test: apps/nizam/test/legal-footer.spec.ts
+        name: "opens the notice on landing in a new tab"
+      - scenario: tedris
+      - scenario: nizamShell
+    note: |-
+      legal-footer.spec.ts legal-footer#1 (Vitest: target _blank and rel noopener noreferrer, text "Aydınlatma Metni")
+      legal-footer.spec.ts legal-footer#1 (the same spec for nizam)
+      tedris: the element is found by target, rel and address and its text is held; the new tab is not followed (an engine limit)
+
+  - id: link-says-it-opens-a-tab
+    need: >-
+      The link tells a person, before they press it, that the notice opens in a new tab: a screen-reader user hears it in the
+      link's name, and everyone else is not surprised.
+    missing: SHL-12, CLS-14, PN-1; no Linear issue looked up
+    note: >-
+      Drawn on the node noticeLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: notice-found-as-a-landmark-in-nizam
+    need: >-
+      A person who moves by landmarks finds the footer, and with it the link to the notice, on a page of Nizam's shell as they do
+      on a page of Tedris: the footer is a landmark outside the main content, not the last thing inside it.
+    missing: "F-P0-5, F-X-13: the replay of nizamShell shows no `contentinfo`; no Linear issue looked up"
+    note: >-
+      Drawn on the state footerInMain and on the node footer, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: notice-from-nazar
+    need: >-
+      A hoca, a nazır or a başmüderris who works in Nazar finds the privacy notice from Nazar's own pages, as the talebe and the
+      nazım do in theirs.
+    missing: PN-2, decision D1; the replay of nazar shows no footer and no link; no Linear issue looked up
+    note: >-
+      Drawn on the state noFooter, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: link-leads-to-the-environments-notice
+    need: >-
+      The link leads to the notice of the environment the app runs in: the development site's notice from a development app, the
+      production notice from production, and the production address when no site is configured.
+    evidence:
+      - node: noticeLink
+      - source: libs/utils/src/privacy-notice.ts:23
+      - source: apps/tedris/components/legal-footer/index.tsx:16
+      - test: apps/tedris/test/legal-footer.spec.ts
+        name: "links to the deployment's own landing when LANDING_URL is set (MDRS-248)"
+      - test: apps/nizam/test/legal-footer.spec.ts
+        name: "links to the deployment's own landing when LANDING_URL is set (MDRS-248)"
+      - scenario: tedris
+    note: |-
+      legal-footer.spec.ts legal-footer#2 (Vitest: LANDING_URL set gives the deployment's own landing address; unset gives the
+      production one)
+      legal-footer.spec.ts legal-footer#2 (the same spec for nizam)
+      tedris: the link's address is the stack's landing address, {landing}/aydinlatma-metni
+
+  - id: notice-is-published
+    need: >-
+      The address the link leads to answers with the privacy notice: a person who presses the link is shown the notice and not an
+      error.
+    evidence:
+      - state: footerBelow
+      - state: footerInMain
+      - source: apps/landing/app/aydinlatma-metni/page.tsx:25
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "points at the same URL"
+      - scenario: tedris
+    note: |-
+      privacy-notice.spec.ts privacy-notice#19 (landing's own footer links the same path /aydinlatma-metni; the apps' links are
+      the same constant)
+      tedris: the `opensNoticeTab` effect fetches the address after the press and expects HTTP/1.1 200; what the page says is
+      landing.site.readLegal's (start: privacy)

@@ -1,0 +1,250 @@
+# What a signed-in person meets when they open a deck page they may not read or may not use (tedris-web /decks/[id], /decks/[id]/cards and
+# /decks/[id]/edit), read from the code of the branch (the tree of PR #394) on 15 Nov 2026 and walked once on the local stack. Nothing here
+# is approved.
+#   - What it draws: the one read all three pages start with (GET /flashcard/decks/{id}, with the cards beside it), the three answers the
+#     page gives to what that read says, and the three ways out of them. A deck the person may open is another flow: the author's pages
+#     (tedris.decks.manageCards, tedris.decks.editOrDelete) and the reader's page (tedris.decks.readAndCopy).
+#   - The three screens: "Sayfa bulunamadı" (a deck the API says is not there: no such id, an id that is no uuid, another person's private
+#     deck, a deck that was shared and has been hidden: all four look the same), "Bu sayfayı göremezsin" (a reader who may read the deck is
+#     sent away from its cards and edit pages) and "Bu desteye ulaşılamıyor" (an API 403, which the stack cannot make).
+#   - Findings it carries (the inventory's ids): DCK-14, DCK-15, DCK-16, DCK-28. One is this flow's own, proposed as ACCREF-1 (ui.yaml
+#     `rules`). The label routes' 403-against-404 split (the domain's `label-target-oracle`) is NOT on these pages: see the description of
+#     `notFound`.
+#   - Replayed on the stack: privateDeck (the main story), sharedDeck (`--to forbiddenShown`), hiddenDeck (binding.hidden.yaml, `--to notFound`);
+#     see binding.yaml for what was and was not walked.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.accessRefusals
+status: captured
+domain: medaris.api
+ui: tedris.decks.accessRefusals
+title: Open a deck page you may not
+summary: >-
+  A signed-in person types or follows the address of a deck: its own page, its cards or its edit page. The page reads the deck first. When the
+  API answers that there is no such deck, which it also answers for another person's private deck and for a deck that was shared with the
+  person and has since been hidden, the page is "Sayfa bulunamadı" and says nothing of whether the deck exists. When the person may read
+  the deck but did not write it, the cards and edit pages answer "Bu sayfayı göremezsin", name the deck and offer the way back to its page
+  ("Desteye dön"); the deck's own page is the reader's view instead. A deck the person wrote opens as usual. A 403 from the API would give
+  a third screen, "Bu desteye ulaşılamıyor", but the two reads answer 404 for every refusal a person can meet, so it is drawn and not
+  reachable on the stack.
+source: apps/tedris/features/flashcards/deck-page-data.ts:30
+
+scope:
+  shows: the read of a deck by its address, the three screens a refusal gives, and the ways out of them
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a visitor: /decks/<id>/cards and /decks/<id>/edit send them to sign in before the page runs, and /decks/<id> shows a public deck or sends them to sign in and back without saying whether the deck exists (tedris.decks.visitorPublicDeck, realm.auth.signIn)"
+    - "a session the API no longer accepts: the page sends the person to sign in again with `reauth`, not to a refusal screen (realm.auth.sessionEnded)"
+    - "a 5xx or a network failure of the read: the deck read throws and the root's error page answers \"Bir şeyler ters gitti\" (tedris.shell.systemPages)"
+    - "the pages a person may open: the author's deck, cards and edit pages (tedris.decks.manageCards, tedris.decks.editOrDelete) and the reader's view of a public or shared deck (tedris.decks.readAndCopy)"
+    - "/decks/study/<id>, which meets the same two answers for a deck it may not read (tedris.decks.study)"
+    - "the system bar above the screen, the footer and the toast host (tedris.shell.frame); the skeleton [id]/loading.tsx draws while the read runs, a <main aria-busy> with grey bars and no words, which the refusal replaces"
+    - "the second read a reader's page makes, GET /flashcard/decks/summary, for the collection and the copy target: it comes after a successful deck read and a refusal screen never uses it"
+    - "the label routes, which do tell a private deck of someone else from an absent one (403 against 404, the domain's `label-target-oracle`): no page here calls them"
+
+decisions:
+  D1:
+    question: >-
+      Should a 403 from the deck read be the same screen as a 404, as the code's own comments say it is?
+    recommend: >-
+      Yes: draw "Sayfa bulunamadı" for both and remove DeckUnavailable. The comments of deck-unavailable.tsx, deck-page-data.ts and the edit
+      page promise one screen "on purpose" (MDRS-43 AC-4), the code draws two (DCK-15), and the second can only be reached by a race that
+      the API's second lock exists for. If the screen is kept, its words must not tell a private deck from a missing one.
+    affects: [unavailable]
+  D2:
+    question: >-
+      Should a hidden deck that is public still be read by anyone who has its address?
+    recommend: >-
+      No: treat a hidden deck as absent for everyone but its author and the people who may open hidden things. Today only a deck that was
+      shared (a course, köşk or medrese deck) stops being readable; a public one is still served (ACCREF-1).
+    affects: [deciding, forbiddenShown]
+
+context:
+  deck:
+    values: [missing, private, hidden, own, shared, public, refused]
+    initial: any
+    say:
+      missing: "no deck has that id, or the id in the address is no uuid"
+      private: "the deck is another person's private deck"
+      hidden: "the deck was shared with the person through a course, a köşk or a medrese, and has since been hidden"
+      own: "the person wrote the deck"
+      shared: "the deck is another person's and is shared with them through a course, a köşk or a medrese they are in"
+      public: "the deck is another person's and public (a hidden public deck is still read, ACCREF-1)"
+      refused: "the API answers 403 for the deck (a deck that turned private between the guard's read and the handler's)"
+  address:
+    values: [cards, edit, deck]
+    initial: any
+    say:
+      cards: "they opened /decks/<id>/cards"
+      edit: "they opened /decks/<id>/edit"
+      deck: "they opened /decks/<id>"
+
+guards:
+  mayRead: "deck in ['own', 'shared', 'public']"
+  unreadable: "deck in ['missing', 'private', 'hidden']"
+  asAuthor: "deck == 'own'"
+  onDeckPage: "address == 'deck'"
+
+failures:
+  reading:
+    from: getDeck
+    notFound: [DECK_NOT_FOUND, HTTP_400]
+    forbidden: [DECK_FORBIDDEN]
+
+# The main story: another person opens a talebe's private deck by its address and is told the page is not there.
+main:
+  given: { deck: private, address: cards }
+  events: [FAIL.notFound, GO_HOME]
+
+initial: reading
+states:
+  reading:
+    title: Read the deck
+    description: >-
+      All three deck pages call loadDeckPage first (a person with no token is sent to sign in; a visitor is out of view). It reads the deck
+      and its cards with the person's own progress at once (Promise.all of GET /flashcard/decks/{id} and GET /flashcard/cards?deckId=…&include=progress).
+      The API answers 404 for a missing deck, for a deck whose id is no uuid (400 on the deck route), for another person's private deck and,
+      since a hidden deck is shared with nobody, for a hidden course, köşk or medrese deck (deckSharedWith, flashcard/deck-sharing.ts:35). It
+      answers 403 only when the deck turned private between the guard's read and the handler's. The page maps 404 and 400 to a missing
+      deck and 403 to a forbidden one, and throws anything else to the error page. The graph draws the two reads as one step; [id]/loading.tsx
+      shows its skeleton, a <main aria-busy>, until the answer comes.
+    includes: ["the deck with its title, author and visibility", "the cards with the person's own progress"]
+    source: apps/tedris/features/flashcards/reads.ts:69
+    invoke: { action: getDeck }
+    on:
+      DONE:
+        guard: mayRead
+        target: deciding
+        say: "the API gives the deck: the person wrote it, or it is public, or it is shared with them"
+        source: apps/tedris/features/flashcards/deck-page-data.ts:38
+      FAIL.notFound:
+        guard: unreadable
+        target: notFound
+        say: "404 or 400: there is no such deck as far as the page goes, whichever of the three reasons it has"
+        source: apps/tedris/features/flashcards/deck-page-data.ts:36
+      FAIL.forbidden:
+        guard: "deck == 'refused'"
+        target: unavailable
+        say: "403: the page keeps it apart from a missing deck and draws DeckUnavailable"
+        source: apps/tedris/features/flashcards/deck-page-data.ts:37
+
+  deciding:
+    title: See whose deck it is and which page was asked for
+    description: >-
+      Classification only. isOwner is read off the token's subject against the deck's author, for display; the API re-derives the caller and
+      refuses a stranger's write whatever the page drew. The deck's own page draws the owner view for the author and the reader's view for
+      anyone else. The cards and edit pages are the author's: they draw for the author, and for anyone else who could read the deck they draw
+      the forbidden screen.
+    source: apps/tedris/features/flashcards/deck-page-data.ts:39
+    always:
+      - guard: asAuthor
+        target: owner_page_opened
+        say: "the author gets the page they asked for"
+        source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:44"
+      - guard: onDeckPage
+        target: reader_page_opened
+        say: "a reader gets the deck's own page as a reader's view"
+        source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:44
+      - target: forbiddenShown
+        say: "a reader of the deck, on its cards or edit page, which are the author's"
+        source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
+
+  notFound:
+    title: The page is not found
+    by: human
+    goal: true
+    description: >-
+      app/not-found.tsx draws NotFoundState: a <section> named by its h1 "Sayfa bulunamadı", a sentence ("Aradığın sayfa yok ya da artık burada
+      değil…") and one link, "Ana sayfaya dön". The screen is the same for a missing id, a malformed id, another person's private deck and a
+      hidden deck: the same words, the same link, so the person cannot tell which of the four it was. That is what MDRS-43 AC-4 asks, and on
+      these pages it holds: the API's refusal for the three reads here is one answer. (The label routes break it for the labels, 403 for a
+      private deck against 404 for an absent one: the domain's `label-target-oracle`; no screen of this flow calls them.)
+      The segment's loading.tsx has already sent the shell, so the document answers 200 and not 404 (seen; SYS-2 of tedris.shell.systemPages
+      has the same cause). The tab title is whatever the address's own page set: "Tedris" under /cards, "Medaris Tedris" under /edit (DCK-28)
+      and "Desteler | Tedris" under /decks/<id>. No <main> surrounds the section on /decks (DCK-16), and nothing takes the focus.
+    source: apps/tedris/features/errors/system-page.tsx:43
+    on:
+      GO_HOME:
+        target: home_opened
+        say: "\"Ana sayfaya dön\" goes to /home for a signed-in person"
+        source: apps/tedris/features/errors/system-page.tsx:54
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  forbiddenShown:
+    title: You may read the deck, not this page
+    by: human
+    goal: true
+    description: >-
+      ForbiddenState with a deck: a <section> named by its h1 "Bu sayfayı göremezsin", the sentence "{deck} herkese açık bir deste; kartlarını
+      yalnız sahibi düzenler. Desteyi çalışabilirsin; istediğin kartı kendi destene kopyalayabilirsin." and the link "Desteye dön" to the deck's
+      own page. The sentence says "public" of every deck a person may read and did not write, so for a course, köşk or medrese deck, which the
+      reader's own view calls "herkese açık değil", it is false (DCK-14): seen on the seeded course deck, which is not public. The deck's name
+      is the one the API gave, so the screen exists only for a deck the person may read. The tab title of /cards names the deck; /edit's does
+      not (DCK-28). No <main> (DCK-16); nothing takes the focus.
+    source: apps/tedris/features/errors/system-page.tsx:75
+    on:
+      BACK_TO_DECK:
+        target: deck_page_opened
+        say: "\"Desteye dön\" opens /decks/<id>, where a reader finds the deck's cards and the copy control (tedris.decks.readAndCopy)"
+        source: apps/tedris/features/errors/system-page.tsx:87
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  unavailable:
+    title: The deck cannot be reached
+    by: human
+    description: >-
+      DeckUnavailable, drawn when the API answers 403 for the deck: a card with a lock, the h1 "Bu desteye ulaşılamıyor", "Deste silinmiş olabilir
+      ya da sahibi onu yalnızca kendine açık tutuyor." and the button "Destelere dön". The sentence names two causes at once, so it does not
+      confirm that the deck exists, but it is a different screen from the not-found page, while the code's comments say the two "render the same
+      copy on purpose" (DCK-15, decision D1). A plain <div> built from the old shadcn kit inside the new design's segment: no landmark and no <main>
+      (DCK-16). Not reachable on the stack: GET /flashcard/decks/{id} and GET /flashcard/cards answer 404 for every refusal a person can make
+      (measured as OTHER on another person's private deck, a missing id and a course deck of a course OTHER is not in; the domain lists DECK_FORBIDDEN
+      as a second lock reached only by a race), and no e2e file has it either.
+    source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:13
+    on:
+      BACK_TO_DECKS:
+        target: decks_page_opened
+        say: "\"Destelere dön\" opens the person's Desteler"
+        source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  owner_page_opened:
+    type: final
+    title: The author's page opens
+    description: the author asked for their own deck, cards or edit page and gets it (tedris.decks.manageCards, tedris.decks.editOrDelete)
+  reader_page_opened:
+    type: final
+    title: The reader's view of the deck opens
+    description: a reader asked for the deck's own page and gets the reader's view (tedris.decks.readAndCopy)
+  home_opened:
+    type: final
+    title: Ana sayfa opens
+  deck_page_opened:
+    type: final
+    title: The deck's own page opens
+  decks_page_opened:
+    type: final
+    title: Desteler opens
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: unreadable-looks-alike
+    never: "state == 'unavailable' and unreadable"
+    say: "A missing deck, another person's private deck and a hidden deck are never told apart: none of them reaches the 403 screen"
+    source: apps/tedris/features/flashcards/reads.ts:80
+  - id: not-found-only-when-unreadable
+    never: "state == 'notFound' and mayRead"
+    say: "A deck the person may read is never answered with \"Sayfa bulunamadı\""
+    source: apps/tedris/features/flashcards/deck-page-data.ts:36
+  - id: forbidden-only-for-a-reader
+    never: "state == 'forbiddenShown' and not mayRead"
+    say: "\"Bu sayfayı göremezsin\" is shown only for a deck the person may read, since it names the deck"
+    source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
+  - id: author-is-never-refused
+    never: "state == 'forbiddenShown' and asAuthor"
+    say: "The author of a deck is never told they may not open its cards or edit page"
+    source: apps/tedris/features/flashcards/deck-page-data.ts:39
+  - id: deck-page-has-no-forbidden-screen
+    never: "state == 'forbiddenShown' and onDeckPage"
+    say: "The deck's own page never draws the forbidden screen: a reader gets the reader's view there"
+    source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:54"

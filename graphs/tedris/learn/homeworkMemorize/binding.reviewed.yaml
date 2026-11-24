@@ -1,0 +1,34 @@
+# tedris.learn.homeworkMemorize, work handed in and reviewed before the switch: the note, then the course team's review of it, then the
+# switch to "Ezber" (homework-card.spec.ts:856). The card says "Bekliyor", keeps the note and still shows the review's heading, badge,
+# by-line and note (the review block in full is tedris.learn.homeworkReview's).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkMemorize \
+#     --bind graphs/tedris/learn/homeworkMemorize/binding.reviewed.yaml --to waiting --out <dir>
+# The same throwaway course as binding.yaml. `setup` runs memorize-data.mjs (this folder); the review sends the talebe a notification
+# (SUBMISSION_REVIEWED), which `course.mjs remove` clears with the others that point at the course and `teardown` clears again.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+scenarios:
+  reviewed:
+    given: { mark: none, verdict: full, note: none, earlier: reviewed }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    samples:
+      description: İlk fasıl ezberden okunacak.
+      earlierNote: Ödevi önce dosyayla teslim edecektim.
+      reviewNote: Notun yerinde, devam et.
+    setup:
+      - run: [node, helpers/course.mjs, make, memorize, --weeks, '1', --lessons, '2', --talebe, applicantD]
+        expect: '"course"'
+      - run: [node, ../tedris/learn/homeworkMemorize/memorize-data.mjs, earlier, memorize, applicantD, reviewed, --description, 'İlk fasıl ezberden okunacak.', --note, 'Ödevi önce dosyayla teslim edecektim.', --review, 'Notun yerinde, devam et.']
+        expect: memorize-data earlier memorize reviewed
+    teardown:
+      - run: [node, helpers/course.mjs, remove, memorize]
+        expect: course remove memorize
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

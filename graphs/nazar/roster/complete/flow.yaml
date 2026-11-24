@@ -1,0 +1,361 @@
+# Talebeler of a course in nazar-web (/ders/<id>/talebeler), where the course team marks a talebe's course complete and
+# reopens it. Read from the code of PR #394 (apps/nazar/features/enrolments, the API's PATCH /courses/:id/enrollments/:userId
+# and GET /courses/:id/enrollments) on 15 Nov 2026. Nothing here was walked in a browser: every behaviour is "from the code"
+# until the walk phase. There is no web e2e for it (e2e: none in the inventory); the vitest spec
+# apps/nazar/test/enrolments-page.spec.tsx:430-533 and :684-780 and the API's apps/tedrisat/test/e2e/course-team.e2e.spec.ts
+# (:594, :610, :888) are what ran it before. It says what the code does today:
+#   - The page always opens on Başvurular (enrolments-tabs.tsx:65), also for a course that takes anyone (an empty table and
+#     "Bu ders onay istemiyor"), so a müderris who came to complete someone changes tab first. Kayıtlı and Tamamlayanlar each
+#     draw their own table (a Base UI TabsPanel is not kept mounted, so a tab's search, sort and "more" start again every time
+#     the tab is opened; read from Base UI, not verified in a browser).
+#   - The search, the sort and "Daha fazla göster" are the browser's own: the whole roster was read by the server, ten rows are
+#     shown, and nothing asks the API again. "Tamamladı say" and "Yeniden aç" are the only calls: PATCH with {status}.
+#   - Whoever holds enrollment.complete sees the buttons: the müderris by default, a ders nazırı once the müderris grants it. A
+#     ders nazırı who holds enrollment.decide only (the seed's) reads the same lists with no button at all.
+#   - After a completion the row is taken off Kayıtlı by the refreshed list, so the focus is lost (F-D1-05); a search box that
+#     held the talebe's name keeps it and now finds nobody.
+#   - Findings it carries: F-D1-04, F-D1-05, F-D1-20, F-D1-01 (the failed read draws a second h1), and four of its own, ROSCOM-1
+#     to ROSCOM-4 (ui.yaml `rules`): the pressed button is natively disabled too, a barred talebe's "Yeniden aç" is drawn and
+#     refused with a vague toast, the Tamamlayanlar tab cannot say when a course was completed, and a completion tells the
+#     talebe nothing while it takes the celses out of their schedule and invitations.
+schema: delurio-graph/0
+kind: flow
+id: nazar.roster.complete
+status: captured
+domain: medaris.api
+ui: nazar.roster.complete
+title: Mark a talebe's course complete, and reopen it
+summary: >-
+  The müderris opens Talebeler from the course menu. The page opens on Başvurular (empty for a course that takes anyone);
+  "Kayıtlı" lists the enrolled talebe ten at a time with a search box (name or e-mail, in the browser), a sort on the name
+  column and "Daha fazla göster". "Tamamladı say" on a row marks that talebe's course complete: the row is busy, a toast says
+  "Talebe Tamamlayanlar’a taşındı", and the row leaves Kayıtlı for Tamamlayanlar, where "Yeniden aç" gives the seat back to
+  Kayıtlı. A seat that somebody moved meanwhile leaves the list with a notice, not an error. A reader who holds
+  enrollment.decide only (a ders nazırı) reads the lists with no button; one who holds nothing is refused. Nothing says out
+  loud that a completion takes the celses out of the talebe's schedule (ROSCOM-4).
+
+scope:
+  shows: >-
+    the Talebeler page of one course for its müderris: the tabs Başvurular, Kayıtlı and Tamamlayanlar, the search, the sort,
+    "Daha fazla göster", "Tamamladı say" and "Yeniden aç" with their busy rows and toasts, and the page for a reader with no
+    button, a refused reader and a failed read
+  world: open
+  outOfView:
+    - "Onayla and Reddet on Başvurular, and the page's approval note for a course that asks for it: nazar.roster.decide"
+    - "Dersten çıkar (drawn on every Kayıtlı row, never pressed here) and the tab Erişimi kaldırılanlar: nazar.roster.remove"
+    - "Toplu talebe ekle (drawn for whoever holds enrollment.decide, never pressed here): nazar.roster.bulkAdd"
+    - "what the talebe sees once their course is complete or reopened: tedris.course.readProgramme (the card and, while enrolled, the progress counted from the celses watched), tedris.learning.schedule"
+    - "a roster of ten or fewer (no \"Daha fazla göster\"), an empty Kayıtlı tab (\"Kayıtlı talebe yok\"), and the search, the sort and the paging of Tamamlayanlar, which are the same component as Kayıtlı's"
+    - "a reader who holds enrollment.complete without enrollment.remove (or the other way round): the buttons are drawn one by one; the graph draws the müderris, who holds both, and the decider, who holds neither"
+    - "the phone: each row becomes a card below 768 px (Table responsive=\"stack\"); the same nodes"
+    - "a nazır of the medrese or the başnazım opening a course they do not teach: the layout answers for them (portal-layout.tsx)"
+
+decisions:
+  D1:
+    question: >-
+      Should a completion be told to the talebe? setEnrollmentStatus sends no notification, the course leaves the talebe's
+      Programım and the invitation sweep cancels the calendar invitations of its coming celses (a seat that is not ENROLLED is not
+      owed one), and the toast says only "{name} dersi tamamladı".
+    recommend: >-
+      Yes: a notification to the talebe ("{course} dersi tamamlandı olarak işaretlendi", and "yeniden açıldı" for a reopening), and
+      a second sentence in the toast that says the coming celses leave the talebe's schedule.
+    affects: [completing, reopening]
+  D2:
+    question: >-
+      Should Tamamlayanlar say when a course was completed? The roster read carries no completedAt (RosterEnrollmentResponse has
+      none; MyEnrollmentResponse has it), so the table shows the day the talebe joined, under "Kayıt tarihi".
+    recommend: >-
+      Add completedAt to the roster response and a "Tamamlanma tarihi" column to Tamamlayanlar; the icazet record that is
+      planned (P-06, MDRS-149) needs the same date.
+    affects: [completed]
+
+context:
+  reader:
+    values: [team, decider, nobody, down]
+    initial: any
+    say:
+      team: "the reader holds enrollment.complete and enrollment.remove in the course (the müderris by default; a ders nazırı once the müderris grants them): every button is drawn"
+      decider: "the reader holds enrollment.decide and no more (the seeded ders nazırı): the lists are read, Toplu talebe ekle is drawn, and no row has a button"
+      nobody: "the reader holds none of the page's codes (a ders nazırı the müderris gave nothing): the page says they have no access"
+      down: "a read the page needs fails (the API does not answer, or answers with a failure that is not a 403 or a 404)"
+  search:
+    values: [none, name, email, nobody]
+    initial: none
+    say:
+      none: "the search box of the open tab is empty"
+      name: "the box holds a name that one talebe has"
+      email: "the box holds an e-mail address (or a part of it) that one talebe has"
+      nobody: "the box holds a word that no row has any more: the table says \"Aramaya uyan talebe yok\""
+  order:
+    values: [ascending, descending]
+    initial: ascending
+    say:
+      ascending: "the Talebe column is sorted by name, A to Z in Turkish order (the start)"
+      descending: "the Talebe column is sorted Z to A"
+  more:
+    values: [first, all]
+    initial: first
+    say:
+      first: "ten rows are shown and \"Daha fazla göster\" is there (a roster of twelve, as the walk makes)"
+      all: "every row is shown and the button is gone"
+  done:
+    values: [none, some]
+    initial: none
+    say:
+      none: "nobody has completed the course: Tamamlayanlar says \"Dersi tamamlayan talebe yok\""
+      some: "one talebe has completed it and is listed in Tamamlayanlar. The graph holds one completion at a time (a second \"Tamamladı say\" is not drawn as a step), so it needs no count"
+  last:
+    values: [nothing, completed, reopened, gone, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      completed: "a talebe's course was just marked complete"
+      reopened: "a completion was just reopened"
+      gone: "the seat was not as the page showed it (removed, or never there); the list was read again"
+      refused: "the API refused the change for lack of permission"
+      failed: "the API refused it for another reason (a barred talebe, a course that is gone), or failed"
+
+guards:
+  teamReads: "reader == 'team'"
+  rowsShown: "search != 'nobody'"
+  searched: "search in ['name', 'email']"
+  moreRows: "more == 'first' and search == 'none'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  fresh: { set: { search: none, order: ascending, more: first } } # a tab's table is drawn anew each time its tab is opened
+  typedName: { set: { search: name, more: first } }
+  typedEmail: { set: { search: email, more: first } }
+  typedNobody: { set: { search: nobody, more: first } }
+  erased: { set: { search: none, more: first } }
+  sortedDown: { set: { order: descending } }
+  sortedUp: { set: { order: ascending } }
+  showedAll: { set: { more: all } }
+  completedPlain: { set: { last: completed, done: some } }
+  completedSearched: { set: { last: completed, done: some, search: nobody } } # the row the box found has left Kayıtlı; the box still holds its name
+  reopened: { set: { last: reopened, done: none } }
+  gonePlain: { set: { last: gone } }
+  goneSearched: { set: { last: gone, search: nobody } }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: getMyCoursePermissions
+    missing: [COURSE_NOT_FOUND]
+    failed: []
+  reading:
+    from: listCourseEnrollments
+    failed: []
+  completing:
+    from: setEnrollmentStatus
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  reopening:
+    from: setEnrollmentStatus
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    barred: [BAN_ACTIVE]
+    other: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the müderris of a course of twelve talebe goes from Başvurular to Kayıtlı, sorts the names
+# Z to A and back, shows the other two rows, finds a talebe by e-mail, empties the box, finds another by name, marks that
+# talebe complete (the box now finds nobody), opens Tamamlayanlar, reopens the completion and goes back to Kayıtlı.
+main:
+  given: { reader: team }
+  events: [DONE, DONE, TAB_ENROLLED, SORT, SORT, MORE, TYPE_EMAIL, ERASE, TYPE_NAME, COMPLETE, DONE, TAB_COMPLETED, REOPEN, DONE, TAB_ENROLLED]
+
+initial: opened
+
+states:
+  opened:
+    title: The page reads what the reader holds
+    description: >-
+      The server component reads, together, the person's zone, the portal's scopes, the course (GET /courses/:id) and what the
+      caller holds in it (GET /courses/:id/my-permissions); the page opens for whoever holds the roster (course.staff_read) or
+      one of enrollment.decide, enrollment.complete and enrollment.remove (pageGate). A reader who holds none of them is the
+      forbidden state, and the roster is read for neither them nor anyone else the gate refuses. A 404 of the permissions read
+      is Next's not-found page; a failure that is neither is the retry state. The page draws behind a loading.tsx of skeletons.
+      Nothing is on the screen of this step.
+    invoke: { action: getMyCoursePermissions }
+    on:
+      DONE:
+        - { guard: "reader == 'nobody'", target: forbidden, source: apps/nazar/features/enrolments/components/enrolments-page.tsx:44 }
+        - { target: reading }
+      FAIL.missing: not_found
+      FAIL.failed: { guard: "reader == 'down'", target: loadFailed, source: apps/nazar/features/enrolments/components/enrolments-page.tsx:68 }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:42
+
+  reading:
+    title: The roster is read
+    description: >-
+      GET /courses/:id/enrollments (and, beside it, GET /courses/:id/enrollments/removed), as the person who holds the roster:
+      requests first, then the enrolled, the completed and the removed. The read writes an audit row (course.roster_read)
+      unless the reader is the course's müderris or a talebe of it with no other role, and a failed audit write fails the read.
+      Nothing is on the screen of this step.
+    invoke: { action: listCourseEnrollments }
+    on:
+      DONE: { guard: "reader != 'down'", target: applications, source: apps/nazar/features/enrolments/components/enrolments-page.tsx:94 }
+      FAIL.failed: { guard: "reader == 'down'", target: loadFailed, source: apps/nazar/features/enrolments/components/enrolments-page.tsx:71 }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:48
+
+  forbidden:
+    title: The page says the reader has no access
+    description: >-
+      The header (the title "Talebeler" and its line) stays and a neutral Alert says "Bu sayfaya izniniz yok" under it: no tabs,
+      no table, no button. A neutral Alert is a status, not an alert, and its title is a paragraph (the same words as every page
+      of the course; the story of a ders nazırı with no code is nazar.access.dersNazirPages).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  loadFailed:
+    title: The read failed
+    description: >-
+      The header stays and a section takes the place of the tabs: its own h1 "Talebeler okunamadı" (a second h1 on the page,
+      F-D1-01), "Talebeler şu an okunamadı. Birkaç saniye sonra yeniden deneyin." and "Yeniden dene", which asks the server
+      again with router.refresh() and is busy meanwhile. Never worded as "no access". The stack cannot make the API fail for one
+      account, so this state is drawn and not walked.
+    by: human
+    on:
+      RETRY: { target: opened, say: "they press Yeniden dene: the page is read again", source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:85
+
+  applications:
+    title: Başvurular, the tab the page opens on
+    description: >-
+      The tablist "Talebe durumu" with four tabs and the number of rows in each, and under it the panel of Başvurular: for a course
+      that takes anyone, "Bu ders onay istemiyor; talebeler başvurur başvurmaz kaydolur." and the table "Onay bekleyen başvurular"
+      with its empty line. The page opens here whatever the lists hold (useState("applications")). "Toplu talebe ekle" is drawn
+      above the tabs for whoever holds enrollment.decide. The page sets no focus.
+    by: human
+    on:
+      TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_APPLICATIONS: { target: applications, say: "they press Başvurular, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234
+
+  enrolled:
+    title: Kayıtlı, the enrolled talebe
+    description: >-
+      The panel of Kayıtlı: the help line "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar.", a search box
+      ("Talebe ara", placeholder "Ada ya da e-postaya göre ara…"), the table "Kayıtlı talebeler" with the columns Talebe (a sort
+      button; aria-sort), E-posta, Kayıt tarihi, İlerleme and, for a reader who holds enrollment.complete or enrollment.remove, a
+      column of buttons ("Tamamladı say" and "Dersten çıkar" on each row), the line "12 talebeden 10 tanesi gösteriliyor" and, while
+      more rows wait, "Daha fazla göster". Typing filters the rows in the browser (name or e-mail, case and diacritics ignored,
+      Turkish) and starts again from ten rows; a word nobody has leaves the table's one cell "Aramaya uyan talebe yok" and no
+      "showing" line. Pressing the Talebe header flips the sort (ascending first). Findings read here: F-D1-04 (the "showing" line
+      and the empty-search cell are no live region: a search, a sort and "more" say nothing out loud), F-D1-05 ("Daha fazla
+      göster" unmounts when the list is complete, and the row of a completion leaves, so the focus falls to the body),
+      ROSCOM-1 (a busy row's buttons are natively disabled), ROSCOM-2 (a barred talebe's row says nothing of the ban). A toast of
+      the last decision stands in the page for a few seconds (`last`), a toast is a dialog in a live region.
+    by: human
+    goal: true
+    on:
+      TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_ENROLLED: { target: enrolled, say: "they press Kayıtlı, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
+      SORT:
+        - { guard: "order == 'ascending'", target: enrolled, effect: [sortedDown], say: "they press the Talebe header: the rows are sorted Z to A", source: apps/nazar/features/enrolments/components/roster-table.tsx:229 }
+        - { target: enrolled, effect: [sortedUp], say: "they press it again: A to Z", source: apps/nazar/features/enrolments/components/roster-table.tsx:229 }
+      MORE: { guard: moreRows, target: enrolled, effect: [showedAll], say: "they press Daha fazla göster: ten more rows are shown (all that are left)", source: apps/nazar/features/enrolments/components/roster-table.tsx:246 }
+      TYPE_NAME: { guard: "search == 'none'", target: enrolled, effect: [typedName], say: "they type a name one talebe has", source: apps/nazar/features/enrolments/components/roster-table.tsx:210 }
+      TYPE_EMAIL: { guard: "search == 'none'", target: enrolled, effect: [typedEmail], say: "they type an e-mail address one talebe has", source: apps/nazar/features/enrolments/components/roster-table.tsx:210 }
+      TYPE_NOBODY: { guard: "search == 'none'", target: enrolled, effect: [typedNobody], say: "they type a word no talebe has", source: apps/nazar/features/enrolments/components/roster-table.tsx:210 }
+      ERASE: { guard: "search != 'none'", target: enrolled, effect: [erased], say: "they empty the box: every row is back, ten of them", source: apps/nazar/features/enrolments/components/roster-table.tsx:210 }
+      COMPLETE: { guard: "reader == 'team' and search != 'nobody' and done == 'none'", target: completing, effect: [clearNote], say: "they press Tamamladı say on a row", source: apps/nazar/features/enrolments/components/roster-table.tsx:187 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:197
+
+  completing:
+    title: The completion is on its way
+    description: >-
+      setCompleted calls PATCH /courses/:id/enrollments/:userId with {status: COMPLETED} (200, the row). The pressed row's buttons are
+      off (`disabled` on both "Tamamladı say" and "Dersten çıkar") and "Tamamladı say" is busy ("Yükleniyor" for a reader of the
+      screen, a default hard-coded in the button); the other rows stay live. The API sets completedAt (kept if it is already set),
+      kicks the invitation sweep (the talebe's coming celses leave their schedule and calendar) and sends no notification. A
+      success toasts "Talebe Tamamlayanlar’a taşındı" and reads the page again; "the seat is not as shown" (ENROLLMENT_NOT_FOUND or
+      ENROLLMENT_STATE_CONFLICT: removed, or a request) is an info toast and the same refresh; every other refusal leaves the row with
+      an error toast and no refresh. No try/catch wraps the call: a browser that cannot reach Next leaves the row busy for good
+      (F-D1-20, not verified). Findings: ROSCOM-1, ROSCOM-4, F-D1-20.
+    invoke: { action: setEnrollmentStatus }
+    on:
+      DONE:
+        - { guard: searched, target: enrolled, effect: [completedSearched], source: apps/nazar/features/enrolments/components/roster-table.tsx:101 }
+        - { target: enrolled, effect: [completedPlain], source: apps/nazar/features/enrolments/components/roster-table.tsx:101 }
+      FAIL.gone:
+        - { guard: searched, target: enrolled, effect: [goneSearched], source: apps/nazar/features/enrolments/enrolments.ts:224 }
+        - { target: enrolled, effect: [gonePlain], source: apps/nazar/features/enrolments/enrolments.ts:224 }
+      FAIL.forbidden: { target: enrolled, effect: [refused], source: apps/nazar/features/enrolments/enrolments.ts:213 }
+      FAIL.other: { target: enrolled, effect: [failed], source: apps/nazar/features/enrolments/enrolments.ts:218 }
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:75
+
+  completed:
+    title: Tamamlayanlar, the talebe who completed the course
+    description: >-
+      The panel of Tamamlayanlar: a search box, the table "Dersi tamamlayan talebeler" with the same columns as Kayıtlı (the column
+      "Kayıt tarihi" is the day the talebe joined, not the day the course was completed: ROSCOM-3) and, for a reader who holds
+      enrollment.complete, "Yeniden aç" on each row; or, before anyone completes, the one cell "Dersi tamamlayan talebe yok". A
+      barred talebe's row has "Yeniden aç" like any other, though the API refuses it (ROSCOM-2). The tab count and the one of Kayıtlı
+      moved with the completion; the toast of the last decision may still be up.
+    by: human
+    on:
+      TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: libs/ui/src/mds/tabs.tsx:94 }
+      TAB_COMPLETED: { target: completed, say: "they press Tamamlayanlar, the tab they are on: nothing changes", source: libs/ui/src/mds/tabs.tsx:94 }
+      REOPEN: { guard: "reader == 'team' and done == 'some'", target: reopening, effect: [clearNote], say: "they press Yeniden aç on the row", source: apps/nazar/features/enrolments/components/roster-table.tsx:187 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:263
+
+  reopening:
+    title: The reopening is on its way
+    description: >-
+      The same setCompleted, with {status: ENROLLED}: PATCH /courses/:id/enrollments/:userId (200). The row's buttons are off, "Yeniden aç"
+      is busy. The API clears completedAt, and refuses a barred talebe (BAN_ACTIVE, 403): the page words that as the generic
+      "Bir şeyler ters gitti" and keeps the row (ROSCOM-2). A success toasts "Kayıt yeniden açıldı", "{name} yeniden Kayıtlı sekmesinde.",
+      and the list is read again; the row has left Tamamlayanlar.
+    invoke: { action: setEnrollmentStatus }
+    on:
+      DONE: { target: completed, effect: [reopened], source: apps/nazar/features/enrolments/components/roster-table.tsx:101 }
+      FAIL.gone: { target: completed, effect: [gonePlain], source: apps/nazar/features/enrolments/enrolments.ts:224 }
+      FAIL.forbidden: { target: completed, effect: [refused], source: apps/nazar/features/enrolments/enrolments.ts:213 }
+      FAIL.barred: { target: completed, effect: [failed], source: apps/nazar/features/enrolments/enrolments.ts:218 }
+      FAIL.other: { target: completed, effect: [failed], source: apps/nazar/features/enrolments/enrolments.ts:218 }
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:75
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the permissions read is Next's not-found page (lib/tedrisat-read.ts:43-50). The layout answers it first for a person who holds no seat in the course, so the read itself meets it only when the course goes between the two."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-the-team-completes
+    never: "state in ['completing', 'reopening'] and reader != 'team'"
+    say: A course is completed or reopened only by a reader the page drew the buttons for; the others read the lists.
+    source: apps/nazar/features/enrolments/enrolments.ts:199
+  - id: reopen-needs-a-completion
+    never: "state == 'reopening' and done == 'none'"
+    say: Yeniden aç is pressed only on a row of Tamamlayanlar, so only after someone completed.
+    source: apps/nazar/features/enrolments/enrolments.ts:204
+  - id: no-row-to-complete-in-an-empty-search
+    never: "state == 'completing' and search == 'nobody'"
+    say: A search that finds nobody has no row, so no row is completed from it.
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:230
+  - id: refused-means-nobody
+    never: "state == 'forbidden' and reader != 'nobody'"
+    say: The refusal shows only for a reader who holds none of the page's codes.
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:44
+  - id: a-completion-toast-means-a-completion
+    never: "last == 'completed' and done == 'none'"
+    say: The toast that says a talebe moved to Tamamlayanlar is up only while someone is listed there.
+    source: apps/nazar/features/enrolments/components/roster-table.tsx:81

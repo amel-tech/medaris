@@ -1,0 +1,169 @@
+# tedris.decks.importExport on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000 as the spare talebe
+# `applicantG`, who owns a throwaway deck "Aktarma denemesi" that the walk makes and takes away.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/importExport --bind graphs/tedris/decks/importExport/binding.yaml --out <dir> [--cover transitions] [--absent]
+# NOT REPLAYED in the writing phase (the owner moved every replay to the walk phase): the binding was only loaded, with `replay ... --emit-spec`.
+# Everything below is therefore "from the code and the engine's source", and the checks in `setup` and `effects` are what the walk phase proves.
+#
+# THE ONE VERB THE ENGINE LACKS. The replay has no action that puts a file into an <input type=file> (`fill` refuses one: Playwright throws
+# "Input of type "file" cannot be filled"; apps/engine/src/bind.ts lists goto, reload, click, fill, key, waitUrl, waitText, waitResponse, run).
+# So CHOOSE_FILE has no node and no `events.CHOOSE_FILE` here, and every step from it on (SUBMIT with a file, the importing state, the two
+# alerts, the success toast, the closed-while-sending state) is not drivable; the walks reach the dialog, the empty send, the template links and the
+# export, and stop. The ask is one action, e.g. `{ attach: { css: 'input[type=file]' }, files: ['{upload}'], type: text/csv }` (Playwright's
+# setInputFiles). When it exists, `events.CHOOSE_FILE` below is the whole change; each scenario already names its file in `vars.upload`.
+#
+# Data. The walk's own, nothing seeded is touched. `deck-files.mjs up` makes the deck (private, "Kelime" type) of applicantG with the cards a
+# scenario asks for, writes the six files a person would choose (clean, bad, tooMany, empty, semicolon, numeric: see its header) and
+# graphs/.local/deck-files.json, which this binding reads as `files`; `down` deletes the deck and the files. Both are idempotent (`up` takes
+# away what an earlier walk left). The probes it runs in `setup` are the route-level facts the findings stand on; each refused case writes
+# nothing, and the SQL count of the deck's cards is the check that none was written.
+#
+# Scenarios (each starts at /decks/<deck>/cards by its address: the nav's entry deck->deckCards is `data: true` and the nav binding has no
+# locator for it; the nav goal of this flow is the same page):
+#   exportThenImport   the main story: deck empty, the routes answer, a clean file. Walkable up to CHOOSE_FILE.
+#   filledBad          a deck with three cards and bad.csv: `--to dialog` and the answer 422 (not drivable until `attach`).
+#   tooMany            an empty deck and a file of 1001 rows: 422 on row 1002 (IMPEXP-2).
+#   turnedDown         an empty deck and empty.csv: 400, one alert; the setup also probes semicolon.csv (400, IMPEXP-3) and the clean file
+#                      with the type application/vnd.ms-excel (500, IMPEXP-1).
+# Not bound: `routes: refused` (a refusal of the export or the template needs the deck deleted, the session ended or the bulk budget used
+# under an open page; no `before` hook can do that between the press and the call), and so every `FAIL.refused` of `exporting` and `sampling`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.importExport
+
+data:
+  files: { json: ../.local/deck-files.json }
+
+scenarios:
+  exportThenImport:
+    given: { deck: empty, routes: served, file: clean }
+    as: applicantG
+    open: '{tedris}/decks/{files.deck}/cards'
+    vars: { cardsBefore: '0', cardsAfter: '2', upload: '{files.clean}' }
+    setup:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, up, applicantG]
+        expect: 'deck-files up'
+    teardown:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, down, applicantG]
+        expect: 'deck-files down'
+
+  filledBad:
+    given: { deck: filled, routes: served, file: badRows }
+    as: applicantG
+    open: '{tedris}/decks/{files.deck}/cards'
+    vars: { cardsBefore: '3', cardsAfter: '3', upload: '{files.bad}' }
+    setup:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, up, applicantG, --cards, '3']
+        expect: 'cards=3'
+      # what the answer to bad.csv is, as the page's own route gives it: rows 2 and 3, nothing written
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, bad]
+        expect: 'probe import bad 422 rows=2,3'
+      # a front that is a number comes back as a row error (IMPEXP-4)
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, numeric]
+        expect: 'probe import numeric 422 rows=2 fields=contentFront'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deck}'"]
+        expect: '"c":3'
+    teardown:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, down, applicantG]
+        expect: 'deck-files down'
+
+  tooMany:
+    given: { deck: empty, routes: served, file: tooMany }
+    as: applicantG
+    open: '{tedris}/decks/{files.deck}/cards'
+    vars: { cardsBefore: '0', cardsAfter: '0', upload: '{files.tooMany}' }
+    setup:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, up, applicantG]
+        expect: 'deck-files up'
+      # the one error the API gives for more than 1000 rows is on row 1002, field "cards" (IMPEXP-2)
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, tooMany]
+        expect: 'probe import tooMany 422 rows=1002 fields=cards'
+    teardown:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, down, applicantG]
+        expect: 'deck-files down'
+
+  turnedDown:
+    given: { deck: empty, routes: served, file: rejected }
+    as: applicantG
+    open: '{tedris}/decks/{files.deck}/cards'
+    vars: { cardsBefore: '0', cardsAfter: '0', upload: '{files.empty}' }
+    setup:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, up, applicantG]
+        expect: 'deck-files up'
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, empty]
+        expect: 'probe import empty 400'
+      # a CSV with semicolons, as Excel in a Turkish locale saves one (IMPEXP-3): no header matches, so no data row
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, semicolon]
+        expect: 'probe import semicolon 400'
+      # a CSV whose type is application/vnd.ms-excel is read as a workbook (IMPEXP-1): from the code a 500, not seen on the API
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, import, excelCsv]
+        expect: 'probe import excelCsv 500'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deck}'"]
+        expect: '"c":0'
+    teardown:
+      - run: [node, ../tedris/decks/importExport/deck-files.mjs, down, applicantG]
+        expect: 'deck-files down'
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+  # CHOOSE_FILE: [{ attach: ... }]   needs the engine's file-input action (see the header); `{upload}` is each scenario's file
+
+states:
+  # the file links are plain navigations that the browser saves (<a download>): the call is held while the screen is checked and its status compared.
+  # NOT WALKED: if a held download request hangs the walk, take `call` off exporting and sampling; the effects below read the same routes by curl-less probes
+  exporting: { call: '{tedris}/api/decks/*/export*' }
+  sampling: { call: '{tedris}/api/decks/sample*' }
+  # the import is a fetch from the dialog: held while the busy button and the hidden "Yükleniyor" are checked, then released
+  importing: { call: '{tedris}/api/decks/*/import' }
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # the deck saved as a file: the xlsx the link names, and the same deck as a CSV (the route also gives one) with the cards the scenario started with
+  webExportCards:
+    - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, export, xlsx]
+      expect: 'probe export xlsx 200 file=Aktarma_denemesi.xlsx zip=yes'
+    - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, export, csv]
+      expect: 'header=Card Type,Content Front,Content Back cards={cardsBefore} bom=none'
+  # the template, both ways: the xlsx is a zip; the csv has the header and the two example rows, and no byte-order mark (IMPEXP-3)
+  webDownloadCardSample:
+    - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, sample, xlsx]
+      expect: 'probe sample xlsx 200 file=sample.xlsx zip=yes'
+    - run: [node, ../tedris/decks/importExport/deck-files.mjs, probe, sample, csv]
+      expect: 'header=Card Type,Content Front,Content Back cards=2 bom=none'
+  # a clean file: every row is a card of the deck
+  webImportCards:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deck}'"]
+      expect: '"c":{cardsAfter}'
+  # a refused file adds nothing
+  rowsRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deck}'"]
+      expect: '"c":{cardsBefore}'
+  fileRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deck}'"]
+      expect: '"c":{cardsBefore}'
+
+nodes:
+  # a bare role=main is also on the page a walk leaves for: this page's is told by its own button
+  cardsMain: { role: main, hasText: Dışa aktar }
+  # the page's "İçe aktar" and the dialog's share their words; the page behind a dialog is inert, and the dialog's is told by where it is
+  submit: { role: button, name: İçe aktar, within: { role: dialog } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  # the toast is a Base UI role=dialog in the region "Bildirimler", found by its tone class; its close button has the same name as the dialog's icon
+  importedToast: { css: '.mds-toast--success', hasText: Kartlar içe aktarıldı }
+  importedTitle: { css: '.mds-toast--success .mds-toast__title' }
+  importedText: { css: '.mds-toast--success .mds-toast__desc' }
+  toastClose: { css: '.mds-toast--success button[aria-label=Kapat]' }
+  # a file input has no ARIA role
+  fileField: { css: 'input[type=file]' }
+  # the sentence shares its <p> with the two links
+  sampleLead: { css: 'p.mds-body-sm', hasText: Örnek şablonu indir }
+  # the row alert and the failure alert are both role=alert; the dialog's body holds at most one of them
+  rowAlert: { css: '[role=alert]', hasText: satırda sorun var }
+  rowAlertTitle: { css: '.mds-alert__title', hasText: satırda sorun var }
+  rowList: { css: '.mds-alert ul' }
+  rowItem: { css: '.mds-alert li', hasText: '/^Satır \d+: /' } # the sample's words are one row's; the pattern is every row's
+  failedAlert: { css: '[role=alert]', hasText: Dosya içe aktarılamadı }
+  failedTitle: { css: '.mds-alert__title', hasText: Dosya içe aktarılamadı }
+  failedText: { css: '.mds-alert', hasText: '/Bir sorun oluştu\. Yeniden dene\./' } # a bare text node in the alert, under its title
+  # the busy button's hidden <output>
+  busy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }

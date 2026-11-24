@@ -1,0 +1,204 @@
+# tedris.learning.addToCalendar on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantH`.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learning/addToCalendar --bind graphs/tedris/learning/addToCalendar/binding.yaml --out <dir>
+#
+# Data. The walk's own, nothing seeded is touched: `helpers/course.mjs make addToCalendar` opens a published course in the second köşk
+# with one müderris, one week and three live celses (yesterday, tomorrow, in three days, 21:00 in Istanbul) and gives applicantH a
+# seat; `calendar-data.mjs up` gives each celse a meeting link (so that "no meeting link in the file" is a check that can fail), finds
+# the next upcoming celse and writes it, a calendar feed link of applicantH and a signed-in web session of applicantH (a Cookie header
+# in a curl config, git-ignored) to graphs/.local/add-to-calendar.json and the two `.curl` files beside it. `teardown` deletes the feed
+# link and the files, then the course with everything under it, and checks with SQL that applicantH holds no feed link. `up` and
+# `course.mjs make` are idempotent (each starts by taking away what an earlier walk left).
+#
+# What is replayed. The menu and Esc, the file (the browser's own download, then the same route read through curl: status line, headers
+# and body), the way to the subscription, and the feed a calendar app reads (curl with the address' secret). The event CALENDAR_APP_POLLS
+# is that curl. Not walked here, so not bound: the Google row (it opens a new tab at calendar.google.com and the replay follows only the
+# page it came from; the address is checked by e2e schedule#6), the failures that need another person or another page (signedOut, the
+# feed's 404, 429 and 503 beyond the two 404s the effects read), and the course card's menu (scenario fromCourse, bound, not walked).
+# Replay status. The main story was walked once, on 2026-11-15 (the owner then moved every replay to the walk phase): every state and effect
+# passed (the focus on the button after Esc and after the file, the held call answered 200, both curl effects, the feed) except one node,
+# `celseMain`, whose bare `role: main` locator also matched Programım's main where the graph expects it hidden. The locator below is the
+# fix; it was not walked again. The refused walk, the three other scenarios and the course card's menu were not walked at all (walk phase).
+# The `refused` walk is binding.refused.yaml: the course is hidden between opening the menu and choosing the file.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learning.addToCalendar
+
+data:
+  made: { json: ../.local/made/addToCalendar.json }
+  cal: { json: ../.local/add-to-calendar.json }
+
+scenarios:
+  # Open: Programım, through the menu's "Programım". The main story: the menu and Esc, the file, the subscription and the feed.
+  fromProgramim:
+    given: { place: schedule }
+    as: applicantH
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->schedule' }
+    setup:
+      - run: [node, helpers/course.mjs, make, addToCalendar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '3', --start, '-1', --hoca, MUDERRIS, --talebe, APPLICANT_H]
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, up]
+        expect: 'calendar-data up'
+    teardown:
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, down]
+        expect: 'calendar-data down'
+      - run: [node, helpers/course.mjs, remove, addToCalendar]
+        expect: 'removed'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"c":0'
+
+  # Open: the page of the next celse of the made course (`--to menu` and the like; not walked in this phase).
+  fromCelse:
+    given: { place: celse }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}/lessons/{cal.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, addToCalendar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '3', --start, '-1', --hoca, MUDERRIS, --talebe, APPLICANT_H]
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, up]
+        expect: 'calendar-data up'
+    teardown:
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, down]
+        expect: 'calendar-data down'
+      - run: [node, helpers/course.mjs, remove, addToCalendar]
+        expect: 'removed'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"c":0'
+
+  # Open: the course page of the made course, whose enrolled card offers its next celse (not walked in this phase).
+  fromCourse:
+    given: { place: course }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, addToCalendar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '3', --start, '-1', --hoca, MUDERRIS, --talebe, APPLICANT_H]
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, up]
+        expect: 'calendar-data up'
+    teardown:
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, down]
+        expect: 'calendar-data down'
+      - run: [node, helpers/course.mjs, remove, addToCalendar]
+        expect: 'removed'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"c":0'
+
+  # Open: the page of the celse that was held yesterday, where no calendar button is drawn (`--to not_offered`; not walked in this phase).
+  onHeldCelse:
+    given: { place: closed }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}/lessons/{cal.past}'
+    setup:
+      - run: [node, helpers/course.mjs, make, addToCalendar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '3', --start, '-1', --hoca, MUDERRIS, --talebe, APPLICANT_H]
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, up]
+        expect: 'calendar-data up'
+    teardown:
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, down]
+        expect: 'calendar-data down'
+      - run: [node, helpers/course.mjs, remove, addToCalendar]
+        expect: 'removed'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"c":0'
+
+events:
+  # the menu closes with Esc, wherever the focus is
+  CLOSE_MENU: [{ key: Escape }]
+  # a calendar app reads the address the subscription page gave: a curl with that address and no session
+  CALENDAR_APP_POLLS:
+    - run: [curl, -sS, -D, '-', -o, /dev/null, -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'HTTP/1.1 200 OK'
+
+states:
+  # the file is a fetch of the page; the call is held while the screen is checked, and its status compared (a 200 on DONE, a refusal's on FAIL.refused)
+  downloading: { call: '{tedris}/api/lessons/*/calendar*' }
+  # the course card's link is a navigation: the browser saves the file and the page stays
+  linking: { call: '{tedris}/api/lessons/*/calendar*' }
+  # the subscription page is tedris.account.calendarFeed's: only its address and its heading are checked here
+  subscribed: { url: '{tedris}/account/calendar' }
+  # the feed is read by curl, so the browser is where it was
+  feed_served: { url: '{tedris}/account/calendar' }
+
+effects:
+  # The .ics of one celse through tedris-web's own route, read as the walk's talebe with the web session `calendar-data.mjs` made (a Cookie
+  # header in a curl config file, never on a command line), and the same route's two refusals that need no session.
+  webGetLessonCalendar:
+    - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, signin]
+      expect: 'calendar-data signin'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'HTTP/1.1 200 OK'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'content-type: text/calendar; charset=utf-8'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'content-disposition: attachment; filename="medaris-{cal.lesson}.ics"'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'cache-control: private, no-store'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'BEGIN:VEVENT'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'UID:lesson-{cal.lesson}@medaris.app'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.lesson.curl]
+      expect: 'SUMMARY:{cal.courseTitle} — {cal.title}'
+    - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, absent, lesson, meet.example.test]
+      expect: 'absent meet.example.test'
+    - run: [curl, -sS, -D, '-', -o, /dev/null, '{tedris}/api/lessons/{cal.lesson}/calendar?locale=tr']
+      expect: 'HTTP/1.1 307 Temporary Redirect'
+    - run: [curl, -sS, -D, '-', -o, /dev/null, '{tedris}/api/lessons/{cal.lesson}/calendar?locale=tr']
+      expect: 'location: {tedris}/auth/signin?callbackUrl=%2Fapi%2Flessons%2F{cal.lesson}%2Fcalendar%3Flocale%3Dtr'
+    - run: [curl, -sS, -D, '-', '{tedris}/api/lessons/not-a-uuid/calendar']
+      expect: 'HTTP/1.1 404 Not Found'
+    - run: [curl, -sS, -D, '-', '{tedris}/api/lessons/not-a-uuid/calendar']
+      expect: '"error":"Not found"'
+  # The personal feed as a calendar app reads it: no session, the secret in the address (the curl config file holds it).
+  webGetCalendarFeed:
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'HTTP/1.1 200 OK'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'content-type: text/calendar; charset=utf-8'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'content-disposition: inline; filename="medaris.ics"'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'cache-control: private, no-store'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'x-robots-tag: noindex'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'METHOD:PUBLISH'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'X-WR-CALNAME:Medaris'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'REFRESH-INTERVAL;VALUE=DURATION:PT1H'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'X-PUBLISHED-TTL:PT1H'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'UID:lesson-{cal.lesson}@medaris.app'
+    - run: [curl, -sS, -D, '-', -K, ../.local/add-to-calendar.feed.curl]
+      expect: 'UID:lesson-{cal.past}@medaris.app'
+    - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, absent, feed, meet.example.test]
+      expect: 'absent meet.example.test'
+    - run: [curl, -sS, -D, '-', '{tedris}/calendar/short.ics']
+      expect: 'HTTP/1.1 404 Not Found'
+    - run: [curl, -sS, -D, '-', '{tedris}/calendar/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.ics']
+      expect: '"error":"CALENDAR_FEED_NOT_FOUND"'
+    - run: [curl, -sS, -D, '-', '{tedris}/calendar/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.ics']
+      expect: 'cache-control: no-store'
+
+nodes:
+  # a bare role=main is also on the page a walk leaves for: each page's main is told by a text only it holds
+  scheduleMain: { role: main, hasText: Programım }
+  celseMain: { role: main, hasText: '/Müfredat: Hafta/' } # the celse page's pop-up button names its week; Programım's main (a bare role=main matches it too) has no such text
+  courseMain: { role: main }
+  closedMain: { role: main }
+  # the row's button holds the celse's own title, and a title is not unique on the page: the first is the soonest
+  rowTrigger: { role: button, name: 'Takvime ekle: {cal.title}', nth: 0 }
+  rowMenu: { role: menu, name: 'Takvime ekle: {cal.title}' }
+  celseTrigger: { role: button, name: Takvime ekle }
+  celseMenu: { role: menu, name: Takvime ekle }
+  courseTrigger: { role: button, name: Takvime ekle }
+  courseMenuList: { role: menu, name: Takvime ekle }
+  # the note is a <p> inside the popup
+  menuNote: { css: '.mds-popup__note' }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  failedToast: { css: '[role=alertdialog]', hasText: 'Takvim dosyası indirilemedi.' }
+  failedTitle: { css: '[role=alertdialog] p', hasText: 'Takvim dosyası indirilemedi.' }
+  failedClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }

@@ -1,0 +1,20 @@
+# nizam.shell.noAccessAndNotFound for the seeded Medaris nazımı (the seed gives platform.kosk_create, madrasah_create,
+# kosk_edit, audit_read and course_hide), opening Medaris nazımları (/medaris-nazimlari), which is the başnazım's alone
+# (permissions#2: "a Medaris nazımı gets the 'izniniz yok' screen, not the list"). The face keeps the shell, with the Medaris menu; "Ana
+# sayfaya dön" is '/', where the Medaris nazımı stays (the Medaris home).
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/noAccessAndNotFound --bind graphs/nizam/shell/noAccessAndNotFound/binding.medaris.yaml \
+#     --main --absent --out <dir>
+# NOT RUN: written without a replay. It makes and removes nothing: the stack's seed is the data (STACK.md). The checks that need a Medaris
+# nazımı with NO permissions (madrasahs#8, inactive#5 first half) cannot be repeated with the seeded one, who holds madrasah_create and not
+# inactive_scopes_manage: /pasif-kapsamlar is refused for them (seen as a 403 in the served stream), /medreseler opens (needs.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+scenarios:
+  medarisSection:
+    given: { arrival: section, chief: named }
+    as: medarisNazim
+    open: '{nizam}/medaris-nazimlari'
+    vars: { home: / }

@@ -1,0 +1,177 @@
+# The public roadmap of the Medaris site (landing-web, /yol-haritasi). PLANNED: written before its code, status proposed.
+# There is no page, no content file, no link and no word of it in apps/landing (grep for "roadmap" and "yol-haritasi" over
+# apps/landing finds nothing, 16 Nov 2026). Nothing here carries a `source`, nothing is bound and nothing can be walked.
+#
+# Where the story comes from: MDRS-246 "Add a public roadmap page (/yol-haritasi) to the landing site" (Feature, Backlog, no
+# priority; decided 4 October 2026 by the owner; read in Linear on 16 Nov 2026, with no comments), planned.md P-23, and the
+# companion MDRS-245 (the home page rewrite, Done). A visitor opens /yol-haritasi, reads four phases (Bugün, Yakında, Sıradaki,
+# Uzak), each with one of four statuses (Yayında, Yapılıyor, Planlandı, Vizyon), no dates and no target lines, and follows the
+# items to the issues they name. The page is static and its content is hand-written data in the repo (content/), not generated
+# from Linear, because the board is wrong in both directions. No donation or fundraising wording. Recordings are "Ders
+# kayıtları"; the host is never named.
+#
+# What exists today, and is given its real `source` here: the header (apps/landing/components/site-header.tsx:54) and the
+# footer (apps/landing/components/site-footer.tsx:21, its link list at :3-9). Both would gain one link. Nothing else exists.
+# landing.nav already has the page, kind `missing`, and one entry from the frame (frame:site->roadmap). The enterApp flow
+# (finished, captured) draws the header and has the need `roadmap-from-the-header`; it has no transition to this page, and is
+# not edited here (see the report's asks).
+#
+# No API, so no domain sketch (no graphs/domain/planned-roadmap.yaml). The issue decides the content is hand-written data, so
+# the page reads nothing at request time. If it ever read issue statuses live, that would be an action to sketch, and it is
+# open decision D8; none is sketched.
+#
+# OPEN DECISIONS. The graph draws the simplest reading and says what it assumes; each assumption is one key of `decisions`:
+#   D1  Which issues count as "Yayında". Assumed: the nine items of the owner's draft of 4 October, as they stand. The draft
+#       is six weeks old and the code has moved (ROADMAP-1 to ROADMAP-4 in ui.yaml `rules`).
+#   D2  Which far items stay out even carefully worded. Assumed: the six of the draft; tasadduk (donation), a chain-based
+#       icazet ledger, VR/AR, own live-class servers, Matrix, AI traces and peer-reviewed publishing stay out.
+#   D3  What "Yayında" means while production may not be serving (MDRS-96 and MDRS-128 read In Progress in Linear). Assumed:
+#       it is true, and the word stands as decided.
+#   D4  Whether items link to issues, which ones, to where and how. Assumed (the brief's story): each item of the first three
+#       phases is one link, its own text, to the issue or change that backs it, in the same tab; the far items are plain text,
+#       because no issue stands behind them. The Linear text only says the PR description lists each item's backing.
+#   D5  The wording that is not decided: the page's title, the footer and header link, and a one-line introduction.
+#   D6  The header link on a phone, and whether either link marks the current page.
+#   D7  One status per phase (the draft's shape), not one per item.
+#   D8  No live read of the board (no API).
+# Findings against the draft, not against code: ROADMAP-1 to ROADMAP-4 (ui.yaml `rules`).
+schema: delurio-graph/0
+kind: flow
+id: landing.site.roadmap
+status: proposed
+domain: medaris.api
+ui: landing.site.roadmap
+title: Read the public roadmap
+summary: >-
+  A visitor opens the roadmap of the public site, from the footer or the header of any landing page or by its address, with no
+  account. The page has four phases in a fixed order (Bugün, Yakında, Sıradaki, Uzak), each with one status pill (Yayında,
+  Yapılıyor, Planlandı, Vizyon) and a list of what belongs to it, in plain words, with no dates. In the first three phases an
+  item is a link to the issue that backs it; the far phase is plain text. The visitor reads, follows an item to its issue, or
+  leaves. The page is static: it reads nothing when it is opened, so it has no loading, empty or failed state to draw. Planned
+  (MDRS-246); the choices the owner has not made are in `decisions`.
+scope:
+  shows: the roadmap page as a visitor reads it, its own link in the footer and the header, and the link of an item that leaves for an issue
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the ways in: the footer link and the header link of every landing page (landing.nav draws frame:site->roadmap, and landing.site.enterApp's header), a typed address, and a link from another page; the page is the same whatever way the visitor came"
+    - "the other links of the footer (the five pages and GitHub) and of the header (the logo, the theme toggle, \"Giriş yap\", \"Kayıt ol\"): landing.nav draws the frame, landing.site.enterApp the sign-in doors, common.shell.theme the toggle"
+    - "the layout: phone width, light and dark, and reduced motion are acceptance checks of MDRS-246, and no code exists to draw them from; the header is another bar below 768 px (L6) and where the roadmap link sits there is D6"
+    - "the page behind an item's link: an issue of an outside tracker, which another site draws"
+    - "the home page: it carries no summary of the roadmap yet (decided 4 October), and a later summary would be its own change"
+    - "a donation card: added in its own change when the permission is given, not before (decided 4 October)"
+    - "the page's <title> and its metadata, which would follow the site's pattern (\"Yol haritası · Medaris\", as \"Sık sorulan sorular · Medaris\" does): not decided, not drawn"
+
+decisions:
+  D1:
+    question: >-
+      Which issues count as "Yayında"? MDRS-246 says it means what ships at the launch: what is on main, what is in review and
+      a few more issues the owner names, and leaves "name the others" open. The draft of 4 October puts nine items there.
+    recommend: >-
+      Drawn as the draft has it (the nine items, in the catalog as planned.Roadmap.today.1 to 9), and not decided. Before it
+      is built the owner re-sorts the draft against the code, because it is six weeks old: "Herkese açık profil" is built and
+      switched off, so it is not something a visitor can use (ROADMAP-1), and three of the four "Yapılıyor" items have since
+      shipped (ROADMAP-2).
+    affects: [roadmap]
+  D2:
+    question: >-
+      Which far items stay out even carefully worded? The draft leaves out tasadduk (donation), a chain-based icazet ledger,
+      VR/AR, the project's own live-class servers, Matrix, AI traces and peer-reviewed publishing. Whether "Vizyon" shows six
+      items or fewer is the owner's call.
+    recommend: >-
+      Drawn with the six items of the draft (catalog planned.Roadmap.far.1 to 6) and nothing else. No donation wording,
+      whatever the answer (decided 4 October).
+    affects: [roadmap]
+  D3:
+    question: >-
+      Is "Yayında" true while production may not be serving? MDRS-96 and MDRS-128 (create the production environment) were
+      read as In Progress in Linear on 16 Nov 2026, last updated on 8 and 4 October; whether production serves was not checked.
+    recommend: >-
+      Drawn as if production serves: "Yayında" is the decided word and no second wording is drawn. If production does not
+      serve, the word and the status line need a sentence of their own, and that sentence is the owner's.
+    affects: [roadmap]
+  D4:
+    question: >-
+      Do the items link to the issues they name, which of them, to what and in which tab? The story the flow was asked for says
+      the visitor follows the items to their issues. MDRS-246 itself says only that the PR description lists each item with the
+      code or issue that backs its status. The board is a private Linear workspace, which a visitor cannot open; the project's
+      public repository (the footer's GitHub link) has pull requests and numbers that its changelogs link as /issues/N.
+    recommend: >-
+      Drawn as: each item of Bugün, Yakında and Sıradaki is one link, its own text as the link text, to a public issue or pull
+      request, opening in the same tab; the items of Uzak are plain text because no issue stands behind them (the PRD-only
+      items of planned.md A.2 have none). Where an item has no public issue it is plain text too, and which ones is data of the
+      page. If the link opens a new tab, the site's rule (L5) is to say so.
+    affects: [roadmap, issue_opened]
+  D5:
+    question: >-
+      What are the words nobody has decided? The phases and the statuses are decided (Bugün, Yakında, Sıradaki, Uzak; Yayında,
+      Yapılıyor, Planlandı, Vizyon). Not decided: the page's title, the label of the footer and the header link, and whether the
+      page has an introduction.
+    recommend: >-
+      Drawn with "Yol haritası" for all three (the name landing.nav took from the address) and one introduction sentence of the
+      writer's (planned.Roadmap.intro), all marked for review. The items are the owner's draft in its own words, with one
+      change: the calendar item's parenthesis, which named a calendar product beside the file format, keeps the file format only ("(.ics)"), so that no product is named.
+    affects: [roadmap]
+  D6:
+    question: >-
+      Where does the header link sit on a phone, and does either link mark the current page (aria-current)? The issue says "linked
+      from the header and the footer" and nothing of the phone bar, which has the logo, the theme toggle and an icon for sign-in
+      only (L6).
+    recommend: >-
+      Drawn for the wide layout only. The footer link of the page marks itself as current, as the five existing footer links do
+      (site-footer.tsx:27); the header link is drawn with no such mark. Neither is decided.
+    affects: [roadmap]
+  D7:
+    question: >-
+      Is there one status for a whole phase, or one per item? "Four phases and four statuses" and the draft's headings
+      ("Bugün: Yayında", "Yakında: Yapılıyor") read as one per phase.
+    recommend: >-
+      Drawn as one pill per phase, four in all, in the order of the phases. If an item may differ from its phase, each item
+      needs a pill and the four status nodes become one repeated node.
+    affects: [roadmap]
+  D8:
+    question: >-
+      Should the page ever read issue statuses live? MDRS-246 decides against it: the content is hand-written data in the repo,
+      because the board is wrong in both directions.
+    recommend: >-
+      No. The page is static and no API action is drawn. If the owner changes this, a planned action and an entity go in a
+      domain file of their own, and the page gains loading and failed states.
+    affects: [roadmap]
+
+main:
+  events: [OPEN_ISSUE]
+
+initial: roadmap
+states:
+  roadmap:
+    title: Yol haritası, the public roadmap
+    by: human
+    goal: true
+    description: >-
+      PLANNED. The page, drawn from the story (nothing exists to read). A heading, an introduction (D5), and four sections in a
+      fixed order, each a region named by its heading, with one status pill and a list: Bugün with Yayında, Yakında with
+      Yapılıyor, Sıradaki with Planlandı, Uzak with Vizyon (D7). The items are the owner's draft of 4 October (D1, D2): nine,
+      four, six and six. In the first three sections an item is a link whose text is the item (D4); the six of Uzak are plain
+      list items. Every status is one of the four words and is written as text, so it is not carried by colour alone. There is no
+      date and no target line anywhere, and no donation or fundraising word. The recordings item says "Ders kayıtlarını ekleme
+      ve izleme" and never names the host. The page is static, so it works without JavaScript (script: optional in ui.yaml). It
+      sets no initial focus (rule focus-not-set). The header and the footer carry the link to this page, the footer's marked as
+      the current page (D6). EXISTS TODAY, with its real source: the footer (nav "Alt bilgi", site-footer.tsx:21) and the header
+      (site-header.tsx:54); the links to this page are planned. Findings against the draft: ROADMAP-1 to ROADMAP-4.
+    on:
+      OPEN_ISSUE:
+        target: issue_opened
+        say: "they follow an item of Bugün, Yakında or Sıradaki: the browser loads the issue it names (D4)"
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  issue_opened:
+    type: final
+    title: The issue the item names opens, on an outside page (D4)
+  left:
+    type: final
+    title: The visitor leaves the page
+    leavesPage: true
+
+# No assertion. What must hold are rules about words and about the shape of the page: every status is one of the four, no
+# donation wording, the host of the recordings is never named, no dates. A graph expression cannot read a word; the acceptance
+# criteria of MDRS-246 pin them with a test, and needs.yaml carries each as a need (`every-status-is-one-of-four`,
+# `no-donation-wording`, `recordings-without-the-host`). The four statuses are also the only texts the status nodes of ui.yaml may take.

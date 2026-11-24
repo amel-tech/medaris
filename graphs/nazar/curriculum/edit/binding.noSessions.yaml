@@ -1,0 +1,31 @@
+# nazar.curriculum.edit as a ders nazırı who holds course.edit and not session.manage: the form is live for the course's name, colour, description
+# and weeks, "Celse ekle" and the two links are not drawn, a celse's date and time are off, and the note "Celse eklemek, taşımak, saatini değiştirmek
+# ya da gizlemek için celse yönetimi izni gerekir…" stands under the header.
+#   node apps/engine/src/cli.ts replay graphs/nazar/curriculum/edit --bind graphs/nazar/curriculum/edit/binding.noSessions.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase. Its own file because the transitions are the hoca's: only the context (`rights`) differs, so binding.yaml's `saves`
+# would be the one `--cover transitions` takes. The walk makes its own course (tag cur-edit-ns) and gives DERS_NAZIR a post in it with `course.edit`
+# alone, as the hoca does on Ders nazırları (helpers/course-nazir-grants.mjs); `teardown` removes the course and the post with it. Not verified:
+# that a save by a holder of course.edit alone, which carries the stored celses unchanged and a new week with no celse, is accepted without session.manage
+# (the API's note says only a changed session needs it, apps/tedrisat/src/course/course.service.ts:1110).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.edit
+
+data:
+  made: { json: ../.local/made/cur-edit-ns.json }
+
+scenarios:
+  noSessions:
+    given: { rights: noSessions }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cur-edit-ns, --weeks, '1', --lessons, '2', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, course.edit]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cur-edit-ns]
+        expect: removed

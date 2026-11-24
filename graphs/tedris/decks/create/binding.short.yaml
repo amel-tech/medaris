@@ -1,0 +1,26 @@
+# tedris.decks.create, a name of three letters (decks#9 a8): the empty send says "Bir deste adı yaz." and "Bir kart türü seç.", then "abc"
+# is typed and the name's message becomes "Deste adı en az 5 karakter olmalı." with no new press. Nothing is sent, so nothing is made.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/create \
+#     --bind graphs/tedris/decks/create/binding.short.yaml --cover transitions --absent --out <dir>
+# A file of its own because the scenario adds no transition to the main story's, and a walk takes the first scenario whose `given` fits.
+# NOT RUN in the writing phase.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.create
+
+scenarios:
+  short:
+    given: { name: short, tags: fine }
+    as: applicantC
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksCreate' }
+    vars:
+      deckTitle: abc
+      deckName: abc
+      deckDescription: ''
+      deckTags: ''
+    # nothing is made; the teardown is there for the day the page sends what it should not
+    teardown:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove

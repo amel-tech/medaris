@@ -1,0 +1,171 @@
+# What the walks of nazar.decks.openAndFill share: the events a person causes by typing, pasting and pressing keys, the checks of what each write
+# leaves in the API, the places the walk finds nodes by where role and name cannot, and the addresses of the states. It has no scenario and no `data`
+# of its own beyond the two files below: binding.yaml (the hoca who opens a deck, and a ders nazırı who is refused the page) and binding.others.yaml (a
+# ders nazırı who fills a deck the hoca opened) extend it and add their scenarios. Two files because the server actions of `savingCard` and `removing`
+# answer 200 on the page's own address whatever the API said, so a walk through their FAIL branch cannot hold `call` there (it would compare 200 with 404),
+# and a walk through DONE wants `call` to hold the busy state; each file says which.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the catalog and is
+# unverified until a walk. Where the first walk is likeliest to disagree, it is said where it is used: the paste (below), the combobox names of the
+# dialog, the toast's role, and the tile's link name.
+#
+#   node apps/engine/src/cli.ts replay graphs/nazar/decks/openAndFill --bind graphs/nazar/decks/openAndFill/binding.yaml --out <dir>
+#   ... --cover transitions   with binding.yaml, then with binding.others.yaml (its scenario adds the refusals of the card routes)
+#   Not --absent: a toast of the step before may still be on screen, and the status line of the Kart ekle row keeps what the last add left.
+#
+# What a walk makes and takes away. `setup` makes the walk's own course with helpers/course.mjs (`Deneme dersi deck-fill`: PUBLISHED, in the seed's second
+# köşk, one week of one LIVE celse, the MUDERRIS account as its hoca); the `others` scenario then has decks-data.mjs (this folder) open a deck in it as the
+# hoca and gives DERS_NAZIR a post with deck.manage_course alone (helpers/course-nazir-grants.mjs, as the hoca does on Ders nazırları); the `closed` scenario
+# gives the post no code. `teardown` has decks-data.mjs delete every deck of the course (the course's deletion does not take them: decks.course_id is
+# `on delete set null`) and then course.mjs delete the course, which takes the post with it. Nothing of the seed is changed. No SQL is used.
+#
+# The paste. No binding action pastes: `fill` writes a value and fires no paste event, and the handler of the Kart ekle row reads clipboardData. So the events
+# PASTE_BATCH and PASTE_UNUSABLE put the lines into the deck's own "Açıklama" box (a textarea of the settings below the cards, which the walk does not
+# save), select them and copy them (Control+A, Control+C), put the box back to empty, and press Control+V in "Ön yüz". Not verified: that Chromium, as the
+# replay drives it, copies and pastes with these keys and delivers text/plain to the handler. If it does not, the two events are the places to change; the
+# transitions after them (ADD_ALL, DROP_BATCH) do not depend on how the batch got there.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.decks.openAndFill
+
+data:
+  made: { json: ../.local/made/deck-fill.json }
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The title and the faces come from the scenario's `vars`
+  TYPE_TITLE:
+    - fill: { role: textbox, name: Başlık, within: { role: dialog, name: Deste aç }, value: '{deckTitle}' }
+  TYPE_CARD:
+    - fill: { role: textbox, name: Ön yüz, within: { role: form, name: Kart ekle }, value: '{cardFront}' }
+    - fill: { role: textbox, name: Arka yüz, within: { role: form, name: Kart ekle }, value: '{cardBack}' }
+  # Enter in a box of the row submits it (a click first, so that the focus is in a box whatever the state before left)
+  ADD:
+    - click: { role: textbox, name: Ön yüz, within: { role: form, name: Kart ekle } }
+    - key: Enter
+  # two cards and a line that is no card (the third, with no tab and a face of two letters: "atlanacak satırlar: 3")
+  PASTE_BATCH:
+    - fill: { role: textbox, name: Açıklama, value: "كتاب\tkitap\nقلم\tkalem\nab" }
+    - click: { role: textbox, name: Açıklama }
+    - key: Control+A
+    - key: Control+C
+    - fill: { role: textbox, name: Açıklama, value: '' }
+    - click: { role: textbox, name: Ön yüz, within: { role: form, name: Kart ekle } }
+    - key: Control+V
+  # two lines of which none is a card ("atlanacak satırlar: 1, 2")
+  PASTE_UNUSABLE:
+    - fill: { role: textbox, name: Açıklama, value: "ab\ncd" }
+    - click: { role: textbox, name: Açıklama }
+    - key: Control+A
+    - key: Control+C
+    - fill: { role: textbox, name: Açıklama, value: '' }
+    - click: { role: textbox, name: Ön yüz, within: { role: form, name: Kart ekle } }
+    - key: Control+V
+  # the edit form opens with the front box focused and starts filled; the walk changes the back face
+  RETYPE:
+    - fill: { role: textbox, name: Arka yüz, within: { role: form, name: Kartı düzenle }, value: '{revisedBack}' }
+  # Escape in the form puts the stored faces back; the focus must be in the form (the front box takes it when it opens; after a refused save the
+  # pressed button was disabled for a moment and may have lost it), so the walk clicks the front box first
+  ESCAPE:
+    - click: { role: textbox, name: Ön yüz, within: { role: form, name: Kartı düzenle } }
+    - key: Escape
+  # the sidebar's Bildirimler, a page of the portal outside the course
+  NAVIGATE:
+    - goto: '{nazar}/bildirimler'
+
+states:
+  forbidden: { url: '{nazar}/ders/*/deste' }
+  emptyList: { url: '{nazar}/ders/*/deste' }
+  deckList: { url: '{nazar}/ders/*/deste' }
+  newDeck: { url: '{nazar}/ders/*/deste' }
+  newDeckProblem: { url: '{nazar}/ders/*/deste' }
+  deck: { url: '{nazar}/ders/*/deste/*' }
+  cardAdded: { url: '{nazar}/ders/*/deste/*' }
+  batchAdded: { url: '{nazar}/ders/*/deste/*' }
+  editing: { url: '{nazar}/ders/*/deste/*' }
+  left: { url: '{nazar}/bildirimler' }
+
+# What a write leaves outside the screen, read through the API as the course's hoca (decks-data.mjs check): the deck of the title, its cards counted from
+# what the last check saw. The faces are the scenario's `vars`. The flow's effect ids, not the actions': `createCards` serves a card and a batch alike.
+effects:
+  createdPublished:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0', --state, published]
+      expect: 'check ok 0 card'
+  createdDraft:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0', --state, draft]
+      expect: 'check ok 0 card'
+  firstCard:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '1', --front, '{cardFront}', --back, '{cardBack}']
+      expect: 'check ok'
+  secondCard:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '1', --front, '{cardFront}', --back, '{cardBack}']
+      expect: 'check ok'
+  moreCards:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '1', --front, '{cardFront}', --back, '{cardBack}']
+      expect: 'check ok'
+  # the two ready lines of the paste, not the skipped one
+  batchDone:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '2', --front, 'كتاب', --back, kitap]
+      expect: 'check ok'
+  # one card changes its back face and the count stays
+  editedRevised:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0', --back, '{revisedBack}']
+      expect: 'check ok'
+  editedAsIs:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0']
+      expect: 'check ok'
+  removedCard:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '-1']
+      expect: 'check ok'
+  # the API kept the card as it was (the colleague's refused edit and delete, OPENFILL-1)
+  refusedEdit:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0', --back, '{cardBack}']
+      expect: 'check ok'
+  refusedRemove:
+    - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, check, --title, '{deckTitle}', --delta, '0']
+      expect: 'check ok'
+
+# Role and name find most nodes. Below are the ones they cannot find alone, or find twice.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for: each page's is told by a text in it
+  listPage: { role: main, hasText: '/kayıtlı \d+ talebe görür/' }
+  forbiddenPage: { role: main, hasText: Bu sayfaya izniniz yok }
+  deckPage: { role: main, hasText: Deste ayarları }
+  # the numbers follow the course
+  listSummary: { text: '/^\d+ deste · \d+ kart · kayıtlı \d+ talebe görür$/' }
+  # the tile is one link whose name is a long run of words (F-D1-23): found by the title it holds
+  deckCard: { role: link, hasText: '{deckTitle}' }
+  # the dialog's own controls: the page behind it is inert, the scope is for the one name that two buttons share ("Deste aç")
+  newDeckSubmit: { role: button, name: Deste aç, within: { role: dialog, name: Deste aç } }
+  newDeckCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Deste aç } }
+  newDeckClose: { role: button, name: Kapat, within: { role: dialog, name: Deste aç } }
+  creatingBusy: { css: output, hasText: Yükleniyor, within: { role: dialog, name: Deste aç } }
+  # the two Base UI selects are found by their label (not verified: that the label names the trigger)
+  cardTypeField: { role: combobox, name: Kart türü, within: { role: dialog, name: Deste aç } }
+  weekField: { role: combobox, name: Hafta, within: { role: dialog, name: Deste aç } }
+  # the h2's text is "Kartlar" and the count in two runs
+  cardsHeading: { role: heading, name: '/^Kartlar · \d+$/' }
+  # the arrow is part of the link's text
+  backLink: { role: link, name: '/Ders desteleri$/' }
+  # the Kart ekle row and a card open in place both have boxes named Ön yüz and Arka yüz: each is found in its own form
+  addFront: { role: textbox, name: Ön yüz, within: { role: form, name: Kart ekle } }
+  addBack: { role: textbox, name: Arka yüz, within: { role: form, name: Kart ekle } }
+  addButton: { role: button, name: Ekle, within: { role: form, name: Kart ekle } }
+  addBusy: { css: output, hasText: Yükleniyor, within: { role: form, name: Kart ekle } }
+  batchBusy: { css: output, hasText: Yükleniyor, within: { role: main } }
+  # "0 kart hazır · atlanacak satırlar: 1, 2": the same sentence as batchSummary with the counts of this paste
+  batchNone: { text: '/^0 kart hazır · atlanacak satırlar: /' }
+  # the list of tiles is a <ul> of the page's main, one <li> a card; the front is the span with lang=ar, the back the span with a title
+  cardList: { css: 'main ul.grid' }
+  tileFront: { css: 'main ul.grid li span[lang=ar]' }
+  tileBack: { css: 'main ul.grid li span[title]' }
+  # the icon buttons of the tiles are named alike: the walk presses the first (`repeat`); the delete's own buttons are told by their dialog
+  editCard: { role: button, name: Düzenle, within: { css: 'main ul.grid' } }
+  removeCard: { role: button, name: Sil, within: { css: 'main ul.grid' } }
+  editFront: { role: textbox, name: Ön yüz, within: { role: form, name: Kartı düzenle } }
+  editBack: { role: textbox, name: Arka yüz, within: { role: form, name: Kartı düzenle } }
+  editCancel: { role: button, name: Vazgeç, within: { role: form, name: Kartı düzenle } }
+  editSave: { role: button, name: Kaydet, within: { role: form, name: Kartı düzenle } }
+  removeCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sil } }
+  removeConfirm: { role: button, name: 'Evet, sil', within: { role: alertdialog, name: Sil } }
+  removeClose: { role: button, name: Kapat, within: { role: alertdialog, name: Sil } }

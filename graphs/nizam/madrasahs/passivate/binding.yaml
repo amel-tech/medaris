@@ -1,0 +1,69 @@
+# nizam.madrasahs.passivate on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the seeded başnazım
+# (SYSTEM_ADMIN) signed in through Keycloak's real form, a medrese of the walk's own with two courses under it, and the dialog
+# "Medreseyi pasife al".
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/madrasahs/passivate --bind graphs/nizam/madrasahs/passivate/binding.yaml --out <dir>              (the main story)
+#   ... --cover transitions --out <dir>                                    (every transition this file can drive: see below)
+#   ... --bind graphs/nizam/madrasahs/passivate/binding.noCourses.yaml --to ready --out <dir>   (the medrese with no course)
+#   ... --bind graphs/nizam/madrasahs/passivate/binding.mayNot.yaml --to listed --absent --out <dir>   (the Medaris nazımı with no button)
+#
+# NOT RUN: written without a replay (the owner's word). Every behaviour below is from the code; none was seen in a browser.
+#
+# The data and how it is taken away (the shared parts are in locators.binding.yaml). `setup` makes the medrese "Deneme medresesi pasife"
+# (passivate-data.mjs make, as the başnazım, with APPLICANT_C as its başmüderris and a hosting right in the seed's second köşk), then a
+# published course with three talebe and a draft one (helpers/course.mjs make --madrasah ... --kosk kosk2). `teardown` removes the two
+# courses (course.mjs remove: the talebe leave, the course is deleted as the başnazım, its invitation mails and notifications go) and then
+# the medrese (passivate-data.mjs remove: whatever courses it still has, then DELETE /madrasahs/:id, which takes the hosting right and the
+# role assignments with it, also of a medrese that is passive or was deleted behind the page). Every command is safe to run twice, and
+# `setup` removes what a walk that died left. The seeded medrese is never passivated, hidden or changed. What stays: audit rows
+# (madrasah.create, hosting_right.grant, madrasah.deactivate, madrasah.delete, user.lookup) and the mails Mailpit holds for APPLICANT_G
+# if the course's invitation sweep ran (course.mjs remove clears the course's own).
+#
+# Scenario `passivates` has the start `{ may: chief, courses: some }`; with `--cover transitions` it also drives, through the events of
+# locators.binding.yaml, every other transition the stack can make: the stale page (SOMEONE_PASSIVATES then "Pasife al", the preview says
+# `alreadyPassive`), the vanished medrese (SOMEONE_DELETES: the preview is refused, "Etki hesaplanamadı", "Yeniden dene" and the toast
+# "Bu kapsam artık yok."), the stale numbers (SOMEONE_CHANGES_IT: 409 PASSIVATION_IMPACT_CHANGED, the notice, then the second confirmation)
+# and the confirmation that meets a medrese passivated first (a sticky toast). Each walk makes its own medrese in `setup`, so one that ends
+# passive or deleted never reaches the next.
+#
+# Not bound, and why:
+#   - `may: medaris` (a Medaris nazımı holding platform.madrasah_edit): no seeded account holds it (MEDARIS_NAZIM holds platform.kosk_create,
+#     madrasah_create, kosk_edit, audit_read and course_hide); giving it madrasah_edit for a walk changes a seeded account other flows read.
+#     The transitions only it takes (PERMISSION_WITHDRAWN and FAIL.forbidden) are unbound. Ask: an account `medarisEdit`.
+#   - `meanwhile: broken` (API_FAILS, FAIL.failed): tedrisat answers every call the stack makes and the stack cannot make it fail.
+#   - `loading` with a 403: the preview of a Medaris nazımı who may not (F-W2-2) needs the page to draw the button without the permission,
+#     which happens only when the roles could not be read.
+#
+# What the walk will need that the code could not say: the page's first sort is by name and takes 50 rows (DIRECTORY_PAGE_SIZE), so a
+# stack with 50 medreses before "Deneme medresesi pasife" (alphabetically: "Deneme") would push the row off the first page; the seed has one.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.passivate
+
+scenarios:
+  passivates:
+    given: { may: chief, courses: some }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, make, pasife, --head, APPLICANT_C]
+        expect: '"tag":"pasife"'
+      - run: [node, helpers/course.mjs, make, pasife-ders, --madrasah, '{pas.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantD, applicantF, applicantH]
+        expect: '"tag":"pasife-ders"'
+      - run: [node, helpers/course.mjs, make, pasife-taslak, --madrasah, '{pas.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --draft, --hoca, MUDERRIS]
+        expect: '"tag":"pasife-taslak"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pasife-ders]
+        expect: 'course remove pasife-ders'
+      - run: [node, helpers/course.mjs, remove, pasife-taslak]
+        expect: 'course remove pasife-taslak'
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, remove, pasife]
+        expect: 'passivate-data remove pasife'
+
+# "2 ders kapanır (1 yayında, 1 taslak)" is the sentence madrasahs.e2e.ts#4 asserts, and it is true of this walk's medrese all along
+# (two courses, one published and one draft), also after the numbers change under the dialog
+states:
+  ready: { text: '2 ders kapanır (1 yayında, 1 taslak)' }

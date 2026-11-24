@@ -90,6 +90,12 @@ import { ResourceFileService } from "./resource-file.service";
   // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
   // `BulkEnrollmentService` seats a partner application's registrations as it
   // seats the team's list (partner enrollments).
-  exports: [CourseRepository, CourseService, BulkEnrollmentService],
+  // `CourseNotifier` tells talebe of an exam's reminder and results (MDRS-248).
+  exports: [
+    CourseRepository,
+    CourseService,
+    BulkEnrollmentService,
+    CourseNotifier,
+  ],
 })
 export class CourseModule {}

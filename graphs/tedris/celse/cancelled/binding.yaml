@@ -1,0 +1,42 @@
+# tedris.celse.cancelled on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000, the page of a celse that
+# the hoca cancelled, read by the spare talebe `applicantF` ("a man with every profile attribute and no seat anywhere") who holds a seat in a
+# course the walk makes. The walk arrives from Programım, whose row links to the celse.
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/cancelled --bind graphs/tedris/celse/cancelled/binding.yaml --absent --out <dir>
+# The other kinds are bindings of their own (see locators.binding.yaml).
+#
+# Data. cancelled-data.mjs (this folder) makes the course "İptal edilen celse denemesi" in the second köşk, "Kubbealtı Köşkü", which no
+# seeded flow reads: a week in the past with a celse that held a recording, and a week ahead with the celse of the story (cancelled with a
+# note and the make-up "Telafi okuması"), one cancelled with neither, the make-up itself and a cancelled VIDEO lesson. The talebe takes the
+# seat before the cancels (so tedrisat tells them: the SESSION_CANCELLED notification and the calendar mail), the hoca cancels as Nazar does
+# (POST /lessons/{id}/cancel). `setup` empties the talebe's notifications and mailbox first and `make` first deletes a course of that title, so a walk
+# that crashed leaves nothing in the way; `teardown` deletes the course (the başnazım's DELETE, the talebe's seat with it), empties the
+# talebe's notifications and mailbox again and checks that no course of the title is left. Nothing the seed holds is touched, and the
+# celses are the walk's own: their dates move with the day the course is made, which is why the nodes that hold a date are found by hook.
+#
+# Not walked here, so not bound: the exits `kosk_opened`, `course_opened` and `home_opened` (the walk ends at the page it asked for), the
+# class FAIL.unreadable (the stack cannot make tedrisat answer a 5xx on a read), and the kinds of cancellation that differ only in one line
+# of the card: a note with no make-up, a make-up with no note.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.cancelled
+
+scenarios:
+  # The main story (e2e session#6, lesson-notes#13): the note and the make-up, then the link to the make-up's page.
+  noteAndMakeUp:
+    given: { lesson: session, makeUp: planned, note: written }
+    as: applicantF
+    open: '{tedris}/schedule'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'schedule->celse' }
+    vars: { course: '{cancelled.course}', celse: '{cancelled.cancelled}', celseTitle: '{cancelled.cancelledTitle}' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, make]
+        expect: 'cancelled-data make'
+    teardown:
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, remove]
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*) as n from courses where title = 'İptal edilen celse denemesi'"]
+        expect: '"n":0'

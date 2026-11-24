@@ -1,0 +1,290 @@
+# "Toplu talebe ekle" on a course's Talebeler page in nazar-web (/ders/<id>/talebeler), read from the code of PR #394's branch:
+# apps/nazar/features/enrolments/components/{enrolments-page,enrolments-tabs,bulk-add-dialog}.tsx, features/enrolments/{bulk,actions}.ts,
+# and the API's POST /courses/:id/enrollments/bulk (apps/tedrisat/src/course/course.controller.ts:665, bulk-enrollment.service.ts).
+# The course team enrols people who already have a Medaris account by typing their e-mail addresses, one a line or separated by
+# commas or semicolons. No approval is asked (the team chose these people), a waiting application is approved on the way, and the
+# answer says what came of every address. It says what the code does today; where that is wrong for the people who use it, the
+# finding is in ui.yaml `rules` and in the description of the state it touches:
+#   - F-D1-07  the answer replaces the form in the same dialog with no announcement and no focus move, there are two buttons named
+#              "Kapat", and the address counter is a polite live region that speaks on every keystroke
+#   - BULK-1   new: a toast raised while the modal dialog is open (a refusal, or "Adresler kopyalandı") is outside the dialog, and
+#              Base UI's modal Dialog marks everything outside itself aria-hidden; the Toaster's region is not spared in the code
+#              read, so a refusal may be silent for a screen reader until the dialog is closed (not verified in a browser)
+#   - BULK-2   new: "Vazgeç", the close icon and Escape stay on and do nothing while the list is sent, and the busy button says
+#              "Yükleniyor" from the kit's default (the twin of BAN-3 and F-W3-open-2)
+#   - BULK-3   new: the box "Eklenemeyen adresler" holds the entries that are not addresses too, under a note that says no
+#              Medaris account was found for them
+#   - BULK-4   new: nobody tells the people added (only the calendar invitations of the course's celses reach them), while a person
+#              whose waiting application is approved is told (decision D1)
+#   - BULK-5   new: the answer tells the person who typed which addresses have a Medaris account and which do not, and the people
+#              who have one are enrolled with no question to them (decision D2)
+#   - F-D1-20  no try/catch around the server action: a browser that cannot reach Next leaves the button busy (not verified)
+# No e2e opens this dialog (nazar.md section 5, part D1-course-b); the unit specs apps/nazar/test/enrolments-page.spec.tsx and
+# enrolments-bulk.spec.ts are its only tests, with the server action mocked.
+schema: delurio-graph/0
+kind: flow
+id: nazar.roster.bulkAdd
+status: captured
+domain: medaris.api
+ui: nazar.roster.bulkAdd
+title: Add several talebe to a course at once, by e-mail address
+summary: >-
+  A holder of enrollment.decide in the course (its müderris, or a ders nazırı who was given the code) opens Talebeler and presses
+  "Toplu talebe ekle", a button that is not drawn for anyone else. A dialog asks for e-mail addresses, one a line or separated by
+  commas or semicolons, and counts them as they are typed (each address once, white space and capitals ignored); more than 500 is
+  refused under the field and the button stays off with nothing typed or too much. "Ekle" sends the list. The answer replaces the
+  form in the same dialog: one line for each outcome that has people in it (added, application approved, already enrolled, no account,
+  not an address, skipped), the addresses with no account or no address form in a box with "Kopyala" (a toast says it was copied, or
+  that the browser refused and the box is left selected), and the skipped ones with their reason. "Kapat" closes it and the roster is
+  read again. A refusal stays in the dialog as an error toast that does not close by itself, and the list typed is kept: the course
+  takes no enrolment (a draft or hidden course), the person lost the permission, the realm cannot be asked, or anything else. The
+  focus is not moved to the answer and nothing announces it (F-D1-07).
+
+scope:
+  shows: >-
+    the Talebeler page's opener and tab row, the Toplu talebe ekle dialog (the list, the counter, the limit), the answer with its
+    lines, the box to copy and the skipped list, the toasts of a copy and of a refusal, and the roster after the dialog closes
+  world: open
+  outOfView:
+    - "the page's own read, the Başvurular table and the Onayla and Reddet buttons: nazar.roster.decide; the Kayıtlı and Tamamlayanlar tables: nazar.roster.complete; Erişimi kaldırılanlar and Dersten çıkar: nazar.roster.remove"
+    - "a ders nazırı with no enrollment code meets the forbidden alert on Talebeler: nazar.access.dersNazirPages"
+    - "the talebe's side: the calendar invitations mailed to the people added, the notice 'Başvurunuz onaylandı' sent to one whose application is approved, and the course in their Derslerim: tedris.account.notifications, tedris.learning.myCourses"
+    - "the reasons 'Bu derse girişi yasaklı', 'Ders kadrosu dersten çıkarmış', 'Kaydı bu sırada değişti; yeniden deneyin' and 'Eklenmedi' for a skipped address: the stack makes only 'Dersi tamamlamış' without a ban or a race"
+    - "an ended session: the server action sends the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a search by name or e-mail and the sort in the Kayıtlı table, which the roster of the added people is read in: nazar.roster.complete"
+
+decisions:
+  D1:
+    question: >-
+      Should a talebe who is added in bulk be told? The API sends the notice ENROLLMENT_APPROVED to a person whose waiting
+      application it approves and nothing to one it enrols new; the only thing that reaches them is the calendar invitation mail of
+      each celse the course still has to run (the invitation sweep), and a course with no celse ahead sends them nothing at all.
+    recommend: >-
+      Yes: one notice, in the words of the approval, for every seat the team gives ("... derse eklendiniz"). Until then a
+      person added to a course learns of it only by finding it in Derslerim.
+    affects: [answered]
+  D2:
+    question: >-
+      Should adding a person by their e-mail address need their word, and should the answer say which addresses have an account? The
+      realm is asked for each address (exact match, enabled accounts), so the answer's "hesap bulunamadı" line is an account lookup
+      for anyone who holds enrollment.decide in any course, 500 addresses a time, and a person found is enrolled with no question
+      and may only leave afterwards. The owner's note says the people are those who bought the course elsewhere.
+    recommend: >-
+      Keep the feature, and decide whether the person must accept (an invitation they confirm) or at least be told (D1); and whether
+      the "no account" list may stay when a müderris can try any address. Related: MDRS-203 (should course staff see the talebe list
+      and e-mails by default).
+    affects: [formReady, answered]
+
+context:
+  may:
+    values: [may, mayNot]
+    initial: any
+    say:
+      may: "the person holds enrollment.decide in the course, so the page draws 'Toplu talebe ekle' (the müderris, or a ders nazırı who was given the code)"
+      mayNot: "the person opens the page with another enrollment code (a ders nazırı who may only complete or remove): there is no button"
+  list:
+    values: [few, many]
+    initial: any
+    say:
+      few: "the list has between one and 500 distinct addresses"
+      many: "the list has more than 500 distinct addresses"
+  answer:
+    values: [mixed, added, unmatched, closed, forbidden, directory, failed]
+    initial: any
+    say:
+      mixed: "the server answers with every outcome: someone enrolled, a waiting application approved, someone already enrolled, an address with no account, an entry that is not an address, and a skipped address"
+      added: "the server answers that everyone was found and enrolled: one line, no box, no skipped list"
+      unmatched: "the server answers that no address has an account or is an address: the lines for those, the box to copy, no seat given"
+      closed: "the course takes no enrolment (a draft, hidden, or in a hidden köşk): COURSE_NOT_FOUND, nothing is enrolled"
+      forbidden: "the person no longer holds enrollment.decide (AUTHZ_FORBIDDEN)"
+      directory: "the realm's directory is not configured or does not answer (KEYCLOAK_ADMIN_NOT_CONFIGURED, KEYCLOAK_ADMIN_UNAVAILABLE): nothing is enrolled"
+      failed: "anything else: the list is refused as malformed, the server does not answer"
+  clip:
+    values: [ok, refused]
+    initial: any
+    say:
+      ok: "the browser lets the page write to the clipboard"
+      refused: "the browser refuses (an insecure origin, a refused permission)"
+  box: { values: [empty, few, many], initial: empty } # what the list holds: nothing, one to 500 distinct addresses, or more
+  toast: { values: [none, copied, copyFailed, forbidden, closed, directory, failed], initial: none } # the toast the dialog or the page has up
+
+guards:
+  # `disabled={emails.length === 0 || tooMany}` of bulk-add-dialog.tsx:116
+  ready: "box == 'few'"
+  # the server answered with the six lists (BulkEnrollmentResponse)
+  lists: "answer == 'mixed' or answer == 'added' or answer == 'unmatched'"
+  # `unmatched(result)` is not empty: notFound then invalid (bulk.ts:49)
+  hasUnmatched: "answer == 'mixed' or answer == 'unmatched'"
+  # a refusal and a failed copy are warning or error toasts: they do not close by themselves (libs/ui/src/mds/toast.tsx:30-37)
+  staying: "toast == 'forbidden' or toast == 'closed' or toast == 'directory' or toast == 'failed' or toast == 'copyFailed'"
+
+effects:
+  opened: { set: { box: empty } } # a dialog is made anew each time: an empty list
+  typedFew: { set: { box: few } }
+  typedMany: { set: { box: many } }
+  clearedList: { set: { box: empty } }
+  copiedToast: { set: { toast: copied } }
+  copyFailedToast: { set: { toast: copyFailed } }
+  forbiddenToast: { set: { toast: forbidden } }
+  closedToast: { set: { toast: closed } }
+  directoryToast: { set: { toast: directory } }
+  failedToast: { set: { toast: failed } }
+  clearToast: { set: { toast: none } }
+
+failures:
+  sending:
+    from: bulkEnroll
+    forbidden: [AUTHZ_FORBIDDEN]
+    closed: [COURSE_NOT_FOUND]
+    directory: [KEYCLOAK_ADMIN_NOT_CONFIGURED, KEYCLOAK_ADMIN_UNAVAILABLE]
+    failed: [VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the müderris opens the form, types a list that holds every kind of address, reads the lines,
+# copies the addresses that found no account, and closes the answer.
+main:
+  given: { may: may, list: few, answer: mixed, clip: ok }
+  events: [OPEN_FORM, TYPE_LIST, SUBMIT, DONE, COPY, CLOSE]
+
+initial: roster
+
+states:
+  roster:
+    title: Talebeler, the dialog closed
+    description: >-
+      The course's Talebeler page, with its tab row (Başvurular, Kayıtlı, Tamamlayanlar, Erişimi kaldırılanlar, each with its
+      count) and, above it, "Toplu talebe ekle", drawn only where the person holds enrollment.decide (`can.decide`, from GET
+      /courses/:id/my-permissions); a person with another enrollment code reads the page and has no button. The page sets no
+      focus of its own. This is where the flow starts and where Vazgeç, the close icon and Escape lead back to; the button gets
+      the focus back (Base UI; not verified).
+    by: human
+    on:
+      OPEN_FORM: { guard: "may == 'may'", target: form, effect: [opened], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:201, say: "they press 'Toplu talebe ekle'" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:196
+
+  form:
+    title: The list is empty or too long, the button off
+    description: >-
+      A modal dialog over the page, titled "Toplu talebe ekle", with the course's name above the title; the page behind it is inert
+      and the scrim does not close it, so a typed list is not lost to a stray click. The focus starts in "E-posta adresleri"; the
+      box has no `required` and the label no asterisk, by design (F-D1-03). Under it the help line says how to separate the
+      addresses ("Her satıra bir tane (virgül ya da noktalı virgülle de ayırabilirsiniz)"), and below the field a counter says
+      "{n} adres": each entry is trimmed and lower-cased, an empty one dropped, a repeat counted once. It is a polite live region,
+      so a screen reader speaks the number on every keystroke and paste (F-D1-07). "Ekle" is natively disabled while the list is
+      empty or holds more than 500 addresses; with more, the help line is replaced by "En fazla 500 adres ekleyebilirsiniz; listede
+      {n} adres var." under the field, which is no live region (F-D1-16); with none, nothing says why the button is off (the
+      family of F-D1-06). A refusal's toast may still be up. Vazgeç, the close icon and Escape close it and send nothing.
+    by: human
+    on:
+      TYPE_LIST:
+        - { guard: "list == 'few'", target: settle, effect: [typedFew], say: "they type or paste addresses, one a line or separated by commas or semicolons, and the counter follows" }
+        - { guard: "list == 'many'", target: settle, effect: [typedMany], say: "they paste more than 500 distinct addresses: the error stands under the field and the button stays off" }
+      CLEAR_LIST: { guard: "box != 'empty'", target: settle, effect: [clearedList], say: "they delete the whole list: the counter says 0 adres" }
+      CANCEL: { target: roster, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:56, say: "Vazgeç, the close icon or Escape: the dialog closes, nothing is sent and the roster is not read again" }
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:95
+
+  formReady:
+    title: The list is typed, the button on
+    description: >-
+      The same dialog with one to 500 distinct addresses and "Ekle" on. Pressing it sends the list as the page reads it (trimmed,
+      lower-cased, once each, in the order first typed). Typing on changes the counter; deleting everything turns the button off.
+      Enter in the box adds a line and sends nothing: the button is the way to send.
+    by: human
+    on:
+      TYPE_LIST: { guard: "list == 'few'", target: settle, effect: [typedFew], say: "they change the list and it is still within the limit (a change that takes it over 500 is the other case, `list == 'many'`, which starts in `form`)" }
+      CLEAR_LIST: { target: settle, effect: [clearedList], say: "they delete the whole list: the button goes off" }
+      SUBMIT: { target: sending, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:62, say: "they press 'Ekle'" }
+      CANCEL: { target: roster, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:56, say: "Vazgeç, the close icon or Escape: the dialog closes with the list unsent" }
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:113
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the list the button is on or off (`disabled={emails.length === 0 || tooMany}`).
+    always:
+      - { guard: ready, target: formReady, say: "one to 500 distinct addresses: the button is on" }
+      - { target: form, say: "nothing, or more than 500: the button is off" }
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:116
+
+  sending:
+    title: The list is on its way
+    description: >-
+      The server action bulkEnroll calls POST /courses/:id/enrollments/bulk with the addresses as read, in a transition: "Ekle" is
+      busy (aria-disabled, aria-busy, with a hidden status that says "Yükleniyor" from the kit's default, outside the catalog) and
+      the box is disabled. The API looks up every address in the realm, five at a time, before it writes anything; then it seats
+      each account (an ENROLLED row for one with none, an approval for a waiting application, nothing for one already enrolled, a
+      skip for a barred, removed or completed one), writes one audit row with the counts, and sends the invitations once. The
+      course's approval rules do not apply. "Vazgeç", the close icon and Escape stay on and do nothing while it runs, and nothing
+      marks them (BULK-2). A call that cannot reach the server at all is not caught: the button stays busy (F-D1-20, not verified).
+    invoke: { action: bulkEnroll }
+    on:
+      DONE: { guard: lists, target: answered, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:68, say: "the server answers with the six lists" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nazar/features/enrolments/bulk.ts:71, say: "an error toast 'Talebeler eklenemedi' says 'Bunu yapma izniniz yok.' and stays; the dialog and the list stay" }
+      FAIL.closed: { guard: "answer == 'closed'", target: settle, effect: [closedToast], source: apps/nazar/features/enrolments/bulk.ts:73, say: "an error toast says the course takes no talebe now, a draft or hidden; the dialog and the list stay" }
+      FAIL.directory: { guard: "answer == 'directory'", target: settle, effect: [directoryToast], source: apps/nazar/features/enrolments/bulk.ts:75, say: "an error toast says the accounts cannot be searched now; nothing was enrolled, the list stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nazar/features/enrolments/bulk.ts:78, say: "an error toast says something went wrong; the list stays" }
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:65
+
+  answered:
+    title: The answer is read in the dialog
+    description: >-
+      The form is replaced, inside the same dialog, by the answer: a list with one line for each outcome that has people in it, in
+      the fixed order "{n} talebe eklendi", "{n} başvuru onaylandı", "{n} zaten kayıtlı", "{n} adresle hesap bulunamadı", "{n}
+      adres e-posta adresi değil", "{n} adres atlandı"; where there are addresses with no account or no address form, a read-only
+      box "Eklenemeyen adresler" holds them, one a line, the not-found ones first, under "Bu adreslerle Medaris hesabı bulunamadı.
+      Hesap açıldıktan sonra yeniden ekleyebilirsiniz." and a "Kopyala" button; where addresses were skipped, "Atlananlar" (a bold
+      paragraph, no heading) lists each as "{address}: {reason}". The footer has one "Kapat". The submit button, which had the focus,
+      has unmounted, no code moves the focus and the answer is no live region: nothing says it arrived (F-D1-07). The header's
+      close icon and the footer's button are both named "Kapat" (F-D1-07). The box's note says no account was found also for the
+      entries that are not addresses (BULK-3). "Kopyala" writes the box to the clipboard: a toast "Adresler kopyalandı" (success,
+      6 seconds), or, if the browser refuses, the box is left selected and a warning toast says to copy by hand (stays). Both
+      toasts are raised outside the dialog (BULK-1). People enrolled here are not told, except by the course's calendar invitations
+      (D1, BULK-4); the answer is also a lookup of which addresses have an account (D2, BULK-5). The roster behind has not been
+      read again yet.
+    by: human
+    goal: true
+    on:
+      COPY:
+        - { guard: "hasUnmatched and clip == 'ok'", target: answered, effect: [copiedToast], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:82, say: "they press 'Kopyala': the box is on the clipboard and a toast says so" }
+        - { guard: "hasUnmatched and clip == 'refused'", target: answered, effect: [copyFailedToast], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:84, say: "they press 'Kopyala' and the browser refuses: the box is selected and a warning toast says to copy it by hand" }
+      CLOSE:
+        - { guard: "toast == 'copyFailed'", target: refreshed, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:56, say: "'Kapat', the close icon or Escape: the dialog closes and the roster is read again; the warning toast stays until it is closed" }
+        - { target: refreshed, effect: [clearToast], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:56, say: "'Kapat', the close icon or Escape: the dialog closes and the roster is read again; a success toast has closed by itself by now" }
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:124
+
+  refreshed:
+    title: The roster is read again
+    description: >-
+      The dialog is closed and `router.refresh()` has read the page again: the tab row's counts follow (Başvurular drops by the
+      applications approved, Kayıtlı rises by the people enrolled and approved), and the people are in the Kayıtlı table, which is
+      another tab (nazar.roster.complete). The button gets the focus back (Base UI; not verified). It also runs when nobody was
+      seated, since any answer reads the roster again. Opening the form again makes a new, empty dialog; what it would answer for a
+      second list is not drawn: `answer` is the one case of a start.
+    by: human
+    on:
+      OPEN_FORM: { target: form, effect: [opened], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:201, say: "they press 'Toplu talebe ekle' again: a fresh dialog with an empty list" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:305
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-list-is-sent-only-within-the-limit
+    never: "state == 'sending' and box != 'few'"
+    say: Only a list of one to 500 distinct addresses is sent; with none or more the button is off and nothing leaves the page.
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:64
+  - id: only-a-holder-of-the-code-opens-the-form
+    never: "(state == 'form' or state == 'formReady' or state == 'sending' or state == 'answered') and may == 'mayNot'"
+    say: The dialog is drawn only to a person who holds enrollment.decide; the API still decides every send.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:196
+  - id: a-refusal-shows-no-answer
+    never: "state == 'answered' and not lists"
+    say: A refused list leaves the form and its list in place; the answer is drawn only for a list the server took.
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:68
+  - id: copy-only-what-found-no-account
+    never: "state == 'answered' and (toast == 'copied' or toast == 'copyFailed') and not hasUnmatched"
+    say: The box and its "Kopyala" exist only where an address found no account or is no address, so a copy toast follows only that.
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:185

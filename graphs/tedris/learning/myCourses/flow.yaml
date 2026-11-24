@@ -1,0 +1,306 @@
+# Derslerim (tedris-web /my-courses): a talebe's courses sorted into the four things the API says about a seat, and the ways on from each.
+# Written from the code of the branch (captured) and walked on the local stack on 15 Nov 2026; nothing here is a plan. What the page
+# hands to other flows is in scope.outOfView and in the `starts` of its transitions.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DSC-03   "Başvuruyu geri çek" on a row calls leaveCourse, not withdrawEnrollment (application-row.tsx:42): tedris.course.leave draws the call
+#            and its harm; here the button is the row's, and the transition that presses it hands over to that flow
+#   DSC-04   no focus moves and nothing is announced after a row is withdrawn or a card left: tedris.course.leave's; here only the way into it
+#   DSC-11   every row of "Tamamladığın dersler" has a link "Ders kayıtlarına git" with no course in its name, and it opens the course page,
+#            not its recordings tab (my-courses-page.tsx:403-409)
+#   DSC-12   an ongoing card's cover is not hidden and prints the course's Arabic label before the title (my-courses-page.tsx:104)
+#   DSC-19   the loading state is an aria-busy block of skeletons with no word (app/my-courses/loading.tsx:7); no screen of this flow
+#   MYC-1    (new, proposed id) a course is an h3 heading in "Devam eden dersler" and a plain link (class mds-h4) in the other three sections, so
+#            heading navigation lists only the ongoing ones
+# E2E carried: discover#21 (each course in the section its status names), #22 (the counters agree with the lists), #23 (the progress bar and
+# the next celse with its week), #24 (the dates of the application and of the completion), #25 (a card leads to its course, "Takvim aboneliği"
+# to the subscription). Not carried here: discover#26 (a waiting application withdrawn) is tedris.course.leave's. The seed's dates in #24 and the
+# values in #23 (40 and 15 per cent, "Hafta 5") are the e2e fixture's own; the walk's data has 40 per cent, "Hafta 1" and the dates of the day.
+# Also carried: the unit spec apps/tedris/test/discover-pages.spec.ts ("is an Alert, never 'no courses', when the read failed"), for the read
+# that fails, which the stack cannot be made to do.
+schema: delurio-graph/0
+kind: flow
+id: tedris.learning.myCourses
+status: captured
+domain: medaris.api
+ui: tedris.learning.myCourses
+title: Read Derslerim
+summary: >-
+  A signed-in talebe opens Derslerim. The page reads the caller's own seats once, with every status (GET /courses/enrolled with
+  includePending and includeRevoked) and sorts them: ENROLLED into "Devam eden dersler", PENDING into "Başvurularım", REVOKED into
+  "Erişiminin kaldırıldığı dersler" (a section that exists only when a row does) and COMPLETED into "Tamamladığın dersler", each with
+  its count. An ongoing course is a card with a link, the "···" menu, where it is held (medrese, köşk, hocas), a progress bar and the
+  next celse with its week ("Planlı celse yok" when none is left). A waiting application is a row with the date it was made, the badge
+  "Onay bekliyor" and the button "Başvuruyu geri çek". A course whose access was withdrawn is a link and a sentence, with no way in but the
+  course page. A completed course is a link, the date the course team completed it and "Ders kayıtlarına git". A section with no row says so
+  in one line, and a talebe with no row at all sees one sentence and "Keşfet'e git". Beside the title "Takvim aboneliği" leads to the
+  calendar subscription. When the read fails the page says so in an alert with "Yeniden dene", never "no courses". The page is not live: a
+  seat the course team approved meanwhile moves only when the page is read again.
+
+scope:
+  shows: the page, its four sections and what each draws, the empty state, the failed read, and every link or button that leaves it or hands over to another flow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the menu \"···\", the window \"Dersten ayrıl\", the row's withdrawal and the toasts and the page that follow them: tedris.course.leave (this flow draws the button and the trigger and starts that one)"
+    - "the course page each link opens, for each of the four relations (a seat, a waiting application, a completed or a revoked seat): tedris.course.readProgramme"
+    - "the calendar subscription page \"Takvim aboneliği\" opens: tedris.account.calendarFeed; and Keşfet, where \"Keşfet'e git\" leads: tedris.discover.browse"
+    - "the frame around the page (the bar, the phone's sheet, the footer): tedris.shell.frame"
+    - "a visitor, who the proxy sends to sign in with this page as callbackUrl (discover#1, tedris.discover.visitorPath), and a token tedrisat refuses, which sends the person to sign in again with `reauth` and is not a failed read (realm.auth.sessionEnded)"
+    - "the loading skeleton while the read runs (app/my-courses/loading.tsx, DSC-19)"
+    - "the old addresses /learning/my-courses and /learning, which redirect (discover#13): the navigation graph"
+    - "a course the API leaves out: a hidden course and every course of a hidden köşk drop out of the list (the enrolment row stays, so a restore brings them back); a draft the person is enrolled in is listed"
+    - "a card at 100 per cent: it reads \"%100 Tamamlandı\" with a check and stays under \"Devam eden dersler\", because only the course team completes a course (a progress write never does)"
+    - "the imam's star after a hoca's name, drawn only among more than one müderris; a course of no medrese, whose line holds the köşk and the hocas only"
+    - "the phone layout, where the rows wrap and the cards stack"
+    - "kontenjan and the gender rule of a seat: nothing on this page decides a seat (the planned in-person registration is MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      Should "Ders kayıtlarına git" name its course and open the course's recordings tab (DSC-11)?
+    recommend: >-
+      Yes: give the link `aria-label="Ders kayıtlarına git: {ders}"` and the address `/courses/<id>?tab=kayitlar`, which the course page
+      already reads once to choose its tab (course-page.tsx:121). Today it is a plain link to `/courses/<id>`, the same as the title's.
+    affects: [listed]
+
+context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the read of the caller's seats answers"
+      failed: "the read fails: the API does not answer, or answers 5xx or a refusal that is not a refused token"
+  ongoing:
+    values: [none, one, many]
+    initial: any
+    say:
+      none: "no seat is ENROLLED (the section says \"Devam eden dersin yok.\")"
+      one: "one seat is ENROLLED, so the section holds one card"
+      many: "two or more seats are ENROLLED, so the section holds a card for each"
+  applications:
+    values: [none, one, many]
+    initial: any
+    say:
+      none: "no application waits (the section says \"Onay bekleyen başvurun yok.\")"
+      one: "one application waits, so the section holds one row"
+      many: "two or more applications wait, so the section holds a row for each"
+  revoked:
+    values: [none, some]
+    initial: any
+    say:
+      none: "no seat was taken away, so the section \"Erişiminin kaldırıldığı dersler\" is not drawn"
+      some: "the course team took at least one seat away, so the section lists those courses"
+  completed:
+    values: [none, some]
+    initial: any
+    say:
+      none: "no course is COMPLETED (the section says \"Henüz tamamladığın ders yok.\")"
+      some: "the course team completed at least one course, so the section lists those courses"
+  next:
+    values: [planned, none]
+    initial: any
+    say:
+      planned: "each ongoing card has a celse still ahead, which it names with its day and its week"
+      none: "no ongoing card has a celse still ahead, and each says \"Planlı celse yok\""
+
+guards:
+  nothing: "ongoing == 'none' and applications == 'none' and revoked == 'none' and completed == 'none'"
+  hasCard: "ongoing != 'none'"
+  hasRow: "applications != 'none'"
+  hasRevoked: "revoked == 'some'"
+  hasCompleted: "completed == 'some'"
+  nextPlanned: "next == 'planned'"
+  nextNone: "next == 'none'"
+  # what Derslerim still lists after the card of a seat is left, or the row of an application is taken back: the leave flow's `others`
+  staysAfterLeave: "ongoing == 'many' or applications != 'none' or revoked == 'some' or completed == 'some'"
+  staysAfterWithdraw: "applications == 'many' or ongoing != 'none' or revoked == 'some' or completed == 'some'"
+
+effects:
+  again: { havoc: [read] } # a reload reads again, and the answer may differ
+
+failures:
+  reading: { from: listEnrolledCourses, unreadable: [HTTP_400] }
+# `unreadable` stands for any answer but a refused token: the page treats a network error, a 5xx and a 4xx alike (page.tsx:15-23). The
+# domain lists one refusal code for the read (a non-boolean flag), which the page never sends; a 401 is the guard's, and sends the person to sign in.
+
+# The main story: a talebe who holds a course in each of the four states opens Derslerim, reads it, and opens the ongoing course.
+main:
+  given: { read: ok, ongoing: one, applications: one, revoked: some, completed: some, next: planned }
+  events: [DONE, OPEN_ONGOING]
+
+initial: reading
+states:
+  reading:
+    title: Read the caller's seats
+    description: >-
+      The page's server side reads GET /courses/enrolled with includePending and includeRevoked (getMyCoursesWithApplications) before
+      anything is drawn. The answer is the whole list; the page sorts it by each seat's own status. A token tedrisat refuses is not a
+      failure here: it sends the person to sign in again (out of view); a failure of any other kind is kept as `null` and drawn as the alert.
+    includes: ["each seat's course fields, its köşk, medrese and hocas, its next celse and the caller's own enrolment (status, progress, dates)"]
+    source: apps/tedris/app/my-courses/page.tsx:16
+    invoke: { action: listEnrolledCourses }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read throws; the page keeps `null` and draws the alert, not an empty list" }
+
+  sorting:
+    title: Sort the seats into sections
+    description: classification only; splitMyCourses puts each seat in its section by status, in the order the API gave, and a person with none at all gets the empty state
+    source: apps/tedris/features/courses/my-courses.ts:17
+    always:
+      - { guard: nothing, target: empty, say: "no seat in any of the four statuses" }
+      - { target: listed }
+
+  empty:
+    title: Derslerim with no course at all
+    by: human
+    description: >-
+      The title, the subtitle and "Takvim aboneliği", and under them one sentence, "Henüz bir derse kayıtlı ya da başvurulu değilsin.", with
+      the button "Keşfet'e git". None of the four sections is drawn, not even with its own empty line. The page sets no initial focus
+      (focus-not-set).
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:223
+    on:
+      OPEN_DISCOVER:
+        target: discover_opened
+        starts: { flow: tedris.discover.browse }
+        say: "\"Keşfet'e git\" leads to /discover"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:226
+      OPEN_CALENDAR:
+        target: calendar_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" leads to /account/calendar; it stays when the page is empty"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:205
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  listed:
+    title: Derslerim with its sections
+    by: human
+    goal: true
+    description: >-
+      The page for a talebe who holds at least one seat in any status. Three sections are always drawn, each an h2 with its count: "Devam
+      eden dersler" (a card for each ENROLLED seat, or "Devam eden dersin yok."), "Başvurularım" (a row for each waiting application, or
+      "Onay bekleyen başvurun yok.") and "Tamamladığın dersler" (a row for each COMPLETED seat, or "Henüz tamamladığın ders yok."); a
+      fourth, "Erişiminin kaldırıldığı dersler", only when the course team took a seat away. A card names its course in an h3 that is the
+      card's link, carries "Devam ediyor" and the "···" button (named for the course), the place line (medrese, köşk, hocas), the bar
+      "İlerlemen" with its percent, and "Sıradaki celse · day · Hafta n" or "Planlı celse yok". A waiting row has a link (not a heading), the
+      place line, "Başvurdun: <date>. Onaylanınca ders, devam eden derslerine geçer.", "Onay bekliyor" and "Başvuruyu geri çek". A revoked
+      row has a link, the place line and "Bu derse erişimin kaldırıldı.". A completed row has a link, the place line, the date the course
+      team completed it, "Tamamlandı" and "Ders kayıtlarına git" (DSC-11). The cover of a card is not hidden from assistive technology
+      (DSC-12); the headings of the other three sections' courses are links, not headings (MYC-1). The page is read once: a seat the course team approves while it is open stays where it was until the page is read again,
+      which is why the row's button can delete an approved seat (DSC-03, tedris.course.leave). The page sets no initial focus (focus-not-set).
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:234
+    on:
+      OPEN_ONGOING:
+        guard: hasCard
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme, given: { who: "'enrolled'" } }
+        say: "an ongoing card's title (the card is one link) opens /courses/<id>, which draws the enrolled card"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:102
+      OPEN_APPLIED:
+        guard: hasRow
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme, given: { who: "'pending'" } }
+        say: "a waiting row's title opens /courses/<id>, which draws the pending card"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:163
+      OPEN_REVOKED:
+        guard: hasRevoked
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme, given: { who: "'revoked'" } }
+        say: "a revoked row's title opens /courses/<id>, which draws the access-withdrawn card"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:346
+      OPEN_COMPLETED:
+        guard: hasCompleted
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme, given: { who: "'completed'" } }
+        say: "a completed row's title opens /courses/<id>, which draws the completed card"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:383
+      OPEN_RECORDINGS:
+        guard: hasCompleted
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme, given: { who: "'completed'" } }
+        say: "\"Ders kayıtlarına git\" opens the same /courses/<id> as the title, not the recordings tab (DSC-11)"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:403
+      OPEN_CALENDAR:
+        target: calendar_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" leads to /account/calendar"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:205
+      OPEN_MENU:
+        - guard: "hasCard and staysAfterLeave"
+          target: handed_over.leave_menu
+          starts: { flow: tedris.course.leave, given: { place: "'ongoing'", others: "'kept'" } }
+          say: "a card's \"···\" button opens the menu with \"Dersten ayrıl\"; the menu, the window and what follows are the leave flow's, and other things stay on the page"
+          source: apps/tedris/features/courses/components/my-courses-page.tsx:108
+        - guard: hasCard
+          target: handed_over.leave_menu
+          starts: { flow: tedris.course.leave, given: { place: "'ongoing'", others: "'none'" } }
+          say: "the same, and the card is the only thing Derslerim lists, so leaving it ends on the empty state"
+          source: apps/tedris/features/courses/components/my-courses-page.tsx:108
+      WITHDRAW:
+        - guard: "hasRow and staysAfterWithdraw"
+          target: handed_over.withdraw
+          starts: { flow: tedris.course.leave, given: { place: "'application'", others: "'kept'" } }
+          say: "\"Başvuruyu geri çek\" asks nothing and calls the leave endpoint, not the withdraw one (DSC-03); what follows is the leave flow's, and other things stay on the page"
+          source: apps/tedris/features/courses/components/application-row.tsx:39
+        - guard: hasRow
+          target: handed_over.withdraw
+          starts: { flow: tedris.course.leave, given: { place: "'application'", others: "'none'" } }
+          say: "the same, and the row is the only thing Derslerim lists, so withdrawing it ends on the empty state"
+          source: apps/tedris/features/courses/components/application-row.tsx:39
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  loadFailed:
+    title: The seats could not be read
+    by: human
+    description: >-
+      The title, the subtitle and "Takvim aboneliği" stay, and in place of every section an alert (role alert): "Derslerin yüklenemedi",
+      "Derslerin şu an okunamadı." and a link "Yeniden dene" that goes to the page's own address (href=""), which reads everything again.
+      The page does not say "no courses": the failed read is `null`, not an empty list. The alert takes no focus.
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:214
+    on:
+      RELOAD: { target: reading, effect: [again], say: "\"Yeniden dene\" is a link to the page's own address: the whole page is read again, and the answer may differ", source: apps/tedris/features/courses/components/my-courses-page.tsx:218 }
+      OPEN_CALENDAR:
+        target: calendar_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" leads to /account/calendar; it stays when the read fails"
+        source: apps/tedris/features/courses/components/my-courses-page.tsx:205
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  course_opened: { type: final, title: A course's page is opened }
+  calendar_opened: { type: final, title: The calendar subscription is opened }
+  discover_opened: { type: final, title: Keşfet is opened }
+  handed_over.leave_menu:
+    type: final
+    title: The "···" menu is opened, which is tedris.course.leave's
+    description: The page stays where it is; the menu, the confirmation window and their toasts are drawn by the leave flow, which starts here with the card's place.
+  handed_over.withdraw:
+    type: final
+    title: The application is taken back, which is tedris.course.leave's
+    description: The page stays where it is until the call answers; the row, the call and what follows are drawn by the leave flow, which starts here with the row's place.
+  left: { type: final, title: The person leaves Derslerim, leavesPage: true }
+
+assertions:
+  - id: empty-only-with-nothing
+    never: "state == 'empty' and not nothing"
+    say: "the empty state is drawn only when the person holds no seat in any status"
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:191
+  - id: sections-only-with-something
+    never: "state == 'listed' and nothing"
+    say: "the sections are drawn only when the person holds at least one seat"
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:191
+  - id: a-failed-read-is-never-an-empty-page
+    never: "state == 'empty' and read == 'failed'"
+    say: "a failed read is drawn as the alert, never as \"no courses\" (the unit spec discover-pages.spec.ts says so)"
+    source: apps/tedris/app/my-courses/page.tsx:24
+  - id: alert-only-after-a-failed-read
+    never: "state == 'loadFailed' and read == 'ok'"
+    say: "the alert is drawn only when the read failed"
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:214
+  - id: only-a-card-has-a-menu
+    never: "state == 'handed_over.leave_menu' and ongoing == 'none'"
+    say: "the \"···\" button is drawn on an ongoing card only, never on a row of another section"
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:108
+  - id: only-an-application-is-withdrawn
+    never: "state == 'handed_over.withdraw' and applications == 'none'"
+    say: "\"Başvuruyu geri çek\" is drawn on a waiting application only"
+    source: apps/tedris/features/courses/components/my-courses-page.tsx:280

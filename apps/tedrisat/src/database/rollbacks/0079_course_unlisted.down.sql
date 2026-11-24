@@ -1,0 +1,11 @@
+-- Reverses migrations/0079_course_unlisted.sql. The app never runs this:
+-- drizzle's migrator only moves forward. To roll back by hand, run this
+-- statement in one transaction, then delete 0079's row from
+-- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
+--
+-- Lost: which courses were unlisted (MDRS-248). Every such course becomes
+-- listed again: it shows on Keşfet, its medrese's page and its köşk's shelf,
+-- and a caller with no token can open it. Its pending enrollments stay
+-- pending. List "courses"."id" where "is_unlisted" before running this if
+-- they are to be hidden or moved to an unlisted köşk by hand.
+ALTER TABLE "courses" DROP COLUMN "is_unlisted";

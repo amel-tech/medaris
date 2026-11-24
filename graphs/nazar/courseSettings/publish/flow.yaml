@@ -1,0 +1,336 @@
+# The "Yayın" card of Ders ayarları in nazar-web (/ders/<id>/ayarlar), used by the course's hoca: take a published course back to
+# draft after being asked once, and publish it again. Read from the code of PR #394 (apps/nazar/features/course-settings, the
+# API's PATCH /courses/:id) on 15 Nov 2026; nothing here was seen in a browser or walked (no replay in this phase), except two
+# curl GETs of the running Tedris (below). It says what the code does today.
+#   - What this flow draws: the Yayın card and its confirmation, the toasts of its two writes, the header link "Tanıtım sayfasını
+#     gör", and, as a witness, the one box of the access form that makes an unsaved edit ("Kayıt onayı gereksin") with that form's
+#     Kaydet and Vazgeç. The witness is there because the story says "unsaved edits survive": the form is keyed by what it shows as
+#     stored (course-settings-page.tsx:109), which leaves out the status and the version, so Yayımla and Taslağa çek read the page
+#     again (router.refresh) and the form keeps its draft.
+#   - Where it ends: the other fields of that form and its Kaydet are nazar.courseSettings.access, the card "Hocalar ve unvanları"
+#     with its own Kaydet is nazar.courseSettings.hocaTitles, the partner codes are nazar.courseSettings.partnerCodes. A ders nazırı
+#     who may not publish sees the card with no button (nazar.access.dersNazirPages).
+#   - Who: the hoca (a müderris of the course). The card's buttons are drawn only for a caller who holds course.edit and
+#     course.publish (controls.ts:55); the API asks the same (course.service.ts:957-1000), so a status change by anyone else is a 403.
+#   - Findings it carries: F-D2c-7 (the key that makes edits survive), F-D2c-13 (the busy label), F-D2c-14 (stale e2e locators),
+#     DRAFT-1 (the link for a draft; its 404 is gone since #401, its name is not), and two new ones, PUB-1 (the link's address still has the language segment MDRS-248 took out)
+#     and PUB-2 (Vazgeç and Kapat stay enabled while the call runs and do nothing). See ui.yaml `rules`.
+#   - e2e: course-settings#4 (a1 to a7, and a8 as the behaviour; its locators are stale, F-D2c-14), #5 (a1 to a5, and a6 to a10 as the
+#     API's own answer through the binding's effects; the reload is not drawn), #6 (a1, a2). Not carried here: #6 a3 to a10, which
+#     close the course with the access form's Kaydet and read a visitor's recordings tab in Tedris (nazar.courseSettings.access and
+#     tedris.course.recordings), and the "after reload" halves, which the effects read back through the API.
+#   - Seen with curl, nothing changed: tedris answers a visitor's GET of a published course's address with 200, and
+#     /tr/courses/<id> with a 308 to /courses/<id> (apps/tedris/proxy.ts:22-27), which is how the link of PUB-1 still lands.
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseSettings.publish
+status: captured
+domain: medaris.api
+ui: nazar.courseSettings.publish
+title: Take a course back to draft, and publish it again
+summary: >-
+  The hoca opens Ders ayarları of her course. The "Yayın" card says whether the course is "Yayında" or "Taslak" and offers one
+  button. On a published course "Taslağa çek" opens a question, "Dersi taslağa çek", an alertdialog with the focus on "Vazgeç";
+  "Vazgeç" or "Kapat" leaves everything as it was, and the confirming "Taslağa çek" writes the status alone and, once the API has
+  answered, closes the question, says "Ders taslağa çekildi" in a toast and reads the page again: the card now says "Taslak", and
+  the course shows only to its staff, the köşk's nazım and Medaris's management (an enrolled talebe is told 404 like anyone else).
+  On a draft "Yayımla" asks nothing: it publishes at once, says "Ders yayımlandı" and the card is back to "Yayında". A change the
+  person has not saved in the access form above stays where it is through both: the box and the form's Kaydet read as before. A
+  refusal (the hoca's permission was taken back while the page was open) or any other failure is an error toast that stays and
+  leaves the card as it was. The header link "Tanıtım sayfasını gör" opens the course's page in Tedris in a new tab, for a draft
+  as for a published course.
+
+scope:
+  shows: >-
+    the Yayın card with its question and the toasts of its two writes, the header link to the public page, and the access form's
+    one box and its Kaydet and Vazgeç as the witness of an unsaved edit
+  world: open
+  outOfView:
+    - "the other fields of the access form (Kapalı ders, Örnek ders, Celseler yüz yüze yapılır, Saat dilimi) and what its Kaydet writes and refuses: nazar.courseSettings.access"
+    - "the card Hocalar ve unvanları and its own Kaydet and Vazgeç (the second pair of F-D2c-14): nazar.courseSettings.hocaTitles; Ortak uygulama kodları: nazar.courseSettings.partnerCodes"
+    - "the card for a reader who may not publish (the status and no button), the page's refusal \"Bu sayfaya izniniz yok\" and every other persona with grants: nazar.access.dersNazirPages"
+    - "the 404 page, the retry face \"Ders ayarları yüklenemedi\" (two h1, F-D2c-1) and the shell around the page: nazar.shell.errorStates, nazar.shell.scopeAndMenu"
+    - "what Tedris draws at the end of the link: tedris.course.readProgramme (a person with a seat), tedris.discover.visitorPath (a visitor), tedris.course.draftPreview (a draft); and a closed course hiding its public recording from a visitor: tedris.course.recordings"
+    - "the phone layout, where the Yayın card comes under the forms"
+
+decisions:
+  D1:
+    question: >-
+      Should the question say how many talebe lose the course? The text says "talebeler dersi göremez" and no number; the hide
+      window of nazar.archive.hideAndRestoreCourse, for the same effect on the same talebe, says "{n} talebe celselere ve ders
+      kayıtlarına erişemez". The page's comment says the roster is not read on purpose (GET /courses/:id/stats writes an audit row,
+      course-settings-page.tsx:39-41).
+    recommend: >-
+      Yes, from the count the hide window already reads, and the same words: a hoca who is about to take a course away from its
+      talebe should be told how many. Until then the card's note and the question say it in general.
+    affects: [asking]
+  D2:
+    question: >-
+      Should "Tanıtım sayfasını gör" be drawn for a draft? A draft has no public page: the link opens Tedris, where a person with
+      only a Nazar session is a visitor. Until #401 she was told "Sayfa bulunamadı" (DRAFT-1 of tedris.course.draftPreview); since MDRS-248's unlisted course (#401) Tedris sends a person with no session there to sign in and back (load-course.ts:26-34),
+      so she reaches the preview while her Keycloak session lasts (not walked). What is left is the name.
+    recommend: >-
+      For a draft, name it "Önizlemeyi gör" and send the person through Tedris's own sign-in with the course as the way back
+      (/auth/signin?callbackUrl=/courses/<id>), which Keycloak answers without a form while their session lasts; leave the
+      published link as it is. The API must keep answering 404 to a visitor. The sign-in half is what Tedris now does itself for every
+      visitor (#401); the name is still to change.
+    affects: [draft, draftEdited]
+
+context:
+  stored:
+    values: [published, draft]
+    initial: any
+    say:
+      published: "the course is published when the page is read: the card says Yayında and offers Taslağa çek"
+      draft: "the course is a draft when the page is read: the card says Taslak and offers Yayımla"
+  write:
+    values: [ok, refused, hidden]
+    initial: any
+    say:
+      ok: "tedrisat accepts the status change"
+      refused: "the hoca's course.edit or course.publish is gone when she presses: the API answers 403 AUTHZ_FORBIDDEN"
+      hidden: "the course was hidden meanwhile, so the hoca may not see it any more: the API answers 404 COURSE_NOT_FOUND"
+  edits:
+    values: [none, unsaved]
+    initial: none
+    say:
+      none: "the access form holds what is stored: Kaydet and Vazgeç are off"
+      unsaved: "the person has ticked \"Kayıt onayı gereksin\" and not saved: the box is ticked and Kaydet and Vazgeç are on"
+  last:
+    values: [nothing, drafted, published, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no status change has been made in this visit, or its toast is gone"
+      drafted: "the course was just taken back to draft"
+      published: "the course was just published"
+      refused: "the API refused the change for lack of permission"
+      failed: "the API answered 404 because the course was hidden meanwhile"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  edited: { set: { edits: unsaved } }
+  discarded: { set: { edits: none } }
+  noteDrafted: { set: { last: drafted } }
+  notePublished: { set: { last: published } }
+  noteRefused: { set: { last: refused } }
+  noteFailed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  drafting:
+    from: updateCourse
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND]
+  publishing:
+    from: updateCourse
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND]
+  publishingEdited:
+    from: updateCourse
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND]
+
+# The story the card tells first, as the e2e tells it (course-settings#4 and #5): the hoca ticks a box and does not save, is asked
+# about taking the course back to draft and thinks again, is asked again and confirms, publishes it again, and takes her unsaved
+# change back with Vazgeç, which proves it was kept.
+main:
+  given: { stored: published, write: ok }
+  events: [DONE, EDIT, UNPUBLISH, CANCEL, UNPUBLISH, CONFIRM_UNPUBLISH, DONE, PUBLISH, DONE, DISCARD_EDIT]
+
+initial: opened
+
+states:
+  opened:
+    title: The page reads the course
+    description: >-
+      Ders ayarları reads the course (GET /courses/:id) and what the caller holds in it (GET /courses/:id/my-permissions) on the
+      server, together, and draws behind a loading skeleton (loading.tsx). Nothing is on the screen of this step. A 404 of either
+      read is Next's not-found page; a refusal or a failed read draws the page's own faces, which nazar.access.dersNazirPages and
+      nazar.shell.errorStates draw. Where the hoca reads it, the card says what is stored.
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "stored == 'draft'", target: draft }
+        - { target: published }
+      FAIL.missing: not_found
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
+
+  published:
+    title: The course is published
+    description: >-
+      The page: the title "Ders ayarları" with its line, the link "Tanıtım sayfasını gör", the access form (drawn here only as the
+      one box and its two buttons, all off), and the card "Yayın" with the badge "Yayında", "Ders yayında; tanıtım sayfası herkese
+      açık.", the caption that says what taking it back does, and "Taslağa çek". The button asks first (asking); "Yayımla" is not
+      drawn. The page sets no focus when it opens (rule focus-not-set). A toast of the last status change may still be up
+      (`last`). Findings read here: F-D2c-7 (it holds for the status: the form is not remounted by it), F-D2c-13 (the busy words
+      of the two buttons of this card), PUB-1 (the link's address) and F-D2c-14 (the form's buttons are found inside the form
+      because the card Hocalar ve unvanları has a second pair).
+    by: human
+    goal: true
+    on:
+      UNPUBLISH: { target: asking, effect: [clearNote], say: "they press Taslağa çek", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:98 }
+      EDIT: { target: publishedEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      OPEN_PUBLIC: { target: published, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab (a visitor's page, tedris.course.readProgramme) and this tab stays", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:97
+
+  publishedEdited:
+    title: The course is published and the form holds an unsaved change
+    description: >-
+      The same page with "Kayıt onayı gereksin" ticked and the access form's Kaydet and Vazgeç on. This is the page the story
+      leaves "Taslağa çek" from, and returns to after "Yayımla": nothing the card does touches the form's draft (assertion
+      edits-follow-the-form). The change is in the form's state only: nothing has been sent, the API still holds the stored value.
+      Vazgeç of the access form puts the stored value back (the access form's own story, drawn here only as far as the e2e's last
+      step needs it).
+    by: human
+    on:
+      UNPUBLISH: { target: asking, effect: [clearNote], say: "they press Taslağa çek", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:98 }
+      DISCARD_EDIT: { target: published, effect: [discarded], say: "they press Vazgeç of the access form: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
+      OPEN_PUBLIC: { target: publishedEdited, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab and this tab stays", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+      EDIT: { target: published, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225
+
+  asking:
+    title: Taslağa çek asks once
+    description: >-
+      An alertdialog, "Dersi taslağa çek", headed by the course's title: "{name} taslağa çekilecek; talebeler dersi göremez." and
+      "İstediğiniz zaman yeniden yayımlayabilirsiniz." The focus starts on "Vazgeç"; the doc comment says the scrim does not close
+      it (not verified for Base UI 1.8). The page behind is inert. "Vazgeç", Esc and "Kapat" close it and write nothing, and the
+      focus goes back to the button that opened it (Base UI's return to the element focused before; not verified). The question
+      says no number of talebe (decision D1).
+    by: human
+    on:
+      CONFIRM_UNPUBLISH: { target: drafting, say: "they press Taslağa çek in the dialog", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:122 }
+      CANCEL: { target: toPublished, say: "they press Vazgeç, or Esc", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:113 }
+      CLOSE: { target: toPublished, say: "they press the close icon", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:113 }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:111
+
+  drafting:
+    title: The status is written, the question still open
+    description: >-
+      setCourseStatus sends PATCH /courses/:id with `{ status: "DRAFT" }` and nothing else (no version: the route takes none, the
+      last save wins). The dialog stays open until the answer: its confirming button is busy ("Yükleniyor" for a reader of the
+      screen, F-D2c-13) and the dialog ignores every way of closing meanwhile, though "Vazgeç" and "Kapat" look live (PUB-2).
+      The answer closes the question first and then words the outcome, so the question is gone on a success and on a failure.
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "write == 'ok'", target: toDraft, effect: [noteDrafted], say: "the API answered 200: toast \"Ders taslağa çekildi\"; the page is read again", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
+      FAIL.forbidden: { guard: "write == 'refused'", target: toPublished, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      FAIL.other: { guard: "write == 'hidden'", target: toPublished, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      CANCEL: { target: drafting, say: "Vazgeç or Esc while the call runs: nothing happens, the dialog stays and the status is still written (PUB-2)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:114 }
+      CLOSE: { target: drafting, say: "the close icon while the call runs: nothing happens (PUB-2)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:114 }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
+
+  toPublished:
+    title: The page is back on a published course
+    description: >-
+      A step the person does not see: on a success of a publish, and on every way out of the question, the card is the published
+      one, and the form is clean or holds the change it held (`edits`). A refusal does not read the page again, so after one the
+      card still offers what the API has just refused.
+    always:
+      - { guard: "edits == 'unsaved'", target: publishedEdited }
+      - { target: published }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:108
+
+  toDraft:
+    title: The page is back on a draft
+    description: >-
+      After a success of drafting the page has been read again with the status only changed, and the access form kept its draft
+      (the key does not move, F-D2c-7); after a refusal of a publish the card is the draft one it was.
+    always:
+      - { guard: "edits == 'unsaved'", target: draftEdited }
+      - { target: draft }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:108
+
+  draft:
+    title: The course is a draft
+    description: >-
+      The card says "Taslak" and "Ders taslak: yalnız ders kadrosuna, köşk nazımına ve Medaris yönetimine görünür." with
+      "Yayımla"; the caption of the published card is gone. "Yayımla" does not ask: publishing is undone with Taslağa çek, and
+      nothing is lost. The header link is still there; for a draft it opens a page Tedris refuses to a person with no session
+      there, and since MDRS-248's unlisted course (#401) Tedris sends a person with no session there to sign in and back (load-course.ts:26-34), so she meets the preview once signed in (DRAFT-1, decision D2). When this step follows a draft, the opener of the question is the same button, reading
+      "Yayımla" now (React keeps one Button for both branches, course-publish-card.tsx:97-108), so the focus the question gave
+      back stays on it (from the code; not verified in a browser).
+    by: human
+    on:
+      PUBLISH: { target: publishing, effect: [clearNote], say: "they press Yayımla", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:105 }
+      EDIT: { target: draftEdited, effect: [edited], say: "they tick Kayıt onayı gereksin in the access form and do not save", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      OPEN_PUBLIC:
+        target: draft
+        starts: { flow: tedris.course.draftPreview }
+        say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab; a person with no Tedris session there is a visitor and is sent to sign in and back (#401), and one who is signed in reads the preview (DRAFT-1)"
+        source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:102
+
+  draftEdited:
+    title: The course is a draft and the form holds an unsaved change
+    description: >-
+      The draft card beside the form with the ticked box and its Kaydet and Vazgeç on: what taking the course back to draft left
+      of the person's edit (course-settings#4 a2 to a6).
+    by: human
+    on:
+      PUBLISH: { target: publishingEdited, effect: [clearNote], say: "they press Yayımla", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:105 }
+      DISCARD_EDIT: { target: draft, effect: [discarded], say: "they press Vazgeç of the access form", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
+      OPEN_PUBLIC:
+        target: draftEdited
+        starts: { flow: tedris.course.draftPreview }
+        say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab (DRAFT-1) and this tab stays"
+        source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+      EDIT: { target: draft, effect: [discarded], say: "they untick Kayıt onayı gereksin again: the form is as stored and its Kaydet goes off", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225
+
+  publishing:
+    title: The publish is on its way
+    description: >-
+      setCourseStatus sends `{ status: "PUBLISHED" }`. "Yayımla" is busy (aria-disabled, "Yükleniyor" for a reader of the screen
+      from the kit's default, F-D2c-13); the rest of the page stays live. A success says "Ders yayımlandı" and reads the page
+      again; the badge is "Yayında" and the button is "Taslağa çek" in the same place.
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
+      FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      EDIT: { target: publishingEdited, effect: [edited], say: "they tick Kayıt onayı gereksin while the publish runs: the access form is not busy, so the box turns and its Kaydet comes on", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
+
+  publishingEdited:
+    title: The publish is on its way, with an unsaved change in the form
+    description: "The same step with the access form holding its change: the box stays ticked and Kaydet stays on while the card is busy."
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "write == 'ok'", target: toPublished, effect: [notePublished], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again and the form keeps its change", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:55 }
+      FAIL.forbidden: { guard: "write == 'refused'", target: toDraft, effect: [noteRefused], say: "the hoca's course.edit or course.publish was taken back while the page was open", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      FAIL.other: { guard: "write == 'hidden'", target: toDraft, effect: [noteFailed], say: "the API answered 404 (the course was hidden meanwhile)", source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47 }
+      EDIT: { target: publishing, effect: [discarded], say: "they untick the box again while the publish runs: the form is as stored", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      DISCARD_EDIT: { target: publishing, effect: [discarded], say: "they press Vazgeç of the access form while the publish runs: the box is unticked again", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:258 }
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of either read is Next's not-found page, \"Sayfa bulunamadı\" (lib/tedrisat-read.ts:46); nazar.shell.errorStates draws it."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: edits-follow-the-form
+    never: "(state == 'publishedEdited' or state == 'draftEdited' or state == 'publishingEdited') and edits == 'none'"
+    say: A page that shows the access form's Kaydet on is a page whose form holds a change; it is not lost by a status change, which only reads the page again.
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:109
+  - id: a-clean-form-has-no-edit
+    never: "(state == 'published' or state == 'draft' or state == 'publishing') and edits == 'unsaved'"
+    say: A page that shows the access form's Kaydet off holds no unsaved change, so no status change ever wrote one.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:68
+  - id: no-toast-over-the-question
+    never: "(state == 'asking' or state == 'drafting') and last != 'nothing'"
+    say: The question is opened on a page whose last toast has been cleared, so a toast is never drawn over the question.
+    source: apps/nazar/features/course-settings/components/course-publish-card.tsx:98

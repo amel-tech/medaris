@@ -1,9 +1,8 @@
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { HideUnderSegment } from "~/components/phone-menu/hide-under-segment";
 import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
-import { loadCourse } from "~/features/courses/load-course";
+import { loadCourseOrLeave } from "~/features/courses/load-course";
 
 /**
  * The course page keeps its shadcn body until its own design lands, but it now
@@ -21,10 +20,10 @@ export default async function CourseLayout({
 }) {
   // loading.tsx lets the page stream, and a streamed response has already sent
   // 200 by the time the page calls notFound(). The answer is read here, ahead
-  // of the stream, so a draft or unknown id is a real 404.
+  // of the stream, so a draft or unknown id is a real 404, and a signed-out
+  // visitor of an unlisted course is sent to sign in (MDRS-248).
   const { courseId } = await params;
-  const course = await loadCourse(courseId);
-  if (!course) notFound();
+  const course = await loadCourseOrLeave(courseId);
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -1,0 +1,94 @@
+# nizam.kosks.nazims on the local stack: the başnazım (Vedat Başnazım, SYSTEM_ADMIN) at nizam-web on :4001 in the real Keycloak sign-in of
+# local.nizam.binding.yaml, at the page of a köşk the walk makes. The data, the locators and the effects every file shares are in
+# locators.binding.yaml (it extends ../../../bindings/local.nizam.binding.yaml); this file holds the başnazım's scenarios.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/nazims \
+#     --bind graphs/nizam/kosks/nazims/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). It loads: `replay <dir> --bind <this file>
+# --emit-spec --out <dir>` wrote a spec and walked nothing; every locator and every command is from the code and unverified until a walk.
+#
+# Every scenario opens the köşk's settings page and presses the tab "Köşk nazımları" (the nav graph's entry koskSettings->koskNazims), and
+# starts from the same data (locators.binding.yaml): a köşk "Nazımlar Deneme Köşkü" with APPLICANT_E as its one nazım (an empty list in
+# `passive`), and the two spare accounts APPLICANT_D and APPLICANT_G to find by e-mail address. `setup` begins by removing what a walk that
+# died left, so each scenario can be run again at once.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   adds      the main story (kosks.e2e.ts#12 and #13): the list with its one row, "Köşk nazımı ekle", the address of APPLICANT_D typed and
+#             searched, the person found, "Ekle": the toast and the new row with "Süresiz" and "Medaris başnazımı". The cover also walks,
+#             from the same start, a second person ("one or more"), removing the one chosen, an end in the past ("Bitiş zamanı şu andan
+#             sonra olmalı." and "Ekle" off), an end ahead (the row shows the day), Vazgeç, and the tabs and the breadcrumb.
+#   passive   the köşk was taken out of service (nazims-data.mjs up --passive): the list is "Bu köşkün köşk nazımı yok.", and adding one
+#             person makes it ACTIVE again (the directory's status; no screen says so, KNZ-1)
+#   notFound  an address no account has (kosks.e2e.ts#12): "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen
+#   again     the same person searched twice: "Bu kişi zaten seçildi." and one chosen
+# The refusal of "Ekle" for a person who is a nazım already (kosks.e2e.ts#12, the last step) is binding.exists.yaml: it cannot share the
+# held call of `adding` below, which compares the HTTP status of a FAIL transition.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.nazims
+
+# the addition is a Next server action: a POST to the page's own address, held while the busy button is checked (the answer is 200 on
+# every path of this file; the refusal is walked in binding.exists.yaml)
+states:
+  adding: { call: '{nizam}/kosks/*/ayarlar/nazimlar' }
+
+scenarios:
+  adds:
+    given: { viewer: chief, read: ok, lookup: found, answer: added }
+    as: systemAdmin
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskSettings->koskNazims' }
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.more.email}'
+
+  passive:
+    given: { viewer: chiefPassive, read: ok, lookup: found, answer: added }
+    as: systemAdmin
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskSettings->koskNazims' }
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up, --passive]
+        expect: 'nznazims up'
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, status, PASSIVE]
+        expect: 'status PASSIVE'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.more.email}'
+
+  notFound:
+    given: { viewer: chief, read: ok, lookup: notFound, answer: added }
+    as: systemAdmin
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar/nazimlar'
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: kimse.yok@example.test
+      anotherEmail: kimse.yok@example.test
+
+  again:
+    given: { viewer: chief, read: ok, lookup: again, answer: added }
+    as: systemAdmin
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar/nazimlar'
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.add.email}'

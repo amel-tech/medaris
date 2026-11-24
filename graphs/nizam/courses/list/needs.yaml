@@ -1,0 +1,295 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.list
+status: proposed
+summary: >-
+  What must exist for the köşk's nazımı (and the başnazım) to read the courses of a köşk, hide one and bring it back: the flow's
+  product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code): hide-says-how-many-talebe-lose-access, a-failed-hide-is-told-in-the-window, focus-follows-a-hide-or-a-restore,
+# a-tab-name-has-its-count-apart, closing-follows-the-busy-state, a-medrese-course-can-always-be-opened, the-page-names-the-kosk-in-its-title.
+# Unwalked (code, and neither an e2e check nor a replay scenario that can drive it): none. Six needs have no e2e check and only a replay
+# scenario to walk them: a-higher-kademe-keeps-what-it-hid, a-refused-hide-is-told, a-restore-refused-for-the-kademe-says-why,
+# a-restore-refused-while-the-medrese-is-hidden-says-why, any-other-restore-refusal-is-told and no-access-says-so. Nothing was replayed when
+# this file was written (the first walks are a later phase), so every `replay:` below names the scenario that will walk it, not one that passed.
+
+needs:
+  - id: nazim-lands-on-dersler
+    need: >-
+      A köşk's nazımı who opens her köşk is taken to its list of courses, the page her work is on; the başnazım opens the same
+      list from the köşk's management view or by its address.
+    evidence:
+      - state: begin
+      - state: reading
+      - state: listed
+      - node: title
+      - source: "apps/nizam/app/kosks/[id]/page.tsx:50"
+      - source: apps/nizam/features/kosks/kosk-entry.ts:49
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — a köşk nazımı who opens the köşk lands on Dersler"
+      - scenario: hides
+      - scenario: chief
+        binding: graphs/nizam/courses/list/binding.chief.yaml
+
+  - id: courses-listed-by-status
+    need: >-
+      The nazım sees every course of the köşk, hidden ones too, newest first, in tabs Tümü, Yayında, Taslak and Gizli that carry
+      their number; a tab always holds as many courses as its number says, a tab with none says so, and a köşk with no course says
+      "Henüz ders yok.".
+    evidence:
+      - state: listed
+      - node: tablist
+      - node: tabAll
+      - node: tabPublished
+      - node: tabDraft
+      - node: tabHidden
+      - node: table
+      - node: rowTitle
+      - node: statusHidden
+      - node: emptyTab
+      - state: empty
+      - node: emptyAll
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:347
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — Dersler lists the courses, the tabs' numbers are the database's and each tab narrows the list (criteria 1, 2, 4)"
+      - scenario: hides
+      - scenario: emptyKosk
+        binding: graphs/nizam/courses/list/binding.empty.yaml
+
+  - id: cards-lead-on
+    need: >-
+      Three cards say how many applications wait, how many medreses hold a hosting right and how many nazımlar the köşk has, and
+      each has the link to the page that deals with it.
+    evidence:
+      - node: cardsRegion
+      - node: applicationsNumber
+      - node: applicationsLink
+      - node: hostingNumber
+      - node: hostingLink
+      - node: nazimsNumber
+      - node: nazimsLink
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:177
+      - source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:124
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — Dersler lists the courses, the tabs' numbers are the database's and each tab narrows the list (criteria 1, 2, 4)"
+      - scenario: hides
+
+  - id: row-offers-what-its-kind-allows
+    need: >-
+      A course of the köşk's own can be edited, have its hocalar changed and be hidden; a course a medrese opened (the medrese
+      picks its hocalar) can be viewed and hidden but not edited; a hidden course can be brought back, and offers nothing else. No
+      button leads to a refusal the page could have foreseen.
+    evidence:
+      - node: ownEdit
+      - node: ownHocas
+      - node: ownHide
+      - node: medreseView
+      - node: medreseHide
+      - node: restoreButton
+      - node: lockedNote
+      - source: apps/nizam/features/kosks/overview-present.ts:95
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:267
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — a medrese's course has Dersi gör and no Düzenle; an own one has them all"
+      - scenario: hides
+
+  - id: hide-asks-first
+    need: >-
+      The nazım hides a course only after being asked once. The question names the course, says who it is hidden from and that
+      nothing is deleted; she may cancel, and the course then stays where it is.
+    evidence:
+      - node: ownHide
+      - state: confirmHide
+      - node: hideDialog
+      - node: hideEyebrow
+      - node: hideBody
+      - node: hideWay
+      - node: hideCancel
+      - node: hideConfirm
+      - source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:60
+      - source: apps/tedrisat/src/course/course.controller.ts:421
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' brings it back (criterion 3)"
+      - scenario: hides
+
+  - id: hide-takes-the-course-off-every-list-and-says-so
+    need: >-
+      Once she confirms, the course leaves the lists of talebe and visitors, turns Gizli in this table, the tab numbers follow, a
+      toast says it was hidden, and the hide is on the audit record; nothing is deleted. Someone else hiding it first counts as
+      done.
+    evidence:
+      - state: hiding
+      - state: afterHide
+      - state: listedHidden
+      - node: toastHidden
+      - node: toastHiddenBody
+      - node: statusHidden
+      - node: tabHidden
+      - source: apps/tedrisat/src/course/course.controller.ts:421
+      - source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' brings it back (criterion 3)"
+      - scenario: hides
+      - scenario: staleHide
+        binding: graphs/nizam/courses/list/binding.staleHide.yaml
+    note: "staleHide: the already-hidden half; the deleted-course half is the next need's"
+
+  - id: a-refused-hide-is-told
+    need: >-
+      When the course cannot be hidden (it no longer exists, or the nazım may not), she is told so and the course stays where it
+      is.
+    evidence:
+      - node: toastHideFailed
+      - node: toastHideFailedBody
+      - state: confirmHide
+      - source: apps/tedrisat/src/course/course.controller.ts:421
+      - source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46
+      - scenario: staleHide
+        binding: graphs/nizam/courses/list/binding.staleHide.yaml
+
+  - id: restore-at-once
+    need: >-
+      "Geri al" brings a hidden course back where it was, at once and without a question, a toast says so, the course is Yayında
+      or Taslak again and the numbers follow, and the restore is on the audit record. The başnazım brings back any hidden course.
+    evidence:
+      - state: restoring
+      - node: restoreButton
+      - node: rowRestore
+      - node: restoreBusy
+      - node: toastRestored
+      - node: toastRestoredBody
+      - source: apps/tedrisat/src/course/course.controller.ts:451
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:82
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' brings it back (criterion 3)"
+      - scenario: hides
+      - scenario: chief
+        binding: graphs/nizam/courses/list/binding.chief.yaml
+
+  - id: a-higher-kademe-keeps-what-it-hid
+    need: >-
+      What Medaris yönetimi hid shows the köşk's nazımı no button, only a sentence that names the kademe; what she hid herself, or
+      a medrese did, has "Geri al".
+    evidence:
+      - node: lockedNote
+      - node: restoreButton
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:256
+      - scenario: locked
+        binding: graphs/nizam/courses/list/binding.locked.yaml
+      - scenario: hides
+    note: "locked: no e2e check reads the sentence: kosk-view#8 only asserts that a hidden course has Geri al"
+
+  - id: a-restore-refused-for-the-kademe-says-why
+    need: >-
+      A restore refused because a higher kademe hid the course since the page was read says so in the person's words, and the list
+      is read again, so the row shows the sentence and no button.
+    evidence:
+      - node: toastRestoreFailed
+      - node: toastRestoreLevel
+      - state: restoring
+      - node: lockedNote
+      - source: apps/tedrisat/src/course/course.controller.ts:451
+      - source: apps/nizam/features/kosks/overview-present.ts:107
+      - scenario: staleRestore
+        binding: graphs/nizam/courses/list/binding.staleRestore.yaml
+    note: "staleRestore: FAIL.level; and FAIL.notHidden (brought back by someone else first), which counts as done"
+
+  - id: a-restore-refused-while-the-medrese-is-hidden-says-why
+    need: >-
+      A course whose medrese is still hidden cannot be brought back; the person is told that it comes back with the medrese, and
+      the list stays as it was.
+    evidence:
+      - node: toastRestoreFailed
+      - node: toastRestoreParentHidden
+      - state: restoring
+      - source: apps/tedrisat/src/course/course.controller.ts:451
+      - source: apps/nizam/features/kosks/overview-present.ts:107
+      - scenario: parentHidden
+        binding: graphs/nizam/courses/list/binding.parentHidden.yaml
+
+  - id: any-other-restore-refusal-is-told
+    need: >-
+      A restore refused for any other reason (the course is gone) says "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." and
+      leaves the list as it was.
+    evidence:
+      - node: toastRestoreFailed
+      - node: toastRestoreFailedBody
+      - source: apps/tedrisat/src/course/course.controller.ts:451
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:90
+      - scenario: restoreGone
+        binding: graphs/nizam/courses/list/binding.restoreGone.yaml
+
+  - id: no-access-says-so
+    need: >-
+      A person who may not read this köşk's courses, and an address no köşk has, meet the screen that says "Bu bölüm için izniniz
+      yok".
+    evidence:
+      - state: reading
+      - state: refused
+      - state: not_found
+      - source: "apps/nizam/app/kosks/[id]/dersler/page.tsx:42"
+      - scenario: refused
+        binding: graphs/nizam/courses/list/binding.refused.yaml
+    note: "refused: the screen's own story is nizam.shell.noAccessAndNotFound's"
+
+  - id: hide-says-how-many-talebe-lose-access
+    need: >-
+      The window that asks before hiding says how many talebe are enrolled and lose their access and that the celses leave their
+      calendar, as the same question does in nazar-web (NCL-2); the row already carries the number.
+    missing: no Linear issue; findings NCL-2
+    note: >-
+      Drawn on the state confirmHide and on the node hideBody, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-hide-is-told-in-the-window
+    need: When a hide is refused the window itself says so (an Alert), not only an error toast in another portal (F-X-4).
+    missing: no Linear issue; findings F-X-4
+    note: >-
+      Drawn on the state confirmHide and on the node toastHideFailed, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-follows-a-hide-or-a-restore
+    need: >-
+      After a hide or a restore the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the
+      next row's first button), and a line on the page, not only a toast of six seconds, says what was done (F-W4-6).
+    missing: no Linear issue; findings F-W4-6
+    note: >-
+      Drawn on the states listedHidden and listed and on the nodes toastHidden and toastRestored, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-tab-name-has-its-count-apart
+    need: A tab's accessible name reads its label and its count apart ("Gizli, 2", not "Gizli2") (NCL-3).
+    missing: no Linear issue; findings NCL-3
+    note: >-
+      Drawn on the nodes tabAll, tabPublished, tabDraft and tabHidden, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: closing-follows-the-busy-state
+    need: >-
+      While the hide runs, "Vazgeç" and the close icon are marked busy or disabled like "Gizle", not left live and doing nothing
+      (NCL-1).
+    missing: no Linear issue; findings NCL-1
+    note: >-
+      Drawn on the state hiding and on the nodes hideCancel and hideClose, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-medrese-course-can-always-be-opened
+    need: >-
+      A course a medrese opened can be viewed from this list in every deployment, not only where tedris's address is configured
+      (F-W4-21).
+    missing: no Linear issue; findings F-W4-21
+    note: >-
+      Drawn on the nodes medreseView and medreseHide, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-names-the-kosk-in-its-title
+    need: The document's title says which köşk's courses it lists, so two tabs of two köşks can be told apart (F-W4-17).
+    missing: no Linear issue; findings F-W4-17
+    note: >-
+      Drawn on the nodes title and subtitle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).

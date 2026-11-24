@@ -1,0 +1,126 @@
+# The talebe's public profile (tedris-web /account/public-profile), which is BUILT AND SWITCHED OFF (MDRS-141), read from the code
+# of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved.
+#   - What it draws: what the code does today, with `PUBLIC_PROFILE_ENABLED = false` (features/public-profile/availability.ts:14):
+#     the address the person types or has bookmarked, the gate that asks a visitor to sign in first, and the not-found page a
+#     signed-in person meets, with its one way back. Nothing is read: the page calls notFound() before it asks tedrisat for anything.
+#   - What it does not draw: the editor itself (künye, gender, city, about, the four switches, the preview). It is not a screen
+#     anybody can reach, so it lives in needs.yaml, need by need, with the code that is there for each (MDRS-141). The switch-on
+#     decision is D1 below.
+#   - Findings it carries: PUBPROF-1 and PUBPROF-2 are this flow's own (ui.yaml `rules`); ACC-02, ACC-10, ACC-12, ACC-13 and ACC-14
+#     belong to the switched-on page and are kept in ui.yaml `rules` until a flow draws that page; the domain's
+#     `unreadable-input-500` (a künye sent as null) is named in needs.yaml.
+#   - The page it ends on is tedris.shell.systemPages' not-found page: its own story (the bar, the way home, SYS-1, SYS-3) is told
+#     there and only what touches this address is told here.
+#   - The e2e check it could take over, profile#4, is skipped in every environment and asserts nothing about the off state
+#     (see needs.yaml); nothing is carried.
+schema: delurio-graph/0
+kind: flow
+id: tedris.account.publicProfile
+status: captured
+domain: medaris.api
+ui: tedris.account.publicProfile
+title: Open the public profile while it is switched off
+summary: >-
+  A talebe's public profile (a künye and a gender that are always public, a city, an about text and a list of courses that
+  each stay private until the person flips a switch, and a preview of what others see) is built and was hidden on 4 Oct 2026
+  by the owner's order, one constant in tedris-web and one environment value on the API. Today the card on Hesap that would
+  link to it is left out, so only a typed or bookmarked address leads here. A visitor who types it is sent to sign in first,
+  like for any page that is not public. A signed-in person gets the app's not-found page, "Sayfa bulunamadı" with "Ana sayfaya
+  dön", before anything is read, with HTTP status 200. The three API routes (GET and PATCH /me/public-profile, GET
+  /users/{id}/public-profile) answer 404 PUBLIC_PROFILE_UNAVAILABLE to every signed-in caller, so even a person who knew the
+  routes could not read or write a profile.
+source: apps/tedris/app/account/public-profile/page.tsx
+
+scope:
+  shows: what a person meets at /account/public-profile while the profile is switched off, and the way back from it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the switched-on page: the form, the preview, the four switches, the toasts and the refusals (needs.yaml carries each, from the code)"
+    - "Hesap, which leaves the card \"Herkese açık profil\" and its link out while the profile is off (account-settings.tsx:434); the rest of Hesap is tedris.account.profile"
+    - "the three API routes, which no screen of any app calls while the page is off: a direct call answers 404 PUBLIC_PROFILE_UNAVAILABLE for every signed-in caller before it reads or writes anything, and 401 with no token (domain: getMyPublicProfile, updateMyPublicProfile, getUserPublicProfile)"
+    - "the loading skeleton that streams first (app/account/loading.tsx) and is replaced by the not-found markup, which is why the status is 200 and not 404"
+    - "a session that ends under the page, which sends the person to sign in again (realm.auth.sessionEnded)"
+    - "what the not-found page itself does, which tedris.shell.systemPages draws: the bar, SYS-1 and SYS-3"
+    - "the phone layout"
+
+decisions:
+  D1:
+    question: >-
+      Should the public profile be switched on, and under what terms? The owner decides first whether the gender is public on it
+      (availability.ts:8-13), and the privacy notice says today that it is not (PUBPROF-1); the association's legal contact has
+      not confirmed the wording for a künye that cannot be hidden (MDRS-141, KVKK Art. 6).
+    recommend: >-
+      Keep it off until both are settled. Then turn it on in one go, the API value and the web constant together, because either
+      alone leaves it unreachable and a web constant alone also makes the page say "Profilin yüklenemedi" for a permanent refusal
+      (PUBPROF-2). Replace the consent text's placeholder before (ACC-14).
+    affects: [notFound]
+
+context:
+  person:
+    values: [member, visitor]
+    initial: any
+    say:
+      member: "they are signed in"
+      visitor: "they have no session"
+
+guards:
+  isVisitor: "person == 'visitor'"
+
+# The main story: a signed-in talebe types the address and meets the not-found page.
+main:
+  given: { person: member }
+  events: [GO_HOME]
+
+initial: opening
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts first. /account/public-profile is not among the public pages (lib/public-paths.ts:12-19),
+      so a visitor is sent to /auth/signin?callbackUrl=%2Faccount%2Fpublic-profile before any page runs (seen: 307 on the stack).
+      A signed-in person's request reaches the page, which asks for the not-found page on its first line, before it reads
+      anything. Nothing is shown in this state.
+    source: apps/tedris/proxy.ts:28
+    always:
+      - { guard: isVisitor, target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'protectedPage'", session: "'none'" } }, say: "the gate sends the visitor to sign in with this address as the page to come back to", source: apps/tedris/lib/public-paths.ts:12 }
+      - { target: notFound, say: "the page calls notFound() while the profile is off", source: apps/tedris/app/account/public-profile/page.tsx:25 }
+
+  notFound:
+    title: Read that the page is not there
+    by: human
+    goal: true
+    description: >-
+      The app's not-found page: "Sayfa bulunamadı", one sentence and the link "Ana sayfaya dön", under the system's bar. The page
+      is drawn before getMyPublicProfile is called, so tedrisat gets no request and cannot tell this person from anyone else
+      (the API's own answer to a direct call is the same 404 for every caller, PUBLIC_PROFILE_UNAVAILABLE). Nothing on the page
+      says that a profile exists and is switched off. No link in any app leads here: Hesap's card is left out. The HTTP status
+      is 200, because account/loading.tsx has streamed the shell before notFound() runs (page.tsx:18-23, and MDRS-141's note of
+      5 Oct; not seen on this branch). Under /account the page has no <main> (ownsItsMain, SYS-1 of tedris.shell.systemPages;
+      read from the code, not seen at this address). Whether the document title is the page's own "Herkese açık profil | Tedris"
+      or the app's default was not verified.
+    includes: ["the bar the other pages wear", "\"Ana sayfaya dön\""]
+    source: apps/tedris/features/errors/system-page.tsx:43
+    on:
+      GO_HOME: { target: home_opened, say: "\"Ana sayfaya dön\" goes to /home (the person is signed in)", source: apps/tedris/features/errors/system-page.tsx:33 }
+      NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to sign in
+    description: >-
+      The browser is on /auth/signin?callbackUrl=%2Faccount%2Fpublic-profile, which sends it to Keycloak; realm.auth.signIn draws
+      the round trip (entry protectedPage). The person comes back to this address and then meets the not-found page as a signed-in
+      person (this flow with person member).
+
+  home_opened: { type: final, title: Ana sayfa opens (tedris.shell.home), leavesPage: true }
+  left: { type: final, title: "The person leaves by the bar, the footer or the address", leavesPage: true }
+
+assertions:
+  - id: visitor-asked-to-sign-in-first
+    never: "state == 'notFound' and person == 'visitor'"
+    say: "A visitor is never shown the not-found page of this address: the gate sends them to sign in before the page runs, so a person with no session learns nothing about the page"
+    source: apps/tedris/lib/public-paths.ts:12
+  - id: signed-in-is-not-sent-to-sign-in
+    never: "state == 'handed_over.sign_in' and person == 'member'"
+    say: "A person who has a session is not sent to sign in by this address; they reach the page and get the not-found answer"
+    source: apps/tedris/proxy.ts:28
