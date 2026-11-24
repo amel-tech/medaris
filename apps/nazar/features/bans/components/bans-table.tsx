@@ -139,12 +139,6 @@ export function BansTable({
                 {t(`Bans.permanentOutcome.${row.permanentOutcome.status}`)}
               </Badge>
             ) : null}
-            {row.permanentOutcome?.note ? (
-              <span className="mds-caption" data-testid="permanent-note">
-                {t("Bans.permanentOutcome.note")}{" "}
-                <bdi>{row.permanentOutcome.note}</bdi>
-              </span>
-            ) : null}
           </span>
         </span>
       ),
@@ -168,7 +162,19 @@ export function BansTable({
       key: "reason",
       header: t("Bans.columns.reason"),
       width: "20%",
-      render: (row) => <bdi>{row.reason}</bdi>,
+      // The note of a refusal sits under the ban's own reason, not under the
+      // name: beside the avatar a sentence broke into one word a line.
+      render: (row) => (
+        <span className="flex flex-col gap-1">
+          <bdi>{row.reason}</bdi>
+          {row.permanentOutcome?.note ? (
+            <span className="mds-caption" data-testid="permanent-note">
+              {t("Bans.permanentOutcome.note")}{" "}
+              <bdi>{row.permanentOutcome.note}</bdi>
+            </span>
+          ) : null}
+        </span>
+      ),
     },
     {
       key: "bannedBy",
