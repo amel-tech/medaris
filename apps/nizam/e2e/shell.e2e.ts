@@ -271,13 +271,10 @@ test("nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla move
     ).toBeVisible();
   const other = fixture.applicants.find((a) => a.courseId !== course?.id);
   await expect(page.getByText(other?.email ?? "x")).toHaveCount(0);
-  // the sidebar draws Dersler selected: the köşk-wide Talebeler is not built (MDRS-211)
-  await expect(
-    sidebar(page).getByRole("link", { name: /^Dersler/ })
-  ).toHaveAttribute("aria-current", "page");
+  // a course's roster draws the köşk-wide Talebeler selected (MDRS-211)
   await expect(
     sidebar(page).getByRole("link", { name: /^Talebeler/ })
-  ).toHaveCount(0);
+  ).toHaveAttribute("aria-current", "page");
 
   const target = waiting[0];
   await page

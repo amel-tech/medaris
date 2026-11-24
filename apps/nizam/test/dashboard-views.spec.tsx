@@ -524,11 +524,11 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain("/kosks/k1/courses/c1/sessions");
   });
 
-  it("links no page that is not built: the köşk-wide Celseler, Talebeler and Ders kayıtları (MDRS-211)", () => {
-    expect(html).not.toMatch(
-      /\/kosks\/k1\/(celseler|talebeler|ders-kayitlari)/
+  it("sends the Celseler card's Tümünü gör to the köşk-wide Celseler (MDRS-211)", () => {
+    expect(html).toMatch(
+      /<a[^>]*href="\/kosks\/k1\/celseler"[^>]*>Tümünü gör<\/a>/
     );
-    // the applications card keeps its "Tümünü gör", to a page that exists
+    // the applications card keeps its own
     expect(html).toContain('href="/kosks/k1/basvurular"');
   });
 

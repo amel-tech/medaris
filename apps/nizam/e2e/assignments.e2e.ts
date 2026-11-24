@@ -164,7 +164,8 @@ test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bul
   const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
   try {
     await signIn(page, KOSK_NAZIM);
-    await page.goto(`/kosks/${managed.koskId}/celseler`);
+    // A path no page answers; Celseler itself is a page since MDRS-211.
+    await page.goto(`/kosks/${managed.koskId}/boyle-bir-sayfa-yok`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();

@@ -368,10 +368,7 @@ export function CourseOverview({
           <h2 id="next-heading" className="mds-h2">
             {t("nextHeading")}
           </h2>
-          <a
-            className="mds-link"
-            href={`${base}/courses/${course.id}/sessions`}
-          >
+          <a className="mds-link" href={`${base}/celseler`}>
             {t("allSessions")}
           </a>
         </div>

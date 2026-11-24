@@ -850,12 +850,11 @@ describe("Genel bakış (nizam 53)", () => {
     expect(html).toContain("Celse planla");
   });
 
-  it("sends Bütün celseler to the course's own Celseler, a page that exists (MDRS-211)", () => {
+  it("sends Bütün celseler to the köşk-wide Celseler (MDRS-211)", () => {
     const html = view();
     expect(html).toMatch(
-      /<a[^>]*href="\/kosks\/k1\/courses\/c1\/sessions"[^>]*>Bütün celseler<\/a>/
+      /<a[^>]*href="\/kosks\/k1\/celseler"[^>]*>Bütün celseler<\/a>/
     );
-    expect(html).not.toContain("/kosks/k1/celseler");
   });
 
   it("lists the müderrisler with the imam's star after the name, among more than one (criterion 6, 2026-10-13)", () => {
