@@ -110,7 +110,7 @@ nodes:
   # --- Değerlendirme -----------------------------------------------------------------------------------------------------------
   evaluationTitle: { type: text, component: Heading, role: heading, text: { key: Evaluation.title }, in: [shown], when: "page == 'evaluation'", source: apps/nazar/features/evaluation/components/evaluation-page.tsx:41 } # h1 (e2e evaluation#2 a1)
   evaluationLine: { type: text, component: Text, text: { key: Evaluation.subtitle, params: { name: name } }, in: [shown], when: "page == 'evaluation'", source: apps/nazar/features/evaluation/components/evaluation-page.tsx:43 } # kept on the refusal
-  evaluationEmpty: { type: text, component: Text, text: { key: Evaluation.noColumns }, in: [shown], when: "page == 'evaluation' and body == 'drawn'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:199 } # the course the walk makes has no recited homework: the board draws the empty state that says where to set one
+  evaluationEmpty: { type: text, component: Text, text: { key: Evaluation.noColumns }, in: [shown], when: "page == 'evaluation' and body == 'drawn'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:210 } # the course the walk makes has no recited homework: the board draws the empty state that says where to set one
 
   # --- Ders kayıtları ----------------------------------------------------------------------------------------------------------
   recordingsTitle: { type: text, component: Heading, role: heading, text: { key: Recordings.title }, in: [shown], when: "page == 'recordings'", source: apps/nazar/features/recordings/components/recordings-page.tsx:82 } # h1

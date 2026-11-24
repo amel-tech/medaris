@@ -30,7 +30,7 @@
 #     a fetch() answers 400 `{"code":"INVALID_PATH","status":400,"message":"Not a file address"}`; a page request with no page of the app behind it
 #     answers 400 text/plain "Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.". No test of the WEB route downloads the sheet:
 #     apps/nazar/test/evaluation.spec.tsx:460-474 pins only the link's address, and test/file-routes.spec.ts has no case for this route (tedrisat's own
-#     API e2e, apps/tedrisat/test/e2e/exams.e2e.spec.ts:476, downloads the sheet from the API with its query, so the API side is covered and the break is
+#     API e2e, apps/tedrisat/test/e2e/exams.e2e.spec.ts:497, downloads the sheet from the API with its query, so the API side is covered and the break is
 #     in between). The route was added on 13 November 2026 (MDRS-248, git log), a month after the proxy (12 October, #293). The graph draws what the code
 #     does (the refusal); the product's story, a sheet saved, is not reachable, so `main` is the homework file's.
 #   - What the local stack can walk (STACK.md): there is no file storage (the BUNNY_STORAGE_* keys are not set), so no upload works and nothing is ever
@@ -284,14 +284,14 @@ states:
     title: Değerlendirme, with "Excel indir"
     by: human
     goal: true
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:306
     description: >-
       The overview of the board, for a person who holds `session.manage` (the müderris by role, a ders nazırı by grant): a link "Excel indir" (a
       secondary button that is an <a>, with a download icon) above the table "Talebeler, ezberler ve sınavlar". It is drawn only when the course has a
       column (a recited homework or an exam) and a talebe; otherwise the page is an empty state with no link. Pressing it never saves a file
       (evaluation-export-invalid-path).
     on:
-      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:306 }
       NAVIGATE: left
 
   evaluationRefused:
@@ -304,7 +304,7 @@ states:
       copied link to carry. A second press does the same again. Were the page to word it, the words would be "Bu dosya artık yok.", which is false:
       the file was never asked for (evaluation-export-invalid-path).
     on:
-      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:306 }
       NAVIGATE: left
 
   followingSubmissionFile:

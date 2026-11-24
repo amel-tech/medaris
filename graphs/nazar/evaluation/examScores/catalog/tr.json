@@ -26,8 +26,15 @@
   "Problems.forbiddenTitle": "Bu sayfaya izniniz yok",
   "Problems.forbidden": "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.",
   "Shell.retry": "Yeniden dene",
+  "ExamResults.releaseConfirmTitle": "Sonuçlar talebelere açılsın mı?",
+  "ExamResults.releaseEndsExam": "Sonuçları açarsanız sınav herkes için biter ve kimse yeni başlayamaz.",
+  "ExamResults.releaseConfirmBody": "Her talebe kendi puanını, konulardaki durumunu ve cevaplarını doğru cevaplarıyla birlikte görür ve bildirim alır. Bu geri alınamaz.",
+  "ExamResults.releaseConfirm": "Sonuçları aç",
+  "ExamResults.cancel": "Vazgeç",
+  "ExamResults.notOpen": "Sınav açık değil: henüz açılmadı ya da bitti.",
+  "Shell.close": "Kapat",
   "composed.Evaluation.talebeName": "{name}",
   "composed.Evaluation.score": "{score}/{max}",
   "composed.Shell.loadingDefault": "Yükleniyor",
-  "Changes.note": "Puanlar yazıldıkça kaydedilir ve talebeler henüz görmez. “Sonuçları talebelere aç” denince her talebe kendi puanını okur, kayıtlı talebelere bildirim gider ve sonuçlar bir daha kapatılamaz."
+  "Changes.note": "Puanlar yazıldıkça kaydedilir ve talebeler henüz görmez. “Sonuçları talebelere aç” denince her talebe kendi puanını okur, kayıtlı talebelere bildirim gider ve sonuçlar bir daha kapatılamaz. Çevrimiçi bir sınavda sonuçları açmak sınavı herkes için de bitirir; bu yüzden önce sorulur ve sınav açılmadan önce yapılamaz."
 }

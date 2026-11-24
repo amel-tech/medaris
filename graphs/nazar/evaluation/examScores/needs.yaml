@@ -38,13 +38,13 @@ needs:
       - node: problemInvalid
       - node: scoreBox
       - source: apps/tedrisat/src/exam/exam.controller.ts:77
-      - source: apps/nazar/features/evaluation/evaluation.ts:190
+      - source: apps/nazar/features/evaluation/evaluation.ts:196
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: |-
       exam.e2e.ts exam#2 (a1: "En çok 100 puan", a2: nothing saved)
-      exams.e2e.spec.ts exams.e2e.spec.ts:331 (the API refuses 101, -1, a fraction and none; nothing is written)
+      exams.e2e.spec.ts exams.e2e.spec.ts:332 (the API refuses 101, -1, a fraction and none; nothing is written)
 
   - id: score-is-kept-as-typed
     need: >-
@@ -57,13 +57,13 @@ needs:
       - node: count
       - node: resultCell
       - source: apps/tedrisat/src/exam/exam.controller.ts:77
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:694
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:730
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: |-
       exam.e2e.ts exam#2 (a3: 85 is kept, a4: "1/1 girildi")
-      exams.e2e.spec.ts exams.e2e.spec.ts:289 (a score up to tam puan is kept) and :314 (first saves made at once take turns: one
+      exams.e2e.spec.ts exams.e2e.spec.ts:290 (a score up to tam puan is kept) and :314 (first saves made at once take turns: one
       write)
 
   - id: enter-moves-to-the-next-row
@@ -73,7 +73,7 @@ needs:
     evidence:
       - state: scoring
       - node: scoreBox
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:655
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:691
     note: >-
       unwalked: apps/nazar/test/evaluation.spec.tsx ("refuses a score above tam puan, saves one within it with Enter and moves
       down") is a unit spec; no e2e and no passed replay
@@ -89,10 +89,10 @@ needs:
       - node: resultCell
       - node: count
       - source: apps/tedrisat/src/exam/exam.controller.ts:77
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:754
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:790
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: >-
-      exams.e2e.spec.ts exams.e2e.spec.ts:289 (Girmedi keeps no score, even when one is sent with it); the chip itself has no
+      exams.e2e.spec.ts exams.e2e.spec.ts:290 (Girmedi keeps no score, even when one is sent with it); the chip itself has no
       browser check
 
   - id: the-table-shows-the-results
@@ -105,9 +105,9 @@ needs:
       - node: talebeCell
       - node: resultCell
       - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:68
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:265
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:276
     note: >-
-      unwalked: apps/tedrisat/test/e2e/exams.e2e.spec.ts:444 reads the board's EXAM column at the API; the page's cells have a
+      unwalked: apps/tedrisat/test/e2e/exams.e2e.spec.ts:465 reads the board's EXAM column at the API; the page's cells have a
       unit spec only
 
   - id: no-talebe-says-so
@@ -115,7 +115,7 @@ needs:
     evidence:
       - state: noTalebe
       - node: emptyNoTalebe
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:213
     note: "unwalked: a unit spec only"
 
   - id: results-stay-closed-until-released
@@ -132,7 +132,7 @@ needs:
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
     note: |-
       exam.e2e.ts exam#2 (a5: released false, score null)
-      exams.e2e.spec.ts exams.e2e.spec.ts:368 (a talebe's score is kept from them until released, then shown to them alone)
+      exams.e2e.spec.ts exams.e2e.spec.ts:369 (a talebe's score is kept from them until released, then shown to them alone)
 
   - id: release-opens-the-results
     need: >-
@@ -145,7 +145,7 @@ needs:
       - node: releasedBadge
       - node: toastReleased
       - source: apps/tedrisat/src/exam/exam.controller.ts:101
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:161
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:164
       - test: apps/nazar/e2e/exam.e2e.ts
         name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
     note: "exam.e2e.ts exam#2 (a6: the badge \"Sonuçlar açık\", a7: released true, score 85)"
@@ -171,7 +171,7 @@ needs:
       - source: apps/tedrisat/src/exam/exam.controller.ts:101
       - source: apps/tedrisat/src/exam/exam.repository.ts:312
       - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
-    note: exams.e2e.spec.ts exams.e2e.spec.ts:430 (tells the talebe once, and a second release changes nothing)
+    note: exams.e2e.spec.ts exams.e2e.spec.ts:451 (tells the talebe once, and a second release changes nothing)
 
   - id: only-the-course-team-scores
     need: >-
@@ -186,15 +186,36 @@ needs:
       - test: apps/nazar/e2e/evaluation.e2e.ts
         name: "a ders nazırı without session.manage has no Değerlendirme and is refused the page and the API"
     note: |-
-      exams.e2e.spec.ts exams.e2e.spec.ts:340 (the course team's alone, on this course's exam, for its own talebe)
+      exams.e2e.spec.ts exams.e2e.spec.ts:341 (the course team's alone, on this course's exam, for its own talebe)
       evaluation.e2e.ts evaluation#2 (a ders nazırı with no session.manage: "Bu sayfaya izniniz yok"; carried by
       nazar.access.dersNazirPages)
+
+  - id: an-online-exam-asks-before-it-ends
+    need: >-
+      On an online exam, whose release also ends the exam for everyone, the course team is asked before the results are opened,
+      in the words of the exam's results page: that releasing ends the exam and no one can start it any more, and what each
+      talebe then reads. Nothing is released until they confirm, and a release refused because the exam has not opened says so.
+    evidence:
+      - state: confirmRelease
+      - node: releaseDialog
+      - node: releaseEndsExam
+      - node: toastReleaseNotOpen
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:663
+      - test: apps/nazar/test/evaluation.spec.tsx
+        name: "asks before the release, says it ends the exam, and releases only on confirm"
+      - test: apps/nazar/test/evaluation.spec.tsx
+        name: "releases nothing on Vazgeç"
+      - test: apps/nazar/test/evaluation.spec.tsx
+        name: "says why a release before the exam opens is refused"
+    note: >-
+      Added on 24 Nov 2026 with the release that ends an online exam (the owner's decision, nazar.exams.results
+      release-ends-the-exam); the board does not read whether the exam still goes on, so it says the release ends it either way.
 
   - id: release-asks-first
     need: >-
       Before the results are opened the course team is asked once, and told how many scores are entered of how many, that the
       talebe will read them and be told, and that it cannot be undone.
-    missing: "no Linear issue; F-D1-28, decision D1: the button releases at once, with 0/N entered too"
+    missing: "no Linear issue; F-D1-28, decision D1: a written or oral exam's button releases at once, with 0/N entered too; an online exam's column asks since 24 Nov 2026 (need an-online-exam-asks-before-it-ends), but does not say how many are entered"
     note: |-
       Drawn on the states scoring and releasing and on the node releaseButton, which the code has: they are not evidence, so that
       a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
@@ -224,7 +245,7 @@ needs:
       sentence says an exam is planned on Celse planla.
     evidence:
       - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:44
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:303
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:314
     missing: >-
       no Linear issue; EXAM-1, decision D3: in part. The subtitle and the caption name exams since fdc6e995; the way back ("Bütün
       ödevler") and the empty sentence still speak of homework only
@@ -233,7 +254,7 @@ needs:
       they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
       apps/nazar/features/evaluation/components/evaluation-page.tsx:44: the subtitle "{ders} dersinin ezber ve sınavları":
       fdc6e995
-      apps/nazar/features/evaluation/components/evaluation-board.tsx:303: the caption "Talebeler, ezberler ve sınavlar": fdc6e995
+      apps/nazar/features/evaluation/components/evaluation-board.tsx:314: the caption "Talebeler, ezberler ve sınavlar": fdc6e995
 
   - id: keyboard-and-focus-follow-the-person
     need: >-
@@ -249,7 +270,7 @@ needs:
       "Excel indir" gives the board as a spreadsheet, a row for each talebe and a column for each recited homework and exam, in
       the viewer's language.
     missing: >-
-      no Linear issue; evaluation-export-invalid-path: tedrisat serves the sheet (exams.e2e.spec.ts:476) and the page offers the
+      no Linear issue; evaluation-export-invalid-path: tedrisat serves the sheet (exams.e2e.spec.ts:497) and the page offers the
       link, but the web route between them is refused by the file proxy's path check on every call (nazar.files.download)
     note: >-
       Drawn on the node downloadLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13

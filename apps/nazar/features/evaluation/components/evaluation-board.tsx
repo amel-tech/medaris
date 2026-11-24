@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge, type BadgeVariant } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
@@ -113,6 +114,8 @@ export function EvaluationBoard({
   courseId: string;
 }) {
   const t = useTranslations("nazar.Evaluation");
+  // The online exam's own words, as its results page says them (MDRS-299).
+  const words = useTranslations("nazar");
   const { notify } = useToaster();
   const markSaves = useCellSaves(initial.marks);
   const marks = markSaves.cells;
@@ -162,7 +165,15 @@ export function EvaluationBoard({
     const result = await releaseExamResults(column.lessonId);
     if (handleUnauthenticated(result)) return;
     if (!("success" in result) || !result.success) {
-      notify({ tone: "error", title: t("releaseFailed") });
+      notify({
+        tone: "error",
+        title: t("releaseFailed"),
+        // An online exam is released only once it has opened (MDRS-299).
+        description:
+          "code" in result && result.code === "EXAM_NOT_OPEN"
+            ? words("ExamResults.notOpen")
+            : undefined,
+      });
       return;
     }
     setReleased((now) => new Set(now).add(column.lessonId));
@@ -561,7 +572,10 @@ function MarkRow({
  * An exam column opened (MDRS-248): every talebe with a score box and
  * "Girmedi". Enter saves the row and moves to the box below; leaving a box
  * saves it too. A score above "tam puan" is refused here, as tedrisat refuses
- * it. "Sonuçları talebelere aç" opens the results to the talebe once.
+ * it. "Sonuçları talebelere aç" opens the results to the talebe once; on an
+ * online exam it ends the exam for everyone too (MDRS-299), so there it asks
+ * first, in the words of the exam's results page. A written or oral exam is
+ * released with one press.
  */
 function ExamScreen({
   column,
@@ -581,9 +595,17 @@ function ExamScreen({
   onRelease: () => Promise<void>;
 }) {
   const t = useTranslations("nazar.Evaluation");
+  const words = useTranslations("nazar");
   const boxes = useRef<Array<HTMLLIElement | null>>([]);
   const [releasing, setReleasing] = useState(false);
+  const [asking, setAsking] = useState(false);
   const { entered, total } = enteredCount(board, column.lessonId);
+  const releaseNow = async () => {
+    setAsking(false);
+    setReleasing(true);
+    await onRelease();
+    setReleasing(false);
+  };
 
   return (
     <section
@@ -628,11 +650,9 @@ function ExamScreen({
           ) : (
             <Button
               loading={releasing}
-              onClick={async () => {
-                setReleasing(true);
-                await onRelease();
-                setReleasing(false);
-              }}
+              onClick={() =>
+                column.exam?.online ? setAsking(true) : void releaseNow()
+              }
               data-testid="exam-release"
             >
               {t("release")}
@@ -640,6 +660,22 @@ function ExamScreen({
           )}
         </div>
       </div>
+      {column.exam?.online ? (
+        <AlertDialog
+          open={asking}
+          onOpenChange={setAsking}
+          title={words("ExamResults.releaseConfirmTitle")}
+          confirmLabel={words("ExamResults.releaseConfirm")}
+          cancelLabel={words("ExamResults.cancel")}
+          closeLabel={words("Shell.close")}
+          onConfirm={() => void releaseNow()}
+        >
+          {/* The board does not know whether the exam still goes on, so it
+              says what the release does to one that does. */}
+          <p>{words("ExamResults.releaseEndsExam")}</p>
+          <p>{words("ExamResults.releaseConfirmBody")}</p>
+        </AlertDialog>
+      ) : null}
       <p className="mds-caption text-neutral-muted">{t("examKeysHint")}</p>
       <ul className="m-0 flex list-none flex-col p-0">
         {board.talebe.map((talebe, index) => (

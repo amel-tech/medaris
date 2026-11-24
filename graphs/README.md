@@ -19,7 +19,7 @@ Counted by script on 16 November 2026, and the flows, the needs and the bindings
 | Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 182 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
 | The domain `medaris.api` | one domain over 27 files: 388 actions (363 in the code, 25 sketched for planned work: 23 for the planned flows and 2 of online exams), 79 entities, 327 invariants |
-| `needs.yaml` (the product list of a flow) | 182 files, 2765 needs: 1463 met, 1302 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 673 of the met needs are walked by no scenario and no browser e2e test (672 on 21 November 2026, counted again on 24 November 2026 after one need was added) |
+| `needs.yaml` (the product list of a flow) | 182 files, 2766 needs: 1464 met, 1302 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 674 of the met needs are walked by no scenario and no browser e2e test (672 on 21 November 2026, counted again on 24 November 2026 after two needs were added) |
 | Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before online exams; their 41 `EXM-*` ids, 38 of them findings, are counted apart in FINDINGS.md) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 176 flows carry a `binding.yaml`; with their variants, the four navigation bindings and the shared ones, 571 files named `*binding*.yaml` hold 1073 scenarios |
 
@@ -115,7 +115,8 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   `tedris.exams.result` were walked on their main story and with `--cover transitions`, and `nizam.exams.zerothAnswers` on its main
   story. Later on 24 November, after a hoca reported that the talebe saw no answers once the results were out, "Sonuçları talebelere aç" was
   made to end an online exam for everyone as "Sınavı erken bitir" does, and to wait until it has opened (the owner's decision,
-  need `release-ends-the-exam`), and EXM-TAKE-15 was fixed, so the take binding's FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE are
+  need `release-ends-the-exam`; Değerlendirme asks before it releases an online exam's column, need
+  `an-online-exam-asks-before-it-ends` of `nazar.evaluation.examScores`), and EXM-TAKE-15 was fixed, so the take binding's FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE are
   bound again; the changed bindings were checked with `--check`, not walked. The three nazar flows were
   checked with `--check` only and have not been walked.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
@@ -222,7 +223,7 @@ playback and every file upload (the storage keys are not set, the upload routes 
 - **Gaps.** [`needs.gaps.yaml`](needs.gaps.yaml) lists, per flow, the ids of the needs that are `missing`. `check` holds it to the
   needs: a missing need that is not listed fails (`need-unlisted`), and so does an entry whose need is met (`gap-met`), so the list
   only shrinks, and each new gap is a line a review reads. A met need that no walk covers is not a gap: it is a need whose
-  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 673 (counted on 24 November 2026).
+  evidence names no `scenario` and no browser e2e test (`apps/*/e2e/*.e2e.ts`); there are 674 (counted on 24 November 2026).
 
 ## Conventions
 
