@@ -40,8 +40,11 @@ import type {
   KoskManagedBy,
   KoskNazimResponse,
   KoskOverviewResponse,
+  KoskRecordingListResponse,
   KoskResponse,
+  KoskSessionListResponse,
   KoskStatusFilter,
+  KoskStudentListResponse,
   ManagedKoskDecksResponse,
   PaginatedKoskResponse,
   PassivateScopeDto,
@@ -101,10 +104,16 @@ import {
     KoskNazimResponseToJSON,
     KoskOverviewResponseFromJSON,
     KoskOverviewResponseToJSON,
+    KoskRecordingListResponseFromJSON,
+    KoskRecordingListResponseToJSON,
     KoskResponseFromJSON,
     KoskResponseToJSON,
+    KoskSessionListResponseFromJSON,
+    KoskSessionListResponseToJSON,
     KoskStatusFilterFromJSON,
     KoskStatusFilterToJSON,
+    KoskStudentListResponseFromJSON,
+    KoskStudentListResponseToJSON,
     ManagedKoskDecksResponseFromJSON,
     ManagedKoskDecksResponseToJSON,
     PaginatedKoskResponseFromJSON,
@@ -251,6 +260,26 @@ export interface HideKoskDeckRequest {
 export interface ListCourseRequestsRequest {
     id: string;
     status?: ListCourseRequestsStatusEnum;
+}
+
+export interface ListKoskRecordingsRequest {
+    id: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface ListKoskSessionsRequest {
+    id: string;
+    tab?: ListKoskSessionsTabEnum;
+    page?: number;
+    limit?: number;
+}
+
+export interface ListKoskStudentsRequest {
+    id: string;
+    page?: number;
+    limit?: number;
+    q?: string;
 }
 
 export interface ProposeKoskDeckRequest {
@@ -1669,6 +1698,170 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
+     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * Every course\'s ders kayıtları for the köşk (Ders kayıtları)
+     */
+    async listKoskRecordingsRaw(requestParameters: ListKoskRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskRecordingListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listKoskRecordings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/recordings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskRecordingListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The ders kayıtları of the köşk\'s shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course\'s own page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * Every course\'s ders kayıtları for the köşk (Ders kayıtları)
+     */
+    async listKoskRecordings(requestParameters: ListKoskRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskRecordingListResponse> {
+        const response = await this.listKoskRecordingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * Every course\'s live sessions for the köşk (Celseler)
+     */
+    async listKoskSessionsRaw(requestParameters: ListKoskSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskSessionListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listKoskSessions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['tab'] != null) {
+            queryParameters['tab'] = requestParameters['tab'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/sessions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskSessionListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The live sessions of the köşk\'s published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course\'s own Celseler page. For the köşk\'s nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * Every course\'s live sessions for the köşk (Celseler)
+     */
+    async listKoskSessions(requestParameters: ListKoskSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskSessionListResponse> {
+        const response = await this.listKoskSessionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Everyone enrolled in, or who completed, a course of the köşk that is not hidden: one row a person, newest first by first enrollment, each with all of their courses in the köşk, and how many applications wait (`pendingCount`). `q` matches the name or the e-mail address. Names and addresses are personal data: for the köşk\'s nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it, as it does not open the applicants), and every read is written to `audit_log` as a roster read on the köşk. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The köşk\'s talebe, a page at a time (Talebeler)
+     */
+    async listKoskStudentsRaw(requestParameters: ListKoskStudentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskStudentListResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listKoskStudents().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/students`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => KoskStudentListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Everyone enrolled in, or who completed, a course of the köşk that is not hidden: one row a person, newest first by first enrollment, each with all of their courses in the köşk, and how many applications wait (`pendingCount`). `q` matches the name or the e-mail address. Names and addresses are personal data: for the köşk\'s nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it, as it does not open the applicants), and every read is written to `audit_log` as a roster read on the köşk. A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`.
+     * The köşk\'s talebe, a page at a time (Talebeler)
+     */
+    async listKoskStudents(requestParameters: ListKoskStudentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskStudentListResponse> {
+        const response = await this.listKoskStudentsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * A müderris of one of the köşk\'s courses. The köşk nazımı accepts it by opening the deck, or refuses it with a reason.
      * Suggest a deck for the köşk
      */
@@ -2229,3 +2422,11 @@ export const ListCourseRequestsStatusEnum = {
     Decided: 'DECIDED'
 } as const;
 export type ListCourseRequestsStatusEnum = typeof ListCourseRequestsStatusEnum[keyof typeof ListCourseRequestsStatusEnum];
+/**
+ * @export
+ */
+export const ListKoskSessionsTabEnum = {
+    Upcoming: 'UPCOMING',
+    Past: 'PAST'
+} as const;
+export type ListKoskSessionsTabEnum = typeof ListKoskSessionsTabEnum[keyof typeof ListKoskSessionsTabEnum];
