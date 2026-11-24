@@ -32,6 +32,16 @@ const asDataUrl = (blob: Blob): Promise<string> =>
   });
 
 /**
+ * What is drawn, as one comparable mark: every edit, deletion included, raises
+ * the `version` of the element it touches.
+ */
+const sceneMark = (
+  elements: readonly { version: number }[],
+  background: string
+): string =>
+  `${elements.length}:${elements.reduce((sum, element) => sum + element.version, 0)}:${background}`;
+
+/**
  * A session's board on the canvas (Excalidraw, MIT): the scene tedrisat keeps,
  * and its images fetched one by one from this app's own origin and handed to
  * the canvas by the id each has in the scene. `readOnly` is the talebe's view
@@ -61,7 +71,18 @@ export function BoardCanvas({
 }) {
   const [api, setApi] = useState<BoardApi | null>(null);
   const [imagesFailed, setImagesFailed] = useState(false);
-  const drawn = useRef(false);
+  const seen = useRef<string | null>(null);
+
+  // A saved board opens whole: `scrollToContent` in the initial data only
+  // centres it, so a board wider than the view would open cut off.
+  const hasContent = board.elements.length > 0;
+  useEffect(() => {
+    if (!api || !hasContent) return;
+    const frame = requestAnimationFrame(() => {
+      api.scrollToContent(undefined, { fitToContent: true, animate: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [api, hasContent]);
 
   // The scene names its images; their bytes come after the canvas is up.
   useEffect(() => {
@@ -126,10 +147,13 @@ export function BoardCanvas({
             setApi(ready);
             onReady?.(ready);
           }}
-          onChange={() => {
-            // The canvas reports its first draw as a change.
-            if (drawn.current) onChange?.();
-            drawn.current = true;
+          onChange={(elements, appState) => {
+            // The canvas calls this for its first draw and for every pointer
+            // move, zoom and selection too; only a scene that differs from
+            // the last one seen is a change to save.
+            const mark = sceneMark(elements, appState.viewBackgroundColor);
+            if (seen.current !== null && seen.current !== mark) onChange?.();
+            seen.current = mark;
           }}
           viewModeEnabled={readOnly}
           zenModeEnabled={readOnly}

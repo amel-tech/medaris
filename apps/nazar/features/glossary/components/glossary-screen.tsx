@@ -79,8 +79,8 @@ export function GlossaryScreen({
       </output>
       {terms.length === 0 ? (
         <EmptyState>
-          <p className="mds-h3">{words("Glossary.emptyTitle")}</p>
-          <p>{words("Glossary.emptyBody")}</p>
+          <span className="mds-h3 block">{words("Glossary.emptyTitle")}</span>
+          <span className="block">{words("Glossary.emptyBody")}</span>
         </EmptyState>
       ) : found.length === 0 ? (
         <EmptyState>{words("Glossary.noneFound")}</EmptyState>

@@ -25,7 +25,7 @@ Each table hangs off a course or a lesson with `ON DELETE RESTRICT`, so every pu
 - The gate after the merge, each target run on its own with `--skip-nx-cache`, as Nx counted its tasks: `typecheck` 21, `build` 17, `lint` 19, `module-boundaries` 19, and `test` over 15 projects, all green.
 - `pnpm assert:openapi-fresh`: 265 paths, identical to what the exporter writes. `node tools/ci/assert-release-config.mjs`: 7 components, chain intact.
 - The route inventory snapshot (`test/e2e/__snapshots__/authz-route-inventory.txt`) is 13 lines longer than `main`'s.
-- `pnpm run security-check`: no high or critical advisory brought in. The lesson board's canvas first brought seven, all high and all through `@excalidraw/excalidraw`'s exact declarations of `nanoid` (3.3.3 and, through `mermaid-to-excalidraw`, 4.0.2) and its `lodash-es` 4.17.21. Three overrides in `pnpm-workspace.yaml` close them, with their removal condition written beside them. nazar-web and tedris-web were built and tested again after the overrides; the canvas itself was not opened in a browser.
+- `pnpm run security-check`: no high or critical advisory brought in. The lesson board's canvas first brought seven, all high and all through `@excalidraw/excalidraw`'s exact declarations of `nanoid` (3.3.3 and, through `mermaid-to-excalidraw`, 4.0.2) and its `lodash-es` 4.17.21. Three overrides in `pnpm-workspace.yaml` close them, with their removal condition written beside them. nazar-web and tedris-web were built and tested again after the overrides; the canvas was opened in a browser afterwards (see "Seen in a browser").
 
 Two runs of the gate did not pass on the first attempt, neither for a reason in this branch:
 
@@ -47,9 +47,36 @@ This was measured, not inferred: for the second run above every test app stamped
 
 The fix is in `test/helpers/test-app.helper.ts`: `createTestApp` listens on `127.0.0.1` itself, so supertest reuses that address and nothing else can answer for it. `test/unit/jwt-claim-validation.spec.ts` builds its own app and does the same. No assertion was changed. After it, the whole suite passed twice in a row on the branch (once alone, once inside `nx run-many -t test`).
 
+## Seen in a browser
+
+A later session opened every new page in headless Chromium (Playwright) on one macOS machine, at 1280 px wide, in Turkish, and recorded one captioned video for each of the four pieces. The apps ran as `next dev` against a local tedrisat and a throwaway local Keycloak container set up by `tools/keycloak/setup-realm.sh --with-test-users`; one test user held the nazım, müderris and talebe roles on one course at once.
+
+What was done on screen and worked:
+
+- **Sarf tablosu** (nazar-web): the root ن ص ر with the bâb Nasara and the mastar "yardım etmek" drew the 24 sîga; a sîga opened its conjugation as "Tablo" and as "El şeması"; "Derse ekle" listed the root under "Derse eklenen kökler". tedris-web showed it under the course's "Sarf" tab, and a sîga opened its conjugation there.
+- **Tahta** (nazar-web): a rectangle, a text box with Arabic in it and a pen stroke were drawn; "Tahtaya ekle" laid the Mâzî table on the canvas; "Tahtayı kaydet" answered "Tahta kaydedildi". tedris-web showed the saved board read-only on the session page.
+- **Lügat** (nazar-web): two terms were written through "Terim ekle" and "Terim ara" narrowed the list to one. tedris-web showed both under the "Lügat" tab, and "Dersin lügati" on the session page opened that tab.
+- **Ders notu** (nazar-web): a Markdown note showed in "Önizleme" as it was typed and "Notu kaydet" kept it. tedris-web showed it on the session page.
+
+Three defects were found this way and fixed in the same pull request:
+
+1. The empty Lügat page put two `<p>` inside the `<p>` of `EmptyState`; React reported a hydration error and redrew the page on the client.
+2. The board said "Kaydedilmemiş değişiklik var" as soon as it opened. Excalidraw calls `onChange` for a pointer move, a zoom and a selection too, more than once before anything is drawn. The canvas now compares the elements' versions and the background with the last it saw. Measured after the fix: nothing at open, nothing after moving the pointer, the notice after drawing a rectangle, gone after saving.
+3. A saved board wider than the view opened cut off, in both apps: `scrollToContent` in the initial data only centres the scene. Both canvases now fit the scene to the view once on opening (never above 100%).
+
+Seen and left as they are:
+
+- A heading in a note (`# …`) is drawn as a label-sized paragraph, close to the body text. That is the shared `Markdown` component (MDRS-150), which the questions and the talebe's own notes use too.
+- An example or a note line that begins with an Arabic word is laid right to left (`dir="auto"`), so in the glossary list it sits at the far edge from its label.
+- Under the Turkish locale Excalidraw leaves one hint line in English ("To move canvas, hold mouse wheel…").
+
+The gate after these three fixes, each target on its own with `--skip-nx-cache`: `typecheck`, `build`, `lint` and `module-boundaries` green. `test` was green in 13 of 15 projects; `tedrisat` (3 files of 238 failed, 3927 tests passed, 30 skipped) and `keycloak-theme` (1 file of 9 failed, 637 passed, 7 skipped) failed, alone as well as together, in exactly the four suites that start a Keycloak container. Their cause is on the machine and was reproduced without the repository: a Keycloak 26.3.2 container published on `0.0.0.0`, as Testcontainers publishes it, answered the admin token request with `403 HTTPS required` over both `127.0.0.1` and `::1`, while the same image published on `127.0.0.1` let `setup-realm.sh` run to the end. The same suites passed on this machine earlier the same day; why Docker now presents these requests as non-local was not found. Those four suites are therefore not verified locally for this commit; CI runs them.
+
+The "before" footage in the videos is `main` at `a0248bb4`, the commit the branch started from, not today's `main`.
+
 ## Not verified
 
-- **In a browser.** The pages were not opened by a person or an agent. The only browser the session could drive was on another machine and could not reach this one's `localhost`. What stands in for it: the e2e specs above, a DOM spec of the note editor (`apps/nazar/test/teacher-note-editor.spec.tsx`, 6 tests), and the unauthenticated request to each new nazar-web route answering with the redirect to sign-in.
+- **In a browser, what was not tried.** Putting an image on the board (the local run has no `BUNNY_STORAGE_*`, so the upload would answer 503; it was not attempted), the "Mechûl" side, "Dersten kaldır", "Desteye ekle", editing and deleting a term, the Arabic and English locales, the dark theme, narrow widths, any browser other than Chromium, a talebe who is not also the müderris, and sign-in against the real realm.
 - **Image upload against real storage.** The board's images go to Bunny; the e2e spec uses an in-memory store. No request was made to a real storage zone.
 - **Linux and CI.** Whether the port collision can happen on Linux was not measured. Every observation above is from one macOS machine.
 - **How often the suite failed on this branch before the fix** was reported as five to seven tests a run by the session that wrote the first four pieces; that count was not re-measured here.

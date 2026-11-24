@@ -63,6 +63,17 @@ export function BoardCanvas({
   const [imagesFailed, setImagesFailed] = useState(false);
   const drawn = useRef(false);
 
+  // A saved board opens whole: `scrollToContent` in the initial data only
+  // centres it, so a board wider than the view would open cut off.
+  const hasContent = board.elements.length > 0;
+  useEffect(() => {
+    if (!api || !hasContent) return;
+    const frame = requestAnimationFrame(() => {
+      api.scrollToContent(undefined, { fitToContent: true, animate: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [api, hasContent]);
+
   // The scene names its images; their bytes come after the canvas is up.
   useEffect(() => {
     if (!api || board.files.length === 0) return;
