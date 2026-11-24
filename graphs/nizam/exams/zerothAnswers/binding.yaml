@@ -87,3 +87,8 @@ nodes:
   questionAnswered: { text: '/\d+ talebe cevapladı/', within: { css: '[data-testid=zeroth-answers] ul > li > section' } }
   detailTitle: { css: '#zeroth-detail-title' }
   detailTotal: { text: '/^\d+ talebe cevapladı$/', within: { css: '[aria-labelledby=zeroth-detail-title]' } }
+  # the list of questions holds a list of options in each: it is the section's own
+  questionsList: { css: '[aria-labelledby=zeroth-questions-title] > ul' }
+  # an option's line has the count and the percentage, or the count alone when nobody answered: one pattern finds either
+  optionCount: { role: listitem, hasText: '/^.+: \d+ talebe( \(%\d+\))?$/', within: { css: '[aria-labelledby=zeroth-questions-title]' } }
+  detailOption: { role: listitem, hasText: '/^.+: \d+ talebe( \(%\d+\))?$/', within: { css: '[aria-labelledby=zeroth-detail-title] > ul' } }

@@ -97,19 +97,26 @@ context:
       single: the question shown is answered with radio buttons (one choice)
       multiple: the question shown is answered with check boxes (any number of marks)
   position:
-    values: [first, inside, last]
-    initial: first
-    say:
-      first: the question shown is the first one of the talebe's order
-      inside: the question shown is neither the first nor the last one of the talebe's order
-      last: the question shown is the last one of the talebe's order
-  textSize:
-    values: [smallest, between, largest]
+    values: [inside, first, last]
     initial: any
     say:
-      smallest: the exam is drawn at 100 %, where A− is off
-      between: the exam is drawn at 115 or 130 %
-      largest: the exam is drawn at 150 %, where A+ is off
+      inside: the question shown is neither the first nor the last one of the talebe's order
+      first: the question shown is the first one of the talebe's order
+      last: the question shown is the last one of the talebe's order
+  length:
+    values: [more, two]
+    initial: any
+    say:
+      more: the exam has three questions or more, so a step from the first or the last lands inside the order
+      two: the exam has two questions, so a step from the first lands on the last and back
+  textSize:
+    values: [s100, s115, s130, s150]
+    initial: s100
+    say:
+      s100: the exam is drawn at 100 %, where A− is off (a new tab)
+      s115: the exam is drawn at 115 %
+      s130: the exam is drawn at 130 %
+      s150: the exam is drawn at 150 % and spans the screen, where A+ is off
   connection:
     values: [up, lost]
     initial: up
@@ -124,10 +131,10 @@ context:
       stale: a new version of Medaris was deployed while the page was open, so its server actions are gone
   skipped:
     values: [none, some]
-    initial: none
+    initial: any
     say:
-      none: no question is skipped
-      some: at least one question is skipped and still unanswered
+      none: no question but the one shown is skipped
+      some: a question other than the one shown is skipped and still unanswered (Sonraki brings it back after the last)
   clock:
     values: [running, lastFive]
     initial: running
@@ -135,19 +142,36 @@ context:
       running: more than five minutes are left
       lastFive: five minutes or less are left
   notice:
-    values: [none, resumed, saved, skippedFollow, notSaved, zerothRefused, startFailed, switched, failed, taken]
+    values: [none, resumed, skippedFollow, notSaved, zerothRefused]
     initial: none
     say:
-      none: the page shows no notice
-      resumed: the page says the exam goes on where it stopped
-      saved: the bar says the answer is saved
-      skippedFollow: the page says the skipped questions follow, and how many
+      none: the page shows no line of its own
+      resumed: a line under the bar says the exam goes on where it stopped
+      skippedFollow: a line under the bar says the skipped questions follow, and how many
       notSaved: the zeroth question says its answer could not be saved
       zerothRefused: the zeroth question says its answer could not be saved, and a toast says why
-      switched: a toast says the switch to another tab or window was counted
-      startFailed: a toast says why the exam could not be started
-      failed: "a toast says \"Bir şeyler ters gitti. Biraz sonra yeniden dene.\""
-      taken: a toast says the exam is taken once
+  toast:
+    values: [none, zerothRefused, startFailed, switched, failed, taken]
+    initial: none
+    say:
+      none: no toast
+      zerothRefused: an error toast says why the zeroth answer was refused
+      startFailed: an error toast says why the exam could not be started
+      switched: an info toast says the switch to another tab or window was counted
+      failed: "an error toast says \"Bir şeyler ters gitti. Biraz sonra yeniden dene.\""
+      taken: an error toast says the exam is taken once
+  saved:
+    values: ["no", "yes"]
+    initial: "no"
+    say:
+      "no": the bar says nothing of a save
+      "yes": the bar says "Cevabın kaydedildi." for the question shown
+  savedHere:
+    values: ["yes", "no"]
+    initial: "yes"
+    say:
+      "yes": the save on its way is the question shown's
+      "no": the page has moved on from the question whose save is on its way
   endedBy:
     values: [talebe, time, team, unknown]
     initial: talebe
@@ -176,29 +200,39 @@ guards:
   online: "connection == 'up'"
   offlineNow: "connection == 'lost'"
   zerothError: "notice == 'notSaved' or notice == 'zerothRefused'"
-  toastShown: "notice == 'zerothRefused' or notice == 'startFailed' or notice == 'switched' or notice == 'failed' or notice == 'taken'"
+  toastShown: "toast != 'none'"
 effects:
   zerothAnswered: { set: { zeroth: answered, notice: none } }
   zerothBack: { havoc: [zeroth], set: { notice: notSaved } }
-  zerothRefusedNotice: { havoc: [zeroth], set: { notice: zerothRefused } }
-  takenNotice: { havoc: [endedBy], set: { notice: taken } }
+  zerothRefusedNotice: { havoc: [zeroth], set: { notice: zerothRefused, toast: zerothRefused } }
+  takenNotice: { havoc: [endedBy], set: { toast: taken } }
   connectionLost: { set: { connection: lost } }
   lostWithChoice: { set: { connection: lost, pending: choice } }
-  textStep: { havoc: [textSize] }
-  moveOn: { havoc: [position, mode], set: { notice: none } }
-  markSkipped: { set: { skipped: some } }
-  toFirstSkipped: { havoc: [position, mode], set: { notice: skippedFollow } }
+  chosen: { set: { notice: none, saved: "no", savedHere: "yes" } }
+  moveOn: { havoc: [position, mode], set: { notice: none, saved: "no" } }
+  skipMove: { havoc: [position, mode], set: { skipped: some, notice: none, saved: "no", savedHere: "no" } }
+  skipToFirst: { havoc: [position, mode], set: { skipped: some, notice: skippedFollow, saved: "no", savedHere: "no" } }
+  skipStay: { set: { saved: "no", savedHere: "yes" } }
+  stepInside: { havoc: [mode], set: { position: inside, notice: none, saved: "no" } }
+  stepLast: { havoc: [mode], set: { position: last, notice: none, saved: "no" } }
+  stepFirst: { havoc: [mode], set: { position: first, notice: none, saved: "no" } }
+  skipInside: { havoc: [mode], set: { position: inside, skipped: some, notice: none, saved: "no", savedHere: "no" } }
+  skipLast: { havoc: [mode], set: { position: last, skipped: some, notice: none, saved: "no", savedHere: "no" } }
+  toFirstSkipped: { havoc: [position, mode], set: { notice: skippedFollow, saved: "no" } }
   lastFiveMinutes: { set: { clock: lastFive } }
-  startOver: { havoc: [mode], set: { skipped: none, position: first, clock: running, notice: none, pending: none, connection: up } }
-  resumedNotice: { havoc: [position, mode, skipped], set: { notice: resumed, connection: up } }
-  savedNotice: { set: { notice: saved } }
-  switchedNotice: { set: { notice: switched } }
-  notSavedNotice: { set: { notice: notSaved } }
-  startFailedNotice: { set: { notice: startFailed } }
-  failedNotice: { set: { notice: failed } }
+  startOver: { havoc: [mode], set: { skipped: none, position: first, clock: running, notice: none, pending: none, connection: up, saved: "no", savedHere: "yes" } }
+  resumedNotice: { havoc: [position, mode, skipped], set: { notice: resumed, connection: up, saved: "no" } }
+  savedNotice: { set: { saved: "yes" } }
+  switchedNotice: { set: { toast: switched } }
+  startFailedNotice: { set: { toast: startFailed } }
+  failedNotice: { set: { toast: failed } }
   endedRead: { havoc: [endedBy] }
   endedUnknown: { set: { endedBy: unknown } }
   choiceSent: { set: { pending: none } }
+  to115: { set: { textSize: s115 } }
+  to130: { set: { textSize: s130 } }
+  to150: { set: { textSize: s150 } }
+  to100: { set: { textSize: s100 } }
 failures:
   reading:
     from: getExamBriefing
@@ -253,7 +287,7 @@ failures:
 # (connection), which stays usable.
 # The main story: a talebe opens an open exam, answers the zeroth question, starts, answers a question, goes on, and finishes.
 main:
-  given: { read: ok, window: open, attempt: none, mode: single, instructions: none, textSize: smallest, version: current }
+  given: { read: ok, window: open, attempt: none, mode: single, instructions: none, version: current, position: inside, skipped: none, length: more }
   events: [DONE, ANSWER_ZEROTH, DONE, START, DONE, CHOOSE, DONE, NEXT, FINISH, CONFIRM, DONE]
 initial: reading
 states:
@@ -402,15 +436,22 @@ states:
     by: human
     goal: true
     on:
-      CHOOSE: { target: saving, say: "they choose an option, or mark or clear one: it shows at once" }
+      CHOOSE: { target: saving, effect: [chosen], say: "they choose an option, or mark or clear one: it shows at once, and the line under the bar goes" }
       NEXT:
         - { guard: lastWithSkipped, target: skippedTurn, say: "they press Sonraki on the last question, with questions skipped" }
-        - { guard: "not atLast", target: question, effect: [moveOn], say: "they press Sonraki: the next question shows (the choice was saved when it was made)" }
-      PREVIOUS: { target: question, effect: [moveOn], say: "they press Önceki" }
+        - { guard: "position == 'first' and length == 'more'", target: question, effect: [stepInside], say: "they press Sonraki on the first question: the second shows (the choice was saved when it was made)" }
+        - { guard: "position == 'first' and length == 'two'", target: question, effect: [stepLast], say: "they press Sonraki on the first of two: the last shows" }
+        - { guard: "position == 'inside'", target: question, effect: [moveOn], say: "they press Sonraki: the next question shows" }
+      PREVIOUS:
+        - { guard: "position == 'last' and length == 'more'", target: question, effect: [stepInside], say: "they press Önceki on the last question: the one before shows" }
+        - { guard: "position == 'last' and length == 'two'", target: question, effect: [stepFirst], say: "they press Önceki on the last of two: the first shows" }
+        - { guard: "position == 'inside'", target: question, effect: [moveOn], say: "they press Önceki" }
       SKIP:
-        - { guard: lastWithSkipped, target: saving, effect: [markSkipped, toFirstSkipped], say: "they skip the last question with others skipped: the skip is saved and the first skipped one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
-        - { guard: "not atLast", target: saving, effect: [markSkipped, moveOn], say: "they press Soruyu atla: the question is saved as skipped, a choice made on it taken back, and the next one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
-        - { target: saving, effect: [markSkipped], say: "they skip the last question with none other skipped: it is saved as skipped and stays on the screen" }
+        - { guard: lastWithSkipped, target: saving, effect: [skipToFirst], say: "they skip the last question with others skipped: the skip is saved and the first skipped one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
+        - { guard: "position == 'first' and length == 'more'", target: saving, effect: [skipInside], say: "they skip the first question: it is saved as skipped and the second shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
+        - { guard: "position == 'first' and length == 'two'", target: saving, effect: [skipLast], say: "they skip the first of two: it is saved as skipped and the last shows" }
+        - { guard: "position == 'inside'", target: saving, effect: [skipMove], say: "they press Soruyu atla: the question is saved as skipped, a choice made on it taken back, and the next one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
+        - { target: saving, effect: [skipStay], say: "they skip the last question with none other skipped: it is saved as skipped and stays on the screen, and Sonraki stays off (take-model.ts:61)" }
       JUMP: { target: question, effect: [moveOn], say: "they pick a question in the list" }
       FIVE_MINUTES_LEFT: { guard: "notLastFive and online", target: question, effect: [lastFiveMinutes], say: "five minutes are left: the countdown turns red and says so" }
       TIME_UP: { guard: online, target: timeUp, say: "the countdown reaches 0, or the clock's call says the attempt has ended" }
@@ -419,7 +460,14 @@ states:
       RECONNECTED: { guard: offlineNow, target: resuming, say: "the browser says it is online again: the attempt is taken up and the kept choices sent", source: "apps/tedris/features/online-exams/components/exam-take.tsx:423" }
       RELOAD: { target: reading, say: "they press Sayfayı yenile: the page is loaded again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:616" }
       SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back", source: "apps/tedris/features/online-exams/components/exam-take.tsx:392" }
-      TEXT_SIZE: { target: question, effect: [textStep], say: "they press A− or A+: the exam's area grows or shrinks a step" }
+      TEXT_BIGGER:
+        - { guard: "textSize == 's100'", target: question, effect: [to115], say: "they press A+: the exam grows to 115 %" }
+        - { guard: "textSize == 's115'", target: question, effect: [to130], say: "they press A+: the exam grows to 130 %" }
+        - { guard: "textSize == 's130'", target: question, effect: [to150], say: "they press A+: the exam grows to 150 % and spans the screen" }
+      TEXT_SMALLER:
+        - { guard: "textSize == 's150'", target: question, effect: [to130], say: "they press A−: the exam shrinks to 130 %" }
+        - { guard: "textSize == 's130'", target: question, effect: [to115], say: "they press A−: the exam shrinks to 115 %" }
+        - { guard: "textSize == 's115'", target: question, effect: [to100], say: "they press A−: the exam shrinks to 100 %" }
       MOVED_ELSEWHERE: { guard: online, target: elsewhere, say: "the clock's call is refused: another tab or device holds the attempt" }
       NAVIGATE: { target: left, say: "they close the page or leave it: the attempt stays in progress and its clock stops" }
   saving:
@@ -431,24 +479,13 @@ states:
       count it holds, so a late answer to an earlier call never replaces a later choice. The bar says "Kaydediliyor…" while any save
       runs, and "Cevabın kaydedildi." once the answer to the page's latest call has come, under the question it was for. Nothing waits
       for it: Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir stay on (exam-take.tsx:703-723), so the page moves on, and the
-      attempt can be ended, before the last choice is on the server.
+      attempt can be ended, before the last choice is on the server (rule EXM-TAKE-2). The graph takes such a press after the save's
+      answer (the controls are `duringStep`): the screen it leads to is the same, as the save's answer changes only the bar.
     invoke: { action: saveExamAnswer }
     on:
-      CHOOSE: { target: saving, say: "they choose again before the answer comes: the new choice is sent, and the last call wins" }
-      TEXT_SIZE: { target: saving, effect: [textStep], say: "they press A− or A+ while the answer is on its way" }
-      RELOAD: { target: reading, say: "they press Sayfayı yenile while a save is on its way" }
-      RECONNECTED: { guard: offlineNow, target: resuming, say: "the browser says it is online again while a save is on its way" }
-      NEXT:
-        - { guard: lastWithSkipped, target: saving, effect: [toFirstSkipped], say: "they press Sonraki on the last question, with questions skipped, while the answer is on its way" }
-        - { guard: "not atLast", target: saving, effect: [moveOn], say: "they press Sonraki while the answer is on its way" }
-      PREVIOUS: { target: saving, effect: [moveOn], say: "they press Önceki while the answer is on its way" }
-      SKIP:
-        - { guard: lastWithSkipped, target: saving, effect: [markSkipped, toFirstSkipped], say: "they skip the last question with others skipped: another save is sent" }
-        - { guard: "not atLast", target: saving, effect: [markSkipped, moveOn], say: "they press Soruyu atla: another save is sent" }
-        - { target: saving, effect: [markSkipped], say: "they skip the last question with none other skipped: another save is sent" }
-      JUMP: { target: saving, effect: [moveOn], say: "they pick a question in the list while the answer is on its way" }
-      FINISH: { target: confirmFinish, say: "they press Sınavı bitir while the answer is on its way: nothing waits for it" }
-      DONE: { target: question, effect: [savedNotice, choiceSent], say: "the answer to the latest call comes: the bar says it is saved" }
+      DONE:
+        - { guard: "savedHere == 'yes'", target: question, effect: [savedNotice, choiceSent], say: "the answer comes: the bar says it is saved, under the question it was for" }
+        - { target: question, effect: [choiceSent], say: "the answer comes for a question the page has moved on from: the bar says nothing" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
       FAIL.ended: { target: rereading, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }

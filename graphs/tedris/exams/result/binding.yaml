@@ -8,6 +8,8 @@
 # (helpers/exams.mjs: three SINGLE questions in the topic "Deneme konusu"):
 #   released   xtResDone, taken with two answers of three right, closed early and released: the score, the counts, the standing,
 #              both topic sections and the answers beside the right ones (closed early is closed for everyone)
+#   releasedOpen  xtResOpen, taken and released while it is still open (the API releases an open exam, EXM-RSLT-1): the result,
+#              and "Cevapların ve doğruları, sınav herkes için bitince burada açılır." in place of the answers
 #   waiting    xtResWait, taken and not released: "Sonuç henüz açıklanmadı"
 #   running    xtResRun, started and left open: "Sınavın sürüyor" and "Devam et"
 #   notFound   no data: a celse id that is no exam's answers 404
@@ -16,8 +18,6 @@
 # The teardowns run exams.mjs remove before course.mjs remove (the order exams.mjs asks for).
 #
 # Not reachable on the stack, and why:
-#   - a released result with closed: no (answersLater): the results are released only once the exam has closed for everyone or its
-#     time is over (helpers/exams.mjs release), and closing it early closes it for everyone.
 #   - noAnswer: helpers/exams.mjs take answers every question, so no question is left blank.
 #   - topics or courseTopics none on a released result: every question the helper makes carries its topic.
 #   - read failed with the network down (the read is the server's): only the 429 is made.
@@ -26,10 +26,15 @@ kind: binding
 extends: ../../../bindings/local.tedris.binding.yaml
 flow: tedris.exams.result
 
+# the topic every question of exams.mjs carries
+samples:
+  name: Deneme konusu
+
 data:
   done: { json: ../.local/made/xtResDone.json }
   wait: { json: ../.local/made/xtResWait.json }
   run: { json: ../.local/made/xtResRun.json }
+  open: { json: ../.local/made/xtResOpen.json }
 
 scenarios:
   released:
@@ -54,6 +59,27 @@ scenarios:
     samples:
       course: Deneme dersi xtResC
       title: Deneme sınavı xtResDone
+
+  releasedOpen:
+    given: { read: ok, attempt: ended, released: yes, closed: no, topics: some, courseTopics: some }
+    as: applicantF
+    open: '{tedris}/my-exams/{open.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResOpen, --course, xtResC, --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResOpen, applicantF, --right, '2']
+        expect: 'FINISHED right=2/3'
+      - run: [node, helpers/exams.mjs, release, xtResOpen]
+        expect: 'released'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtResOpen]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+    samples:
+      course: Deneme dersi xtResC
+      title: Deneme sınavı xtResOpen
 
   waiting:
     given: { read: ok, attempt: ended, released: no, closed: no, topics: some, courseTopics: some }
@@ -136,8 +162,16 @@ nodes:
   inProgressAlert: { role: status, hasText: Sınavın sürüyor }
   # one of three sentences: handed in by the talebe, ended by the time, closed early by the team
   handedIn: { text: '/(tarihinde teslim ettin\.|tarihinde kendiliğinden bitti\.|tarihinde erken bitirdi\.)$/' }
-  # the course line and its topic share one <li>: the line is the end of it
+  # the course line and its topic share one <li>: the topic is its start, the line its end
+  courseTopicName: { text: '/^\d+\. Deneme konusu · /' }
   courseTopicLine: { text: '/Yüzde \d+ · \d+ sınavdan$/' }
   # the outcome is the first Badge of each answer's header
   questionOutcome: { css: '[data-testid=my-answer] > div > .mds-badge:first-of-type' }
   noAnswer: { skip: "helpers/exams.mjs take answers every question, so no question is blank" }
+  # the helper's questions are "Soru n", their options "Doğru n", "Yanlış n-a" and "Yanlış n-b"
+  questionText: { text: '/^Soru \d+$/' }
+  optionText: { text: '/^(Doğru \d+|Yanlış \d+-[ab])$/' }
+  # the page's lists have no name: each is found in its own section (Cevaplarım holds a list of options in each answer)
+  topicsList: { role: list, within: { role: region, name: Konulara göre } }
+  courseList: { role: list, within: { role: region, name: Dersin konularında durumum } }
+  answersList: { css: '[aria-labelledby=my-result-answers] > ol' }
