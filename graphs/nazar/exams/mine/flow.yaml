@@ -1,6 +1,6 @@
 # The course team's "Sınavlarım" in nazar-web: the exams of every course a person prepares exams for, by status, and the way into each.
 # NOT BUILT (MDRS-299): its read is listMyTeachingExams, still `planned` in domain/online-exams.yaml. What is built instead is each
-# course's own "Sınavlar" page (/ders/<courseId>/sinavlar, listOnlineExams, drawn in nazar.exams.edit's opening): its exams with their
+# course's own "Sınavlar" page (/ders/<courseId>/sinavlar, listOnlineExams, drawn in nazar.exams.edit's listing and examsList): its exams with their
 # status and "Yeni sınav", which makes a draft with its title and no celse ("Celsesiz taslak", the owner, 22 Nov 2026), not the plan's
 # "Celse planla" with "Sınav" and "Çoktan seçmeli" chosen. Written graph-first on 21 November 2026; `status: proposed`.
 #

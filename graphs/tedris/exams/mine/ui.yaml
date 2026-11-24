@@ -1,13 +1,22 @@
-# The screen of tedris.exams.mine: the talebe's page "Sınavlarım" and its entry in tedris's menu. BUILT (MDRS-299, #418):
-# apps/tedris/app/my-exams/page.tsx (features/online-exams/components/my-exams-page.tsx), in the desktop bar and the phone menu. No node
-# carries a `source`: the graph is `proposed`. Three groups, each a region named by its h2 ("Şimdi açık", "Yaklaşan", "Geçmiş"); a
-# coming, open or running online exam links straight to its exam page (the owner, 22 Nov: "direk sınav ekranına gitsin"). The keys
-# are the plan's (`planned.Exams.*`).
+# The screens of tedris.exams.mine: tedris-web's Sınavlarım (/my-exams, app/my-exams/page.tsx and
+# features/online-exams/components/my-exams-page.tsx, with the pure rules of my-exams-model.ts) as a signed-in talebe meets it: the exams
+# of their courses in up to three groups, the sentence for none, and the box for a failed read. The page is drawn on the server and is
+# made of links, so it is read and followed without JavaScript. The chrome around it (the wide bar, the phone sheet) is
+# tedris.shell.frame's; only the menu entry "Sınavlarım" is drawn here.
+#
+# Words: every `MyExams.*` key is copied from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
+# `tedrisLearn.MyExams.<key>`), and `PhoneMenu.exams` from tedris.json; the key is the path inside the file. The `composed.MyExams.*` keys
+# are NOT in any i18n file: they are values the API gives, shown alone, written with their placeholder so a replay can match them:
+#   composed.MyExams.course   the exam's course, a caption with dir=auto                                     (my-exams-page.tsx:136-138)
+#   composed.MyExams.title    the exam's title, the row's h3 with dir=auto                                   (my-exams-page.tsx:140-142)
+# `zone` is zoneLabel of the talebe's time zone (features/courses/session-model.ts), and every time on the page is Intl's medium date
+# and short time in that zone (my-exams-page.tsx:46-51); `score` is scoreText (my-exams-model.ts:72), `max` the exam's maxScore or 100.
+# The rows of a group come in the API's order (my-exams-model.ts:18-26); a group with no exam is not drawn.
 schema: delurio-graph/0
 kind: ui
 id: tedris.exams.mine
 flow: tedris.exams.mine
-status: proposed
+status: captured
 kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
@@ -17,80 +26,84 @@ samples:
   title: Ara sınav
   minutes: "60"
   count: "50"
-  until: 24 Kas Sal 22:00
-  when: 28 Kas Cmt 20:00
+  until: 24 Kas 2026 22:10
+  when: 28 Kas 2026 20:00
   place: Çevrimiçi
-  score: "86,50"
+  score: "86,5"
+  max: "100"
 
 nodes:
-  # --- the new menu entry ---------------------------------------------------------------------------------------------------------
-  menuExams: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [listed, empty, loadFailed] } # NEW: in tedris's menu on every page and in the phone's menu; aria-current=page on this page
+  # --- the menu entry, in the wide bar (and its twin in the phone menu, member-phone-menu.tsx:120) -------------------------------------
+  menuExams: { type: action, component: LinkButton, role: link, text: { key: PhoneMenu.exams }, in: [listed, empty, loadFailed], source: apps/tedris/components/phone-menu/desktop-bar.tsx:75 } # NavItem: aria-current=page on this page
 
-  # --- the page --------------------------------------------------------------------------------------------------------------------
-  examsPage: { type: page, component: Page, role: main, in: [listed, empty, loadFailed] } # the shell's one <main>; where the focus goes on load is not decided (rule focus-not-decided)
-  examsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.mine }, in: [listed, empty, loadFailed] } # h1
-  examsIntro: { type: text, component: Text, text: { key: planned.Exams.mineIntro }, in: [listed, empty] }
-  zoneLine: { type: text, component: Text, text: { key: SchedulePage.zone, params: { zone: zone } }, in: [listed] } # the app's own words; every time on the page is in the talebe's own zone
+  # --- the page ------------------------------------------------------------------------------------------------------------------------
+  examsPage: { type: page, component: Page, role: main, in: [listed, empty, loadFailed], script: optional, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:54 } # no initial focus is set (rule EXM-MINE-focus)
+  examsTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.pageTitle }, in: [listed, empty, loadFailed], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:56 } # h1
+  examsIntro: { type: text, component: Text, text: { key: MyExams.intro }, in: [listed, empty, loadFailed], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:57 }
+  zoneLine: { type: text, component: Text, text: { key: MyExams.zone, params: { zone: zone } }, in: [listed, empty, loadFailed], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:59 }
 
-  # --- Şimdi açık ------------------------------------------------------------------------------------------------------------------
-  openRegion: { type: page, component: Page, role: region, name: { labelledBy: openTitle }, in: [listed] } # drawn only when an exam is open
-  openTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupOpen }, in: [listed] } # h2
-  openList: { type: list, component: List, role: list, name: { labelledBy: openTitle }, in: [listed] } # soonest latest start first
-  openCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.open }
-  openName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.open }
-  openFormat: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [listed], repeat: exams.open } # only a multiple-choice exam is started here
-  openFacts: { type: text, component: Text, text: { key: planned.Exams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], repeat: exams.open }
-  openUntil: { type: text, component: Text, text: { key: planned.Exams.openUntil, params: { until: row.until } }, in: [listed], repeat: exams.open } # the latest start, in the talebe's zone
-  openState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateCanStart, planned.Exams.stateInProgress] }, in: [listed], repeat: exams.open }
-  enterButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.enterLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.enter }, in: [listed], repeat: exams.open.notStarted, emits: ENTER } # to the briefing (tedris.exams.take)
-  continueButton: { type: action, component: Button, role: button, intent: confirm, name: { key: planned.Exams.continueLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.continue }, in: [listed], repeat: exams.open.inProgress, emits: ENTER } # to the attempt, where it stopped
+  # --- Şimdi açık: an online exam open to start or in progress ---------------------------------------------------------------------------
+  openRegion: { type: page, component: Page, role: region, name: { labelledBy: openTitle }, in: [listed], when: "openGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:79 }
+  openTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.groupOpen }, in: [listed], when: "openGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:84 } # h2
+  openList: { type: list, component: List, role: list, in: [listed], when: "openGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:87 } # no name of its own
+  openCourse: { type: text, component: Text, text: { key: composed.MyExams.course, params: { course: row.course } }, in: [listed], when: "openGroup == 'some'", repeat: exams.open, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:136 }
+  openName: { type: text, component: Heading, role: heading, text: { key: composed.MyExams.title, params: { title: row.title } }, in: [listed], when: "openGroup == 'some'", repeat: exams.open, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:140 } # h3
+  openFormat: { type: text, component: Text, text: { key: MyExams.formatMultipleChoice }, in: [listed], when: "openGroup == 'some'", repeat: exams.open, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:143 } # a Badge, a span with no role: only an online exam is open
+  openFacts: { type: text, component: Text, text: { key: MyExams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], when: "openGroup == 'some'", repeat: exams.open, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:147 }
+  openUntil: { type: text, component: Text, text: { key: MyExams.openUntil, params: { until: row.until } }, in: [listed], when: "openGroup == 'some'", repeat: exams.open.notStarted, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:157 } # the latest start
+  openHeld: { type: text, component: Text, text: { key: MyExams.heldAt, params: { when: row.when } }, in: [listed], when: "openGroup == 'some'", repeat: exams.open.inProgress, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:158 } # an exam in progress shows its earliest start, with no word beside it
+  openState: { type: text, component: Text, text: { key: MyExams.stateInProgress }, in: [listed], when: "openGroup == 'some'", repeat: exams.open.inProgress, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:165 } # an open exam not started has no such line
+  enterButton: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: MyExams.enterLabel, params: { course: row.course, title: row.title } }, text: { key: MyExams.enter }, in: [listed], when: "openGroup == 'some'", repeat: exams.open.notStarted, emits: ENTER, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:168 } # a link to the exam's own page
+  continueButton: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: MyExams.continueLabel, params: { course: row.course, title: row.title } }, text: { key: MyExams.continue }, in: [listed], when: "openGroup == 'some'", repeat: exams.open.inProgress, emits: ENTER, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:168 }
 
-  # --- Yaklaşan --------------------------------------------------------------------------------------------------------------------
-  comingRegion: { type: page, component: Page, role: region, name: { labelledBy: comingTitle }, in: [listed] }
-  comingTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupComing }, in: [listed] } # h2
-  comingList: { type: list, component: List, role: list, name: { labelledBy: comingTitle }, in: [listed] } # soonest first
-  comingCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.coming }
-  comingName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.coming }
-  comingFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPage.examWritten, SessionPage.examOral] }, in: [listed], repeat: exams.coming }
-  comingWhen: { type: text, component: Text, text: { key: composed.Exams.when, params: { when: row.when } }, in: [listed], repeat: exams.coming } # the earliest start of a multiple-choice exam, the celse's time of a written or oral one
-  comingFacts: { type: text, component: Text, text: { key: planned.Exams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], repeat: exams.coming.choice } # a multiple-choice exam only
-  comingPlace: { type: text, component: Text, text: { key: composed.Exams.place, params: { place: row.place } }, in: [listed], repeat: exams.coming.writtenOrOral } # "Çevrimiçi" or the place's name, as the session plan sets it
-  comingState: { type: status, component: Status, text: { key: planned.Exams.stateNotStarted }, in: [listed], repeat: exams.coming }
+  # --- Yaklaşan ------------------------------------------------------------------------------------------------------------------------
+  comingRegion: { type: page, component: Page, role: region, name: { labelledBy: comingTitle }, in: [listed], when: "comingGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:79 }
+  comingTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.groupComing }, in: [listed], when: "comingGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:84 } # h2
+  comingList: { type: list, component: List, role: list, in: [listed], when: "comingGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:87 }
+  comingCourse: { type: text, component: Text, text: { key: composed.MyExams.course, params: { course: row.course } }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:136 }
+  comingName: { type: text, component: Heading, role: heading, text: { key: composed.MyExams.title, params: { title: row.title } }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:140 } # h3
+  comingFormat: { type: text, component: Text, text: { oneOf: [MyExams.formatMultipleChoice, MyExams.formatWritten, MyExams.formatOral] }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:143 }
+  comingFacts: { type: text, component: Text, text: { key: MyExams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming.online, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:147 }
+  comingWhen: { type: text, component: Text, text: { key: MyExams.opensAt, params: { when: row.when } }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:155 }
+  comingPlace: { type: text, component: Text, text: { key: MyExams.place, params: { place: row.place } }, in: [listed], when: "comingGroup == 'some' and writtenOrOral == 'some'", repeat: exams.coming.writtenOrOralWithPlace, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:162 }
+  viewLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: MyExams.viewLabel, params: { course: row.course, title: row.title } }, text: { key: MyExams.view }, in: [listed], when: "comingGroup == 'some'", repeat: exams.coming.online, emits: ENTER, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:168 } # a coming written or oral exam has no link
 
-  # --- Geçmiş ----------------------------------------------------------------------------------------------------------------------
-  pastRegion: { type: page, component: Page, role: region, name: { labelledBy: pastTitle }, in: [listed] }
-  pastTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.groupPast }, in: [listed] } # h2
-  pastList: { type: list, component: List, role: list, name: { labelledBy: pastTitle }, in: [listed] } # latest first
-  pastCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: row.course } }, in: [listed], repeat: exams.past }
-  pastName: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: row.title } }, in: [listed], repeat: exams.past }
-  pastFormat: { type: status, component: Status, text: { oneOf: [planned.Exams.formatMultipleChoice, SessionPage.examWritten, SessionPage.examOral] }, in: [listed], repeat: exams.past }
-  pastState: { type: status, component: Status, text: { oneOf: [planned.Exams.stateTook, planned.Exams.stateMissed, planned.Exams.stateReleased] }, in: [listed], repeat: exams.past } # "Girdin" until the release, "Girmedin" for one not taken, "Sonuç açıklandı" after
-  pastScore: { type: text, component: Text, text: { oneOf: [planned.Exams.score, planned.Exams.notReleased] }, in: [listed], repeat: exams.past } # "{score} / 100" once released, else "Sonuç henüz açıklanmadı"
-  resultLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.resultLabel, params: { course: row.course, title: row.title } }, text: { key: planned.Exams.result }, in: [listed], repeat: exams.past.choice, emits: READ_RESULT } # a multiple-choice exam the talebe took: their own screen of it
-  gradesLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: planned.Exams.gradesLabel, params: { course: row.course } }, text: { key: CoursePage.tabGrades }, in: [listed], repeat: exams.past.writtenOrOral, emits: READ_GRADES } # a written or oral exam: the course's Notlarım
+  # --- Geçmiş --------------------------------------------------------------------------------------------------------------------------
+  pastRegion: { type: page, component: Page, role: region, name: { labelledBy: pastTitle }, in: [listed], when: "pastGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:79 }
+  pastTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.groupPast }, in: [listed], when: "pastGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:84 } # h2
+  pastList: { type: list, component: List, role: list, in: [listed], when: "pastGroup == 'some'", source: apps/tedris/features/online-exams/components/my-exams-page.tsx:87 }
+  pastCourse: { type: text, component: Text, text: { key: composed.MyExams.course, params: { course: row.course } }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:136 }
+  pastName: { type: text, component: Heading, role: heading, text: { key: composed.MyExams.title, params: { title: row.title } }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:140 } # h3
+  pastFormat: { type: text, component: Text, text: { oneOf: [MyExams.formatMultipleChoice, MyExams.formatWritten, MyExams.formatOral] }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:143 }
+  pastFacts: { type: text, component: Text, text: { key: MyExams.facts, params: { minutes: row.minutes, count: row.count } }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past.online, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:147 }
+  pastHeld: { type: text, component: Text, text: { key: MyExams.heldAt, params: { when: row.when } }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:158 } # the time alone
+  pastPlace: { type: text, component: Text, text: { key: MyExams.place, params: { place: row.place } }, in: [listed], when: "pastGroup == 'some' and writtenOrOral == 'some'", repeat: exams.past.writtenOrOralWithPlace, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:162 }
+  pastState: { type: text, component: Text, text: { oneOf: [MyExams.notReleased, MyExams.stateMissed, MyExams.score, MyExams.stateReleased] }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:115 } # taken: not released; missed: "Girmedin"; released: "{score} / {max}", or "Sonuç açıklandı" with no score
+  resultLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: MyExams.resultLabel, params: { course: row.course, title: row.title } }, text: { key: MyExams.result }, in: [listed], when: "pastGroup == 'some'", repeat: exams.past.onlineTaken, emits: READ_RESULT, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:168 } # a missed online exam has no link
+  gradesLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: MyExams.gradesLabel, params: { course: row.course } }, text: { key: MyExams.grades }, in: [listed], when: "pastGroup == 'some' and writtenOrOral == 'some'", repeat: exams.past.writtenOrOral, emits: READ_GRADES, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:168 } # its name holds the course only
 
-  # --- no exam, and a read that failed ---------------------------------------------------------------------------------------------
-  emptyText: { type: text, component: Text, text: { key: planned.Exams.emptyTalebe }, in: [empty] }
-  emptyHint: { type: text, component: Text, text: { key: planned.Exams.emptyTalebeHint }, in: [empty] }
-  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.listLoadFailedTitle }, text: { key: planned.Exams.loadFailed }, in: [loadFailed] }
-  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.retry }, in: [loadFailed], emits: RETRY }
+  # --- no exam, and a read that failed -----------------------------------------------------------------------------------------------
+  emptyText: { type: text, component: Text, text: { key: MyExams.empty }, in: [empty], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:74 } # inside the EmptyState's own <p> (rule EXM-MINE-2)
+  emptyHint: { type: text, component: Text, text: { key: MyExams.emptyHint }, in: [empty], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:75 }
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: MyExams.loadFailedTitle }, text: { key: MyExams.loadFailed }, in: [loadFailed], source: apps/tedris/features/online-exams/components/my-exams-page.tsx:64 } # an error Alert is role=alert; its title is a paragraph
+  retryButton: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyExams.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/online-exams/components/my-exams-page.tsx:67 } # href="": the page's own address
 
 edges:
   - { labelledBy: [openRegion, openTitle] }
-  - { labelledBy: [openList, openTitle] }
   - { labelledBy: [comingRegion, comingTitle] }
-  - { labelledBy: [comingList, comingTitle] }
   - { labelledBy: [pastRegion, pastTitle] }
-  - { labelledBy: [pastList, pastTitle] }
   - { triggers: [enterButton, exam_entered] }
   - { triggers: [continueButton, exam_entered] }
+  - { triggers: [viewLink, exam_entered] }
   - { triggers: [resultLink, result_opened] }
   - { triggers: [gradesLink, grades_opened] }
   - { triggers: [retryButton, opening] }
 
 rules:
-  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1, and a failed read moves the focus to its alert. The graph says nothing of the focus here because nothing is built." }
-  - { id: state-in-words, rule: "Every row says its state in a word (Başlayabilirsin, Devam ediyor, Başlamadı, Girdin, Girmedin, Sonuç açıklandı) and its format in a word; a colour only repeats it (needs readable-by-keyboard-and-screen-reader)." }
-  - { id: one-action-per-row, rule: "A row has one action, named by the exam's title (or, for Notlarım, by the course), so a list of buttons read alone still says which exam each one opens." }
-  - { id: never-a-draft, rule: "A draft multiple-choice exam is never a row, and nothing of it reaches the talebe (listMyExams does not send it)." }
-  - { id: planned-words, rule: "Every key planned.Exams.* is a proposal for the owner to review, with the same text in every catalog of the online exams; SessionPage.*, SchedulePage.zone, CoursePage.tabGrades and planned.Exams.retry are the app's own." }
+  - { id: EXM-MINE-1, rule: "A written or oral exam leaves \"Yaklaşan\" the moment its celse starts: from then it is \"Geçmiş\", says \"Sonuç henüz açıklanmadı\" and links to Notlarım, while the celse is still running and to a talebe who did not attend (domain/my-exams.ts:95-97 in apps/tedrisat/src/online-exam, my-exams-model.ts:63-65). Fix: keep it coming, or open, until its celse ends. Read from the code, not seen." }
+  - { id: EXM-MINE-2, rule: "The empty state puts two <p> inside the EmptyState's own <p class=mds-empty__text> (my-exams-page.tsx:73-76, libs/ui/src/mds/empty-state.tsx:20): a <p> cannot hold a <p>, so the browser's parser closes the outer one and React's hydration fails. Read from the code, and seen on the stack (24 Nov 2026): the walk of a talebe with no exam gets the page error 'Hydration failed because the server rendered HTML didn't match the client' on /my-exams, and React draws the page again in the browser. Fix: pass the sentence as children and the hint beside it, or a fragment of spans." }
+  - { id: EXM-MINE-3, rule: "An exam in progress shows its earliest start alone, with no word beside it (heldAt is \"{when}\"; my-exams-page.tsx:154-158), where an open one says \"En geç … başlanabilir\" and a coming one \"… tarihinde açılır\". Fix: say what the time is, or show the latest start. Read from the code, not seen." }
+  - { id: EXM-MINE-focus, rule: "The page sets no initial focus (no autoFocus and no focus() in my-exams-page.tsx), so the page node has no `initialFocus`; the browser's own focus after a load was not seen." }
+  - { id: state-in-words, rule: "Each row says its format in a word (a Badge) and, where it has one, its standing in a sentence: \"Devam ediyor\", \"Sonuç henüz açıklanmadı\", \"Girmedin\", the score, \"Sonuç açıklandı\". An open exam not started and a coming one have no standing line; their time line says it (\"En geç … başlanabilir\", \"… tarihinde açılır\")." }
+  - { id: one-action-per-row, rule: "A row has at most one link, named by its course and title (Notlarım by its course alone), so a list of links read alone says which exam each opens (my-exams-page.tsx:166-180). They are links drawn as buttons: Sınava gir and Devam et primary, the rest secondary." }
+  - { id: never-a-draft, rule: "A draft online exam is never a row, nor a cancelled or hidden celse: listMyExams does not send them (apps/tedrisat/src/online-exam/my-exams.controller.ts:41)." }

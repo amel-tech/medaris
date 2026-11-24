@@ -313,7 +313,11 @@ gaps:
   nazar.exams.edit:
     - one-hour-and-fifty-questions-by-default  # MDRS-299
     - topics-renamed-and-unpicked  # MDRS-299
+    - what-a-question-lacks-is-said  # MDRS-299
+    - a-question-s-own-points  # MDRS-299
+    - exact-points-shown-with-two-decimals  # MDRS-299
     - the-questions-at-a-glance  # MDRS-299
+    - saved-as-the-team-works  # MDRS-299
     - seen-as-a-talebe-sees-it  # MDRS-299
     - copy-an-earlier-exam  # MDRS-299
     - changed-until-it-opens-and-never-after  # MDRS-299
@@ -329,9 +333,14 @@ gaps:
     - none-yet-says-so  # MDRS-299
     - reached-from-the-course-too  # MDRS-299
   nazar.exams.publish:
+    - checked-before-it-is-published  # MDRS-299
     - opens-by-itself  # MDRS-299
     - moved-or-taken-back-until-it-opens  # MDRS-299
   nazar.exams.results:
+    - every-talebe-and-where-they-are  # MDRS-299
+    - the-topics-across-the-talebe  # MDRS-299
+    - a-talebe-s-attempt  # MDRS-299
+    - release-the-results  # MDRS-299
     - words-and-numbers-not-colour-alone  # MDRS-299
   nazar.files.download:
     - download-the-evaluation-sheet

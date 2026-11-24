@@ -1,100 +1,114 @@
-# The screens of nizam.exams.zerothAnswers: "Sıfırıncı soru cevapları" in nizam, for the platform and for a köşk. BUILT (MDRS-299,
-# #420, #427; apps/nizam/features/zeroth-answers). No node carries a `source`: the graph is `proposed`. Every count is a number, with
-# its percentage; nothing is hidden (the owner, 22 Nov 2026). The keys are the plan's (`planned.Exams.*`).
+# The screens of nizam.exams.zerothAnswers: "Sıfırıncı soru cevapları" in nizam-web, platform management's page
+# (app/sifirinci-soru-cevaplari/page.tsx) and a köşk nazımı's (app/kosks/[id]/sifirinci-soru-cevaplari/page.tsx), both drawn by
+# features/zeroth-answers/components/zeroth-answers-page.tsx on the server and zeroth-answers-view.tsx in the browser: the filters, the
+# questions with their counts, one question's exams, and the shell's refusal. Every count is a number, with its percentage; nothing is
+# hidden (the owner, 22 Nov 2026). The shell around the page (its menu, its bar) is nizam.nav's and nizam.shell's.
+#
+# Words: every `ZerothAnswersPage.*` and `NoAccess.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as
+# `nizam.<key>`); the key is the path inside the file. The hadith is a literal of the code (ZEROTH_HADITH, zeroth-answers-view.tsx:25).
+# The `composed.ZerothAnswersPage.*` keys are NOT in any i18n file: they are values the API gives, shown alone:
+#   composed.ZerothAnswersPage.question   a zeroth question's words, dir=auto                                   (zeroth-answers-view.tsx:275, :366)
+#   composed.ZerothAnswersPage.course     an exam's course, the row header, a <bdi>                             (zeroth-answers-view.tsx:336)
+#   composed.ZerothAnswersPage.kosk       an exam's köşk, a <bdi>                                               (zeroth-answers-view.tsx:338)
+#   composed.ZerothAnswersPage.date       an exam's day, Intl in the person's zone ("28 Kas 2026")              (zeroth-answers-view.tsx:81-87)
+#   composed.ZerothAnswersPage.answered   how many answered an exam's question                                   (zeroth-answers-view.tsx:344)
+# Not drawn: the error under Bitiş when the span is reversed and "Uygula" is pressed (:135-138; rule EXM-ZER-2), the two alerts of a
+# read that failed (:213-239; flow scope.outOfView), and the table's scroll region on a narrow screen (libs/ui/src/mds/table.tsx:90).
 schema: delurio-graph/0
 kind: ui
 id: nizam.exams.zerothAnswers
 flow: nizam.exams.zerothAnswers
-status: proposed
+status: captured
 kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:
-  zerothQuestion: Bu hadisi ne zaman öğrendiniz?
+  question: Bu hadisi ne zaman öğrendiniz?
+  count: "3"
   exams: "12"
   answered: "238"
-  zerothOption: Bu derste
-  zerothCount: "97"
-  zerothPercent: "41"
+  option: Bu derste
   percent: "41"
   course: Fıkıh Usulü I
   kosk: Örnek Köşkü
   date: 28 Kas 2026
 
 nodes:
-  # --- the page ---------------------------------------------------------------------------------------------------------------------
-  zerothPage: { type: page, component: Page, role: main, in: [listed, empty, questionDetail] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
-  pageTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothAnswersTitle }, in: [listed, empty, questionDetail] } # h1 "Sıfırıncı soru cevapları"
-  pageIntro: { type: text, component: Text, text: { key: planned.Exams.zerothAnswersIntro }, in: [listed, empty] }
-  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [listed, empty, questionDetail] } # dir="rtl", lang="ar" and the Arabic font on this element itself (rule arabic-runs)
-  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [listed, empty, questionDetail] }
+  # --- the page ----------------------------------------------------------------------------------------------------------------------
+  zerothPage: { type: page, component: Page, role: main, in: [listed, empty, questionDetail], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main>; no initial focus is set (rule EXM-ZER-focus)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: ZerothAnswersPage.title }, in: [listed, empty, questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:100 } # h1
+  pageIntro: { type: text, component: Text, text: { key: ZerothAnswersPage.intro }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:102 } # gone while a question is open
+  hadithArabic: { type: text, component: Text, text: { literal: "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" }, in: [listed, empty, questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:105 } # lang=ar dir=rtl on this element
+  hadithMeaning: { type: text, component: Text, text: { key: ZerothAnswersPage.hadithMeaning }, in: [listed, empty, questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:108 } # the figure's caption
 
-  # --- the filters ------------------------------------------------------------------------------------------------------------------
-  filters: { type: page, component: Page, role: search, name: { key: planned.Exams.filtersLabel }, in: [listed, empty] } # a <search> landmark
-  spanGroup: { type: list, component: List, role: group, name: { key: planned.Exams.dateSpan }, in: [listed, empty] } # "Tarih aralığı": the two dates of the span; the last 90 days when the page opens (rule default-span)
-  fromField: { type: field, component: TextField, native: date, text: { key: planned.Exams.from }, in: [listed, empty] } # <input type=date>: no ARIA role of its own, found by its label
-  toField: { type: field, component: TextField, native: date, text: { key: planned.Exams.to }, in: [listed, empty] } # <input type=date>
-  koskField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.kosk }, in: [listed, empty] } # every köşk, or "Bütün köşkler"; to a köşk nazımı it holds their köşk only (rule kosk-nazim-scope)
-  madrasahField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.madrasah }, in: [listed, empty] } # the medreses of the köşk chosen, or every one
-  courseField: { type: field, component: TextField, role: combobox, text: { key: planned.Exams.course }, in: [listed, empty] } # the courses that held an online exam in the span
-  applyFilters: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.applyFilters }, in: [listed, empty], emits: FILTER } # the filters stay in the page's address, so a link opens the same counts
+  # --- the filters, gone while a question is open -------------------------------------------------------------------------------------
+  filters: { type: page, component: Page, role: search, name: { key: ZerothAnswersPage.filtersLabel }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:113 } # a <search> landmark around the form
+  spanGroup: { type: list, component: List, role: group, name: { key: ZerothAnswersPage.dateSpan }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:123 } # a fieldset with its legend
+  fromField: { type: field, component: TextField, native: date, text: { key: ZerothAnswersPage.from }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:126 } # the last 90 days when the address names none; clearing it puts the date read back
+  toField: { type: field, component: TextField, native: date, text: { key: ZerothAnswersPage.to }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:139 }
+  koskField: { type: field, component: TextField, role: combobox, text: { key: ZerothAnswersPage.kosk }, in: [listed, empty], disabledWhen: "page == 'kosk'", source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:151 } # "Bütün köşkler" and the köşks the counts name; on a köşk nazımı's page their köşk alone, disabled
+  madrasahField: { type: field, component: TextField, role: combobox, text: { key: ZerothAnswersPage.madrasah }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:177 } # "Bütün medreseler" and those of the köşk chosen
+  courseField: { type: field, component: TextField, role: combobox, text: { key: ZerothAnswersPage.course }, in: [listed, empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:194 } # "Bütün dersler" and the courses the counts name
+  applyFilters: { type: action, component: Button, role: button, intent: confirm, text: { key: ZerothAnswersPage.applyFilters }, in: [listed, empty], emits: FILTER, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:207 } # submits the form: the filters go into the address
 
-  # --- the questions --------------------------------------------------------------------------------------------------------------
-  questionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothQuestionsTitle }, in: [listed] } # h2
-  questionsList: { type: list, component: List, role: list, name: { labelledBy: questionsTitle }, in: [listed] } # the same words with the same options of several exams are one item
-  questionItem: { type: page, component: Page, role: region, name: { labelledBy: questionText }, in: [listed], repeat: counts.questions }
-  questionText: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: row.zerothQuestion } }, in: [listed], repeat: counts.questions } # h3, the preparer's words
-  questionExams: { type: text, component: Text, text: { key: planned.Exams.askedInExams, params: { exams: row.exams } }, in: [listed], repeat: counts.questions } # "12 sınavda soruldu"
-  questionAnswered: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [listed], repeat: counts.questions } # "238 talebe cevapladı"
-  optionCounts: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [listed], repeat: counts.questions }
-  optionCount: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [listed], repeat: counts.questions.options } # "Bu derste: 97 talebe (%41)", every count exact
-  optionBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.optionBarLabel, params: { zerothOption: row.zerothOption, zerothPercent: row.zerothPercent } }, text: { key: planned.Exams.percent, params: { percent: row.zerothPercent } }, in: [listed], repeat: counts.questions.options.shown } # repeats the line above it, only for a count shown as a number; never the only place the figure is
-  openQuestion: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.openExamsLabel, params: { zerothQuestion: row.zerothQuestion } }, text: { key: planned.Exams.openExams }, in: [listed], repeat: counts.questions, emits: OPEN }
-  toastGone: { type: status, component: Status, role: status, text: { key: planned.Exams.zerothQuestionGone }, in: [listed], when: "toast == 'gone'" }
+  # --- the questions -----------------------------------------------------------------------------------------------------------------
+  questionGone: { type: status, component: Status, role: status, text: { key: ZerothAnswersPage.questionGone }, in: [listed], when: "notice == 'gone'", source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:251 } # an <output> above the list
+  questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:256 }
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: ZerothAnswersPage.questionsTitle, params: { count: count } }, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:260 } # h2, "Sorular (3)"
+  questionsList: { type: list, component: List, role: list, in: [listed], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:263 } # the same words with the same options of several exams are one item
+  questionItem: { type: page, component: Page, role: region, name: { labelledBy: questionText }, in: [listed], repeat: counts.questions, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:266 } # every question is a region landmark (rule EXM-ZER-1)
+  questionText: { type: text, component: Heading, role: heading, text: { key: composed.ZerothAnswersPage.question, params: { question: row.question } }, in: [listed], repeat: counts.questions, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:270 } # h3
+  questionExams: { type: text, component: Text, text: { key: ZerothAnswersPage.askedInExams, params: { exams: row.exams } }, in: [listed], repeat: counts.questions, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:278 } # one line with the next: "12 sınavda soruldu · 238 talebe cevapladı"
+  questionAnswered: { type: text, component: Text, text: { key: ZerothAnswersPage.answeredCount, params: { answered: row.answered } }, in: [listed], repeat: counts.questions, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:279 }
+  optionCounts: { type: list, component: List, role: list, name: { key: ZerothAnswersPage.optionCountsLabel }, in: [listed], repeat: counts.questions, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:281 }
+  optionCount: { type: text, component: ListItem, role: listitem, text: { oneOf: [ZerothAnswersPage.optionCount, ZerothAnswersPage.optionCountOnly] }, in: [listed], repeat: counts.questions.options, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:287 } # "Bu derste: 97 talebe (%41)", the count alone when nobody answered; no bar
+  openQuestion: { type: action, component: Button, role: button, intent: secondary, name: { key: ZerothAnswersPage.openExamsLabel, params: { question: row.question } }, text: { key: ZerothAnswersPage.openExams }, in: [listed], repeat: counts.questions, emits: OPEN, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:292 }
 
-  # --- no answer in the span --------------------------------------------------------------------------------------------------------
-  emptyNote: { type: text, component: Text, text: { key: planned.Exams.noZerothAnswers }, in: [empty] }
+  # --- no answer in the span ---------------------------------------------------------------------------------------------------------
+  emptyNote: { type: text, component: Text, text: { key: ZerothAnswersPage.noAnswers }, in: [empty], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:254 }
 
-  # --- one question's exams ---------------------------------------------------------------------------------------------------------
-  detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [questionDetail] }
-  detailTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: detail.zerothQuestion } }, in: [questionDetail] } # h2
-  detailTotal: { type: text, component: Text, text: { key: planned.Exams.answeredCount }, in: [questionDetail] } # over every exam that asked it
-  detailOptions: { type: list, component: List, role: list, name: { key: planned.Exams.optionCountsLabel }, in: [questionDetail] }
-  detailOption: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.options }
-  examsTable: { type: list, component: List, role: table, name: { key: planned.Exams.examsTableLabel }, in: [questionDetail] } # newest first
-  colCourse: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.course }, in: [questionDetail] }
-  colKosk: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.kosk }, in: [questionDetail] }
-  colDate: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colDate }, in: [questionDetail] }
-  colAnswered: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colAnswered }, in: [questionDetail] }
-  colOptions: { type: text, component: Text, role: columnheader, text: { key: planned.Exams.colOptions }, in: [questionDetail] }
-  examCourse: { type: text, component: Text, role: rowheader, text: { key: composed.Exams.course, params: { course: row.course } }, in: [questionDetail], repeat: detail.exams }
-  examKosk: { type: text, component: Text, role: cell, text: { key: composed.Exams.kosk, params: { kosk: row.kosk } }, in: [questionDetail], repeat: detail.exams }
-  examDate: { type: text, component: Text, role: cell, text: { key: composed.Exams.date, params: { date: row.date } }, in: [questionDetail], repeat: detail.exams }
-  examAnswered: { type: text, component: Text, role: cell, text: { key: composed.Exams.answered }, in: [questionDetail], repeat: detail.exams } # every count exact
-  examOptions: { type: text, component: Text, role: cell, text: { key: planned.Exams.zerothOptionCount }, in: [questionDetail], repeat: detail.exams.options } # one line per option, the same words as above
-  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToQuestions }, in: [questionDetail], emits: BACK }
+  # --- one question's exams ----------------------------------------------------------------------------------------------------------
+  detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:361 }
+  detailTitle: { type: text, component: Heading, role: heading, text: { key: composed.ZerothAnswersPage.question, params: { question: question } }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:365 } # h2
+  detailTotal: { type: text, component: Text, text: { key: ZerothAnswersPage.answeredCount, params: { answered: answered } }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:368 } # over every exam that asked it
+  detailOptions: { type: list, component: List, role: list, name: { key: ZerothAnswersPage.optionCountsLabel }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:369 }
+  detailOption: { type: text, component: ListItem, role: listitem, text: { oneOf: [ZerothAnswersPage.optionCount, ZerothAnswersPage.optionCountOnly] }, in: [questionDetail], repeat: detail.options, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:372 }
+  examsTable: { type: list, component: List, role: table, name: { key: ZerothAnswersPage.examsTableLabel }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:376 } # named by its visually hidden caption (libs/ui/src/mds/table.tsx:104)
+  colCourse: { type: text, component: Text, role: columnheader, text: { key: ZerothAnswersPage.course }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:334 }
+  colKosk: { type: text, component: Text, role: columnheader, text: { key: ZerothAnswersPage.kosk }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:338 }
+  colDate: { type: text, component: Text, role: columnheader, text: { key: ZerothAnswersPage.colDate }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:339 }
+  colAnswered: { type: text, component: Text, role: columnheader, text: { key: ZerothAnswersPage.colAnswered }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:342 }
+  colOptions: { type: text, component: Text, role: columnheader, text: { key: ZerothAnswersPage.colOptions }, in: [questionDetail], source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:348 }
+  examCourse: { type: text, component: Text, role: rowheader, text: { key: composed.ZerothAnswersPage.course, params: { course: row.course } }, in: [questionDetail], repeat: detail.exams, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:336 }
+  examKosk: { type: text, component: Text, role: cell, text: { key: composed.ZerothAnswersPage.kosk, params: { kosk: row.kosk } }, in: [questionDetail], repeat: detail.exams, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:338 }
+  examDate: { type: text, component: Text, role: cell, text: { key: composed.ZerothAnswersPage.date, params: { date: row.date } }, in: [questionDetail], repeat: detail.exams, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:339 }
+  examAnswered: { type: text, component: Text, role: cell, text: { key: composed.ZerothAnswersPage.answered, params: { answered: row.answered } }, in: [questionDetail], repeat: detail.exams, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:344 } # every count exact
+  examOptions: { type: text, component: Text, role: cell, text: { oneOf: [ZerothAnswersPage.optionCount, ZerothAnswersPage.optionCountOnly] }, in: [questionDetail], repeat: detail.exams, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:353 } # one line per option, in the question's order
+  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: ZerothAnswersPage.backToQuestions }, in: [questionDetail], emits: BACK, source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:383 }
 
-  # --- the refusal: the shell's own screen, which exists (nizam.shell.noAccessAndNotFound) ---------------------------------------------
+  # --- the refusal: the shell's own screen (nizam.shell.noAccessAndNotFound) -----------------------------------------------------------
   refusedMain: { type: page, component: Page, role: main, in: [forbidden], source: libs/ui/src/mds/app-shell.tsx:41 }
   refusedSection: { type: page, component: Page, role: region, name: { labelledBy: refusedTitle }, in: [forbidden], source: libs/ui/src/mds/system-state.tsx:33 }
   refusedTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: libs/ui/src/mds/system-state.tsx:43 } # h1
   refusedHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: NoAccess.back }, text: { key: NoAccess.back }, in: [forbidden], emits: GO_HOME, source: apps/nizam/components/errors/no-access.tsx:38 }
 
 edges:
-  - { labelledBy: [questionsList, questionsTitle] }
+  - { labelledBy: [questionsRegion, questionsTitle] }
   - { labelledBy: [questionItem, questionText] }
   - { labelledBy: [detailRegion, detailTitle] }
   - { labelledBy: [refusedSection, refusedTitle] }
   - { triggers: [applyFilters, opening] }
   - { triggers: [openQuestion, questionReading] }
+  - { triggers: [backButton, opening] }
 
 rules:
+  - { id: EXM-ZER-1, rule: "Every question of the list is a <section aria-labelledby> (zeroth-answers-view.tsx:266-269), so each is a region landmark named by its words: a screen reader's list of landmarks holds one per question, beside the page's own. Fix: an <article>, or no label on the section. Read from the code, not seen." }
+  - { id: EXM-ZER-2, rule: "'Uygula' with a start after the end reads nothing and shows 'Başlangıç, bitişten sonra olamaz.' under Bitiş (zeroth-answers-view.tsx:116-121, :135-138); the error is the Field's description of the date input (libs/ui/src/mds/field.tsx:50-52), no live region, and the focus stays on Uygula, so a screen-reader user hears nothing happen. Fix: move the focus to the field, or announce the error. Read from the code, not seen." }
+  - { id: EXM-ZER-focus, rule: "No code moves the focus (no focus() or autoFocus in features/zeroth-answers): after 'Sınavlar' and 'Sorulara dön' the page is drawn anew under a new address, and where the focus goes was not seen." }
   - { id: never-traced, rule: "No name, no user id and no single answer is on this page or in its reads (invariant zeroth-answers-never-traced). Every count is exact, 1 to 4 included: the owner, 22 Nov 2026, \"ben böyle bi karar vermedim, saçma bu zaten neden gizleyeyim tabi ki görünecek\" (#427)." }
-  - { id: kosk-nazim-scope, rule: "Drawn, not decided: to a köşk nazımı the köşk field holds their köşk and no other, so every count is of their köşk's exams, and the medrese and course fields list only what is held there. The başnazım and a Medaris nazımı who holds exam.zeroth_read see 'Bütün köşkler' first." }
-  - { id: default-span, rule: "Proposal: the page opens on the last 90 days. There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's 'bu dönem ... diğer dönem' reads (need filtered-by-time-and-place). The span and the place stay in the page's address." }
+  - { id: kosk-nazim-scope, rule: "On a köşk nazımı's page the köşk field holds their köşk alone and is disabled, every read sends that köşk (zeroth-answers-view.tsx:150-156, present.ts:90), and the medrese and course fields list what the counts name there. Platform management's page offers 'Bütün köşkler' first." }
+  - { id: default-span, rule: "The page opens on the last 90 days (present.ts:13), each day from 00:00 to 23:59 at UTC+3 (present.ts:92-93). There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's 'bu dönem ... diğer dönem' reads. The span, the place and the question opened stay in the page's address." }
   - { id: same-words-together, rule: "Two exams' zeroth questions are counted together when their words and their options are the same, letter for letter after spaces are trimmed; a question asked in other words, or with other options, is an item of its own. An item says in how many exams it was asked and opens them." }
-  - { id: figures-as-text, rule: "Every count is said in numbers and words ('Bu derste: 97 talebe (%41)'); the bar beside an option only repeats it and is named with the same figure, and is not drawn for a count under five. The exams' table has headers a screen reader reads." }
-  - { id: arabic-runs, rule: "The hadith is drawn as the talebe sees it: 'مَنْ غَشَّنَا فَلَيْسَ مِنَّا' and its meaning 'Bizi aldatan bizden değildir.'; the Arabic text and the meal are for the owner to confirm. An Arabic run gets dir=\"rtl\", lang=\"ar\", the Arabic font and its 1.9 leading on the element itself, never on a shared ancestor (the design system's rule). A zeroth question or option the preparer wrote in Arabic is set the same way." }
-  - { id: menu-entry-not-drawn, rule: "The page needs an entry in nizam's menu for the persons who hold exam.zeroth_read, and none for anyone else (need only-management). The menu is the captured nav graph nizam.nav, read from the code, so the entry is not drawn there until it is built." }
-  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; 'Uygula' keeps the focus on itself and the list's h2 says how many questions it holds; opening a question moves the focus to its h2, and the back button gives it back to that question's 'Sınavlar'. The graph says nothing of the focus because nothing is built." }
-  - { id: planned-words, rule: "Every key `planned.Exams.*` is a proposal for the owner to review; NoAccess.* is the app's own (nizam.json)." }
+  - { id: figures-as-text, rule: "Every count is said in numbers and words ('Bu derste: 97 talebe (%41)', the count alone when nobody answered); there is no bar. The exams' table has column headers and the course as each row's header, which a screen reader reads." }
+  - { id: arabic-runs, rule: "The hadith is drawn as the talebe sees it, 'مَنْ غَشَّنَا فَلَيْسَ مِنَّا' with its meaning 'Bizi aldatan bizden değildir.' (the owner kept it as written: \"Böyle kalsın\", 22 Nov 2026), with lang=ar, dir=rtl and the Arabic class on its own element (zeroth-answers-view.tsx:105). A zeroth question or option the preparer wrote in Arabic is set with dir=auto only." }
+  - { id: menu-entry, rule: "The page has its entry in nizam's menu, 'Sıfırıncı soru cevapları', for the platform (apps/nizam/lib/shell-nav.ts:141-146) and for a köşk (:263-269), shown only to a person who holds exam.zeroth_read (:321, filterByPermissions); nizam.nav draws the menu." }

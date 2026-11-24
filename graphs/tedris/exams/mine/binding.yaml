@@ -1,0 +1,109 @@
+# tedris.exams.mine on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web's Sınavlarım, /my-exams, as a
+# spare talebe signed in through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/tedris/exams/mine --bind graphs/tedris/exams/mine/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>
+#
+# Data. Every scenario makes its own and takes it away; no seeded course or account is touched.
+#   listed   applicantD holds a seat in "Deneme dersi xtMineC" (helpers/course.mjs, one week of one celse), and five online exams of
+#            it are made through the API as its hoca (helpers/exams.mjs), one for each row the page draws: xtMineOpen (open, not
+#            started: "Sınava gir"), xtMineRun (started and left open: "Devam et"), xtMineSoon (opens in two hours: "Sınav sayfası"),
+#            xtMineDone (taken, closed and released: the score and "Sonucu gör"), xtMineMiss (closed early with no attempt: "Girmedin",
+#            no link). Each exam is a celse of the course, so all of them go with it.
+#   empty    applicantF, who holds no seat anywhere: "Henüz sınavın yok.".
+#   failed   applicantF again, with tedrisat's per-person budget for GET /me/exams spent (helpers/throttle.mjs), so the page's read
+#            gets 429 and draws "Sınavlar okunamadı"; "Yeniden dene" reads again within the same window and fails again.
+# The teardowns run exams.mjs remove before course.mjs remove (the order exams.mjs asks for) and wait for the budget to come back.
+#
+# Not reachable on the stack, and why:
+#   - READ_GRADES and the written or oral rows (gradesLink, comingPlace, pastPlace): course.mjs makes LIVE celses only, and no
+#     helper makes a written or oral exam celse, so every scenario has writtenOrOral: none.
+# Seen on the stack and kept as the code draws it: the empty page fails React's hydration (rule EXM-MINE-2), so `empty`'s walk
+# reports a page error.
+#   - read failed with the network down (the read is the server's, not the browser's): only the 429 is made.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.exams.mine
+
+scenarios:
+  listed:
+    given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none }
+    as: applicantD
+    open: '{tedris}/my-exams'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtMineC, --weeks, '1', --lessons, '1', --talebe, applicantD]
+        expect: '"tag":"xtMineC"'
+      - run: [node, helpers/exams.mjs, make, xtMineOpen, --course, xtMineC, --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, make, xtMineRun, --course, xtMineC, --publish, now, --late, '120', --minutes, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtMineRun, applicantD, --open]
+        expect: 'IN_PROGRESS'
+      - run: [node, helpers/exams.mjs, make, xtMineSoon, --course, xtMineC, --publish, '+120']
+        expect: '"status":"SCHEDULED"'
+      - run: [node, helpers/exams.mjs, make, xtMineDone, --course, xtMineC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtMineDone, applicantD, --right, '2']
+        expect: 'FINISHED'
+      - run: [node, helpers/exams.mjs, close, xtMineDone]
+        expect: 'CLOSED'
+      - run: [node, helpers/exams.mjs, release, xtMineDone]
+        expect: 'released'
+      - run: [node, helpers/exams.mjs, make, xtMineMiss, --course, xtMineC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, close, xtMineMiss]
+        expect: 'CLOSED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtMineOpen]
+      - run: [node, helpers/exams.mjs, remove, xtMineRun]
+      - run: [node, helpers/exams.mjs, remove, xtMineSoon]
+      - run: [node, helpers/exams.mjs, remove, xtMineDone]
+      - run: [node, helpers/exams.mjs, remove, xtMineMiss]
+      - run: [node, helpers/course.mjs, remove, xtMineC]
+        expect: 'course remove xtMineC'
+    samples:
+      course: Deneme dersi xtMineC
+
+  empty:
+    given: { read: ok, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none }
+    as: applicantF
+    open: '{tedris}/my-exams'
+
+  failed:
+    given: { read: failed, exams: none, openGroup: none, comingGroup: none, pastGroup: none, writtenOrOral: none }
+    as: applicantF
+    open: '{tedris}/my-exams'
+    setup:
+      - run: [node, helpers/throttle.mjs, hold, applicantF, /me/exams]
+        expect: 'held /me/exams 429'
+    teardown:
+      - run: [node, helpers/throttle.mjs, clear, applicantF, /me/exams]
+        expect: 'clear /me/exams'
+
+events:
+  # the person goes to another page of tedris: Keşfet, from the address bar
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  left: { url: '{tedris}/discover' }
+  grades_opened: { url: '{tedris}/courses/*' }
+  exam_entered: { url: '{tedris}/courses/*/lessons/*/sinav' }
+  result_opened: { url: '{tedris}/my-exams/*' }
+
+nodes:
+  # an Alert's title is a paragraph, not its accessible name: found by its role and its words
+  loadFailedAlert: { role: alert, hasText: Sınavlar okunamadı }
+  # the row's link is named "Sınava gir: <course>, <title>": the first of the open group is the one that is not started
+  enterButton: { role: link, name: '/^Sınava gir: Deneme dersi xtMineC, Deneme sınavı xtMineOpen$/' }
+  continueButton: { role: link, name: '/^Devam et: Deneme dersi xtMineC, Deneme sınavı xtMineRun$/' }
+  viewLink: { role: link, name: '/^Sınav sayfası: Deneme dersi xtMineC, Deneme sınavı xtMineSoon$/' }
+  resultLink: { role: link, name: '/^Sonucu gör: Deneme dersi xtMineC, Deneme sınavı xtMineDone$/' }
+  # three lists with no name: each is found in its group's region
+  openList: { role: list, within: { role: region, name: Şimdi açık } }
+  comingList: { role: list, within: { role: region, name: Yaklaşan } }
+  pastList: { role: list, within: { role: region, name: Geçmiş } }
+  # a line of one of four sentences, found by any of them: taken, missed, the score once released, released with no score
+  pastState: { text: '/^(Sonuç henüz açıklanmadı|Girmedin|\d+(,\d+)? \/ \d+|Sonuç açıklandı)$/' }
+  # the time alone, Intl's medium date and short time ("24 Kas 2026 09:43")
+  openHeld: { text: '/^\d{1,2} \S+ \d{4} \d{2}:\d{2}$/', within: { role: region, name: Şimdi açık } }
+  pastHeld: { text: '/^\d{1,2} \S+ \d{4} \d{2}:\d{2}$/', within: { role: region, name: Geçmiş } }

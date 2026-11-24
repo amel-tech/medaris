@@ -143,10 +143,8 @@ needs:
       When an answer cannot be saved because the connection is gone, the page says so at that question, keeps the choice, and sends
       it as soon as it can. It never shows an answer as saved that the server does not hold.
     evidence:
-      - state: offline
       - state: question
       - node: offlineAlert
-      - node: notSavedLine
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:622
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
       - test: apps/tedris/test/exam-take.spec.ts
@@ -251,7 +249,7 @@ needs:
       where they stopped: the same question, every saved answer, and the time that was left when the connection was lost, since the
       clock does not run meanwhile. The page says the exam was resumed.
     evidence:
-      - state: offline
+      - state: question
       - state: resuming
       - node: resumedNotice
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:423
@@ -356,10 +354,12 @@ needs:
       question, the question's number and the count are said ("12/50"), going to a question puts the focus on its text, and the
       question list says each question's state in words, not by colour alone.
     evidence:
-      - state: question
       - node: radioOptions
       - node: questionListItem
     missing: "MDRS-299: built with roles and names (the options as a radio group or check boxes, the list's numbers named with their state, the countdown a timer), but not walked with the keyboard alone or with a screen reader"
+    note: >-
+      It is about the state question, which is built. Read from the code, not walked: the options' group is named "Şıklar", not by the
+      question, and nothing moves the focus to a question (rules EXM-TAKE-9, EXM-TAKE-10).
 
   - id: the-end-says-what-comes-next
     need: >-
@@ -412,7 +412,7 @@ needs:
       When a new version of Medaris is deployed while the exam is open, the page says so and how to go on, and no choice made on it is
       lost.
     evidence:
-      - state: offline
+      - state: question
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"

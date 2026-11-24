@@ -1,6 +1,7 @@
 # What must exist for the course team to publish an online exam: written needs-first on 21 November 2026 from the owner's rules, then met
 # by MDRS-299 (#415, #431); each met need names its code or test. Still missing: moving a scheduled exam in place, a page that redraws
-# itself when the exam opens, and a notification when it opens (the one when it is scheduled is sent).
+# itself when the exam opens, a notification when it opens (the one when it is scheduled is sent), and problems that link to what they
+# are about (EXM-PUB-2, read from the code on 24 Nov 2026).
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.publish
@@ -14,7 +15,6 @@ needs:
       - state: scheduled
       - state: open
       - state: closed
-      - node: draftBadge
       - node: scheduledBadge
       - node: openBadge
       - source: apps/nazar/features/online-exams/components/exams-page.tsx:49
@@ -26,14 +26,13 @@ needs:
       total 100, while there is no zeroth question, or while the exam has no question. Each problem is listed with a link to it, and
       nothing is published.
     evidence:
-      - state: checking
-      - state: notReady
       - node: problemLink
       - source: apps/nazar/features/online-exams/components/exam-publish.tsx:42
       - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
         name: "lists every problem of an exam that is not ready, and plans nothing"
       - test: apps/nazar/test/exam-publish.spec.tsx
         name: "lists what keeps it from being published, and offers no button"
+    missing: "MDRS-299, EXM-PUB-2: each problem is listed and nothing is published, but the lines are not links to what they are about"
 
   - id: publish-now
     need: >-
@@ -55,8 +54,7 @@ needs:
       The team chooses the earliest start, a day and a time, which is the exam celse's own, and the late window in minutes, in its own
       time zone, which the form names. A time that has passed is refused with why.
     evidence:
-      - state: scheduleForm
-      - state: scheduleRefused
+      - state: choose
       - state: scheduled
       - node: earliestField
       - node: lateMinutesField
@@ -73,33 +71,31 @@ needs:
       A scheduled exam opens by itself at its day and time, with no one on the page, and the talebe who have its page open see it
       open without reloading.
     evidence:
-      - state: scheduled
-      - state: open
       - node: scheduledAlert
       - source: apps/tedrisat/src/online-exam/domain/exam-attempt.ts
     missing: "MDRS-299: the exam opens by its time (the window is reckoned on every read), but a page left open is not drawn again when it opens"
+    note: "It is about the states scheduled and open: the team's page stays on scheduled until it is read again."
 
   - id: moved-or-taken-back-until-it-opens
     need: >-
       Until it opens, a scheduled exam can be moved to another day and time, or taken back to a draft; talebe meanwhile see only when
       it opens.
     evidence:
-      - state: scheduled
       - state: draft_again
-      - node: moveButton
       - node: toDraftScheduled
       - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
         name: "takes it back until it opens: the celse goes and the draft stays"
       - test: apps/nazar/test/exam-publish.spec.tsx
         name: "takes a scheduled exam back to a draft, and gives the editor back"
     missing: "MDRS-299: taking it back to a draft is built; moving a scheduled exam in place is not (it is taken back, then published again)"
+    note: "It is about the state scheduled, which offers Taslağa al and no move."
 
   - id: started-until-the-latest-start-with-the-full-length
     need: >-
       Talebe start the exam at any time until its latest start, and each gets the full length. After the latest start no one starts
       it, the attempts in progress go on, and the exam is over ("Bitti") when the last of them has ended.
     evidence:
-      - state: scheduleForm
+      - state: choose
       - state: open
       - state: closed
       - node: latestHelp
@@ -117,10 +113,9 @@ needs:
       A published exam can be taken back to a draft only until it opens. After that it can be closed early, which ends every attempt
       with the answers saved so far.
     evidence:
+      - state: scheduled
       - state: open
-      - state: unpublishRefused
-      - node: unpublishRefusedDialog
-      - node: closeDialog
+      - node: toDraftScheduled
       - source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27
       - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
         name: "closes early: an attempt in progress ends with its saved answers, and nothing starts or closes again"

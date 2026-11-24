@@ -1,28 +1,41 @@
-# The screens of tedris.exams.take: the exam's own page in tedris-web, from "Bilmen gerekenler" and the zeroth question to "Sınav bitti".
-# BUILT (MDRS-299): apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx and features/online-exams/components/exam-take.tsx,
-# reached from Sınavlarım (tedris.exams.mine, straight to this page) and from the exam celse's "Sınava gir". The nodes carry no `source`:
-# the graph is `proposed`, written before the code.
+# The screens of tedris.exams.take: the online exam's own page in tedris-web (/courses/<id>/lessons/<id>/sinav, the server page
+# app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx and the client component features/online-exams/components/exam-take.tsx),
+# from "Bilmeniz gerekenler" and the zeroth question to "Sınav bitti". The celse's layout (lessons/[lessonId]/layout.tsx) settles that the
+# celse exists for the caller and mounts the toast host; the phone's top bar is tedris.shell.frame's. While resuming, rereading and
+# timeUp run, the page shows what it showed before them, and the graph names no node there.
 #
-# Layout as built: the title and the course at the top; on the question screen a bar with the countdown and the question's number, the
-# question card with its points, A− and A+ in its header, the options, Önceki / Soruyu atla / Sonraki under it, "Sınavı bitir" apart,
-# and the list of the questions under the card, each number coloured by its state (rule list-colours).
-#
-# Words. The keys are the plan's (`planned.Exams.*`); the Turkish of the parts added on 22 November (A−/A+, the colours, the switch) is
-# copied from tedris-learn.json (OnlineExam). The talebe is addressed as "sen", as tedris speaks. Samples are invented and neutral.
+# Words: every `OnlineExam.*` key is copied from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
+# `tedrisLearn.OnlineExam.<key>`); the key is the path inside the file. `changes` borrows the app's own sentence that says what the
+# flow changes (OnlineExam.factSaved), as the app has no message for it. The `composed.*` keys are NOT in any i18n file:
+#   composed.OnlineExam.course          the exam's course, a value the API gives                                    (exam-take.tsx:818)
+#   composed.OnlineExam.title           the exam's title, the briefing's h1                                          (exam-take.tsx:819-821)
+#   composed.OnlineExam.instructions    the team's own words, pre-line                                               (exam-take.tsx:853-855)
+#   composed.OnlineExam.zerothQuestion  the preparer's zeroth question, the legend of its options                    (exam-take.tsx:873)
+#   composed.OnlineExam.option          an option's text, the label of its radio or check box                        (exam-take.tsx:677, 698, 878)
+#   composed.OnlineExam.question        the question's text, the card's h1                                           (exam-take.tsx:664-670)
+#   composed.OnlineExam.timeLeft        the countdown, clockText ("23:41", "1:02:05")                                (take-model.ts:29)
+#   composed.OnlineExam.number          a question's number in the list                                              (exam-take.tsx:759)
+#   composed.Button.loading             the default loadingLabel of a busy Button                                    (libs/ui/src/mds/button.tsx:62)
+#   composed.AlertDialog.close          the dialog's close icon, a literal of the kit                                (libs/ui/src/mds/alert-dialog.tsx:50)
+#   composed.Toast.close                a toast's close button, a literal aria-label of the kit                      (libs/ui/src/mds/toast.tsx:97)
+# A− and A+ are literals of exam-take.tsx (:651, :660). Times are Intl in the browser's own zone (:129-137; rule EXM-TAKE-11). The
+# toasts are the kit's (libs/ui/src/mds/toast.tsx): each a dialog, an error one an alertdialog that stays until closed. Not drawn:
+# the warning toast "Medaris güncellendi" after a zeroth answer or a start on a stale page (:152-159), and the toast a refused resume
+# gives (:229).
 schema: delurio-graph/0
 kind: ui
 id: tedris.exams.take
 flow: tedris.exams.take
-status: proposed
+status: captured
 kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
-changes: { key: Changes.note }
+changes: { key: OnlineExam.factSaved }
 samples:
   title: Ara sınav
   course: Fıkha Giriş
-  opens: 24 Kas Sal 21:00
-  latest: 24 Kas Sal 23:00
+  opens: 24 Kas 2026 21:00
+  latest: 24 Kas 2026 21:10
   minutes: "60"
   count: "50"
   instructions: Sorular 2. ile 5. haftaların konularından.
@@ -38,139 +51,155 @@ samples:
   at: "21:47"
 
 nodes:
-  # --- the page, on every screen -----------------------------------------------------------------------------------------------------
-  examPage: { type: page, component: Page, role: main, in: [notFound, readFailed, notOpen, closed, briefing, savingZeroth, starting, question, saving, offline, elsewhere, confirmFinish, finishing, finished, already_finished] } # the shell's one <main>
-  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notOpen, closed, briefing, savingZeroth, starting, question, saving, offline, elsewhere, confirmFinish, finishing, finished, already_finished] } # h1: the exam's own title
-  courseLine: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: exam.courseTitle } }, in: [notOpen, closed, briefing, savingZeroth, starting, finished, already_finished] }
-  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [notOpen, closed, briefing, savingZeroth, starting] } # a badge, not a live region
+  # --- the page ----------------------------------------------------------------------------------------------------------------------
+  examPage: { type: page, component: Page, role: main, in: [notFound, readFailed, notOpen, closed, briefing, savingZeroth, starting, resuming, question, saving, notingSwitch, elsewhere, confirmFinish, finishing, timeUp, rereading, finished, already_finished], source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx:29" } # no initial focus is set anywhere (rule EXM-TAKE-10)
 
-  # --- before and after the window, and no exam ----------------------------------------------------------------------------------------
-  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.notFoundTitle }, text: { key: planned.Exams.notFound }, in: [notFound] } # says nothing of the exam: to this person there is none
-  readFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.loadFailedTitle }, text: { key: planned.Exams.readFailed }, in: [readFailed] }
-  retryButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.retry }, in: [readFailed], emits: RETRY }
-  notOpenAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.notOpenTitle }, text: { key: planned.Exams.notOpen, params: { opens: exam.startsAt, latest: exam.latestStartAt } }, in: [notOpen] } # both times on the talebe's own clock; no start is offered
-  closedAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.closedTitle }, text: { key: planned.Exams.closed, params: { latest: exam.latestStartAt } }, in: [closed] }
+  # --- no such exam, a read that failed (the server page) ----------------------------------------------------------------------------
+  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: OnlineExam.notFoundTitle }, text: { key: OnlineExam.notFound }, in: [notFound], source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx:37" } # a neutral Alert is a status
+  readFailedAlert: { type: alert, component: Alert, role: alert, name: { key: OnlineExam.loadFailedTitle }, text: { key: OnlineExam.readFailed }, in: [readFailed], source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx:37" }
+  backToSession: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: OnlineExam.backToSession }, in: [notFound, readFailed], emits: NAVIGATE, source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/sinav/page.tsx:45" } # to the celse's page; there is no retry
 
-  # --- Bilmeniz gerekenler -------------------------------------------------------------------------------------------------------------
-  briefingRegion: { type: page, component: Page, role: region, name: { labelledBy: briefingTitle }, in: [briefing, savingZeroth, starting] }
-  briefingTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.briefingTitle }, in: [briefing, savingZeroth, starting] } # h2
-  briefingFacts: { type: list, component: List, role: list, name: { labelledBy: briefingTitle }, in: [briefing, savingZeroth, starting] }
-  factLength: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factLength, params: { minutes: exam.durationMinutes } }, in: [briefing, savingZeroth, starting] }
-  factQuestions: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factQuestions, params: { count: exam.questionCount } }, in: [briefing, savingZeroth, starting] }
-  factMarks: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factMarks }, in: [briefing, savingZeroth, starting] } # says how each kind is answered, never how many options are correct
-  factSaved: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSaved }, in: [briefing, savingZeroth, starting] }
-  factConnection: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factConnection }, in: [briefing, savingZeroth, starting] }
-  factSwitch: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSwitch }, in: [briefing, savingZeroth, starting] } # what a switch does, told before the start: it is counted (D1, decided 22 Nov 2026)
-  factSkip: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factSkip }, in: [briefing, savingZeroth, starting] }
-  factColors: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factColors }, in: [briefing, savingZeroth, starting] } # the list's colours, named in words (#418)
-  factTextSize: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factTextSize }, in: [briefing, savingZeroth, starting] } # followed by the two buttons drawn inert, aria-hidden (#421)
-  factFinish: { type: text, component: ListItem, role: listitem, text: { key: planned.Exams.factFinish }, in: [briefing, savingZeroth, starting] }
-  instructionsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.instructionsTitle }, in: [briefing, savingZeroth, starting], when: hasInstructions } # h3; only when the team wrote some
-  instructionsText: { type: text, component: Text, text: { key: composed.Exams.instructions, params: { instructions: exam.instructions } }, in: [briefing, savingZeroth, starting], when: hasInstructions }
+  # --- before and after the window ---------------------------------------------------------------------------------------------------
+  notOpenAlert: { type: alert, component: Alert, role: status, name: { key: OnlineExam.notOpenTitle }, text: { key: OnlineExam.notOpen, params: { opens: opens, latest: latest } }, in: [notOpen], source: apps/tedris/features/online-exams/components/exam-take.tsx:792 } # alone on the page: no title, no course, no link (rule EXM-TAKE-6)
+  closedAlert: { type: alert, component: Alert, role: status, name: { key: OnlineExam.closedTitle }, text: { key: OnlineExam.closed, params: { latest: at } }, in: [closed], source: apps/tedris/features/online-exams/components/exam-take.tsx:804 } # the latest start as a time of day only
 
-  # --- the zeroth question -------------------------------------------------------------------------------------------------------------
-  zerothRegion: { type: page, component: Page, role: region, name: { labelledBy: zerothTitle }, in: [briefing, savingZeroth, starting] }
-  zerothTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.zerothTitle }, in: [briefing, savingZeroth, starting] } # h2
-  hadithArabic: { type: text, component: Text, text: { key: planned.Exams.hadithArabic }, in: [briefing, savingZeroth, starting] } # lang="ar" dir="rtl" on this element, the Arabic face (rule arabic-runs)
-  hadithMeaning: { type: text, component: Text, text: { key: planned.Exams.hadithMeaning }, in: [briefing, savingZeroth, starting] }
-  zerothQuestionText: { type: text, component: Text, text: { key: composed.Exams.zerothQuestion, params: { zerothQuestion: exam.zeroth.question } }, in: [briefing, savingZeroth, starting] } # the preparer's question
-  zerothNote: { type: text, component: Text, role: note, text: { key: planned.Exams.zerothNote }, in: [briefing, savingZeroth, starting] }
-  zerothOptions: { type: list, component: List, role: radiogroup, name: { labelledBy: zerothQuestionText }, in: [briefing, savingZeroth, starting], disabledIn: [starting] }
-  zerothOption: { type: field, component: ListItem, role: radio, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [briefing, savingZeroth, starting], disabledIn: [starting], repeat: exam.zeroth.options, emits: ANSWER_ZEROTH } # choosing one saves it; another choice replaces it until the start
-  zerothNotSaved: { type: alert, component: Text, role: alert, text: { key: planned.Exams.notSaved }, in: [briefing], when: "notice == 'notSaved'" } # at the question, said at once
-  startButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.start }, in: [briefing, savingZeroth, starting], disabledIn: [savingZeroth, starting], disabledWhen: "not zerothGiven", emits: START } # off until the zeroth question is answered
-  startHint: { type: text, component: Text, role: note, text: { key: planned.Exams.startHint }, in: [briefing, savingZeroth], when: "not zerothGiven" } # says why the start is off, beside it (aria-describedby)
-  startFailed: { type: alert, component: Text, role: alert, text: { key: planned.Exams.startFailed }, in: [briefing], when: "notice == 'startFailed'" }
+  # --- Bilmeniz gerekenler -----------------------------------------------------------------------------------------------------------
+  briefingRegion: { type: page, component: Page, role: region, name: { labelledBy: examTitle }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:814 }
+  courseLine: { type: text, component: Text, text: { key: composed.OnlineExam.course, params: { course: course } }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:818 }
+  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.OnlineExam.title, params: { title: title } }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:819 } # h1
+  briefingTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.briefingTitle }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:822 } # h2
+  briefingFacts: { type: list, component: List, role: list, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:823 } # no name of its own
+  factLength: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factLength, params: { minutes: minutes } }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:824 }
+  factQuestions: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factQuestions, params: { count: count } }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:825 }
+  factMarks: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factMarks }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:826 }
+  factSaved: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factSaved }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:827 }
+  factConnection: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factConnection }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:828 }
+  factSwitch: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factSwitch }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:829 }
+  factSkip: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factSkip }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:830 }
+  factColors: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factColors }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:831 }
+  factTextSize: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factTextSize }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:833 } # followed by A− and A+ drawn as spans, aria-hidden
+  factFinish: { type: text, component: ListItem, role: listitem, text: { key: OnlineExam.factFinish }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:848 }
+  instructionsTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.instructionsTitle }, in: [briefing, savingZeroth, starting], when: hasInstructions, source: apps/tedris/features/online-exams/components/exam-take.tsx:852 } # h3
+  instructionsText: { type: text, component: Text, text: { key: composed.OnlineExam.instructions, params: { instructions: instructions } }, in: [briefing, savingZeroth, starting], when: hasInstructions, source: apps/tedris/features/online-exams/components/exam-take.tsx:853 }
 
-  # --- the bar that is always on the question screen -------------------------------------------------------------------------------------
-  examBar: { type: page, component: Page, role: region, name: { key: planned.Exams.barLabel }, in: [question, saving, confirmFinish, finishing] } # stays at the top while the page scrolls
-  timer: { type: text, component: Text, role: timer, name: { key: planned.Exams.timeLeftLabel }, text: { key: composed.Exams.timeLeft, params: { timeLeft: attempt.timeLeft } }, in: [question, saving, offline, confirmFinish, finishing] } # minutes and seconds, the server's count; a timer is not a live region, so it is not read every second; red in the last five minutes
-  lastFive: { type: status, component: Status, role: status, text: { key: planned.Exams.lastFive }, in: [question, saving, confirmFinish, finishing], when: "clock == 'lastFive'" } # the words beside the red, spoken once when it appears
-  counter: { type: text, component: Text, text: { key: planned.Exams.counter, params: { number: question.number, count: exam.questionCount } }, in: [question, saving] } # "Soru 12/50"
-  textSmallerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.textSmaller }, text: { key: composed.Exams.textSmallerMark }, in: [question, saving], emits: TEXT_SIZE } # disabled at the smallest step (rule text-size)
-  textBiggerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Exams.textBigger }, text: { key: composed.Exams.textBiggerMark }, in: [question, saving], emits: TEXT_SIZE } # disabled at the largest step
-  pointsLine: { type: text, component: Text, text: { key: planned.Exams.questionPoints, params: { points: question.points } }, in: [question, saving] } # two decimals
+  # --- the zeroth question -----------------------------------------------------------------------------------------------------------
+  zerothRegion: { type: page, component: Page, role: region, name: { labelledBy: zerothTitle }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:861 }
+  zerothTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.zerothTitle }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:865 } # h2
+  hadithArabic: { type: text, component: Text, text: { key: OnlineExam.hadithArabic }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:868 } # lang=ar dir=rtl on this element
+  hadithMeaning: { type: text, component: Text, text: { key: OnlineExam.hadithMeaning }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:871 }
+  zerothQuestionText: { type: text, component: Text, text: { key: composed.OnlineExam.zerothQuestion, params: { zerothQuestion: zerothQuestion } }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:873 } # the group's label, a div, not a legend
+  zerothOptions: { type: list, component: List, role: radiogroup, name: { labelledBy: zerothQuestionText }, in: [briefing, savingZeroth, starting], source: apps/tedris/features/online-exams/components/exam-take.tsx:872 }
+  zerothOption: { type: field, component: ListItem, role: radio, name: { key: composed.OnlineExam.option, params: { option: row.text } }, text: { key: composed.OnlineExam.option, params: { option: row.text } }, in: [briefing, savingZeroth, starting], repeat: zeroth.options, duringStep: true, emits: ANSWER_ZEROTH, source: apps/tedris/features/online-exams/components/exam-take.tsx:876 } # never disabled; the choice shows at once
+  zerothNote: { type: text, component: Text, text: { key: OnlineExam.zerothNote }, in: [briefing, savingZeroth, starting], when: "not zerothError", source: apps/tedris/features/online-exams/components/exam-take.tsx:880 } # the group's help line, which describes every radio
+  zerothNotSaved: { type: text, component: Text, text: { key: OnlineExam.notSaved }, in: [briefing, starting], when: zerothError, source: apps/tedris/features/online-exams/components/exam-take.tsx:881 } # replaces the help line; a .mds-error span, no live region
+  startButton: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExam.start }, in: [briefing, savingZeroth, starting], disabledIn: [starting], disabledWhen: "not zerothGiven", emits: START, source: apps/tedris/features/online-exams/components/exam-take.tsx:887 } # busy while starting (aria-disabled, aria-busy)
+  startingStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [starting], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button
+  startHint: { type: text, component: Text, text: { key: OnlineExam.startHint }, in: [briefing, savingZeroth], when: "not zerothGiven", source: apps/tedris/features/online-exams/components/exam-take.tsx:895 } # beside the button, not tied to it by aria-describedby
+  zerothRefusedToast: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [OnlineExam.errorNotOpen, OnlineExam.errorZerothLocked, OnlineExam.errorFailed] }, in: [briefing, savingZeroth, starting], when: "notice == 'zerothRefused'", source: apps/tedris/features/online-exams/components/exam-take.tsx:439 }
+  startFailedToast: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [OnlineExam.startFailed, OnlineExam.errorNotOpen, OnlineExam.startHint, OnlineExam.errorFailed] }, in: [briefing, savingZeroth, starting], when: "notice == 'startFailed'", source: apps/tedris/features/online-exams/components/exam-take.tsx:454 }
 
-  # --- the question ----------------------------------------------------------------------------------------------------------------------
-  questionRegion: { type: page, component: Page, role: region, name: { labelledBy: counter }, in: [question, saving] }
-  resumedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.resumed }, in: [question], when: "notice == 'resumed'" }
-  switchedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.switchCounted }, in: [question], when: "notice == 'switched'" } # nothing is erased; the team sees the switch
-  skippedNotice: { type: status, component: Status, role: status, text: { key: planned.Exams.skippedFollow, params: { skipped: attempt.skippedCount } }, in: [question], when: "notice == 'skippedFollow'" }
-  questionText: { type: text, component: Heading, role: heading, text: { key: composed.Exams.question, params: { question: question.text } }, in: [question, saving] } # h2; going to a question puts the focus here (focus); an Arabic text is set right to left (rule arabic-runs)
-  radioOptions: { type: list, component: List, role: radiogroup, name: { labelledBy: questionText }, in: [question, saving], when: "mode == 'single'" } # one choice
-  radioOption: { type: field, component: ListItem, role: radio, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [question, saving], when: "mode == 'single'", repeat: question.options, emits: CHOOSE } # in the talebe's own order; choosing saves it
-  checkOptions: { type: list, component: List, role: group, name: { labelledBy: questionText }, in: [question, saving], when: "mode == 'multiple'" } # any number of marks; nothing says how many are right
-  checkOption: { type: field, component: TextField, role: checkbox, name: { key: composed.Exams.option, params: { option: row.text } }, text: { key: composed.Exams.option, params: { option: row.text } }, in: [question, saving], when: "mode == 'multiple'", repeat: question.options, emits: CHOOSE } # marking or clearing one saves the question's marks
-  savingLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saving }, in: [saving] }
-  savedLine: { type: status, component: Status, role: status, text: { key: planned.Exams.saved }, in: [question], when: "notice == 'saved'" } # only once the server holds it
-  notSavedLine: { type: alert, component: Text, role: alert, text: { key: planned.Exams.notSaved }, in: [question], when: "notice == 'notSaved'" }
-  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.previous }, in: [question, saving], disabledIn: [saving], emits: PREVIOUS }
-  skipButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.skip }, in: [question, saving], disabledIn: [saving], emits: SKIP }
-  nextButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.next }, in: [question, saving], disabledIn: [saving], emits: NEXT }
-  finishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.finish }, in: [question, saving], disabledIn: [saving], emits: FINISH } # apart from the three above, always there
+  # --- the bar over the question -----------------------------------------------------------------------------------------------------
+  examBar: { type: page, component: Page, role: region, name: { key: OnlineExam.barLabel }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:578 } # behind "Sınavı bitir?" the page is inert (not drawn in confirmFinish)
+  timer: { type: text, component: Text, role: timer, name: { key: OnlineExam.timeLeftLabel }, text: { key: composed.OnlineExam.timeLeft, params: { timeLeft: timeLeft } }, tone: { danger: "clock == 'lastFive'" }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:582 } # counts down each second between the server's counts; stops while the connection is lost
+  lastFive: { type: text, component: Text, text: { key: OnlineExam.lastFive }, in: [question, saving, notingSwitch, finishing], when: "clock == 'lastFive'", source: apps/tedris/features/online-exams/components/exam-take.tsx:594 } # a span inside the timer: not a live region of its own (rule EXM-TAKE-5)
+  counter: { type: text, component: Text, text: { key: OnlineExam.counter, params: { number: number, count: count } }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:598 }
+  savingLine: { type: status, component: Status, text: { key: OnlineExam.saving }, in: [saving], source: apps/tedris/features/online-exams/components/exam-take.tsx:605 } # a <p aria-live=polite>, no role
+  savedLine: { type: status, component: Status, text: { key: OnlineExam.saved }, in: [question, notingSwitch, finishing], when: "notice == 'saved'", source: apps/tedris/features/online-exams/components/exam-take.tsx:607 } # only once the answer to the page's latest save has come, for the question shown
 
-  # --- Sorular, the question list --------------------------------------------------------------------------------------------------------
-  questionList: { type: list, component: List, role: navigation, name: { key: planned.Exams.questionsTitle }, in: [question, saving] } # beside the question; behind a button on a phone (rule list-on-a-phone)
-  questionListItem: { type: action, component: Button, role: button, name: { key: planned.Exams.listItemLabel, params: { number: row.number, state: row.state } }, text: { key: composed.Exams.number, params: { number: row.number } }, in: [question, saving], repeat: attempt.questions, disabledIn: [saving], emits: JUMP } # the one shown has aria-current; its state is said in words, not by colour alone
-  questionListState: { type: text, component: Text, text: { oneOf: [planned.Exams.stateAnswered, planned.Exams.stateSkipped, planned.Exams.stateUnseen] }, in: [question, saving], repeat: attempt.questions }
+  # --- the connection, and a new version of Medaris ---------------------------------------------------------------------------------
+  offlineAlert: { type: alert, component: Alert, role: status, name: { key: OnlineExam.offlineTitle }, text: { key: OnlineExam.offline }, in: [question, saving, notingSwitch, finishing], when: "connection == 'lost' and version == 'current'", source: apps/tedris/features/online-exams/components/exam-take.tsx:622 } # a warning Alert is a status
+  staleAlert: { type: alert, component: Alert, role: status, name: { key: OnlineExam.staleTitle }, text: { key: OnlineExam.stale }, in: [question, saving, notingSwitch, finishing], when: "connection == 'lost' and version == 'stale'", source: apps/tedris/features/online-exams/components/exam-take.tsx:613 }
+  reloadButton: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExam.reload }, in: [question, saving, notingSwitch, finishing], when: "connection == 'lost' and version == 'stale'", duringStep: true, emits: RELOAD, source: apps/tedris/features/online-exams/components/exam-take.tsx:616 }
+  resumedNotice: { type: status, component: Status, text: { key: OnlineExam.resumed }, in: [question, saving, notingSwitch, finishing], when: "notice == 'resumed'", source: apps/tedris/features/online-exams/components/exam-take.tsx:627 } # a <p aria-live=polite>
+  skippedNotice: { type: status, component: Status, text: { key: OnlineExam.skippedFollow, params: { skipped: skipped } }, in: [question, saving, notingSwitch, finishing], when: "notice == 'skippedFollow'", source: apps/tedris/features/online-exams/components/exam-take.tsx:627 }
 
-  # --- the connection, another place -------------------------------------------------------------------------------------------
-  offlineAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.offlineTitle }, text: { key: planned.Exams.offline }, in: [offline] } # the clock has stopped; the choice is kept here and sent when the connection is back
-  elsewhereAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.elsewhereTitle }, text: { key: planned.Exams.elsewhere }, in: [elsewhere] } # not a switch: nothing is erased
-  openHereButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.openHere }, in: [elsewhere], emits: OPEN_HERE }
+  # --- the question ------------------------------------------------------------------------------------------------------------------
+  questionRegion: { type: page, component: Page, role: region, name: { labelledBy: questionText }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:633 }
+  pointsLine: { type: text, component: Text, text: { key: OnlineExam.questionPoints, params: { points: points } }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:639 } # two decimals
+  textSmallerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: OnlineExam.textSmaller }, text: { literal: "A−" }, in: [question, saving, notingSwitch, finishing], disabledWhen: "textSize == 'smallest'", duringStep: true, emits: TEXT_SIZE, source: apps/tedris/features/online-exams/components/exam-take.tsx:644 } # zooms the whole exam a step: 100, 115, 130, 150 %
+  textBiggerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: OnlineExam.textBigger }, text: { literal: "A+" }, in: [question, saving, notingSwitch, finishing], disabledWhen: "textSize == 'largest'", duringStep: true, emits: TEXT_SIZE, source: apps/tedris/features/online-exams/components/exam-take.tsx:653 }
+  questionText: { type: text, component: Heading, role: heading, text: { key: composed.OnlineExam.question, params: { question: question } }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:664 } # h1; Arabic gets lang, dir and its face on this element (arabic.ts)
+  radioOptions: { type: list, component: List, role: radiogroup, name: { key: OnlineExam.optionsLegend }, in: [question, saving, notingSwitch, finishing], when: "mode == 'single'", source: apps/tedris/features/online-exams/components/exam-take.tsx:692 } # named "Şıklar", not by the question (rule EXM-TAKE-9)
+  radioOption: { type: field, component: ListItem, role: radio, name: { key: composed.OnlineExam.option, params: { option: row.text } }, text: { key: composed.OnlineExam.option, params: { option: row.text } }, in: [question, saving, notingSwitch, finishing], when: "mode == 'single'", repeat: question.options, duringStep: true, emits: CHOOSE, source: apps/tedris/features/online-exams/components/exam-take.tsx:696 } # in the talebe's own order
+  checkOptions: { type: list, component: List, role: group, name: { key: OnlineExam.optionsLegend }, in: [question, saving, notingSwitch, finishing], when: "mode == 'multiple'", source: apps/tedris/features/online-exams/components/exam-take.tsx:672 } # a fieldset with the legend "Şıklar"
+  checkOption: { type: field, component: ListItem, role: checkbox, text: { key: composed.OnlineExam.option, params: { option: row.text } }, in: [question, saving, notingSwitch, finishing], when: "mode == 'multiple'", repeat: question.options, duringStep: true, emits: CHOOSE, source: apps/tedris/features/online-exams/components/exam-take.tsx:675 } # marking or clearing one saves the question's marks
+  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: OnlineExam.previous }, in: [question, saving, notingSwitch, finishing], disabledWhen: "position == 'first'", duringStep: true, emits: PREVIOUS, source: apps/tedris/features/online-exams/components/exam-take.tsx:703 }
+  skipButton: { type: action, component: Button, role: button, intent: secondary, text: { key: OnlineExam.skip }, in: [question, saving, notingSwitch, finishing], duringStep: true, emits: SKIP, source: apps/tedris/features/online-exams/components/exam-take.tsx:710 } # takes back a choice made on the question (rule EXM-TAKE-8)
+  nextButton: { type: action, component: Button, role: button, intent: secondary, text: { key: OnlineExam.next }, in: [question, saving, notingSwitch, finishing], disabledWhen: "position == 'last' and skipped == 'none'", duringStep: true, emits: NEXT, source: apps/tedris/features/online-exams/components/exam-take.tsx:713 }
+  finishButton: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExam.finish }, in: [question, saving, notingSwitch, finishing], duringStep: true, emits: FINISH, source: apps/tedris/features/online-exams/components/exam-take.tsx:723 } # never waits for a save (rule EXM-TAKE-2)
 
-  # --- Sınavı bitir? ---------------------------------------------------------------------------------------------------------------------
-  finishDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: finishTitle }, in: [confirmFinish, finishing], initialFocus: backToExamButton } # opens on Sınava dön, the choice that loses nothing
-  finishTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.finishTitle }, in: [confirmFinish, finishing] }
-  finishBody: { type: text, component: Text, text: { key: planned.Exams.finishBody, params: { unanswered: attempt.unansweredCount, skipped: attempt.skippedCount, timeLeft: attempt.timeLeft } }, in: [confirmFinish, finishing] }
-  confirmFinishButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.confirmFinish }, in: [confirmFinish, finishing], disabledIn: [finishing], emits: CONFIRM }
-  backToExamButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: planned.Exams.backToExam }, in: [confirmFinish, finishing], disabledIn: [finishing], emits: CANCEL } # the focus goes back to Sınavı bitir (returnsFocus)
+  # --- Sorular, the list of the questions, under the card ----------------------------------------------------------------------------
+  questionList: { type: page, component: Page, role: navigation, name: { key: OnlineExam.questionsTitle }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:728 }
+  questionListTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.questionsTitle }, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:732 } # h2
+  questionListItems: { type: list, component: List, role: list, in: [question, saving, notingSwitch, finishing], source: apps/tedris/features/online-exams/components/exam-take.tsx:733 }
+  questionListItem: { type: action, component: Button, role: button, intent: secondary, name: { key: OnlineExam.listItemLabel, params: { number: row.number, state: row.state } }, text: { key: composed.OnlineExam.number, params: { number: row.number } }, in: [question, saving, notingSwitch, finishing], repeat: attempt.questions, duringStep: true, emits: JUMP, source: apps/tedris/features/online-exams/components/exam-take.tsx:738 } # its state is in its name and its colour (rule list-colours); the one shown has aria-current=step
 
-  # --- Sınav bitti -----------------------------------------------------------------------------------------------------------------------
-  finishedRegion: { type: page, component: Page, role: region, name: { labelledBy: finishedTitle }, in: [finished, already_finished] }
-  finishedTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.finishedTitle }, in: [finished, already_finished] } # h2
-  finishedByTalebe: { type: text, component: Text, text: { key: planned.Exams.finishedByTalebe, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'talebe'" }
-  finishedByTime: { type: text, component: Text, text: { key: planned.Exams.finishedByTime, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'time'" } # the time ran out
-  finishedByTeam: { type: text, component: Text, text: { key: planned.Exams.finishedByTeam, params: { at: attempt.finishedAt } }, in: [finished], when: "endedBy == 'team'" } # the team closed it early
-  finishedEnded: { type: text, component: Text, text: { key: planned.Exams.finishedEnded }, in: [finished], when: "endedBy == 'unknown'" } # how it ended could not be read
-  resultWhere: { type: text, component: Text, text: { key: planned.Exams.resultWhere }, in: [finished] }
-  alreadyTaken: { type: text, component: Text, text: { key: planned.Exams.alreadyTaken }, in: [already_finished] }
-  toMine: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [finished, already_finished] } # to Sınavlarım (tedris.exams.mine), where the result is read once released
+  # --- toasts over the exam ----------------------------------------------------------------------------------------------------------
+  switchedNotice: { type: status, component: Status, role: dialog, name: { key: OnlineExam.switchCounted }, in: [question, saving, notingSwitch, finishing], when: "notice == 'switched'", source: apps/tedris/features/online-exams/components/exam-take.tsx:396 } # an info toast, gone after six seconds
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExam.errorFailed }, in: [question, saving, notingSwitch, finishing], when: "notice == 'failed'", source: apps/tedris/features/online-exams/components/exam-take.tsx:229 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [briefing, savingZeroth, starting, question, saving, notingSwitch, finishing, already_finished], when: toastShown, source: libs/ui/src/mds/toast.tsx:95 } # each toast has one, a literal of the kit
 
-focus: { question: questionText }
+  # --- Sınav başka bir yerde açık ----------------------------------------------------------------------------------------------------
+  elsewhereTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.elsewhereTitle }, in: [elsewhere], source: apps/tedris/features/online-exams/components/exam-take.tsx:495 } # h1, in a card with aria-live=polite
+  elsewhereAlert: { type: status, component: Status, text: { key: OnlineExam.elsewhere }, in: [elsewhere], source: apps/tedris/features/online-exams/components/exam-take.tsx:496 } # not a switch: nothing is erased
+  openHereButton: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExam.openHere }, in: [elsewhere], emits: OPEN_HERE, source: apps/tedris/features/online-exams/components/exam-take.tsx:498 }
+
+  # --- Sınavı bitir? -----------------------------------------------------------------------------------------------------------------
+  finishDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: finishTitle }, in: [confirmFinish], initialFocus: backToExamButton, source: libs/ui/src/mds/alert-dialog.tsx:68 } # opens on Sınava dön, the kit's cancel; closes at once on Bitir
+  finishTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.finishTitle }, in: [confirmFinish], source: apps/tedris/features/online-exams/components/exam-take.tsx:770 } # h2
+  finishBody: { type: text, component: Text, text: { key: OnlineExam.finishBody, params: { unanswered: unanswered, skipped: skipped, timeLeft: timeLeft } }, in: [confirmFinish], source: apps/tedris/features/online-exams/components/exam-take.tsx:776 } # unanswered counts the skipped ones too (rule EXM-TAKE-7)
+  finishClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.AlertDialog.close }, in: [confirmFinish], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:88 }
+  backToExamButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: OnlineExam.backToExam }, in: [confirmFinish], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 }
+  confirmFinishButton: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExam.confirmFinish }, in: [confirmFinish], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:109 }
+
+  # --- Sınav bitti -------------------------------------------------------------------------------------------------------------------
+  finishedRegion: { type: page, component: Page, role: region, name: { labelledBy: finishedTitle }, in: [finished, already_finished], source: apps/tedris/features/online-exams/components/exam-take.tsx:922 }
+  finishedTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExam.finishedTitle }, in: [finished, already_finished], source: apps/tedris/features/online-exams/components/exam-take.tsx:927 } # h1
+  finishedByTalebe: { type: text, component: Text, text: { key: OnlineExam.finishedByTalebe, params: { at: at } }, in: [finished, already_finished], when: "endedBy == 'talebe'", source: apps/tedris/features/online-exams/components/exam-take.tsx:915 }
+  finishedByTime: { type: text, component: Text, text: { key: OnlineExam.finishedByTime, params: { at: at } }, in: [finished, already_finished], when: "endedBy == 'time'", source: apps/tedris/features/online-exams/components/exam-take.tsx:917 }
+  finishedByTeam: { type: text, component: Text, text: { key: OnlineExam.finishedByTeam, params: { at: at } }, in: [finished, already_finished], when: "endedBy == 'team'", source: apps/tedris/features/online-exams/components/exam-take.tsx:919 }
+  finishedEnded: { type: text, component: Text, text: { key: OnlineExam.finishedEnded }, in: [finished, already_finished], when: "endedBy == 'unknown'", source: apps/tedris/features/online-exams/components/exam-take.tsx:920 }
+  resultWhere: { type: text, component: Text, text: { key: OnlineExam.resultWhere }, in: [finished, already_finished], source: apps/tedris/features/online-exams/components/exam-take.tsx:931 }
+  toMine: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: OnlineExam.toMyExams }, in: [finished, already_finished], source: apps/tedris/features/online-exams/components/exam-take.tsx:933 } # to Sınavlarım (tedris.exams.mine)
+  backToSessionEnded: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: OnlineExam.backToSession }, in: [finished, already_finished], source: apps/tedris/features/online-exams/components/exam-take.tsx:934 }
+  alreadyTaken: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExam.alreadyTaken }, in: [already_finished], when: "notice == 'taken'", source: apps/tedris/features/online-exams/components/exam-take.tsx:454 } # the start's error toast, still up over Sınav bitti
 
 edges:
-  - { labelledBy: [finishDialog, finishTitle] }
-  - { returnsFocus: [finishDialog, finishButton] }
-  - { labelledBy: [briefingRegion, briefingTitle] }
-  - { labelledBy: [briefingFacts, briefingTitle] }
+  - { labelledBy: [briefingRegion, examTitle] }
   - { labelledBy: [zerothRegion, zerothTitle] }
   - { labelledBy: [zerothOptions, zerothQuestionText] }
-  - { labelledBy: [questionRegion, counter] }
-  - { labelledBy: [radioOptions, questionText] }
-  - { labelledBy: [checkOptions, questionText] }
+  - { labelledBy: [questionRegion, questionText] }
+  - { labelledBy: [finishDialog, finishTitle] }
   - { labelledBy: [finishedRegion, finishedTitle] }
-  - { triggers: [retryButton, reading] }
+  - { returnsFocus: [finishDialog, finishButton] } # Base UI gives the focus back to the element that had it; not seen
   - { triggers: [zerothOption, savingZeroth] }
   - { triggers: [startButton, starting] }
   - { triggers: [radioOption, saving] }
   - { triggers: [checkOption, saving] }
+  - { triggers: [skipButton, saving] }
   - { triggers: [finishButton, confirmFinish] }
   - { triggers: [confirmFinishButton, finishing] }
-  - { triggers: [openHereButton, reading] }
+  - { triggers: [openHereButton, resuming] }
+  - { triggers: [reloadButton, reading] }
 
 rules:
-  - { id: text-size, rule: "A− and A+ in the question card's header scale the question and its options in four steps, 100, 115, 130 and 150 %, kept in the tab (sessionStorage) for the attempt; the smallest and the largest disable their button. Arabic grows with them (#421; the steps are my choice)." }
-  - { id: arabic-text, rule: "A question or an option whose first letter is Arabic script is drawn with lang=ar, dir=rtl, the Arabic font at 1rem or more and the Arabic leading, isolated from what stands beside it (the owner, 22 Nov: \"arapça font boyutu küçük kalıyor … 1 rem yapalım\")." }
-  - { id: list-colours, rule: "The list's numbers are plain when unanswered, blue when answered and dark yellow when skipped (the owner, 22 Nov: \"cevap verilmemiş sorular düz olsun, cevap verilmiş sorular mavi olsun, atlanan sorular koyu sarı kalsın\"). Blue is the info bold fill, dark yellow the warning bold fill. The current one has a ring of its own, and each number's name says its state, so colour is not the only cue." }
-  - { id: away-counts, rule: "A switch is counted on the way back when the page was hidden (another tab) or its window lost the focus (another window or application), for two seconds or more (#425); one away period is one switch." }
-  - { id: new-version, rule: "A save, a clock count or a resume that Medaris answers as unknown after a new version was deployed shows \"Medaris güncellendi\" with \"Sayfayı yenile\" in place of the connection notice; the choices not yet taken are kept in the tab and sent once the attempt is taken back after the reload (#429)." }
-  - { id: arabic-runs, rule: "An Arabic run, the hadith and any Arabic in a question or an option, gets lang=\"ar\", dir=\"rtl\" and the Arabic face on the element itself, never on a shared ancestor (the design system's rule); a question that mixes Arabic and Turkish is split into runs. A long question or option wraps and stays readable on a phone." }
-  - { id: hadith-to-confirm, rule: "The hadith's Arabic, \"مَنْ غَشَّنَا فَلَيْسَ مِنَّا\", and its meaning, \"Bizi aldatan bizden değildir.\", are written here by the graph and are for the owner to confirm, letter for letter, before they are built: they are fixed and the same in every exam (planned.Exams.hadithArabic, planned.Exams.hadithMeaning)." }
+  - { id: EXM-TAKE-1, rule: "A lost connection is left only on the browser's own 'online' event (exam-take.tsx:421-426): a 5xx, or one dropped call while the browser stays online, leaves 'Bağlantı koptu' up and the countdown and the clock's calls stopped (:326) with nothing to press, while choices are still saved; the attempt never runs out of time until a reload. Fix: retry the resume on a timer, or on the next save that gets through, and offer a button. Read from the code, not seen." }
+  - { id: EXM-TAKE-2, rule: "Nothing waits for a save: Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir stay on while it runs (exam-take.tsx:703-723), and Bitir ends the attempt at once (:472-475). A Bitir pressed right after a choice can reach the server first; the save is then refused with ATTEMPT_ENDED and that last answer is lost. Fix: wait for the pending saves (pending > 0) before finishExamAttempt, or send them with it. Read from the code, not seen." }
+  - { id: EXM-TAKE-3, rule: "A save the server refuses for another reason than the connection (ANSWER_INVALID, QUESTION_NOT_FOUND) gives only the toast 'Bir şeyler ters gitti…' (exam-take.tsx:229, :259); the choice stays drawn as chosen and the list says 'Cevaplandı', though the server does not hold it. Fix: put the question back as the server holds it, and say at the question that it is not saved. Read from the code, not seen." }
+  - { id: EXM-TAKE-4, rule: "After a call refused with ATTEMPT_ENDED or ATTEMPT_NOT_FOUND the page re-reads the briefing and opens 'Sınav bitti' only when that read succeeds (exam-take.tsx:203-210, :221-223); when the read fails nothing on the page changes, the question stays usable and nothing says the exam has ended. Fix: end the page as timeUp does, with 'Sınavın kaydedilen cevaplarla bitti.'. Read from the code, not seen." }
+  - { id: EXM-TAKE-5, rule: "'Son 5 dakika' is a span inside the countdown's role=timer element (exam-take.tsx:582-595); a timer is not a live region, so a screen reader is not told when five minutes are left, and the red is the only change it does not hear. Fix: a polite status, outside the timer, that says it once. Read from the code, not seen." }
+  - { id: EXM-TAKE-6, rule: "Before the earliest start the page is one alert with no exam title, no course and no link (exam-take.tsx:790-800), and nothing moves it on when the start comes: the talebe has to reload; the same for 'Başlama süresi geçti' (:802-808). Fix: show the title and course, a way back to the celse, and switch to the briefing at the start. Read from the code, not seen." }
+  - { id: EXM-TAKE-7, rule: "'{unanswered} soru cevapsız, {skipped} soru atlandı' counts the skipped questions in both numbers (exam-take.tsx:510-515: unanswered is every question not answered), so 3 and 2 means 3 questions, not 5. Fix: count unanswered without the skipped ones, or say 'bunların 2'si atlandı'. Read from the code, not seen." }
+  - { id: EXM-TAKE-8, rule: "'Soruyu atla' on an answered question takes the answer back without a word (exam-take.tsx:535-540), and after the last question Sonraki goes to the first skipped one and from there to the next question in order, answered or not, not to the next skipped one (take-model.ts:55-65), where the briefing says the skipped ones come back. Fix: skip without erasing, and walk the skipped ones in turn. Read from the code, not seen." }
+  - { id: EXM-TAKE-9, rule: "The options' radio group and fieldset are named 'Şıklar' (optionsLegend, exam-take.tsx:673, :693), not by the question, so a screen reader entering the group hears 'Şıklar' and not what is asked; the question's h1 labels its section only. Fix: aria-labelledby the question's h1. Read from the code, not seen." }
+  - { id: EXM-TAKE-10, rule: "No code moves the focus (no focus() or autoFocus in exam-take.tsx): after Sınava başla the button that had it is gone and the focus falls to the document; after Önceki, Sonraki, Soruyu atla or a pick in the list it stays on the button, and the new question is not read; the screens Sınav bitti and 'Sınav başka bir yerde açık' replace the page under the focus. The hint under Sınava başla is not tied to it (no aria-describedby). Fix: focus the question's h1 on every move, and the end screen's h1. Read from the code, not seen." }
+  - { id: EXM-TAKE-11, rule: "The page writes times in the browser's own zone (Intl with no timeZone, exam-take.tsx:129-137), and the client component is first drawn on the server, in the server's zone; Sınavlarım writes them in the talebe's configured zone and names it (my-exams-page.tsx:45-59). The two pages can give one exam two times, and the first paint can differ from the hydrated one. Fix: pass the talebe's time zone, as Sınavlarım does. Read from the code, not seen." }
+  - { id: EXM-TAKE-12, rule: "A read the API refuses with 401 is drawn as 'Sınav okunamadı. Bağlantını kontrol edip sayfayı yeniden aç.' (reads.ts:32-39), not sent to sign in as Sınavlarım's reads are (my-reads.ts, reauthIfRefused). Verified in the code: a signed-out visitor never gets here, as /courses/<id>/lessons/<id>/sinav is not a public path and the proxy sends them to sign in (lib/public-paths.ts:21-32). Not verified: a session whose token tedrisat refuses, which is what reaches this line. Fix: reauthIfRefused before deciding. Read from the code, not seen." }
+  - { id: EXM-TAKE-13, rule: "Two quick choices of the zeroth question are two calls with no count (exam-take.tsx:428-446, answerZerothQuestion takes the option only), so the server keeps whichever arrives last while the page shows the last one chosen, and a failure of the first after the second puts the page back to the choice before both. Fix: a seq, as saveExamAnswer has. Read from the code, not seen." }
+  - { id: list-colours, rule: "The list's numbers are plain when unanswered, blue (the info bold fill) when answered and dark yellow (the warning bold fill) when skipped, set inline (exam-take.tsx:88-107); the one shown has a brand ring and aria-current=step, and each number's name says its state in words ('12. soru, Cevaplandı'), so colour is not the only cue. The owner, 22 Nov: \"cevap verilmemiş sorular düz olsun, cevap verilmiş sorular mavi olsun, atlanan sorular koyu sarı kalsın\"." }
+  - { id: text-size, rule: "A− and A+ zoom the whole exam area (the bar, the question, its buttons and the list) in four steps, 100, 115, 130 and 150 %, widening it at each step and spanning the screen at the largest (exam-take.tsx:545-577); the step is kept in the tab (sessionStorage, take-model.ts:100-127), and the smallest and the largest disable their button. The steps are my choice (#421)." }
+  - { id: away-counts, rule: "A switch is counted on the way back when the page was hidden (another tab) or its window lost the focus (another window or application), for two seconds or more (exam-take.tsx:374-418, #425); one away period is one switch, and a toast says it was counted." }
+  - { id: new-version, rule: "A save, a clock count or a resume whose server action is gone after a new version of Medaris was deployed shows 'Medaris güncellendi' with 'Sayfayı yenile' in place of the connection alert (exam-take.tsx:612-620); the choices not yet taken are kept in the tab and sent once the attempt is taken back after the reload (take-model.ts:129-162, #429)." }
+  - { id: arabic-runs, rule: "A question or an option whose text is Arabic gets lang=ar, dir=rtl, the Arabic face at 1rem or more and its leading on its own element (arabic.ts, textProps); the hadith gets lang=ar dir=rtl and the Arabic class (exam-take.tsx:868)." }
   - { id: the-key-stays-on-the-server, rule: "Nothing the page holds says which options are correct or what an answer scores: the server sends the options in the talebe's own order and scores the exam at the end (getExamBriefing, startExamAttempt, invariant online-exam-correct-options-stay-hidden)." }
-  - { id: countdown, rule: "The countdown is the server's count (tickExamClock), shown in minutes and seconds. It is a timer, which a screen reader does not read every second; the words \"Son 5 dakika\" appear beside it, in a live status spoken once, when five minutes are left, and the countdown turns red then, so the colour is never the only sign. It stops while the connection is lost." }
-  - { id: list-on-a-phone, rule: "Proposal, not drawn: on a phone the list Sorular sits behind a button \"Sorular\" in the bar, a disclosure that opens it over the question and closes when a question is picked." }
-  - { id: focus, rule: "Going to a question (Önceki, Sonraki, Soruyu atla, a pick in the list, a resume) puts the focus on its text, so a screen reader reads the question first (focus). Sınavı bitir? opens on Sınava dön, and closing it returns the focus to Sınavı bitir. Proposal: nothing is built." }
-  - { id: answered-in-words, rule: "The list Sorular says each question's state in words (Cevaplandı, Atlandı, Görülmedi) in each item's name, beside any colour or mark, and the question shown carries aria-current." }
-  - { id: closed-early-words, rule: "An attempt that ends with no answer to the page's Bitir (the time, an early close by the team, or a Bitir whose answer was lost) is read again (getExamBriefing, the attempt's finishedBy), and the end screen says which, in its own words: finishedByTalebe, finishedByTime, finishedByTeam; finishedEnded when that read fails." }
-  - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review, Turkish only; composed.Exams.* is a value shown alone. No key of the app is reused: none of tedris.json's says what these screens say." }
+  - { id: list-under-the-card, rule: "The list Sorular is a nav under the question card on every screen width; there is no button for it on a phone (exam-take.tsx:728-765)." }
