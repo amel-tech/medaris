@@ -63,12 +63,18 @@ context:
     say:
       none: every exam listed is an online one
       some: a written or oral exam is listed, with its place and, once its celse has started, a link to Notlarım
+  pastWrittenOrOral:
+    values: [none, some]
+    initial: any
+    say:
+      none: no exam in "Geçmiş" is written or oral, so no row links to Notlarım
+      some: a written or oral exam is in "Geçmiş" (its celse has started), and its row links to the course's Notlarım
 failures:
   opening: { from: listMyExams, unreadable: [network, timeout, 5xx] }
 # A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
 
 main:
-  given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none }
+  given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none, pastWrittenOrOral: none }
   events: [DONE, ENTER]
 initial: opening
 states:
@@ -110,7 +116,7 @@ states:
     on:
       ENTER: { target: exam_entered, say: "they open a coming, open or running online exam: its exam page, not its course or celse", source: "apps/tedris/features/online-exams/my-exams-model.ts:53" }
       READ_RESULT: { target: result_opened, say: "they open a past online exam they took (Sonucu gör)", source: "apps/tedris/features/online-exams/my-exams-model.ts:59" }
-      READ_GRADES: { guard: "writtenOrOral == 'some'", target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam", source: "apps/tedris/features/online-exams/my-exams-model.ts:63" }
+      READ_GRADES: { guard: "pastGroup == 'some' and pastWrittenOrOral == 'some'", target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam", source: "apps/tedris/features/online-exams/my-exams-model.ts:63" }
       NAVIGATE: left
   loadFailed:
     title: Sınavlarım could not be read

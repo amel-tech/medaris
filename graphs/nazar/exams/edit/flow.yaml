@@ -234,6 +234,8 @@ effects:
   clearNotice: { set: { notice: "none" } }
   onExam: { set: { page: exam, notice: "none", newTitle: blank, examsSoFar: some, zerothIs: madrasah, zerothTyped: fit, zerothNotSaved: "no" } }
   onList: { set: { page: list } }
+  # a draft made here is a draft, whatever the exam opened before it was
+  draftMade: { set: { status: draft } }
   zerothOpened: { set: { notice: "none", zerothNotSaved: "no" } }
   zerothSaved: { set: { notice: zerothSaved, zerothIs: own, zerothNotSaved: "no" } }
   zerothInvalid: { set: { notice: zerothInvalid } }
@@ -404,7 +406,7 @@ states:
       the server is not caught: the button stays busy and nothing is said (EXM-EDIT-9).
     invoke: { action: createOnlineExam }
     on:
-      DONE: { target: opening, effect: [onExam], say: "the draft is made and its page opens", source: "apps/nazar/features/online-exams/components/new-exam-form.tsx:39" }
+      DONE: { target: opening, effect: [onExam, draftMade], say: "the draft is made and its page opens", source: "apps/nazar/features/online-exams/components/new-exam-form.tsx:39" }
       FAIL.forbidden: { target: examsList, effect: [refused] }
       FAIL.invalid: { target: examsList, effect: [invalid] }
       FAIL.other: { target: examsList, effect: [failed] }
@@ -517,7 +519,9 @@ states:
       ADD_QUESTION: { target: questionForm, effect: [questionShown, questionTypedAgain], say: "they press Soru ekle: an empty question comes last, in its form" }
       EDIT_QUESTION: { target: questionForm, effect: [clearNotice, questionOpened], say: "they press a question's Düzenle" }
       REMOVE_QUESTION: { target: removeAsk, effect: [clearNotice], say: "they press a question's Sil" }
-      RETRY_QUESTION: { guard: "questionSaved == 'no'", target: savingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row that was not saved" }
+      RETRY_QUESTION:
+        - { guard: "questionSaved == 'no' and questionIs == 'new'", target: addingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row added on this page that the server never made: it is made first, then saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:330" }
+        - { guard: "questionSaved == 'no'", target: savingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row that was not saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:706" }
       COPY: { guard: noQuestions, target: readingCopies, effect: [clearNotice], say: "(not built) they choose to copy an earlier exam" }
       RENAME_TOPIC: { target: renamingTopic, effect: [clearNotice], say: "(not built) they change a topic's name in its row" }
       PREVIEW: { target: preview, effect: [clearNotice], say: "(not built) they see the exam as a talebe will" }

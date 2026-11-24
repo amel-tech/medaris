@@ -62,6 +62,8 @@ effects:
   refilter: { havoc: [answers], set: { notice: none } }
   clearNotice: { set: { notice: none } }
   noticeGone: { set: { notice: gone } }
+  # the list is read again beside the question, and may now count nothing
+  listReadAgain: { havoc: [answers] }
 failures:
   opening:
     from: listZerothAnswerCounts
@@ -131,7 +133,7 @@ states:
     on:
       DONE: questionDetail
       FAIL.forbidden: { guard: "access == 'refused'", target: forbidden, say: "tedrisat refuses the read with 403" }
-      FAIL.gone: { target: listed, effect: [noticeGone], say: "no exam in the span asks it any more: a line above the list says so, and the list stays", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:251" }
+      FAIL.gone: { target: loaded, effect: [listReadAgain, noticeGone], say: "no exam in the span asks it any more: a line says so, above the list read beside it, or above the note that the span has no answer", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:250" }
   questionDetail:
     title: A zeroth question
     source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:241
@@ -146,7 +148,9 @@ states:
   empty:
     title: No answer yet
     source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:254
-    description: The filters stay, and the page says "Seçtiğiniz aralıkta sıfırıncı soruya verilmiş cevap yok.".
+    description: >-
+      The filters stay, and the page says "Seçtiğiniz aralıkta sıfırıncı soruya verilmiş cevap yok."; reached from a question that is
+      gone, the line that says so stands above it.
     by: human
     on:
       FILTER: { target: opening, effect: [refilter], say: "they choose another span and press Uygula" }

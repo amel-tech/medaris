@@ -225,10 +225,10 @@ states:
       PICK_LATER: { target: choose, effect: [pickLater], say: "they choose İleri bir tarihte yayınla" }
       TYPE_TIME: { guard: "mode == 'later'", target: choose, effect: [dateTyped], say: "they type a date or a time" }
       PUBLISH:
-        - { guard: "mode == 'later' and dateTyped == 'yes' and when == 'unset'", target: choose, effect: [pickTime], say: "they press Zamanla with no date or no time" }
-        - { guard: "mode == 'later' and dateTyped == 'yes' and when == 'past'", target: choose, effect: [startPassed], say: "they press Zamanla with a time that has passed" }
-        - { guard: "lateMinutes == 'unfit'", target: choose, effect: [lateInvalid], say: "they press it with minutes outside 1 to 10080" }
-        - { target: confirmPublish, effect: [clearNotice], say: "they press Zamanla or Yayınla" }
+        - { guard: "formOpen == 'no' and mode == 'later' and dateTyped == 'yes' and when == 'unset'", target: choose, effect: [pickTime], say: "they press Zamanla with no date or no time" }
+        - { guard: "formOpen == 'no' and mode == 'later' and dateTyped == 'yes' and when == 'past'", target: choose, effect: [startPassed], say: "they press Zamanla with a time that has passed" }
+        - { guard: "formOpen == 'no' and lateMinutes == 'unfit'", target: choose, effect: [lateInvalid], say: "they press it with minutes outside 1 to 10080" }
+        - { guard: "formOpen == 'no'", target: confirmPublish, effect: [clearNotice], say: "they press Zamanla or Yayınla (off while a question's form is open)", source: "apps/nazar/features/online-exams/components/exam-publish.tsx:260" }
       CLOSE_TOAST: { guard: toasting, target: choose, effect: [clearNotice], say: "they close the toast" }
       NAVIGATE: left
   confirmPublish:
