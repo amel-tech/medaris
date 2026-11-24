@@ -17,6 +17,10 @@ import {
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
+import {
+  lessonBoardFiles,
+  lessonBoards,
+} from "../database/schema/lesson-board.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import {
@@ -105,6 +109,7 @@ export async function purgeCourses(
     await deleteLessonResources(tx, lessonIds, "course.purge");
     await deleteLessonSubmissions(tx, lessonIds, "course.purge");
     await deleteLessonAssignments(tx, lessonIds, "course.purge");
+    await deleteLessonBoards(tx, lessonIds, "course.purge");
     counts.lessons = (
       await tx
         .delete(lessons)
@@ -270,6 +275,30 @@ export async function deleteLessonAssignments(
   await tx
     .delete(lessonAssignments)
     .where(inArray(lessonAssignments.lessonId, lessonIds));
+}
+
+/**
+ * Deletes the boards of the given lessons, their images first, inside the
+ * caller's transaction, and marks every image's object for removal from
+ * storage once it commits. Shared by every purge that deletes lessons.
+ */
+export async function deleteLessonBoards(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[],
+  reason: DeletionReason
+): Promise<void> {
+  const removed = await tx
+    .delete(lessonBoardFiles)
+    .where(inArray(lessonBoardFiles.lessonId, lessonIds))
+    .returning({ key: lessonBoardFiles.storageKey });
+  await enqueueStorageDeletions(
+    tx,
+    removed.map((f) => f.key),
+    reason
+  );
+  await tx
+    .delete(lessonBoards)
+    .where(inArray(lessonBoards.lessonId, lessonIds));
 }
 
 /** The ids of every course of a köşk, hidden or not. */

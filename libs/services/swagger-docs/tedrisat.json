@@ -9238,6 +9238,240 @@
         ]
       }
     },
+    "/lessons/{id}/board": {
+      "get": {
+        "description": "The scene as it was last saved and the images on it. A session with no board answers with `scene: null` and no files, not 404. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A session's board",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "post": {
+        "description": "The scene replaces the one before it. It is sent as the multipart field `file` (its JSON, at most 4 MB), not as a JSON body: a board of handwriting is larger than a JSON body may be. tedrisat keeps the scene's elements and its background and drops the rest of the canvas's state. Every image the scene shows must already be a file of the board (400 LESSON_BOARD_SCENE_INVALID otherwise); the board's files the scene no longer shows are removed, from storage too. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveLessonBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "LESSON_BOARD_SCENE_INVALID"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "The scene is too large."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/board/files": {
+      "post": {
+        "description": "The image is the multipart field `file` and `fileKey` the id the canvas gave it. A PNG, JPEG or WebP as read from its bytes (415 FILE_TYPE_NOT_ALLOWED), at most 25 MB (413 FILE_TOO_LARGE). A key the board already has answers with the file it has: the canvas names an image by its content. It is shown once a scene that names it is saved, and removed when a saved scene no longer does. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "addLessonBoardFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "fileKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "fileKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED, LESSON_BOARD_FILE_KEY_INVALID, LESSON_BOARD_FILES_FULL"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an image to a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/board/files/{fileKey}": {
+      "get": {
+        "description": "The image's bytes. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonBoardFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image."
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_BOARD_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An image of a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/lessons/{id}/notes": {
       "get": {
         "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
@@ -23474,6 +23708,59 @@
           "kok",
           "bab",
           "masdarVezin"
+        ]
+      },
+      "LessonBoardFileResponse": {
+        "type": "object",
+        "properties": {
+          "fileKey": {
+            "type": "string",
+            "example": "3f1c9a",
+            "description": "The id the canvas gave the image; an image element of the scene names it as its `fileId`."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "image/png"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fileKey",
+          "contentType",
+          "sizeBytes"
+        ]
+      },
+      "LessonBoardResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scene": {
+            "type": "object",
+            "nullable": true,
+            "description": "The canvas document (`{ elements, appState }`) as it was saved; null when the session has no board yet. Its images are not inside it: each is in `files`, fetched by its `fileKey`."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonBoardFileResponse"
+            }
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "lessonId",
+          "scene",
+          "files",
+          "updatedAt"
         ]
       },
       "LessonNoteResponse": {

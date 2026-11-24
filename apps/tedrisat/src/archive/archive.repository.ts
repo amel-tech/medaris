@@ -3,6 +3,7 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   courseIdsOfKosk,
   deleteLessonAssignments,
+  deleteLessonBoards,
   deleteLessonResources,
   deleteLessonSubmissions,
   purgeCourses,
@@ -773,6 +774,7 @@ export class ArchiveRepository {
         // homework the müderris set on each session.
         await deleteLessonSubmissions(tx, weekLessonIds, "lesson.purge");
         await deleteLessonAssignments(tx, weekLessonIds, "lesson.purge");
+        await deleteLessonBoards(tx, weekLessonIds, "lesson.purge");
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -802,6 +804,7 @@ export class ArchiveRepository {
         await deleteLessonResources(tx, [id], "lesson.purge");
         await deleteLessonSubmissions(tx, [id], "lesson.purge");
         await deleteLessonAssignments(tx, [id], "lesson.purge");
+        await deleteLessonBoards(tx, [id], "lesson.purge");
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

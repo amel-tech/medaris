@@ -23,6 +23,8 @@ import type {
   CreateRecordingDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
+  LessonBoardFileResponse,
+  LessonBoardResponse,
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,
@@ -62,6 +64,10 @@ import {
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
     CreateWeekLessonDtoToJSON,
+    LessonBoardFileResponseFromJSON,
+    LessonBoardFileResponseToJSON,
+    LessonBoardResponseFromJSON,
+    LessonBoardResponseToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
     LessonNoteResponseFromJSON,
@@ -105,6 +111,12 @@ import {
     WeeklyPatternDtoFromJSON,
     WeeklyPatternDtoToJSON,
 } from '../models/index';
+
+export interface AddLessonBoardFileRequest {
+    id: string;
+    file: Blob;
+    fileKey: string;
+}
 
 export interface AnswerLessonQuestionRequest {
     questionId: string;
@@ -153,6 +165,15 @@ export interface DeleteLessonNoteRequest {
 
 export interface DeleteLessonQuestionRequest {
     questionId: string;
+}
+
+export interface GetLessonBoardRequest {
+    id: string;
+}
+
+export interface GetLessonBoardFileRequest {
+    id: string;
+    fileKey: string;
 }
 
 export interface GetLessonCalendarRequest {
@@ -204,6 +225,11 @@ export interface ResignRecordingUploadRequest {
     videoId: string;
 }
 
+export interface SaveLessonBoardRequest {
+    id: string;
+    file: Blob;
+}
+
 export interface SetLessonLiveStreamRequest {
     id: string;
     setLiveStreamDto: SetLiveStreamDto;
@@ -244,6 +270,89 @@ export interface UpdateRecordingRequest {
  * 
  */
 export class LessonsApi extends runtime.BaseAPI {
+
+    /**
+     * The image is the multipart field `file` and `fileKey` the id the canvas gave it. A PNG, JPEG or WebP as read from its bytes (415 FILE_TYPE_NOT_ALLOWED), at most 25 MB (413 FILE_TOO_LARGE). A key the board already has answers with the file it has: the canvas names an image by its content. It is shown once a scene that names it is saved, and removed when a saved scene no longer does. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Add an image to a session\'s board
+     */
+    async addLessonBoardFileRaw(requestParameters: AddLessonBoardFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonBoardFileResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling addLessonBoardFile().'
+            );
+        }
+
+        if (requestParameters['file'] == null) {
+            throw new runtime.RequiredError(
+                'file',
+                'Required parameter "file" was null or undefined when calling addLessonBoardFile().'
+            );
+        }
+
+        if (requestParameters['fileKey'] == null) {
+            throw new runtime.RequiredError(
+                'fileKey',
+                'Required parameter "fileKey" was null or undefined when calling addLessonBoardFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+        if (requestParameters['fileKey'] != null) {
+            formParams.append('fileKey', requestParameters['fileKey'] as any);
+        }
+
+
+        let urlPath = `/lessons/{id}/board/files`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonBoardFileResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The image is the multipart field `file` and `fileKey` the id the canvas gave it. A PNG, JPEG or WebP as read from its bytes (415 FILE_TYPE_NOT_ALLOWED), at most 25 MB (413 FILE_TOO_LARGE). A key the board already has answers with the file it has: the canvas names an image by its content. It is shown once a scene that names it is saved, and removed when a saved scene no longer does. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Add an image to a session\'s board
+     */
+    async addLessonBoardFile(requestParameters: AddLessonBoardFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonBoardFileResponse> {
+        const response = await this.addLessonBoardFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * `question.answer`. Answering again replaces the earlier answer; there is no history. `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question that does not exist and for one in a course where the caller may not answer, so its existence is not confirmed to them. No notification is sent.
@@ -768,6 +877,101 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * The scene as it was last saved and the images on it. A session with no board answers with `scene: null` and no files, not 404. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A session\'s board
+     */
+    async getLessonBoardRaw(requestParameters: GetLessonBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonBoardResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getLessonBoard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/board`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonBoardResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The scene as it was last saved and the images on it. A session with no board answers with `scene: null` and no files, not 404. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A session\'s board
+     */
+    async getLessonBoard(requestParameters: GetLessonBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonBoardResponse> {
+        const response = await this.getLessonBoardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The image\'s bytes. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * An image of a session\'s board
+     */
+    async getLessonBoardFileRaw(requestParameters: GetLessonBoardFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getLessonBoardFile().'
+            );
+        }
+
+        if (requestParameters['fileKey'] == null) {
+            throw new runtime.RequiredError(
+                'fileKey',
+                'Required parameter "fileKey" was null or undefined when calling getLessonBoardFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/board/files/{fileKey}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"fileKey"}}`, encodeURIComponent(String(requestParameters['fileKey'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The image\'s bytes. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * An image of a session\'s board
+     */
+    async getLessonBoardFile(requestParameters: GetLessonBoardFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.getLessonBoardFileRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. Its description says how the session is attended: in person, streamed, or by the meeting link on the page (MDRS-283); whether it has a link or a stream is said only to a caller who may read the course\'s content. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).
      * One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook
      */
@@ -1262,6 +1466,78 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async resignRecordingUpload(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
         const response = await this.resignRecordingUploadRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The scene replaces the one before it. It is sent as the multipart field `file` (its JSON, at most 4 MB), not as a JSON body: a board of handwriting is larger than a JSON body may be. tedrisat keeps the scene\'s elements and its background and drops the rest of the canvas\'s state. Every image the scene shows must already be a file of the board (400 LESSON_BOARD_SCENE_INVALID otherwise); the board\'s files the scene no longer shows are removed, from storage too. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Save a session\'s board
+     */
+    async saveLessonBoardRaw(requestParameters: SaveLessonBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonBoardResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveLessonBoard().'
+            );
+        }
+
+        if (requestParameters['file'] == null) {
+            throw new runtime.RequiredError(
+                'file',
+                'Required parameter "file" was null or undefined when calling saveLessonBoard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/lessons/{id}/board`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonBoardResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The scene replaces the one before it. It is sent as the multipart field `file` (its JSON, at most 4 MB), not as a JSON body: a board of handwriting is larger than a JSON body may be. tedrisat keeps the scene\'s elements and its background and drops the rest of the canvas\'s state. Every image the scene shows must already be a file of the board (400 LESSON_BOARD_SCENE_INVALID otherwise); the board\'s files the scene no longer shows are removed, from storage too. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.
+     * Save a session\'s board
+     */
+    async saveLessonBoard(requestParameters: SaveLessonBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonBoardResponse> {
+        const response = await this.saveLessonBoardRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

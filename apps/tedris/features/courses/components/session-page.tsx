@@ -29,6 +29,7 @@ import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
+import { SessionBoard } from "./session-board";
 import { SessionHeader } from "./session-header";
 import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
@@ -153,6 +154,13 @@ export const SessionPage = async ({
         lessonId={session.id}
         assignment={session.assignment ?? null}
       />
+    ) : null;
+
+  // What the müderris prepared for the celse (its board): for whoever reads
+  // the celse's content, enrolled or staff, while the celse stands.
+  const material =
+    !session.contentLocked && !cancelled ? (
+      <SessionBoard lessonId={session.id} />
     ) : null;
 
   const cancellation: ReactNode = cancelled ? (
@@ -331,6 +339,8 @@ export const SessionPage = async ({
       {notes}
 
       {homework}
+
+      {material}
 
       {details.length > 0 ? (
         <div

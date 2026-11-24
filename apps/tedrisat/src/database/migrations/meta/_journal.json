@@ -456,6 +456,13 @@
       "when": 1795494911938,
       "tag": "0069_course_sarf_roots",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795495795427,
+      "tag": "0070_lesson_boards",
+      "breakpoints": true
     }
   ]
 }

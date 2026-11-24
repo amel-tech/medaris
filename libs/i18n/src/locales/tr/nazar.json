@@ -1523,7 +1523,9 @@
         "notLive": "Yalnız canlı celselere yayın bağlantısı eklenebilir.",
         "cancelled": "Bu celse iptal edilmiş; yayın bağlantısı değiştirilemez."
       }
-    }
+    },
+    "board": "Tahta",
+    "boardLabel": "{title} celsesinin tahtası"
   },
   "SessionPlan": {
     "breadcrumbLabel": "Sayfa yolu",
@@ -2181,5 +2183,29 @@
     "noDecks": "Bu derste deste yok ya da desteleri yönetme izniniz yok. Önce “Ders destesi” sayfasından bir deste açın.",
     "failed": "İşlem tamamlanamadı. Yeniden deneyin.",
     "emptyPrompt": "Tabloları görmek için üç harfli sâlim bir kök yazın."
+  },
+  "Board": {
+    "title": "Ders tahtası",
+    "back": "← Celseler",
+    "loadFailedTitle": "Tahta yüklenemedi",
+    "loadFailed": "Sunucuya ulaşılamadı. Sayfayı yenileyip yeniden deneyin.",
+    "hint": "Görseli tuvale yapıştırın ya da araç çubuğundan ekleyin; kalem, şekil ve metin kutusu araç çubuğundadır. Talebe, kaydettiğiniz hâlini celse sayfasında görür.",
+    "canvas": "Ders tahtası tuvali",
+    "loading": "Tahta yükleniyor…",
+    "imagesFailed": "Tahtadaki bazı görseller yüklenemedi. Sayfayı yenileyin.",
+    "save": "Tahtayı kaydet",
+    "saved": "Tahta kaydedildi",
+    "unsaved": "Kaydedilmemiş değişiklik var",
+    "tooLarge": "Görsel ya da tahta çok büyük. Görsel en çok 25 MB olabilir.",
+    "typeNotAllowed": "Tahtaya yalnız PNG, JPEG ya da WebP görsel eklenir.",
+    "filesFull": "Bir tahtada en çok 60 görsel olabilir.",
+    "storageUnavailable": "Dosya deposuna ulaşılamıyor; görsel kaydedilemedi. Daha sonra yeniden deneyin.",
+    "failed": "Tahta kaydedilemedi. Yeniden deneyin.",
+    "sarfTitle": "Sarf tablosu ekle",
+    "sarfNoRoots": "Tabloyu eklemek için önce “Sarf tablosu” sayfasından derse bir kök ekleyin.",
+    "sarfRoot": "Kök",
+    "sarfKip": "Sîga",
+    "sarfBina": "Binâ",
+    "sarfAdd": "Tahtaya ekle"
   }
 }

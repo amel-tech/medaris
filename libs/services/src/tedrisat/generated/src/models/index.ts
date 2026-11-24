@@ -213,6 +213,8 @@ export * from './KoskStatusFilter';
 export * from './LabelStatsResponse';
 export * from './LessonAssignmentFileResponse';
 export * from './LessonAssignmentResponse';
+export * from './LessonBoardFileResponse';
+export * from './LessonBoardResponse';
 export * from './LessonMutationResponse';
 export * from './LessonNoteResponse';
 export * from './LessonQuestionResponse';

@@ -238,6 +238,8 @@ src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonAssignmentFileResponse.ts
 src/models/LessonAssignmentResponse.ts
+src/models/LessonBoardFileResponse.ts
+src/models/LessonBoardResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
 src/models/LessonQuestionResponse.ts

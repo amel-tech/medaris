@@ -113,3 +113,23 @@ export function lessonAssignmentFileKey(
     randomUUID(),
   ].join("/");
 }
+
+/**
+ * An image on a session's board. Beside the session's resources and its
+ * homework, under `board`, so a zone listing tells the three apart.
+ */
+export function lessonBoardFileKey(
+  prefix: string,
+  courseId: string,
+  lessonId: string
+): string {
+  return [
+    part("prefix", prefix, PREFIX),
+    "courses",
+    id("courseId", courseId),
+    "lessons",
+    id("lessonId", lessonId),
+    "board",
+    randomUUID(),
+  ].join("/");
+}

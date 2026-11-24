@@ -225,5 +225,12 @@
     "notFound": "Bu dosya artık yok.",
     "unavailable": "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.",
     "failed": "Bir sorun çıktı. Biraz sonra yeniden dene."
+  },
+  "SessionBoard": {
+    "title": "Ders tahtası",
+    "hint": "Müderrisin bu celse için hazırladığı tahta. Kaydırıp yakınlaştırabilirsiniz.",
+    "canvas": "Ders tahtası",
+    "loading": "Tahta yükleniyor…",
+    "imagesFailed": "Tahtadaki bazı görseller yüklenemedi. Sayfayı yenileyin."
   }
 }

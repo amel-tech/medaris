@@ -364,6 +364,7 @@ catalog:
   next-intl: ^4.4.0
   '@t3-oss/env-nextjs': ^0.13.8
   '@fontsource/scheherazade-new': ^5.2.8
+  '@excalidraw/excalidraw': ~0.18.1 # the lesson board's canvas (MIT, released 2026-04-20); tilde: its scene format is what a saved board is written in
   dotenv: ^17.4.2 # libs/i18n runtime — MDRS-21: +1 major
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1

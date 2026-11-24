@@ -52,6 +52,8 @@ export const COURSE_TREE_TABLES = [
   "course_sarf_roots",
   "lesson_recordings",
   "lesson_invitations",
+  "lesson_board_files",
+  "lesson_boards",
   "lesson_notes",
   "lesson_questions",
   "submission_review_files",

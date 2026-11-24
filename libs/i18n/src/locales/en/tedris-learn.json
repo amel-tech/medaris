@@ -225,5 +225,12 @@
     "notFound": "This file is no longer there.",
     "unavailable": "Files cannot be reached right now. Try again in a moment.",
     "failed": "Something went wrong. Try again in a moment."
+  },
+  "SessionBoard": {
+    "title": "Lesson board",
+    "hint": "The board the teacher prepared for this session. You can pan and zoom it.",
+    "canvas": "Lesson board",
+    "loading": "Loading the board…",
+    "imagesFailed": "Some pictures on the board could not be loaded. Refresh the page."
   }
 }

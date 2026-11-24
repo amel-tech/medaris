@@ -48,6 +48,7 @@ export const PAGE_CODES = {
   homework: [CODES.submissionRead],
   decks: [CODES.deckManageCourse],
   sarf: [CODES.courseEdit],
+  board: [CODES.sessionManage],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,

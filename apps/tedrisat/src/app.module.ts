@@ -28,6 +28,7 @@ import { IntegrationModule } from "./integration/integration.module";
 import { PartnerRegistryModule } from "./integration/partner-registry.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
+import { LessonBoardModule } from "./lesson-board/lesson-board.module";
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
 import { LessonQuestionModule } from "./lesson-question/lesson-question.module";
 import { LessonSubmissionModule } from "./lesson-submission/lesson-submission.module";
@@ -67,6 +68,7 @@ import { UserModule } from "./user/user.module";
     HostingModule,
     CourseModule,
     CourseSarfModule,
+    LessonBoardModule,
     LessonNoteModule,
     LessonQuestionModule,
     LessonSubmissionModule,

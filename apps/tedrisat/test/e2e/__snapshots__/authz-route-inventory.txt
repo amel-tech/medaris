@@ -97,6 +97,8 @@ GET /kosks/directory -> exempt
 GET /kosks/fields -> public
 GET /kosks/followed/courses -> exempt
 GET /lessons/:id/assignment/files/:fileId -> course.view_details on byLessonCourse
+GET /lessons/:id/board -> course.view_details on byLessonCourse
+GET /lessons/:id/board/files/:fileKey -> course.view_details on byLessonCourse
 GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
@@ -224,6 +226,8 @@ POST /kosks/:id/nazims -> exempt
 POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
 POST /lessons/:id/assignment/files -> session.manage on byLessonCourse
+POST /lessons/:id/board -> session.manage on byLessonCourse
+POST /lessons/:id/board/files -> session.manage on byLessonCourse
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse

@@ -105,6 +105,8 @@ export type {
   LabelStatsResponse,
   LessonAssignmentFileResponse,
   LessonAssignmentResponse,
+  LessonBoardFileResponse,
+  LessonBoardResponse,
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,

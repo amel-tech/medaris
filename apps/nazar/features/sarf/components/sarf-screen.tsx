@@ -27,7 +27,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createCards } from "../../decks/actions";
@@ -56,14 +56,11 @@ export function SarfScreen({
   courseId,
   roots,
   decks,
-  extra,
 }: {
   courseId: string;
   roots: SarfRootFact[];
   /** Empty when the caller may not manage the course's decks. */
   decks: SarfDeckOption[];
-  /** More to do with the tables on show (the lesson board's "Tahtaya ekle"). */
-  extra?: (shown: { kok: string; tables: CekimTablosu[] }) => ReactNode;
 }) {
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
@@ -352,7 +349,6 @@ export function SarfScreen({
                   />
                 )
               )}
-              {extra ? extra({ kok: sarf.kok, tables }) : null}
             </section>
           ) : null}
 

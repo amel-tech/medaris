@@ -1523,7 +1523,9 @@
         "notLive": "Only live sessions can take a stream link.",
         "cancelled": "This session is cancelled; its stream link cannot be changed."
       }
-    }
+    },
+    "board": "Board",
+    "boardLabel": "The board of the session {title}"
   },
   "SessionPlan": {
     "breadcrumbLabel": "Page path",
@@ -2181,5 +2183,29 @@
     "noDecks": "This course has no deck, or you may not manage its decks. Open one on the “Course deck” page first.",
     "failed": "That could not be completed. Try again.",
     "emptyPrompt": "Type a sound three-letter root to see its tables."
+  },
+  "Board": {
+    "title": "Lesson board",
+    "back": "← Sessions",
+    "loadFailedTitle": "The board could not be loaded",
+    "loadFailed": "The server could not be reached. Refresh the page and try again.",
+    "hint": "Paste a picture onto the canvas or add one from the toolbar; the pen, the shapes and the text box are in the toolbar. Students see what you save on the session page.",
+    "canvas": "Lesson board canvas",
+    "loading": "Loading the board…",
+    "imagesFailed": "Some pictures on the board could not be loaded. Refresh the page.",
+    "save": "Save the board",
+    "saved": "Board saved",
+    "unsaved": "There are unsaved changes",
+    "tooLarge": "The picture or the board is too large. A picture may be at most 25 MB.",
+    "typeNotAllowed": "Only PNG, JPEG or WebP pictures can be added to a board.",
+    "filesFull": "A board holds at most 60 pictures.",
+    "storageUnavailable": "File storage cannot be reached; the picture was not saved. Try again later.",
+    "failed": "The board could not be saved. Try again.",
+    "sarfTitle": "Add a sarf table",
+    "sarfNoRoots": "Add a root to the course on the “Sarf tables” page first.",
+    "sarfRoot": "Root",
+    "sarfKip": "Form",
+    "sarfBina": "Voice",
+    "sarfAdd": "Add to the board"
   }
 }
