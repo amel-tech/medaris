@@ -65,6 +65,12 @@ context:
     say:
       none: no talebe has started the exam
       some: at least one talebe has started it
+  inProgress:
+    values: [none, some]
+    initial: any
+    say:
+      none: no talebe's exam is going on now (counts.inProgress is 0)
+      some: at least one talebe's exam is going on now, so the release's question says how many (counts.inProgress)
   scored:
     values: [none, some]
     initial: any
@@ -118,20 +124,25 @@ guards:
 effects:
   clearToast: { set: { toast: none } }
   onAnswers: { set: { page: answers, toast: none } }
+  # a talebe's page refused: the grant was taken away, so every read of the results is refused from now on
+  grantGone: { set: { may: "no" } }
   onResults: { set: { page: results } }
   # the release shows the results released and the exam over for everyone at once, as the early close does (closedNow)
-  releasedNow: { set: { results: opened, exam: closed, mayClose: no, toast: none } }
+  releasedNow: { set: { results: opened, exam: closed, mayClose: no, inProgress: none, toast: none } }
   toastReleased: { set: { toast: released } }
   # a refused release puts the page back as it was read: the exam open or closed as it stood
-  releaseNotOpenBack: { set: { results: closed, toast: releaseNotOpen }, havoc: [exam, mayClose] }
-  releaseRefusedBack: { set: { results: closed, toast: refused }, havoc: [exam, mayClose] }
-  releaseFailedBack: { set: { results: closed, toast: failed }, havoc: [exam, mayClose] }
-  attemptsMove: { havoc: [attempts, scored, exam, mayClose, results] }
-  closedNow: { set: { exam: closed, mayClose: no, toast: none } }
+  releaseNotOpenBack: { set: { results: closed, toast: releaseNotOpen }, havoc: [exam, mayClose, inProgress] }
+  releaseRefusedBack: { set: { results: closed, toast: refused }, havoc: [exam, mayClose, inProgress] }
+  releaseFailedBack: { set: { results: closed, toast: failed }, havoc: [exam, mayClose, inProgress] }
+  attemptsMove: { havoc: [attempts, inProgress, scored, exam, mayClose, results] }
+  closedNow: { set: { exam: closed, mayClose: no, inProgress: none, toast: none } }
   toastClosed: { set: { toast: closed } }
-  closeNotOpenBack: { set: { exam: open, mayClose: yes, toast: closeNotOpen } }
-  closeRefusedBack: { set: { exam: open, mayClose: yes, toast: closeRefused } }
-  closeFailedBack: { set: { exam: open, mayClose: yes, toast: closeFailed } }
+  # the read that follows a close's or a release's answer (results-view.tsx:153, :181) brings the scores of the attempts it ended;
+  # the exam stays closed for everyone, and a read that fails leaves the page as it was
+  scoresRead: { havoc: [scored] }
+  closeNotOpenBack: { set: { exam: open, mayClose: yes, toast: closeNotOpen }, havoc: [inProgress] }
+  closeRefusedBack: { set: { exam: open, mayClose: yes, toast: closeRefused }, havoc: [inProgress] }
+  closeFailedBack: { set: { exam: open, mayClose: yes, toast: closeFailed }, havoc: [inProgress] }
 failures:
   opening:
     from: getOnlineExamResults
@@ -155,7 +166,7 @@ failures:
     forbidden: [AUTHZ_FORBIDDEN]
     other: [EXAM_NOT_FOUND, network, timeout, 5xx]
 main:
-  given: { may: yes, attempts: some, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: yes }
+  given: { may: yes, attempts: some, inProgress: none, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: yes }
   events: [DONE, RELEASE, CONFIRM, DONE]
 initial: opening
 states:
@@ -231,7 +242,7 @@ states:
     invoke: { action: getOnlineExamTalebeAnswers }
     on:
       DONE: { guard: "may == 'yes'", target: talebeDetail }
-      FAIL.forbidden: { target: forbidden, say: "the grant was taken away since the results were read", source: "apps/nazar/features/online-exams/components/talebe-answers-page.tsx:50" }
+      FAIL.forbidden: { target: forbidden, effect: [grantGone], say: "the grant was taken away since the results were read", source: "apps/nazar/features/online-exams/components/talebe-answers-page.tsx:50" }
       FAIL.gone: { target: notFound, source: "apps/nazar/lib/tedrisat-read.ts:46" }
   talebeDetail:
     title: A talebe's answers
@@ -270,7 +281,7 @@ states:
       is followed by a new read, which brings the scores; a refusal or a failure puts the page back as it was, with a toast.
     invoke: { action: releaseExamResults }
     on:
-      DONE: { target: released, effect: [toastReleased], say: "the results are released and the exam is over for everyone: the scores are read" }
+      DONE: { target: released, effect: [toastReleased, scoresRead], say: "the results are released and the exam is over for everyone: the scores are read", source: "apps/nazar/features/online-exams/components/results-view.tsx:181" }
       FAIL.notOpen: { target: overview, effect: [releaseNotOpenBack], say: "it had not opened yet by tedrisat's clock: the page is put back" }
       FAIL.forbidden: { target: overview, effect: [releaseRefusedBack], say: "the release is refused: the page is put back" }
       FAIL.other: { target: overview, effect: [releaseFailedBack], say: "the release could not be done: the page is put back" }
@@ -302,7 +313,7 @@ states:
       puts the page back, with a toast.
     invoke: { action: closeOnlineExamEarly }
     on:
-      DONE: { target: overview, effect: [toastClosed], say: "the exam is over: the toast says so and the scores are read" }
+      DONE: { target: overview, effect: [toastClosed, scoresRead], say: "the exam is over: the toast says so and the scores are read", source: "apps/nazar/features/online-exams/components/results-view.tsx:153" }
       FAIL.notOpen: { target: overview, effect: [closeNotOpenBack], say: "it had not opened, or had closed meanwhile: the page is put back" }
       FAIL.forbidden: { target: overview, effect: [closeRefusedBack], say: "the close is refused: the page is put back" }
       FAIL.other: { target: overview, effect: [closeFailedBack], say: "the close could not be done: the page is put back" }

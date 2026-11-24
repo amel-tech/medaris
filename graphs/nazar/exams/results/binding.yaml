@@ -58,7 +58,7 @@ samples:
 
 scenarios:
   over:
-    given: { may: yes, attempts: some, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: yes }
+    given: { may: yes, attempts: some, inProgress: none, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: yes }
     as: muderris
     open: '{nazar}/ders/{xnRsOver.course}/sinavlar/{xnRqOver.exam}/sonuclar'
     vars: { quiz: xnRqOver, lesson: '{xnRqOver.lesson}' }
@@ -79,7 +79,7 @@ scenarios:
       - run: [node, helpers/course.mjs, remove, xnRsOver]
         expect: course remove xnRsOver
   live:
-    given: { may: yes, attempts: some, scored: some, exam: open, mayClose: yes, results: closed, mayRelease: yes }
+    given: { may: yes, attempts: some, inProgress: some, scored: some, exam: open, mayClose: yes, results: closed, mayRelease: yes }
     as: muderris
     open: '{nazar}/ders/{xnRsLive.course}/sinavlar/{xnRqLive.exam}/sonuclar'
     vars: { quiz: xnRqLive, lesson: '{xnRqLive.lesson}' }
@@ -98,7 +98,7 @@ scenarios:
       - run: [node, helpers/course.mjs, remove, xnRsLive]
         expect: course remove xnRsLive
   soon:
-    given: { may: yes, attempts: none, scored: none, exam: open, mayClose: no, results: closed, mayRelease: yes }
+    given: { may: yes, attempts: none, inProgress: none, scored: none, exam: open, mayClose: no, results: closed, mayRelease: yes }
     as: muderris
     open: '{nazar}/ders/{xnRsSoon.course}/sinavlar/{xnRqSoon.exam}/sonuclar'
     vars: { quiz: xnRqSoon, lesson: '{xnRqSoon.lesson}' }
@@ -113,7 +113,7 @@ scenarios:
       - run: [node, helpers/course.mjs, remove, xnRsSoon]
         expect: course remove xnRsSoon
   reader:
-    given: { may: yes, attempts: some, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: no }
+    given: { may: yes, attempts: some, inProgress: none, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: no }
     as: dersNazir
     open: '{nazar}/ders/{xnRsRead.course}/sinavlar/{xnRqRead.exam}/sonuclar'
     vars: { quiz: xnRqRead, lesson: '{xnRqRead.lesson}' }
@@ -135,7 +135,7 @@ scenarios:
       - run: [node, helpers/course.mjs, remove, xnRsRead]
         expect: course remove xnRsRead
   shutOut:
-    given: { may: no, attempts: none, scored: none, exam: open, mayClose: yes, results: closed, mayRelease: no }
+    given: { may: no, attempts: none, inProgress: none, scored: none, exam: open, mayClose: yes, results: closed, mayRelease: no }
     as: dersNazir
     open: '{nazar}/ders/{xnRsShut.course}/sinavlar/{xnRqShut.exam}/sonuclar'
     vars: { quiz: xnRqShut }

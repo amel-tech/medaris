@@ -72,7 +72,7 @@ guards:
   answersOpen: "closed == 'yes'"
 
 failures:
-  opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND, AUTHZ_FORBIDDEN], unreadable: [network, timeout, 5xx] }
+  opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND, AUTHZ_FORBIDDEN], unreadable: [HTTP_429, network, timeout, 5xx] }
 # A 401 is the session's, and sends the talebe to sign in (reauthIfRefused, realm.auth.signIn); it is not drawn here.
 
 main:

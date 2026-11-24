@@ -123,6 +123,13 @@ context:
     say:
       up: the page's calls get through
       lost: a call got no answer or a 5xx; the page says so over the question, and the clock stops
+  resumeFrom:
+    values: [briefing, question, elsewhere]
+    initial: briefing
+    say:
+      briefing: the resume was asked as the page opened, with the briefing drawn
+      question: the resume was asked from the question, the connection being back
+      elsewhere: the resume was asked from "Sınav başka bir yerde açık"
   version:
     values: [current, stale]
     initial: any
@@ -207,6 +214,10 @@ effects:
   zerothRefusedNotice: { havoc: [zeroth], set: { notice: zerothRefused, toast: zerothRefused } }
   takenNotice: { havoc: [endedBy], set: { toast: taken } }
   connectionLost: { set: { connection: lost } }
+  # where a resume was asked from: a resume that gets no answer leaves the page where it was (exam-take.tsx:309-318)
+  fromBriefing: { set: { resumeFrom: briefing } }
+  fromQuestion: { set: { resumeFrom: question } }
+  fromElsewhere: { set: { resumeFrom: elsewhere } }
   lostWithChoice: { set: { connection: lost, pending: choice } }
   chosen: { set: { notice: none, saved: "no", savedHere: "yes" } }
   moveOn: { havoc: [position, mode], set: { notice: none, saved: "no" } }
@@ -314,7 +325,7 @@ states:
       call.
     always:
       - { guard: isFinished, target: already_finished, effect: [endedRead], say: "the talebe's attempt has ended" }
-      - { guard: inProgress, target: resuming, say: "an attempt is in progress: it goes on where it stopped", source: "apps/tedris/features/online-exams/components/exam-take.tsx:326" }
+      - { guard: inProgress, target: resuming, effect: [fromBriefing], say: "an attempt is in progress: it goes on where it stopped", source: "apps/tedris/features/online-exams/components/exam-take.tsx:326" }
       - { guard: notYetOpen, target: notOpen, say: "the earliest start has not come" }
       - { guard: isClosed, target: closed, say: "the latest start has passed" }
       - { target: briefing, say: "the exam can be started" }
@@ -371,6 +382,7 @@ states:
     on:
       ANSWER_ZEROTH: { target: savingZeroth, effect: [zerothAnswered], say: "they choose an option of the zeroth question: it shows as chosen at once" }
       START: { guard: zerothGiven, target: starting, say: "they press Sınava başla" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromBriefing], say: "the resume as the page opened got no answer, and the browser says it is online again: the attempt is taken up", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
       NAVIGATE: left
   savingZeroth:
     title: Save the zeroth answer
@@ -418,7 +430,10 @@ states:
         - { target: question, effect: [resumedNotice], say: "the question they were on is shown, with the time left" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.ended: { target: rereading, say: "the attempt ended meanwhile, by the time or by an early close" }
-      FAIL.offline: { target: question, effect: [connectionLost], say: "the connection is still gone: the alert stays over the question (on a page just opened, the briefing stays drawn and the alert is not)" }
+      FAIL.offline:
+        - { guard: "resumeFrom == 'briefing'", target: briefing, effect: [connectionLost], say: "the resume as the page opened gets no answer: the briefing stays drawn, with no alert, until the browser is online again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:316" }
+        - { guard: "resumeFrom == 'elsewhere'", target: elsewhere, effect: [connectionLost], say: "Burada aç gets no answer: the page still says the exam is open in another place" }
+        - { target: question, effect: [connectionLost], say: "the connection is still gone: the alert stays over the question" }
   question:
     title: A question of the exam
     source: apps/tedris/features/online-exams/components/exam-take.tsx:511
@@ -457,7 +472,7 @@ states:
       TIME_UP: { guard: online, target: timeUp, say: "the countdown reaches 0, or the clock's call says the attempt has ended" }
       FINISH: { target: confirmFinish, say: "they press Sınavı bitir" }
       CONNECTION_LOST: { guard: online, target: question, effect: [connectionLost], say: "the clock's call gets no answer or a 5xx: the alert says so and the clock stops" }
-      RECONNECTED: { guard: offlineNow, target: resuming, say: "the browser says it is online again: the attempt is taken up and the kept choices sent", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromQuestion], say: "the browser says it is online again: the attempt is taken up and the kept choices sent", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
       RELOAD: { target: reading, say: "they press Sayfayı yenile: the page is loaded again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:623" }
       SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back", source: "apps/tedris/features/online-exams/components/exam-take.tsx:399" }
       TEXT_BIGGER:
@@ -508,7 +523,8 @@ states:
       nothing is erased). The page says "Sınav başka bir yerde açık" and that the answers are saved there now, and offers "Burada aç".
     by: human
     on:
-      OPEN_HERE: { target: resuming, say: "they press Burada aç: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:505" }
+      OPEN_HERE: { target: resuming, effect: [fromElsewhere], say: "they press Burada aç: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:505" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromElsewhere], say: "Burada aç got no answer, and the browser says it is online again: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
       NAVIGATE: left
   notingSwitch:
     title: Count the switch

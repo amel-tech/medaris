@@ -438,6 +438,7 @@ actions:
       ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58, note: "the caller has no attempt of this exam" }
       EXAM_NOT_FOUND: { status: 404, note: "no published online exam at this celse" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_429: { status: 429, source: libs/common/src/throttler/throttler.module.ts, note: "the throttlers' budget of the route spent (invariant rate-limit-before-auth); listed because tedris.exams.result draws what the talebe meets then" }
 
   # ----- the course team ----------------------------------------------------------------------------------------------------------
 

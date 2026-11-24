@@ -34,8 +34,8 @@
 #   - length: two (an exam of two questions): every scenario's exam has five.
 #   - CONNECTION_LOST and RECONNECTED: no action of a walk takes the browser off line or back. The FAIL.offline of the zeroth
 #     answer, the save and the finish is made by aborting the step's call (states.*.fail), and the start's FAIL.other likewise; the
-#     page then stays on its alert until a reload (rule EXM-TAKE-1). The resume's is not: on a page just opened the code keeps the
-#     briefing drawn, where the flow says the question.
+#     page then stays on its alert until a reload (rule EXM-TAKE-1). The resume's is not made: aborting it has not been tried. The flow
+#     keeps the page where the resume was asked (resumeFrom), as the code does: the briefing on a page just opened.
 #   - SWITCHED_AWAY (notingSwitch): no action of a walk hides the page or takes its window's focus for two seconds.
 #   - the refusals of the server actions (savingZeroth FAIL.refused, starting FAIL.taken and its refusals, saving FAIL.other and
 #     FAIL.elsewhere, finishing FAIL.other and FAIL.ended): a server action answers 200 with the refusal inside, so the replay cannot
