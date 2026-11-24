@@ -445,8 +445,11 @@ export function KoskHome({ data, nowIso }: Props) {
         <Stat label={t("counts.pendingApplications")} value={pendingCount} />
       </section>
 
-      {/* No "Tümünü gör": the köşk-wide Celseler page is not built yet (MDRS-211). */}
-      <HomeSection id="home-sessions" title={t("sessions.title")}>
+      <HomeSection
+        id="home-sessions"
+        title={t("sessions.title")}
+        link={{ href: `${base}/celseler`, label: t("seeAll") }}
+      >
         <Tabs
           tabs={TABS.map((value) => ({
             value,

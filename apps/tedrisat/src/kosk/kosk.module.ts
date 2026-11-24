@@ -18,6 +18,9 @@ import { KoskDashboardService } from "./kosk-dashboard.service";
 import { KoskGrantsController } from "./kosk-grants.controller";
 import { KoskGrantsRepository } from "./kosk-grants.repository";
 import { KoskGrantsService } from "./kosk-grants.service";
+import { KoskListsController } from "./kosk-lists.controller";
+import { KoskListsRepository } from "./kosk-lists.repository";
+import { KoskListsService } from "./kosk-lists.service";
 
 @Module({
   imports: [
@@ -31,7 +34,12 @@ import { KoskGrantsService } from "./kosk-grants.service";
   ],
   // `KoskAdminController` first: `GET /kosks/directory` must be matched before
   // `GET /kosks/:id` reads "directory" as an id.
-  controllers: [KoskAdminController, KoskGrantsController, KoskController],
+  controllers: [
+    KoskAdminController,
+    KoskGrantsController,
+    KoskListsController,
+    KoskController,
+  ],
   providers: [
     KoskService,
     KoskRepository,
@@ -41,6 +49,8 @@ import { KoskGrantsService } from "./kosk-grants.service";
     KoskDashboardRepository,
     KoskGrantsService,
     KoskGrantsRepository,
+    KoskListsService,
+    KoskListsRepository,
     DatabaseService,
   ],
   exports: [KoskService],

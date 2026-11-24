@@ -3708,6 +3708,106 @@
       "forbidden": "You do not have permission for this action."
     }
   },
+  "KoskLists": {
+    "week": "Week {n}",
+    "minutes": "{minutes} min",
+    "loadFailed": "The list cannot be read right now. Try again in a moment.",
+    "retry": "Try again",
+    "pager": {
+      "label": "Pages",
+      "range": "{from}–{to} of {total}",
+      "prev": "Previous",
+      "next": "Next",
+      "pastEnd": "This page has no rows. Go back to the previous page."
+    },
+    "sessions": {
+      "title": "Sessions",
+      "intro": "The sessions of every course in {kosk}, by date. To plan, move or cancel a session, go to its course.",
+      "loadFailedTitle": "The sessions could not be read",
+      "tabsLabel": "Session time",
+      "tabs": {
+        "UPCOMING": "Upcoming sessions",
+        "PAST": "Past sessions"
+      },
+      "caption": {
+        "UPCOMING": "{kosk}: upcoming sessions",
+        "PAST": "{kosk}: past sessions"
+      },
+      "empty": {
+        "UPCOMING": "No upcoming session.",
+        "PAST": "No past session."
+      },
+      "columns": {
+        "session": "Session",
+        "course": "Course",
+        "time": "Time",
+        "state": "Status"
+      },
+      "state": {
+        "cancelled": "Cancelled",
+        "ended": "Ended",
+        "live": "Live now",
+        "scheduled": "Scheduled"
+      },
+      "inPerson": "In person",
+      "goToCourse": "Go to the sessions of {course}"
+    },
+    "students": {
+      "intro": "The talebe enrolled in, or who completed, a course in {kosk}; one row a person. To act on a talebe, go to their course.",
+      "loadFailedTitle": "The talebe could not be read",
+      "pendingTitle": "Applications awaiting approval",
+      "pending": "{count, plural, one {# application is awaiting approval.} other {# applications are awaiting approval.}}",
+      "goToApplications": "Go to Applications",
+      "searchLabel": "Search talebe",
+      "searchPlaceholder": "Search by name or e-mail",
+      "search": "Search",
+      "total": "{count} talebe",
+      "caption": "{kosk}: talebe",
+      "empty": "No talebe in this köşk's courses yet.",
+      "emptyFiltered": "No talebe matches this search.",
+      "unknown": "Name unknown",
+      "completed": "completed",
+      "columns": {
+        "student": "Talebe",
+        "email": "E-mail",
+        "courses": "Courses",
+        "since": "First enrolled"
+      },
+      "title": "Students"
+    },
+    "recordings": {
+      "intro": "The recordings of the sessions in {kosk}, by course and week. To add or edit a recording, go to its course.",
+      "loadFailedTitle": "The recordings could not be read",
+      "total": "{count, plural, one {# recording} other {# recordings}}",
+      "empty": "No recording in this köşk's courses yet.",
+      "caption": "{course}: recordings of week {n}",
+      "session": "Session: {when}",
+      "goToCourse": "Go to the course",
+      "goToCourseLabel": "Go to the sessions of {course}",
+      "columns": {
+        "recording": "Recording",
+        "source": "Source",
+        "status": "Status",
+        "visibility": "Visibility"
+      },
+      "provider": {
+        "BUNNY": "Medaris player",
+        "DRIVE": "Google Drive",
+        "YOUTUBE": "YouTube",
+        "OTHER": "Link"
+      },
+      "status": {
+        "READY": "Ready",
+        "PROCESSING": "Being prepared",
+        "FAILED": "Failed"
+      },
+      "visibility": {
+        "PUBLIC": "Public",
+        "ENROLLED": "Enrolled talebe only"
+      },
+      "title": "Session recordings"
+    }
+  },
   "Dashboard": {
     "title": "Home",
     "greeting": "Peace be upon you, {name}.",

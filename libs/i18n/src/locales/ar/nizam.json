@@ -3708,6 +3708,106 @@
       "forbidden": "ليس لديك إذن بهذا الإجراء."
     }
   },
+  "KoskLists": {
+    "week": "الأسبوع {n}",
+    "minutes": "{minutes} د",
+    "loadFailed": "تتعذّر قراءة القائمة الآن. حاول مرة أخرى بعد قليل.",
+    "retry": "حاول مرة أخرى",
+    "pager": {
+      "label": "الصفحات",
+      "range": "{from}–{to} من {total}",
+      "prev": "السابق",
+      "next": "التالي",
+      "pastEnd": "لا توجد صفوف في هذه الصفحة. عُد إلى الصفحة السابقة."
+    },
+    "sessions": {
+      "title": "الجلسات",
+      "intro": "جلسات جميع الدروس في {kosk}، بحسب التاريخ. لتخطيط جلسة أو نقلها أو إلغائها، اذهب إلى درسها.",
+      "loadFailedTitle": "تعذّرت قراءة الجلسات",
+      "tabsLabel": "وقت الجلسة",
+      "tabs": {
+        "UPCOMING": "الجلسات القادمة",
+        "PAST": "الجلسات الماضية"
+      },
+      "caption": {
+        "UPCOMING": "{kosk}: الجلسات القادمة",
+        "PAST": "{kosk}: الجلسات الماضية"
+      },
+      "empty": {
+        "UPCOMING": "لا توجد جلسة قادمة.",
+        "PAST": "لا توجد جلسة ماضية."
+      },
+      "columns": {
+        "session": "الجلسة",
+        "course": "الدرس",
+        "time": "الوقت",
+        "state": "الحالة"
+      },
+      "state": {
+        "cancelled": "أُلغيت",
+        "ended": "انتهت",
+        "live": "مباشر الآن",
+        "scheduled": "مُخطَّطة"
+      },
+      "inPerson": "حضوريًا",
+      "goToCourse": "اذهب إلى جلسات درس {course}"
+    },
+    "students": {
+      "intro": "الطلبة المسجَّلون في دروس {kosk} ومن أتمّوا دروسهم؛ كل سطر شخص واحد. لأي إجراء يخص طالبًا، اذهب إلى درسه.",
+      "loadFailedTitle": "تعذّرت قراءة الطلبة",
+      "pendingTitle": "طلبات بانتظار الموافقة",
+      "pending": "{count, plural, one {طلب واحد ينتظر الموافقة.} two {طلبان ينتظران الموافقة.} few {# طلبات تنتظر الموافقة.} other {# طلبًا ينتظر الموافقة.}}",
+      "goToApplications": "اذهب إلى الطلبات",
+      "searchLabel": "ابحث عن طالب",
+      "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني",
+      "search": "بحث",
+      "total": "{count, plural, one {طالب واحد} two {طالبان} few {# طلاب} other {# طالبًا}}",
+      "caption": "{kosk}: الطلبة",
+      "empty": "لا يوجد طلبة في دروس هذا الكشك بعد.",
+      "emptyFiltered": "لا يوجد طالب يطابق هذا البحث.",
+      "unknown": "الاسم غير معروف",
+      "completed": "أتمّ",
+      "columns": {
+        "student": "الطالب",
+        "email": "البريد الإلكتروني",
+        "courses": "الدروس المسجَّلة",
+        "since": "أول تسجيل"
+      },
+      "title": "الطلاب"
+    },
+    "recordings": {
+      "intro": "تسجيلات جلسات {kosk}، بحسب الدروس والأسابيع. لإضافة تسجيل أو تعديله، اذهب إلى درسه.",
+      "loadFailedTitle": "تعذّرت قراءة تسجيلات الدروس",
+      "total": "{count, plural, one {تسجيل واحد} two {تسجيلان} few {# تسجيلات} other {# تسجيلًا}}",
+      "empty": "لا يوجد تسجيل في دروس هذا الكشك بعد.",
+      "caption": "{course}: تسجيلات الأسبوع {n}",
+      "session": "الجلسة: {when}",
+      "goToCourse": "اذهب إلى الدرس",
+      "goToCourseLabel": "اذهب إلى جلسات درس {course}",
+      "columns": {
+        "recording": "التسجيل",
+        "source": "المصدر",
+        "status": "الحالة",
+        "visibility": "الظهور"
+      },
+      "provider": {
+        "BUNNY": "مشغّل مداريس",
+        "DRIVE": "Google Drive",
+        "YOUTUBE": "YouTube",
+        "OTHER": "رابط"
+      },
+      "status": {
+        "READY": "جاهز",
+        "PROCESSING": "قيد التجهيز",
+        "FAILED": "فشل"
+      },
+      "visibility": {
+        "PUBLIC": "متاح للجميع",
+        "ENROLLED": "للطلبة المسجَّلين فقط"
+      },
+      "title": "تسجيلات الدروس"
+    }
+  },
   "Dashboard": {
     "title": "الصفحة الرئيسية",
     "greeting": "السلام عليكم، {name}.",

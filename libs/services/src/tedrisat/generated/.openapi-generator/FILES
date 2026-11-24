@@ -284,9 +284,16 @@ src/models/KoskNazimResponse.ts
 src/models/KoskOverviewMadrasahResponse.ts
 src/models/KoskOverviewResponse.ts
 src/models/KoskPersonResponse.ts
+src/models/KoskRecordingListResponse.ts
+src/models/KoskRecordingRowResponse.ts
 src/models/KoskResponse.ts
+src/models/KoskSessionListResponse.ts
+src/models/KoskSessionRowResponse.ts
 src/models/KoskStatus.ts
 src/models/KoskStatusFilter.ts
+src/models/KoskStudentCourseResponse.ts
+src/models/KoskStudentListResponse.ts
+src/models/KoskStudentResponse.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonAssignmentFileResponse.ts
 src/models/LessonAssignmentResponse.ts

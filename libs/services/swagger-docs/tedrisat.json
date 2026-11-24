@@ -781,6 +781,203 @@
         ]
       }
     },
+    "/kosks/{id}/sessions": {
+      "get": {
+        "description": "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tab",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "UPCOMING",
+                "PAST"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskSessionListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course's live sessions for the köşk (Celseler)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/students": {
+      "get": {
+        "description": "Everyone enrolled in, or who completed, a course of the köşk that is not hidden: one row a person, newest first by first enrollment, each with all of their courses in the köşk, and how many applications wait (`pendingCount`). `q` matches the name or the e-mail address. Names and addresses are personal data: for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it, as it does not open the applicants), and every read is written to `audit_log` as a roster read on the köşk. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskStudents",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskStudentListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşk's talebe, a page at a time (Talebeler)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/recordings": {
+      "get": {
+        "description": "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskRecordings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskRecordingListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course's ders kayıtları for the köşk (Ders kayıtları)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks": {
       "get": {
         "description": "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (KOSK_NAZIM, MDRS-108, MDRS-134), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks that medrese holds a hosting right in (MDRS-134).",
@@ -18558,6 +18755,311 @@
           "permissions"
         ]
       },
+      "KoskSessionRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese the course belongs to; null for a köşk's own"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "The session was called off; it stays listed"
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person, by the lesson or its course. How a session is attended goes where the meeting link goes (MDRS-283): left out for a caller without `kosk.manage`."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "courseId",
+          "courseTitle",
+          "madrasahName",
+          "weekNumber",
+          "scheduledAt",
+          "durationMinutes",
+          "cancelled"
+        ]
+      },
+      "KoskSessionListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskSessionRowResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows of the tab asked for, on every page"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "upcomingCount": {
+            "type": "number",
+            "description": "Sessions not over yet, cancelled ones too"
+          },
+          "pastCount": {
+            "type": "number",
+            "description": "Sessions that are over, cancelled ones too"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "upcomingCount",
+          "pastCount"
+        ]
+      },
+      "KoskStudentCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ENROLLED",
+              "COMPLETED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status"
+        ]
+      },
+      "KoskStudentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstEnrolledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskStudentCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "firstEnrolledAt",
+          "courses"
+        ]
+      },
+      "KoskStudentListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskStudentResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Talebe matching the search, on every page"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting in the köşk's courses (Başvurular)"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "pendingCount"
+        ]
+      },
+      "RecordingProvider": {
+        "type": "string",
+        "enum": [
+          "YOUTUBE",
+          "DRIVE",
+          "OTHER",
+          "BUNNY"
+        ]
+      },
+      "RecordingStatus": {
+        "type": "string",
+        "enum": [
+          "PROCESSING",
+          "READY",
+          "FAILED"
+        ]
+      },
+      "RecordingVisibility": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "ENROLLED"
+        ]
+      },
+      "KoskRecordingRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "weekTitle": {
+            "type": "string"
+          },
+          "sessionAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the session it records was held, if it has a time"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingProvider"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingStatus"
+              }
+            ]
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "weekNumber",
+          "weekTitle",
+          "sessionAt",
+          "durationMinutes",
+          "provider",
+          "status",
+          "visibility"
+        ]
+      },
+      "KoskRecordingListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskRecordingRowResponse"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
       "KoskManagedBy": {
         "type": "string",
         "enum": [
@@ -22605,30 +23107,6 @@
           "title",
           "weekNumber",
           "status"
-        ]
-      },
-      "RecordingProvider": {
-        "type": "string",
-        "enum": [
-          "YOUTUBE",
-          "DRIVE",
-          "OTHER",
-          "BUNNY"
-        ]
-      },
-      "RecordingVisibility": {
-        "type": "string",
-        "enum": [
-          "PUBLIC",
-          "ENROLLED"
-        ]
-      },
-      "RecordingStatus": {
-        "type": "string",
-        "enum": [
-          "PROCESSING",
-          "READY",
-          "FAILED"
         ]
       },
       "SessionRecordingResponse": {

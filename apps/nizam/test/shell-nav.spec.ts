@@ -120,8 +120,11 @@ describe("the menus as the canvases draw them", () => {
       [
         "Köşk",
         "Dersler",
+        "Celseler",
+        "Talebeler",
         "Başvurular",
         "Ders talepleri",
+        "Ders kayıtları",
         "Köşk desteleri",
         "Yasaklamalar",
         "Arşiv",
@@ -235,11 +238,17 @@ describe("where the viewer is", () => {
     expect(coursePathAlias("/kosks/a/courses/new")).toBe("/kosks/a/dersler");
   });
 
-  it("draws Dersler selected on a course's Celseler and Talebeler too: the köşk-wide pages are not built (MDRS-211)", () => {
+  it("draws Celseler and Talebeler selected on a course's own Celseler and Talebeler (MDRS-211)", () => {
     expect(coursePathAlias("/kosks/a/courses/c/students")).toBe(
-      "/kosks/a/dersler"
+      "/kosks/a/talebeler"
     );
     expect(coursePathAlias("/kosks/a/courses/c/sessions")).toBe(
+      "/kosks/a/celseler"
+    );
+    expect(coursePathAlias("/kosks/a/courses/c/sessions/new")).toBe(
+      "/kosks/a/celseler"
+    );
+    expect(coursePathAlias("/kosks/a/courses/sessions")).toBe(
       "/kosks/a/dersler"
     );
     expect(coursePathAlias("/kosks/a/basvurular")).toBe("/kosks/a/basvurular");
