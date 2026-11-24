@@ -5793,7 +5793,8 @@
               "enum": [
                 "COURSE",
                 "KOSK",
-                "MADRASAH"
+                "MADRASAH",
+                "PLATFORM"
               ],
               "type": "string"
             }
@@ -5907,7 +5908,7 @@
     },
     "/bans/{banId}/lift": {
       "post": {
-        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
+        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban, `platform.ban_account` for a platform ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
         "operationId": "liftBan",
         "parameters": [
           {
@@ -6203,6 +6204,144 @@
         "summary": "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
         "tags": [
           "bans"
+        ]
+      }
+    },
+    "/permanent-ban-requests": {
+      "get": {
+        "description": "Waiting ones oldest first, decided ones newest first, each with the ban it is about, and both counts. For the başnazım and a Medaris nazımı holding `platform.ban_account`.",
+        "operationId": "listPermanentBanRequests",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermanentBanRequestListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Permanent ban requests (Karar bekleyen / Karara bağlanan)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/permanent-ban-requests/{id}/approve": {
+      "post": {
+        "description": "Bars the person from all of Medaris: a PLATFORM ban is opened beside the ban the request is about, and every köşk, medrese and course refuses them from then on. The sign-in account is not closed. A person already barred from the platform keeps that ban. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already, 409 BAN_ALREADY_LIFTED when the ban it is about was lifted meanwhile. Written to the audit log (permanent_ban.approve, and ban.create for the platform ban).",
+        "operationId": "approvePermanentBanRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "BAN_TARGET_INVALID"
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMANENT_BAN_REQUEST_NOT_PENDING or BAN_ALREADY_LIFTED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve the request (Onayla)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/permanent-ban-requests/{id}/reject": {
+      "post": {
+        "description": "The note is required and is read by whoever asked; the ban the request is about stays as it was. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already. Written to the audit log (permanent_ban.reject).",
+        "operationId": "rejectPermanentBanRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectPermanentBanRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMANENT_BAN_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "nizam"
         ]
       }
     },
@@ -22100,7 +22239,8 @@
         "enum": [
           "COURSE",
           "KOSK",
-          "MADRASAH"
+          "MADRASAH",
+          "PLATFORM"
         ]
       },
       "EnrollmentBanResponse": {
@@ -24040,7 +24180,7 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all."
           },
           "courseId": {
             "type": "string",
@@ -24201,13 +24341,13 @@
         "enum": [
           "KOSK"
         ],
-        "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet."
+        "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request."
       },
       "ExtendBanDto": {
         "type": "object",
         "properties": {
           "scope": {
-            "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+            "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ExtendBanScope"
@@ -24254,6 +24394,15 @@
           "reason"
         ]
       },
+      "PermanentBanRequestStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "description": "What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made."
+      },
       "MadrasahBanResponse": {
         "type": "object",
         "properties": {
@@ -24275,7 +24424,7 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all."
           },
           "courseId": {
             "type": "string",
@@ -24353,7 +24502,26 @@
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase."
+            "description": "When the medrese asked for the ban to be permanent; null when it has not."
+          },
+          "permanentRequestStatus": {
+            "nullable": true,
+            "description": "What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermanentBanRequestStatus"
+              }
+            ]
+          },
+          "permanentDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "permanentDecisionNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note of a refusal, for whoever asked; null otherwise."
           }
         },
         "required": [
@@ -24377,7 +24545,10 @@
           "viewerMayLift",
           "viewerMayEscalate",
           "viewerMayRequestPermanent",
-          "permanentRequestedAt"
+          "permanentRequestedAt",
+          "permanentRequestStatus",
+          "permanentDecidedAt",
+          "permanentDecisionNote"
         ]
       },
       "MadrasahBanListResponse": {
@@ -24441,6 +24612,176 @@
           "userId",
           "scope",
           "reason"
+        ]
+      },
+      "PermanentBanRequestBanResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanScope"
+              }
+            ]
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the lower ban was placed."
+          },
+          "bannedBy": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "bannedRole": {
+            "type": "string",
+            "description": "The role the banner acted in. The client words it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "liftedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Set when the ban was lifted meanwhile: such a request can be refused, not approved."
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "scope",
+          "koskName",
+          "courseTitle",
+          "madrasahName",
+          "reason",
+          "bannedBy",
+          "bannedRole",
+          "createdAt",
+          "liftedAt"
+        ]
+      },
+      "PermanentBanRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the requester asks for a permanent ban."
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanPersonResponse"
+              }
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note of a refusal; null for an approval."
+          },
+          "platformBanId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The PLATFORM ban an approval opened, or the one that stood already."
+          },
+          "ban": {
+            "$ref": "#/components/schemas/PermanentBanRequestBanResponse"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason",
+          "requestedBy",
+          "createdAt",
+          "decidedBy",
+          "decidedAt",
+          "decisionNote",
+          "platformBanId",
+          "ban"
+        ]
+      },
+      "PermanentBanRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermanentBanRequestResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Requests waiting for a decision."
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "Requests approved or refused."
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "RejectPermanentBanRequestDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Why the request is refused. Read by whoever asked. Required, and not blank."
+          }
+        },
+        "required": [
+          "note"
         ]
       },
       "NotificationResponse": {
@@ -31030,7 +31371,7 @@
           "permanentBanRequests": {
             "type": "number",
             "nullable": true,
-            "description": "Kalıcı yasak talepleri: the request model comes with a later phase, so the count is 0 for a viewer who would see it"
+            "description": "Kalıcı yasak talepleri: the requests for a permanent ban waiting for a decision"
           }
         }
       },
@@ -31203,6 +31544,11 @@
           "koskName": {
             "type": "string",
             "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese of a medrese ban, or of a course ban in a medrese course"
           },
           "bannedByName": {
             "type": "string",

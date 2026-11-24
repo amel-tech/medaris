@@ -110,3 +110,29 @@ export class BanPermanentRequestExistsError extends ConflictError {
     );
   }
 }
+
+/** No request for a permanent ban with that id (MDRS-194). */
+export class PermanentBanRequestNotFoundError extends NotFoundError {
+  static readonly code = "PERMANENT_BAN_REQUEST_NOT_FOUND";
+
+  constructor(requestId: string, context?: ErrorContext) {
+    super(
+      PermanentBanRequestNotFoundError.code,
+      `No permanent ban request ${requestId}`,
+      context
+    );
+  }
+}
+
+/** The request was decided while the page was open (MDRS-194). */
+export class PermanentBanRequestNotPendingError extends ConflictError {
+  static readonly code = "PERMANENT_BAN_REQUEST_NOT_PENDING";
+
+  constructor(requestId: string, context?: ErrorContext) {
+    super(
+      PermanentBanRequestNotPendingError.code,
+      `Permanent ban request ${requestId} has been decided already`,
+      context
+    );
+  }
+}

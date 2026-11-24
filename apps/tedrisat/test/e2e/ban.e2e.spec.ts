@@ -647,8 +647,13 @@ describe("Bans (e2e)", () => {
         .get("/bans")
         .set("Authorization", auth(MUDERRIS_ID))
         .expect(403);
+      // PLATFORM is a scope since MDRS-194; a word that is none is refused.
       await http()
         .get("/bans?scope=PLATFORM")
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      await http()
+        .get("/bans?scope=EVERYWHERE")
         .set("Authorization", auth(ADMIN_ID))
         .expect(400);
       await http()

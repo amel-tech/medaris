@@ -38,7 +38,7 @@ export interface DashboardPendingTotalsResponse {
      */
     appeals?: number | null;
     /**
-     * Kalıcı yasak talepleri: the request model comes with a later phase, so the count is 0 for a viewer who would see it
+     * Kalıcı yasak talepleri: the requests for a permanent ban waiting for a decision
      * @type {number}
      * @memberof DashboardPendingTotalsResponse
      */

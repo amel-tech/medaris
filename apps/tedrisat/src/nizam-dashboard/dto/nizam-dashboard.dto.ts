@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { BAN_SCOPES } from "../../database/schema/ban.schema";
 import { INACTIVE_SCOPE_TYPES } from "../../inactive-scope/inactive-scope.rules";
 
 export const DASHBOARD_VIEWERS = ["CHIEF", "MEDARIS_NAZIM"] as const;
@@ -34,7 +35,7 @@ export class DashboardPendingTotalsResponse {
     type: Number,
     nullable: true,
     description:
-      "Kalıcı yasak talepleri: the request model comes with a later phase, so the count is 0 for a viewer who would see it",
+      "Kalıcı yasak talepleri: the requests for a permanent ban waiting for a decision",
   })
   permanentBanRequests!: number | null;
 }
@@ -136,7 +137,7 @@ export class DashboardBanResponse {
   @ApiPropertyOptional({ type: String, nullable: true })
   userName!: string | null;
 
-  @ApiProperty({ enum: ["COURSE", "KOSK"], enumName: "BanScope" })
+  @ApiProperty({ enum: Object.values(BAN_SCOPES), enumName: "BanScope" })
   scope!: string;
 
   @ApiPropertyOptional({
@@ -148,6 +149,14 @@ export class DashboardBanResponse {
 
   @ApiPropertyOptional({ type: String, nullable: true })
   koskName!: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      "The medrese of a medrese ban, or of a course ban in a medrese course",
+  })
+  madrasahName!: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   bannedByName!: string | null;

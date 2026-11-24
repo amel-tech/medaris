@@ -10,10 +10,15 @@ import { BanRepository } from "./ban.repository";
 import { BanService } from "./ban.service";
 import { BanAuthority } from "./ban-authority";
 import { MadrasahBanController } from "./madrasah-ban.controller";
+import { PermanentBanController } from "./permanent-ban.controller";
+import { PermanentBanRepository } from "./permanent-ban.repository";
+import { PermanentBanService } from "./permanent-ban.service";
 
 /**
- * Bans: barring a talebe from a course, a köşk or a medrese, and lifting it
- * (MDRS-177, MDRS-187), decided from the permission catalogue (MDRS-205).
+ * Bans: barring a talebe from a course, a köşk, a medrese or the platform, and
+ * lifting it (MDRS-177, MDRS-187), decided from the permission catalogue
+ * (MDRS-205); and Medaris administration's decisions on the requests for a
+ * permanent ban (MDRS-194).
  */
 @Module({
   imports: [
@@ -23,10 +28,17 @@ import { MadrasahBanController } from "./madrasah-ban.controller";
     MadrasahModule,
     NotificationModule,
   ],
-  controllers: [BanController, MadrasahBanController],
+  controllers: [BanController, MadrasahBanController, PermanentBanController],
   // The context loader is read straight from the database, as `PlatformAccessModule`
   // does: `BanAuthority` asks the engine's own computation what the caller holds.
-  providers: [BanService, BanRepository, BanAuthority, TedrisatAuthzContext],
-  exports: [BanService, BanRepository],
+  providers: [
+    BanService,
+    BanRepository,
+    BanAuthority,
+    TedrisatAuthzContext,
+    PermanentBanService,
+    PermanentBanRepository,
+  ],
+  exports: [BanService, BanRepository, PermanentBanService],
 })
 export class BanModule {}

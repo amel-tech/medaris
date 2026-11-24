@@ -540,6 +540,13 @@
       "when": 1795499075852,
       "tag": "0081_emsile_teacher_material",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795545554993,
+      "tag": "0082_permanent_ban_decisions",
+      "breakpoints": true
     }
   ]
 }

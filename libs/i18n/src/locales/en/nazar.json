@@ -1339,6 +1339,11 @@
     },
     "new": "New",
     "permanentPending": "Permanent-ban request pending",
+    "permanentOutcome": {
+      "APPROVED": "Permanent-ban request approved",
+      "REJECTED": "Permanent-ban request refused",
+      "note": "Reason for refusal:"
+    },
     "scope": {
       "COURSE": "Course",
       "MADRASAH": "Medrese"

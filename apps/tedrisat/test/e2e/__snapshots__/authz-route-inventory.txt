@@ -180,6 +180,7 @@ GET /notifications/unread-count -> no AuthzGuard
 GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
 GET /online-exams/:examId/results/:userId -> exam.prepare on byOnlineExamCourse
+GET /permanent-ban-requests -> no AuthzGuard
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -304,6 +305,8 @@ POST /online-exams/:examId/close -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse
+POST /permanent-ban-requests/:id/approve -> no AuthzGuard
+POST /permanent-ban-requests/:id/reject -> no AuthzGuard
 PUT /courses/:id -> course.edit on course
 PUT /courses/:id/exam-zeroth-question -> exam.prepare on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course

@@ -62,6 +62,9 @@ export const presentMadrasahBan = (
   viewerMayEscalate: b.viewerMayEscalate,
   viewerMayRequestPermanent: b.viewerMayRequestPermanent,
   permanentRequestedAt: b.permanentRequestedAt,
+  permanentRequestStatus: b.permanentRequestStatus,
+  permanentDecidedAt: b.permanentDecidedAt,
+  permanentDecisionNote: b.permanentDecisionNote,
 });
 
 export const presentMadrasahBanList = (

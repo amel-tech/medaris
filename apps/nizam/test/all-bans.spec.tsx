@@ -99,7 +99,32 @@ describe("the scope filter (nizam 48: Kapsam)", () => {
     expect(asScopeFilter("KOSK")).toBe("KOSK");
     expect(asScopeFilter("")).toBe("");
     expect(asScopeFilter(null)).toBe("");
-    expect(asScopeFilter("PLATFORM")).toBe("");
+    expect(asScopeFilter("PLATFORM")).toBe("PLATFORM");
+    expect(asScopeFilter("MADRASAH")).toBe("");
+  });
+
+  it("reads a platform ban as all of Medaris, and a medrese ban as its medrese (MDRS-194)", () => {
+    expect(
+      scopeParts(
+        ban({ scope: "PLATFORM", courseId: null, courseTitle: null }),
+        "",
+        t,
+        true
+      )
+    ).toEqual({ label: "Platform", detail: ["Bütün Medaris"] });
+    expect(
+      scopeParts(
+        ban({
+          scope: "MADRASAH",
+          courseId: null,
+          courseTitle: null,
+          madrasahName: "Süleymaniye Medresesi",
+        }),
+        "",
+        t,
+        true
+      )
+    ).toEqual({ label: "Medrese", detail: ["Süleymaniye Medresesi"] });
   });
 
   it("names the köşk under a course when asked, and skips an unnamed medrese", () => {

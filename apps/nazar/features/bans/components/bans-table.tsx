@@ -128,6 +128,23 @@ export function BansTable({
                 {t("Bans.permanentPending")}
               </Badge>
             ) : null}
+            {row.permanentOutcome ? (
+              <Badge
+                variant={
+                  row.permanentOutcome.status === "APPROVED"
+                    ? "success"
+                    : "error"
+                }
+              >
+                {t(`Bans.permanentOutcome.${row.permanentOutcome.status}`)}
+              </Badge>
+            ) : null}
+            {row.permanentOutcome?.note ? (
+              <span className="mds-caption" data-testid="permanent-note">
+                {t("Bans.permanentOutcome.note")}{" "}
+                <bdi>{row.permanentOutcome.note}</bdi>
+              </span>
+            ) : null}
           </span>
         </span>
       ),

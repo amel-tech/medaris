@@ -619,8 +619,11 @@
     "new": "New",
     "scope": {
       "COURSE": "Course",
-      "KOSK": "Köşk"
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "PLATFORM": "Platform"
     },
+    "platformDetail": "All of Medaris",
     "extendedFrom": "Widened from {course}",
     "roles": {
       "KOSK_NAZIM": "Köşk nazım",
@@ -2013,6 +2016,7 @@
     "banned": "Barred",
     "bannedCourse": "Barred · This course",
     "bannedKosk": "Barred · Köşk",
+    "bannedPlatform": "Barred · Platform",
     "showing": "Showing {shown} of {total} students",
     "more": "Show more",
     "emptySearch": "No student matches the search",
@@ -3134,6 +3138,11 @@
       "help": "The medrese will read this note.",
       "reasonLabel": "Decision note"
     },
+    "permanentBan": {
+      "title": "Refuse the permanent ban request",
+      "body": "The lower ban stays as it is. Whoever asked sees the reason for refusal.",
+      "help": "The requester will read this reason."
+    },
     "unpublish": {
       "title": "Unpublish the deck",
       "body": "The deck leaves the public list and stays private to its owner. The reason is sent to the owner as a notification.",
@@ -3638,6 +3647,67 @@
       "forbidden": "You are not allowed to do this."
     }
   },
+  "PermanentBansPage": {
+    "title": "Permanent ban requests",
+    "intro": "Requests opened by those who placed a course, köşk or medrese ban, asking for the same person to be barred from the platform as well.",
+    "introApprove": "Approving bars the person from the platform: they lose access to every köşk, medrese and course.",
+    "introReject": "Refusing leaves the lower ban as it is. Whoever asked sees your decision.",
+    "tabsLabel": "Request status",
+    "tabs": {
+      "PENDING": "Awaiting a decision",
+      "DECIDED": "Decided"
+    },
+    "empty": {
+      "PENDING": "No permanent ban request is waiting for a decision.",
+      "DECIDED": "No permanent ban request has been decided."
+    },
+    "loadFailedTitle": "The permanent ban requests could not be read",
+    "loadFailed": "The requests cannot be fetched right now. Try again in a moment.",
+    "retry": "Try again",
+    "status": {
+      "PENDING": "Awaiting a decision",
+      "APPROVED": "Approved",
+      "REJECTED": "Refused"
+    },
+    "unknownPerson": "Unknown",
+    "currentBan": "Current ban",
+    "scope": "Scope",
+    "scopes": {
+      "COURSE": "Course ban",
+      "KOSK": "Köşk ban",
+      "MADRASAH": "Medrese ban",
+      "PLATFORM": "Platform ban"
+    },
+    "bannedBy": "Placed by",
+    "banReason": "Reason for the ban",
+    "request": "Request",
+    "requestedBy": "Requested by",
+    "theBanner": "who placed the ban",
+    "requestReason": "Reason for the request",
+    "liftedTitle": "This ban has been lifted",
+    "liftedBody": "The lower ban was lifted, so the request cannot be approved; it can only be refused.",
+    "decidedLine": "Decided by: {name} · {when}",
+    "decisionNote": "Reason for refusal",
+    "seeInBans": "See in Bans",
+    "seeInBansLabel": "See in Bans: {name}",
+    "reject": "Refuse",
+    "rejectLabel": "Refuse: {name}",
+    "approve": "Approve",
+    "approveLabel": "Approve: {name}",
+    "approved": "Request approved",
+    "approvedBody": "{name} is barred from the platform.",
+    "rejected": "Request refused",
+    "rejectedBody": "The lower ban on {name} stays as it was; whoever asked sees the reason.",
+    "answerFailed": "The decision could not be saved",
+    "errors": {
+      "generic": "The action could not be completed. Try again in a moment.",
+      "answered": "This request was decided a moment ago.",
+      "gone": "This request no longer exists.",
+      "lifted": "The lower ban has been lifted; the request cannot be approved, only refused.",
+      "target": "This person cannot be barred from the platform.",
+      "forbidden": "You do not have permission for this action."
+    }
+  },
   "Dashboard": {
     "title": "Home",
     "greeting": "Peace be upon you, {name}.",
@@ -3711,7 +3781,8 @@
     },
     "permanentBans": {
       "title": "Permanent ban requests",
-      "empty": "No permanent ban request is waiting."
+      "empty": "No permanent ban request is waiting.",
+      "pending": "{count, plural, one {# permanent ban request is waiting for a decision.} other {# permanent ban requests are waiting for a decision.}}"
     },
     "passive": {
       "title": "Passive scopes",
@@ -3731,6 +3802,8 @@
       "empty": "No open ban.",
       "courseBan": "Course ban: {name}",
       "koskBan": "Köşk ban: {name}",
+      "madrasahBan": "Medrese ban: {name}",
+      "platformBan": "Platform ban: all of Medaris",
       "placedBy": "placed by {name}",
       "reason": "Reason: {reason}",
       "goTo": "Go to Bans"
