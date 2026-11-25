@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.17.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.17.0...tedris-web-v2.17.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **tedrisat, tedris-web, nazar-web, ui, services, i18n, docs:** MDRS-299 release closes exam ([#452](https://github.com/amel-tech/medaris/issues/452)) ([01f6144](https://github.com/amel-tech/medaris/commit/01f614414226cf8fe0be36d12b35193c5f451ebc))
+
 ## [2.17.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.16.1...tedris-web-v2.17.0) (2026-11-24)
 
 
