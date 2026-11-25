@@ -74,7 +74,7 @@ needs:
       talebe's own screen of it; a written or oral one opens its course's Notlarım.
     evidence:
       - state: result_opened
-      - node: pastScore
+      - node: pastState
       - node: resultLink
       - node: gradesLink
       - test: apps/tedris/test/my-exams.spec.ts
@@ -106,18 +106,16 @@ needs:
       An online exam is also reached where exam celses are today: its course's curriculum and celse page, Programım and the calendar,
       and the home page on the day it opens.
     evidence:
-      - state: listed
       - source: apps/tedris/features/courses/components/session-page.tsx:380
     missing: "MDRS-299: the exam celse's page offers \"Sınava gir\" (#416); the curriculum, Programım, the calendar and the home page were not checked for it"
-    note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are.
+    note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are. It is about the state listed, which is built.
 
   - id: readable-by-keyboard-and-screen-reader
     need: >-
       Each group is a heading and each exam a link or a button named by its course and its title, and its state (open, coming, in
       progress, past, released) is said in words, not by colour alone.
     evidence:
-      - state: listed
       - node: openState
-      - node: comingState
       - node: pastState
     missing: "MDRS-299: built with headings and named links (each row's link names its course and title), but not walked with the keyboard or a screen reader"
+    note: It is about the state listed, which is built; a coming exam says its standing by its time line ("… tarihinde açılır").

@@ -1,0 +1,296 @@
+# tedris.exams.take on the local stack (graphs/README.md, "The stack and the bindings"): the online exam's own page,
+# /courses/<id>/lessons/<id>/sinav, as the spare talebe applicantB signed in through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/tedris/exams/take --bind graphs/tedris/exams/take/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>
+#
+# Data. Each scenario makes its own and takes it away; no seeded course or account is touched. applicantB holds a seat in "Deneme
+# dersi xtTakeC" (helpers/course.mjs, one week of one celse) and the exam xtTake is made through the API as its hoca
+# (helpers/exams.mjs: 20 minutes, three SINGLE questions "Soru n" whose right option is "Doğru n", the course's own zeroth question
+# "Bu hadisi daha önce duydun mu?" with "Evet", "Hayır", "Emin değilim"):
+#   open           (the main story) published now, ten minutes' late window raised to two hours: the briefing, the zeroth question,
+#                  the start, a choice, Sonraki, Sınavı bitir, Bitir, "Sınav bitti"
+#   instructions   the same with the team's own words ("Hazırlayanın notu")
+#   notOpen        published to open in two hours: "Sınav henüz açılmadı"
+#   closed         published now and closed early by the hoca with no attempt: "Başlama süresi geçti"
+#   taken          published now and taken through the API: the page opens on "Sınav bitti"
+#   runningMid     five questions, started through the API with another holder and put on the third of the talebe's order (SQL):
+#                  the page takes the attempt up ("Sınav kaldığın yerden devam ediyor.") inside the order
+#   runningLast    the same, left on the last question, none skipped: Sonraki is off, and Soruyu atla stays on it
+#   runningSkipped the same, left on the last question with the third of the order skipped again (SQL): Sonraki and Soruyu atla
+#                  bring the skipped one back
+#   notExam        no exam: the course's own LIVE celse, whose briefing answers 404: "Böyle bir sınav yok"
+#   readFailed     published now, and tedrisat's per-person budget for the briefing spent (helpers/throttle.mjs): 429, "Sınav okunamadı"
+# FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE were bound on 24 Nov by moving the server's clock with SQL (used_seconds) and by a
+# resume through the API with another holder id, then waiting for the page's next clock call. They never came: the page's 10-second
+# clock call never runs (rule EXM-TAKE-15, an app defect), so they are not bound, and the replay lists them as not reached.
+# The teardowns run exams.mjs remove before course.mjs remove (the order exams.mjs asks for) and give the budget back.
+#
+# Not reachable on the stack, and why:
+#   - mode: multiple (check boxes): helpers/exams.mjs makes SINGLE questions only.
+#   - version: stale ("Medaris güncellendi", RELOAD): it needs a new deploy of tedris-web while the page is open.
+#   - FIVE_MINUTES_LEFT, TIME_UP, MOVED_ELSEWHERE (and timeUp, elsewhere, OPEN_HERE): above, rule EXM-TAKE-15. A one-minute exam
+#     would reach the countdown's own end, but no walk can be timed to stop in `question` before it.
+#   - length: two (an exam of two questions): every scenario's exam has five.
+#   - CONNECTION_LOST and RECONNECTED: no action of a walk takes the browser off line or back. The FAIL.offline of the zeroth
+#     answer, the save and the finish is made by aborting the step's call (states.*.fail), and the start's FAIL.other likewise; the
+#     page then stays on its alert until a reload (rule EXM-TAKE-1). The resume's is not: on a page just opened the code keeps the
+#     briefing drawn, where the flow says the question.
+#   - SWITCHED_AWAY (notingSwitch): no action of a walk hides the page or takes its window's focus for two seconds.
+#   - the refusals of the server actions (savingZeroth FAIL.refused, starting FAIL.taken and its refusals, saving FAIL.other and
+#     FAIL.elsewhere, finishing FAIL.other and FAIL.ended): a server action answers 200 with the refusal inside, so the replay cannot
+#     make one by the call's HTTP status, and no step of a walk can change the exam on the server between a press and its call.
+#   - rereading: it follows only from those refusals. timeUp's FAIL (the read right after the end failing): the read cannot be
+#     made to fail while the walk waits for the page's clock call.
+#   - FAIL.signedOut of every step (sent_to_sign_in): a server action answers 200 with "unauthenticated" inside, so the replay's
+#     ended session does not show as the call's status, and sendToSignIn goes through Keycloak's live session straight back to this
+#     page (seen on the walk of 24 Nov).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.exams.take
+
+data:
+  take: { json: ../.local/made/xtTake.json }
+  course: { json: ../.local/made/xtTakeC.json }
+
+samples:
+  course: Deneme dersi xtTakeC
+  title: Deneme sınavı xtTake
+  zerothQuestion: Bu hadisi daha önce duydun mu?
+  instructions: Sorular deneme konusundan.
+
+scenarios:
+  open:
+    given: { read: ok, window: open, attempt: none, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      # five questions, so that Sonraki from the first, and a pick of the third in the list, land inside the order
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --questions, '5', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  instructions:
+    given: { read: ok, window: open, attempt: none, instructions: some, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --publish, now, --late, '120', --instructions, 'Sorular deneme konusundan.']
+        expect: '"status":"OPEN"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  notOpen:
+    given: { read: ok, window: before, attempt: none, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --publish, '+120']
+        expect: '"status":"SCHEDULED"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  closed:
+    given: { read: ok, window: closed, attempt: none, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, close, xtTake]
+        expect: 'CLOSED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  taken:
+    given: { read: ok, window: open, attempt: finished, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtTake, applicantB]
+        expect: 'FINISHED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  runningMid:
+    given: { read: ok, window: open, attempt: inProgress, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --questions, '5', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtTake, applicantB, --open]
+        expect: 'IN_PROGRESS'
+      # the helper answers every question, so the attempt stands on the last one: it is put on the third of the talebe's order
+      # (no route moves it), so the page resumes inside the order
+      - run: [node, helpers/sql.mjs, "update exam_attempts set current_question_id = (question_order->>2)::uuid where exam_id = '{take.exam}' and finished_at is null"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  runningLast:
+    given: { read: ok, window: open, attempt: inProgress, instructions: none, mode: single, version: current, position: last, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --questions, '5', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtTake, applicantB, --open]
+        expect: 'IN_PROGRESS'
+      # the helper answers every question in the talebe's order, so the attempt stands on the last one
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  runningSkipped:
+    given: { read: ok, window: open, attempt: inProgress, instructions: none, mode: single, version: current, position: last, skipped: some, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --questions, '5', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtTake, applicantB, --open]
+        expect: 'IN_PROGRESS'
+      # the helper answers every question, so the attempt stands on the last one; the third of the talebe's order is made
+      # skipped again (no route unanswers a question), so the walk meets the skipped one coming back
+      - run: [node, helpers/sql.mjs, "update exam_answers set option_ids = '[]'::jsonb, skipped = true where attempt_id = (select id from exam_attempts where exam_id = '{take.exam}') and question_id = (select (question_order->>2)::uuid from exam_attempts where exam_id = '{take.exam}')"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  notExam:
+    given: { read: gone, window: open, attempt: none, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{course.course}/lessons/{course.lessons.0}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+  readFailed:
+    given: { read: failed, window: open, attempt: none, instructions: none, mode: single, version: current, position: inside, skipped: none, length: more }
+    as: applicantB
+    open: '{tedris}/courses/{take.course}/lessons/{take.lesson}/sinav'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtTakeC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtTakeC"'
+      - run: [node, helpers/exams.mjs, make, xtTake, --course, xtTakeC, --minutes, '20', --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/throttle.mjs, hold, applicantB, '/lessons/{take.lesson}/online-exam']
+        expect: 'held '
+    teardown:
+      - run: [node, helpers/throttle.mjs, clear, applicantB, '/lessons/{take.lesson}/online-exam']
+        expect: 'clear '
+      - run: [node, helpers/exams.mjs, remove, xtTake]
+      - run: [node, helpers/course.mjs, remove, xtTakeC]
+        expect: 'course remove xtTakeC'
+
+events:
+  # the person goes to another page of tedris: Keşfet, from the address bar
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+  RELOAD: [{ reload: true }]
+
+states:
+  # Keşfet from the address bar, or the celse's page by "Celseye dön"
+  left: { url: '{tedris}/**' }
+  # a server action is a POST to the page's own address; the page's clock calls are too, every 10 s while the exam runs
+  # in the briefing no clock runs, so the zeroth answer's and the start's calls are the only POSTs
+  savingZeroth:
+    call: '{tedris}/courses/*/lessons/*/sinav'
+    fail:
+      FAIL.offline: abort
+  starting:
+    call: '{tedris}/courses/*/lessons/*/sinav'
+    fail:
+      FAIL.other: abort
+  saving:
+    call: '{tedris}/courses/*/lessons/*/sinav'
+    fail:
+      FAIL.offline: abort
+  finishing:
+    call: '{tedris}/courses/*/lessons/*/sinav'
+    fail:
+      FAIL.offline: abort
+  finished: { url: '{tedris}/courses/*/lessons/*/sinav', text: Sınav bitti }
+  already_finished: { url: '{tedris}/courses/*/lessons/*/sinav', text: Sınav bitti }
+
+effects:
+  # the attempt ends as the talebe's own, with the answers saved
+  finishExamAttempt:
+    - run: [node, helpers/sql.mjs, "select finished_by from exam_attempts where exam_id = '{take.exam}'"]
+      expect: '"finished_by":"TALEBE"'
+  answerZerothQuestion:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from zeroth_answers where exam_id = '{take.exam}'"]
+      expect: '"n":1'
+
+nodes:
+  # an Alert's title is a paragraph, not its accessible name: found by its role and its words
+  notFoundAlert: { role: status, hasText: Böyle bir sınav yok }
+  readFailedAlert: { role: alert, hasText: Sınav okunamadı }
+  notOpenAlert: { role: status, hasText: Sınav henüz açılmadı }
+  closedAlert: { role: status, hasText: Başlama süresi geçti }
+  offlineAlert: { role: status, hasText: Bağlantı koptu }
+  staleAlert: { role: status, hasText: Medaris güncellendi }
+  # the briefing's list and the question list have no name: each is found in its own part of the page
+  briefingFacts: { role: list, within: { css: '[aria-labelledby=exam-briefing]' } }
+  questionListItems: { role: list, within: { role: navigation, name: Sorular } }
+  # the question's text is the card's h1; the page's other headings are the phone bar's and the list's
+  questionText: { css: '#exam-question' }
+  # "Son 5 dakika" is a span inside the timer, after " · "
+  lastFive: { text: '/Son 5 dakika/' }
+  # "Sınavlarım" is also the menu's entry in the wide bar: the end screen's is the one in its card
+  toMine: { role: link, name: Sınavlarım, within: { css: '[data-testid=exam-ended]' } }
+  backToSessionEnded: { role: link, name: Celseye dön, within: { css: '[data-testid=exam-ended]' } }
+  # the dialog's close icon and a toast's close button are both "Kapat"
+  finishClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  # a check box of a MULTIPLE question, which no helper makes (above): any check box
+  checkOption: { role: checkbox }
+  # the busy button's visually hidden <output>, which speaks for it: the replay finds it in the page and counts it as hidden
+  startingStatus: { skip: "a visually hidden <output> (mds-visually-hidden): read by assistive technology, never visible" }
+  # the question's card is a region named by its h1; the bar is a region too
+  questionRegion: { css: 'section[aria-labelledby=exam-question]' }
+  # an error toast is aria-hidden until it has the focus (Base UI's ToastRoot, priority high; rule EXM-TAKE-14): found by its class and words
+  startFailedToast: { css: '.mds-toast--error', hasText: '/Sınav başlatılamadı|Bu sınav şu an açık değil|Sınava başlamak için|Bir şeyler ters gitti/' }
+  # the error toast's close button, hidden from assistive technology with it (EXM-TAKE-14)
+  toastClose: { css: '.mds-toast .mds-toast__close' }
+  # a choice is a radio not chosen yet: a resumed question already holds one, and pressing it again changes nothing
+  radioOption: { css: '[role=radio][aria-checked=false]' }
+  # a pick in the list is the question shown (aria-current=step), so the walk stays where it is (the graph leaves where a pick
+  # lands to chance, and a walk keeps the value it has)
+  questionListItem: { css: 'nav button[aria-current=step]' }

@@ -83,7 +83,7 @@ needs:
     need: Every count is said in numbers and words; a bar only repeats it, and a table has headers a screen reader reads.
     evidence:
       - state: listed
-      - node: optionBar
+      - node: optionCount
       - node: examsTable
       - test: apps/nizam/test/zeroth-answers.spec.tsx
         name: "says every count as it is, small ones included, with its percentage"

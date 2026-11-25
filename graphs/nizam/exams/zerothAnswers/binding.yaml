@@ -1,0 +1,94 @@
+# nizam.exams.zerothAnswers on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web's "Sıfırıncı soru
+# cevapları", platform management's page and a köşk nazımı's, signed in through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/nizam/exams/zerothAnswers --bind graphs/nizam/exams/zerothAnswers/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>
+#
+# Who reads it (checked on the stack with GET /nizam/exam-zeroth-answers): the başnazım `systemAdmin` reads every köşk (bypass); the
+# köşk nazımı `koskNazim` holds exam.zeroth_read by role default in the two seeded köşks, so reads seed.kosk2 on its köşk page;
+# `medarisNazim` holds it in no scope (no grant and no group), so tedrisat answers 403 and the page is the shell's refusal. No grant
+# is changed. Every read writes an audit row (exam.zeroth_read), which no route removes.
+#
+# Data. Each scenario that needs answers makes its own: "Deneme dersi xtZerC" in seed.kosk2 (helpers/course.mjs, one week of one
+# celse) with the spare talebe applicantB, and one online exam xtZer published now and taken (helpers/exams.mjs: the course's own
+# zeroth question "Bu hadisi daha önce duydun mu?", answered "Evet"), so the span holds at least one answer. Other walks' exams in
+# the span are counted too; no count is matched. The teardowns run exams.mjs remove before course.mjs remove.
+#   listed   (the main story) systemAdmin on /sifirinci-soru-cevaplari: the list, Uygula, then "Sınavlar" on the first question.
+#   kosk     koskNazim on /kosks/<seed.kosk2>/sifirinci-soru-cevaplari: the köşk field holds the köşk and is disabled.
+#   empty    systemAdmin with a span in 2020 in the address, when no exam was asked.
+#   refused  medarisNazim: "Bu bölüm için izniniz yok" and "Ana sayfaya dön".
+#
+# Not reachable on the stack, and why:
+#   - FAIL.gone (a question no exam of the span asks any more, between the list's read and the press of "Sınavlar"): no step of a
+#     walk can take a question away between the two; an address with an unknown question key draws the line, but as the first
+#     read, which the flow does not draw.
+#   - questionReading FAIL.forbidden: a person who may read the list may read its questions; tedrisat refuses both or neither.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.exams.zerothAnswers
+
+scenarios:
+  listed:
+    given: { access: allowed, answers: some, page: platform }
+    as: systemAdmin
+    open: '{nizam}/sifirinci-soru-cevaplari'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtZerC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtZerC"'
+      - run: [node, helpers/exams.mjs, make, xtZer, --course, xtZerC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtZer, applicantB]
+        expect: 'FINISHED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtZer]
+      - run: [node, helpers/course.mjs, remove, xtZerC]
+        expect: 'course remove xtZerC'
+
+  kosk:
+    given: { access: allowed, answers: some, page: kosk }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/sifirinci-soru-cevaplari'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtZerC, --weeks, '1', --lessons, '1', --talebe, applicantB]
+        expect: '"tag":"xtZerC"'
+      - run: [node, helpers/exams.mjs, make, xtZer, --course, xtZerC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtZer, applicantB]
+        expect: 'FINISHED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtZer]
+      - run: [node, helpers/course.mjs, remove, xtZerC]
+        expect: 'course remove xtZerC'
+
+  empty:
+    given: { access: allowed, answers: none, page: platform }
+    as: systemAdmin
+    open: '{nizam}/sifirinci-soru-cevaplari?from=2020-01-01&to=2020-01-31'
+
+  refused:
+    given: { access: refused, answers: none, page: platform }
+    as: medarisNazim
+    open: '{nizam}/sifirinci-soru-cevaplari'
+
+events:
+  # the person goes to another page of nizam, from the address bar
+  NAVIGATE: [{ goto: '{nizam}/denetim-kaydi' }]
+
+states:
+  left: { url: '{nizam}/denetim-kaydi' }
+  home_opened: { url: '{nizam}/**' }
+
+nodes:
+  # each question is a <section aria-labelledby> in the list, its words its h3
+  questionItem: { css: '[data-testid=zeroth-answers] ul > li > section' }
+  questionText: { css: '[data-testid=zeroth-answers] ul > li > section h3' }
+  # one line holds both: "12 sınavda soruldu · 238 talebe cevapladı"
+  questionExams: { text: '/\d+ sınavda soruldu/' }
+  questionAnswered: { text: '/\d+ talebe cevapladı/', within: { css: '[data-testid=zeroth-answers] ul > li > section' } }
+  detailTitle: { css: '#zeroth-detail-title' }
+  detailTotal: { text: '/^\d+ talebe cevapladı$/', within: { css: '[aria-labelledby=zeroth-detail-title]' } }
+  # the list of questions holds a list of options in each: it is the section's own
+  questionsList: { css: '[aria-labelledby=zeroth-questions-title] > ul' }
+  # an option's line has the count and the percentage, or the count alone when nobody answered: one pattern finds either
+  optionCount: { role: listitem, hasText: '/^.+: \d+ talebe( \(%\d+\))?$/', within: { css: '[aria-labelledby=zeroth-questions-title]' } }
+  detailOption: { role: listitem, hasText: '/^.+: \d+ talebe( \(%\d+\))?$/', within: { css: '[aria-labelledby=zeroth-detail-title] > ul' } }

@@ -11,17 +11,17 @@ lost, an error nobody announces, a refusal that reaches no one), the graph says 
 
 ## What is here
 
-Counted by script on 16 November 2026, and the flows and the needs again on 21 November 2026 after the online exams were added (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
+Counted by script on 16 November 2026, and the flows, the needs and the bindings again on 24 November 2026, after the built online exams were captured (flows are the `flow.yaml` files; actions, entities and invariants are the keys and items of `actions:`, `entities:` and `invariants:` in `graphs/domain/*.yaml`; needs are the items of every `needs.yaml`; scenarios are the keys of `scenarios:` in every binding file, read with the `yaml` package; findings are the distinct ids of `ui.yaml` `rules`, merged as `FINDINGS.md` says):
 
 | What | How many |
 | -- | -- |
-| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (5 planned ones, each drawn with its screens, and the 8 of online exams, written before their code and brought to it since) |
-| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
+| Flows (`flow.yaml`) | 182: 176 `captured`, 6 `proposed` (the 5 planned ones, each drawn with its screens, and `nazar.exams.mine`, which is not built); `tedris.course.updateProgress` was retired with MDRS-248 (#402) |
+| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 182 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
 | The domain `medaris.api` | one domain over 27 files: 388 actions (363 in the code, 25 sketched for planned work: 23 for the planned flows and 2 of online exams), 79 entities, 327 invariants |
-| `needs.yaml` (the product list of a flow) | 183 files, 2752 needs: 1462 met, 1290 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 672 of the met needs are walked by no scenario and no browser e2e test |
-| Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
-| Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
+| `needs.yaml` (the product list of a flow) | 182 files, 2764 needs: 1462 met, 1302 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 672 of the met needs were walked by no scenario and no browser e2e test when counted on 21 November 2026 (not counted again) |
+| Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before online exams; their 41 `EXM-*` ids, 38 of them findings, are counted apart in FINDINGS.md) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
+| Bindings (what a replay needs) | 176 flows carry a `binding.yaml`; with their variants, the four navigation bindings and the shared ones, 571 files named `*binding*.yaml` hold 1073 scenarios |
 
 ## Layout
 
@@ -97,21 +97,25 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 
 ## Status
 
-- Every flow is `captured` except 13 that are `proposed`: the 5 planned ones (`landing.site.roadmap`, `nazar.sessions.inPersonSeats`,
+- Every flow is `captured` except 6 that are `proposed`: the 5 planned ones (`landing.site.roadmap`, `nazar.sessions.inPersonSeats`,
   `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`), which draw a feature that
   has no code yet (each `needs.yaml` says which Linear issue builds it, and the API is sketched in `domain/planned-*.yaml`, every entry
-  marked as planned and carrying no `source`), and the 8 of online exams.
-- **Online exams** (MDRS-299) were written needs first on 21 November 2026 and built from 22 November (PRs #408 to #431):
-  `tedris.exams.mine`, `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.edit`, `nazar.exams.publish` and
-  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, and `nazar.exams.mine`, the team's
-  Sınavlarım across courses, which is not built (each course has its own Sınavlar page). The flows were brought to the code on 22
-  November and stay `proposed`: written before the code, their states name no `source`. Their API is `domain/online-exams.yaml`, read
+  marked as planned and carrying no `source`), and `nazar.exams.mine`.
+- **Online exams** (MDRS-299) were written needs first on 21 November 2026 and built from 22 November (#408 onwards). On 24 November
+  the seven that are built were captured from the code and bound: `tedris.exams.mine`, `tedris.exams.take` and `tedris.exams.result`
+  for the talebe, `nazar.exams.edit`, `nazar.exams.publish` and `nazar.exams.results` for the course team, and
+  `nizam.exams.zerothAnswers` for Medaris management. Every state names its `source`, the screens use the apps' own i18n keys, and the
+  findings are `EXM-*` in each `ui.yaml` (FINDINGS.md, "Çevrimiçi sınavlar"). `nazar.exams.mine`, the team's Sınavlarım across
+  courses, is not built (each course has its own Sınavlar page) and stays `proposed`. Their API is `domain/online-exams.yaml`, read
   from the code, with every entity and action naming its line; two actions not built yet say `planned` (`listMyTeachingExams`,
-  `copyOnlineExam`). Each `flow.yaml` quotes the owner's words at its top and says, apart, what was chosen in the code without him;
-  his two open questions are answered (a switch is only counted; the late window is 10 minutes by default and set in minutes). Of the
-  online exams' 112 needs, 87 are met with their code or tests and 25 are missing (what is not built, and the walks with a keyboard
-  and a screen reader). The catalogs keep the plan's keys (`planned.Exams.*`); only the words of what changed are copied from the
-  apps. No binding yet.
+  `copyOnlineExam`). Each `flow.yaml` quotes the owner's words at its top. Of the online exams' 112 needs, 80 are met and 32 are
+  missing: what is not built, what the pages do not draw (nine needs met before were found missing when the screens were read from
+  the code), and the walks with a keyboard and a screen reader. Their bindings make the data they need with
+  `bindings/helpers/exams.mjs` and remove it again. On the local stack, `tedris.exams.mine`, `tedris.exams.take` and
+  `tedris.exams.result` were walked on their main story and with `--cover transitions`, and `nizam.exams.zerothAnswers` on its main
+  story. In `tedris.exams.take` the events FIVE_MINUTES_LEFT, TIME_UP and MOVED_ELSEWHERE are unbound, because the page's clock call
+  never runs (EXM-TAKE-15); the binding as committed was checked with `--check`, not walked again. The three nazar flows were
+  checked with `--check` only and have not been walked.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,
   `tedris.account.rolesOverview`, `nazar.pano.decideApplications`, `nizam.kosks.open`, `landing.site.contact`) and a number of the
@@ -119,7 +123,7 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
   (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) were walked in full. A `scenario` in a
   `needs.yaml` names a scenario that exists in a binding of the flow (`check` resolves it); it does not say that the scenario has
   passed. The output of a replay is not kept in this tree.
-- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.14.0 the whole tree (187 graphs: the 183 flows and the 4 navigation graphs) checks with 7 errors and 12 warnings in a checkout where `pnpm install` has run (run on 22 November 2026). The 7 errors are in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. 7 warnings are the navigation graphs' own notes, and 5 are `kit-font-unembedded` (new in 0.14.0): the kit carries no fonts, so the five families its CSS draws in first are drawn only where the machine has them. 0.14.0's `event-unhandled` (a control shown enabled in a state that does not handle its event) found 1517 errors in 113 graphs on main before they were fixed (run on 22 November 2026); each was fixed in its graph, read from the code, and none is in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
+- `check --strict` is the only gate in CI (below). With `@delurio/cli` 0.14.0 the whole tree (186 graphs: the 182 flows and the 4 navigation graphs) checks with 7 errors and 12 warnings in a checkout where `pnpm install` has run (run on 22 November 2026, with 187 graphs). Run again on 24 November 2026 with the baseline, it gives 0 errors and 19 warnings: the 7 errors of the baseline, the 7 notes and the 5 `kit-font-unembedded`. The 7 errors are in the nazar and nizam navigation graphs (menus that offer pages the person is refused, links that end in a refusal, pages nothing links to, a goal with no click path); each is a finding of the code, listed with its finding id in FINDINGS.md under "Taban çizgisine giren gezinti hataları", and the errors are in the baseline. 7 warnings are the navigation graphs' own notes, and 5 are `kit-font-unembedded` (new in 0.14.0): the kit carries no fonts, so the five families its CSS draws in first are drawn only where the machine has them. 0.14.0's `event-unhandled` (a control shown enabled in a state that does not handle its event) found 1517 errors in 113 graphs on main before they were fixed (run on 22 November 2026); each was fixed in its graph, read from the code, and none is in the baseline. CI installs nothing of the repository, so there two more warnings are `citation-unresolved`: `nazar.decks.import` and `nazar.shell.errorStates` cite files of `next` under `apps/nazar/node_modules`. The 31 controls that have no WAI-ARIA role of their own (an `<input>` of type `date`, `time`, `datetime-local` or `file`, and the `<summary>` of a `<details>`) say which they are with `native` in `ui.yaml` instead of a `role`, which would claim one the browser does not expose; with 0.13.0 each was a `role-missing` warning. No flow has an error. That a binding loads was checked with `--emit-spec`, which
   walks nothing; nothing else in the tree has been verified against the running apps.
 
 ## Commands

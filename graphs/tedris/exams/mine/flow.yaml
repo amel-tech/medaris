@@ -1,7 +1,6 @@
 # A talebe's "Sınavlarım" in tedris-web: the exams of their courses, open now, coming and past, and the way into each.
-# BUILT (MDRS-299, #418): apps/tedris/app/my-exams/page.tsx with features/online-exams/components/my-exams-page.tsx, in the desktop bar
-# and the phone menu; its read is listMyExams (domain/online-exams.yaml). Written graph-first on 21 November 2026; `status: proposed`,
-# so no state names code.
+# Written from the code (captured): apps/tedris/app/my-exams/page.tsx with features/online-exams/components/my-exams-page.tsx and
+# my-exams-model.ts (MDRS-299, #418), in the desktop bar and the phone menu; its read is listMyExams (domain/online-exams.yaml).
 #
 # The owner's words this flow carries: "hem tedris hem nazar'da 'sınavlarım' menüsü olacak, geçmiş sınavlar hakkında kendilerine özel
 # ekranları da görebilecekler" (21 Nov); and "tedris'te sınavlar menüsü olsun, mesela yaklaşan ve devam eden sınav varsa tıklayınca direk
@@ -10,11 +9,11 @@
 # holds every exam of the talebe's courses, whatever its format; a completed course's past exams stay, a course left takes its exams.
 #
 # Choices made in the code that are not his: the menu entry keeps the name "Sınavlarım" (his 21 Nov word) rather than "Sınavlar"; a
-# written or oral exam leads to Notlarım after its celse, and its score is shown out of its own maximum.
+# written or oral exam is past from its celse's start and leads to Notlarım, and its score is shown out of its own maximum.
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.mine
-status: proposed
+status: captured
 domain: medaris.api
 ui: tedris.exams.mine
 title: Read my exams (Sınavlarım)
@@ -40,68 +39,113 @@ context:
     say:
       none: no course of the talebe has an exam that is scheduled, open or past
       some: at least one exam is listed
+  openGroup:
+    values: [none, some]
+    initial: any
+    say:
+      none: no exam is open or in progress, so "Şimdi açık" is not drawn
+      some: an online exam is open to start or in progress
+  comingGroup:
+    values: [none, some]
+    initial: any
+    say:
+      none: no exam is to come, so "Yaklaşan" is not drawn
+      some: an exam is to come
+  pastGroup:
+    values: [none, some]
+    initial: any
+    say:
+      none: no exam is past, so "Geçmiş" is not drawn
+      some: an exam is past
+  writtenOrOral:
+    values: [none, some]
+    initial: any
+    say:
+      none: every exam listed is an online one
+      some: a written or oral exam is listed, with its place and, once its celse has started, a link to Notlarım
+  pastWrittenOrOral:
+    values: [none, some]
+    initial: any
+    say:
+      none: no exam in "Geçmiş" is written or oral, so no row links to Notlarım
+      some: a written or oral exam is in "Geçmiş" (its celse has started), and its row links to the course's Notlarım
 failures:
   opening: { from: listMyExams, unreadable: [network, timeout, 5xx] }
 # A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
 
 main:
-  given: { read: ok, exams: some }
+  given: { read: ok, exams: some, openGroup: some, comingGroup: some, pastGroup: some, writtenOrOral: none, pastWrittenOrOral: none }
   events: [DONE, ENTER]
 initial: opening
 states:
   opening:
     title: Sınavlarım is opened
+    source: apps/tedris/features/online-exams/my-reads.ts:20
     description: >-
-      The action listMyExams, GET /me/exams, read once: the open and coming exams first, then the past ones (when=all, the default). Only
-      the exams of courses where the talebe holds an ENROLLED or COMPLETED seat come back, of every format; a draft online exam is never
-      among them, and a course the talebe left takes its exams with it.
+      The action listMyExams, GET /me/exams, read once by the server page; it takes no query (my-exams.controller.ts:46). The open
+      and coming exams come first, soonest first, then the past ones, latest first. Only the exams of courses where the talebe holds an
+      ENROLLED or COMPLETED seat come back, of every format; a draft online exam, a cancelled or hidden celse and a course the talebe
+      left are not among them. A token tedrisat refuses sends the talebe to sign in (reauthIfRefused); any other failure is a read
+      that failed, not an empty list.
     invoke: { action: listMyExams }
     on:
       DONE: { guard: "read == 'ok'", target: loaded, say: "the exams are read" }
       FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
   loaded:
     title: The page is drawn as the read says
+    source: apps/tedris/features/online-exams/components/my-exams-page.tsx:72
     description: A step with no screen of its own.
     always:
       - { guard: "exams == 'none'", target: empty, say: "no exam" }
       - { target: listed, say: "exams are listed" }
   listed:
     title: The talebe's exams
+    source: apps/tedris/features/online-exams/components/my-exams-page.tsx:78
     description: >-
-      Three groups, each with a heading: "Şimdi açık", "Yaklaşan", "Geçmiş". Each exam names its course, its title and its format;
-      an online one its length and its question count. An online exam that is coming, open or in progress links straight to its exam
-      page ("Sınav sayfası", "Sınava gir", "Devam et"); a past one says its score or that it was taken, and "Sonucu gör".
+      Under the heading, the intro and the line that names the time zone, up to three groups, each a section under its h2: "Şimdi açık"
+      (an online exam open to start, or in progress), "Yaklaşan" and "Geçmiş" (taken, missed or released); a group with no exam is not
+      drawn (my-exams-model.ts:26). Each exam names its course, its title and its format ("Yazılı", "Şifahi", "Çoktan seçmeli"); an
+      online one its length and question count, a written or oral one its place. A coming exam says when it opens, an open one "En geç
+      … başlanabilir", any other when it was held, in the talebe's time zone. A line says where it stands: "Devam ediyor" in
+      progress, "Sonuç henüz açıklanmadı" taken, "Girmedin" missed, and the score out of the exam's maximum once released. Each row
+      has at most one link, named with its course and title: an online exam leads to its own page, "Sınav sayfası" while coming,
+      "Sınava gir" while open, "Devam et" in progress, and "Sonucu gör" once taken; a missed one has none. A written or oral exam has
+      none while coming, and "Notlarım" once its celse has started, whether the talebe attended or not.
     by: human
     goal: true
     on:
-      ENTER: { target: exam_entered, say: "they open a coming, open or running online exam: its exam page, not its course or celse" }
-      READ_RESULT: { target: result_opened, say: "they open a past multiple-choice exam" }
-      READ_GRADES: { target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam" }
+      ENTER: { target: exam_entered, say: "they open a coming, open or running online exam: its exam page, not its course or celse", source: "apps/tedris/features/online-exams/my-exams-model.ts:53" }
+      READ_RESULT: { target: result_opened, say: "they open a past online exam they took (Sonucu gör)", source: "apps/tedris/features/online-exams/my-exams-model.ts:59" }
+      READ_GRADES: { guard: "pastGroup == 'some' and pastWrittenOrOral == 'some'", target: grades_opened, say: "they open the course's Notlarım from a past written or oral exam", source: "apps/tedris/features/online-exams/my-exams-model.ts:63" }
       NAVIGATE: left
   loadFailed:
     title: Sınavlarım could not be read
-    description: The page keeps its heading and says the exams could not be read, with "Yeniden dene"; it does not draw an empty list.
+    source: apps/tedris/features/online-exams/components/my-exams-page.tsx:64
+    description: >-
+      The heading, the intro and the zone line stay; an alert "Sınavlar okunamadı" says the exams could not be read, with "Yeniden
+      dene", a link to the page's own address that reads it again. It does not draw an empty list.
     by: human
     on:
-      RETRY: { target: opening, say: "they press Yeniden dene" }
+      RETRY: { target: opening, say: "they press Yeniden dene: the page is loaded again", source: "apps/tedris/features/online-exams/components/my-exams-page.tsx:67" }
       NAVIGATE: left
   empty:
     title: No exams yet
-    description: The page says "Henüz sınavın yok." and that exams of their courses will be listed here.
+    source: apps/tedris/features/online-exams/components/my-exams-page.tsx:73
+    description: The page says "Henüz sınavın yok." and "Derslerinin sınavları planlandıkça burada listelenir."
     by: human
     on:
       NAVIGATE: left
   exam_entered:
     title: The exam's page is opened
-    description: The briefing, or the attempt in progress, of tedris.exams.take.
+    description: The briefing, or the attempt in progress, of tedris.exams.take (/courses/<id>/lessons/<id>/sinav).
     type: final
   result_opened:
     title: The talebe's screen of a past exam is opened
-    description: tedris.exams.result.
+    description: tedris.exams.result (/my-exams/<lessonId>).
     type: final
   grades_opened:
     title: The course's Notlarım is opened
-    description: A written or oral exam has no screen of its own; its score stands in the course's Notlarım (tedris.course.grades).
+    description: A written or oral exam has no screen of its own; its score stands in the course's Notlarım (tedris.course.grades, /courses/<id>?tab=notlarim).
     type: final
   left:
     title: The talebe left the page

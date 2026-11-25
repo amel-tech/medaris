@@ -1,0 +1,204 @@
+# nazar.exams.results on the local stack: the results page of an online exam of a course the walk makes, as its hoca (muderris), at
+# http://localhost:4002, and a talebe's answers page under it.
+#   node apps/engine/src/cli.ts replay graphs/nazar/exams/results --bind graphs/nazar/exams/results/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Each scenario makes its own course with helpers/course.mjs (published, in the seed's second köşk, the müderris as its hoca, one week
+# of one celse; applicantC, applicantE and applicantG take a seat, which these courses give at once) and its own exam with
+# helpers/exams.mjs (three complete questions, the course's own zeroth question "Bu hadisi daha önce duydun mu?"), which the talebe sit
+# through the API (`take`: the zeroth answer "Evet", then the right option of the first --right questions). The teardown removes the
+# exam's record, notifications and mails, then the course with the exam. `make` removes a tag a crashed walk left, so a setup can run
+# twice. Tags begin with xn; none is the start of another.
+#   over      the main story. "Deneme sınavı xnRqOver": applicantC finished with 3 right, applicantE with 1, applicantG never started,
+#             and the team closed it early, so it is over for everyone and nothing is released. The walk releases the results (after
+#             its question), opens a talebe's answers and comes back, and closes a toast.
+#   live      "Deneme sınavı xnRqLive", open: applicantC is still in it, applicantE finished. "Sınavı erken bitir" with its question,
+#             and the 30-second read (REFRESH waits for the page's own read).
+#   soon      "Deneme sınavı xnRqSoon", scheduled two hours ahead: nobody can have started, and the page still says it refreshes
+#             itself and offers the release (EXM-RSLT-1).
+#   reader    the seeded ders nazırı (dersNazir), given exam.prepare and nothing else on "Deneme dersi xnRsRead": the results are hers
+#             to read and not to release (the hint stands in place of the button).
+#   shutOut   dersNazir with no code at all on "Deneme dersi xnRsShut": the page refuses her.
+# Not bound, and why:
+#   - FAIL.gone of the two reads (notFound): only an address typed by hand reaches a talebe with no attempt, or an exam that is not
+#     published; no control of the page leads there.
+#   - FAIL.forbidden of readingAnswers on its own: a person refused the results page never sees the link to a talebe's answers.
+#   - FAIL.other of refreshing, and the release's and the close's refusals (FAIL.forbidden, FAIL.notOpen): the page offers neither
+#     button to one the API would refuse, and the walk cannot make tedrisat refuse in between. FAIL.other of releasing and closingEarly
+#     are walked by aborting the page's server action in the browser (`fail: abort`): the page puts the view back and the toast says
+#     why ("Bir şeyler ters gitti…", results-view.tsx:146, 169).
+#   - The switch times of a row (rowSwitchTimes): exams.mjs takes the exam through the API, which records no tab switch.
+# What a walk leaves that its teardown cannot undo: the audit rows of the reads and of the release.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.exams.results
+
+# a wide window: the tables are drawn as tables, not stacked as on a phone
+browser: { width: 1440, height: 900 }
+
+# The courses and the exams of the walks, written by the helpers in each scenario's `setup` and read from their files.
+data:
+  xnRsOver: { json: ../.local/made/xnRsOver.json }
+  xnRqOver: { json: ../.local/made/xnRqOver.json }
+  xnRsLive: { json: ../.local/made/xnRsLive.json }
+  xnRqLive: { json: ../.local/made/xnRqLive.json }
+  xnRsSoon: { json: ../.local/made/xnRsSoon.json }
+  xnRqSoon: { json: ../.local/made/xnRqSoon.json }
+  xnRsRead: { json: ../.local/made/xnRsRead.json }
+  xnRqRead: { json: ../.local/made/xnRqRead.json }
+  xnRsShut: { json: ../.local/made/xnRsShut.json }
+  xnRqShut: { json: ../.local/made/xnRqShut.json }
+
+# The words the walk's own data puts on the page; the rest of each placeholder matches any text.
+samples:
+  seats: '3'
+
+scenarios:
+  over:
+    given: { may: yes, attempts: some, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: yes }
+    as: muderris
+    open: '{nazar}/ders/{xnRsOver.course}/sinavlar/{xnRqOver.exam}/sonuclar'
+    vars: { quiz: xnRqOver, lesson: '{xnRqOver.lesson}' }
+    samples: { title: Deneme sınavı xnRqOver, started: '2', inProgress: '0', finished: '2', missed: '1' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnRsOver, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantE, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/exams.mjs, make, xnRqOver, --course, xnRsOver, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xnRqOver, applicantC]
+        expect: FINISHED right=3/3
+      - run: [node, helpers/exams.mjs, take, xnRqOver, applicantE, --right, '1']
+        expect: FINISHED right=1/3
+      - run: [node, helpers/exams.mjs, close, xnRqOver]
+        expect: CLOSED
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnRqOver]
+      - run: [node, helpers/course.mjs, remove, xnRsOver]
+        expect: course remove xnRsOver
+  live:
+    given: { may: yes, attempts: some, scored: some, exam: open, mayClose: yes, results: closed, mayRelease: yes }
+    as: muderris
+    open: '{nazar}/ders/{xnRsLive.course}/sinavlar/{xnRqLive.exam}/sonuclar'
+    vars: { quiz: xnRqLive, lesson: '{xnRqLive.lesson}' }
+    samples: { title: Deneme sınavı xnRqLive, started: '2', inProgress: '1', finished: '1', missed: '1' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnRsLive, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantE, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/exams.mjs, make, xnRqLive, --course, xnRsLive, --minutes, '120', --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xnRqLive, applicantC, --open]
+        expect: IN_PROGRESS
+      - run: [node, helpers/exams.mjs, take, xnRqLive, applicantE, --right, '2']
+        expect: FINISHED right=2/3
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnRqLive]
+      - run: [node, helpers/course.mjs, remove, xnRsLive]
+        expect: course remove xnRsLive
+  soon:
+    given: { may: yes, attempts: none, scored: none, exam: open, mayClose: no, results: closed, mayRelease: yes }
+    as: muderris
+    open: '{nazar}/ders/{xnRsSoon.course}/sinavlar/{xnRqSoon.exam}/sonuclar'
+    vars: { quiz: xnRqSoon, lesson: '{xnRqSoon.lesson}' }
+    samples: { title: Deneme sınavı xnRqSoon }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnRsSoon, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantE, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/exams.mjs, make, xnRqSoon, --course, xnRsSoon, --publish, '+120']
+        expect: '"status":"SCHEDULED"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnRqSoon]
+      - run: [node, helpers/course.mjs, remove, xnRsSoon]
+        expect: course remove xnRsSoon
+  reader:
+    given: { may: yes, attempts: some, scored: some, exam: closed, mayClose: no, results: closed, mayRelease: no }
+    as: dersNazir
+    open: '{nazar}/ders/{xnRsRead.course}/sinavlar/{xnRqRead.exam}/sonuclar'
+    vars: { quiz: xnRqRead, lesson: '{xnRqRead.lesson}' }
+    samples: { title: Deneme sınavı xnRqRead, started: '1', inProgress: '0', finished: '1', missed: '2' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnRsRead, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantE, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/exams.mjs, make, xnRqRead, --course, xnRsRead, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xnRqRead, applicantE]
+        expect: FINISHED right=3/3
+      - run: [node, helpers/exams.mjs, close, xnRqRead]
+        expect: CLOSED
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnRsRead.course}', --nazir, dersNazir, --codes, exam.prepare]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnRsRead.course}', --dismiss]
+      - run: [node, helpers/exams.mjs, remove, xnRqRead]
+      - run: [node, helpers/course.mjs, remove, xnRsRead]
+        expect: course remove xnRsRead
+  shutOut:
+    given: { may: no, attempts: none, scored: none, exam: open, mayClose: yes, results: closed, mayRelease: no }
+    as: dersNazir
+    open: '{nazar}/ders/{xnRsShut.course}/sinavlar/{xnRqShut.exam}/sonuclar'
+    vars: { quiz: xnRqShut }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnRsShut, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnRsShut"'
+      - run: [node, helpers/exams.mjs, make, xnRqShut, --course, xnRsShut, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnRsShut.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnRsShut.course}', --dismiss]
+      - run: [node, helpers/exams.mjs, remove, xnRqShut]
+      - run: [node, helpers/course.mjs, remove, xnRsShut]
+        expect: course remove xnRsShut
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  # the page reads the results again every 30 seconds by itself (RESULTS_REFRESH_MS): the walk waits for that read, a server
+  # action posted to the page's own address (browser.timeout is 45 s)
+  REFRESH: [{ waitResponse: '{nazar}/ders/*/sinavlar/*/sonuclar' }]
+
+# The writes are server actions: a POST to the page's own address (the page's reads are GETs with a query, so the anchored glob
+# matches only the POST). A server action answers 200 whatever tedrisat said, so a walk through FAIL.<class> sees "HTTP 200" for the
+# status it compares, an engine limit, not the app's. `abort` makes the browser's fetch fail: the page catches it and puts the view back.
+states:
+  overview: { url: '{nazar}/ders/*/sinavlar/*/sonuclar' }
+  talebeDetail: { url: '{nazar}/ders/*/sinavlar/*/sonuclar/*' }
+  releasing:
+    call: '{nazar}/ders/*/sinavlar/*/sonuclar'
+    fail: { FAIL.other: abort }
+  closingEarly:
+    call: '{nazar}/ders/*/sinavlar/*/sonuclar'
+    fail: { FAIL.other: abort }
+  left: { url: '{nazar}/bildirimler' }
+
+# What a write leaves outside the screen: the release is the lesson exam's results_released_at; the close is the exam's status.
+effects:
+  releaseExamResults:
+    - run: [node, helpers/sql.mjs, "select (results_released_at is not null) as released from lesson_exams where lesson_id = '{lesson}'"]
+      expect: '"released":true'
+  closeOnlineExamEarly:
+    - run: [node, helpers/exams.mjs, state, '{quiz}']
+      expect: CLOSED
+
+# Where role and words cannot find a node: the texts that are the walk's data alone, and the buttons that share a name.
+nodes:
+  rowName: { role: rowheader, name: '/Başvuran$/' }
+  rowScore: { role: cell, name: '/^(\d+\.\d{2}|—)$/' }
+  rowRight: { role: cell, name: '/^(\d+|—)$/' }
+  rowWrong: { role: cell, name: '/^(\d+|—)$/' }
+  rowBlank: { role: cell, name: '/^(\d+|—)$/' }
+  rowZeroth: { role: cell, name: '/^(Evet|Hayır|Emin değilim|Cevaplamadı)$/' }
+  rowSwitchTimes: { skip: no walk records a tab switch (exams.mjs takes the exam through the API) }
+  topicName: { role: rowheader, name: 1. Deneme konusu }
+  topicPercent: { role: cell, name: '/^(%\d+|—)$/', within: { role: table, name: Konular } }
+  topicQuestions: { role: cell, name: '3', within: { role: table, name: Konular } }
+  questionText: { text: '/^Soru \d$/' }
+  zerothQuestion: { text: Bu hadisi daha önce duydun mu? }
+  attemptZeroth: { text: Evet }
+  attemptText: { text: '/^Soru \d$/' }
+  attemptOption: { text: '/^(Doğru|Yanlış) \d(-[ab])?$/' }
+  # a dialog's own "Kapat" and "Vazgeç", apart from a toast's "Kapat"
+  closeX: { role: button, name: Kapat, within: { role: alertdialog, name: Sınavı erken bitir } }
+  closeCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sınavı erken bitir } }
+  releaseX: { role: button, name: Kapat, within: { role: alertdialog, name: Sonuçlar talebelere açılsın mı? } }
+  releaseCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sonuçlar talebelere açılsın mı? } }
+  toastClose: { role: button, name: Kapat, within: { role: region, name: Bildirimler } }
