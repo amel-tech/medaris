@@ -1,6 +1,7 @@
 # What must exist for the course team's results of an online exam: written needs-first on 21 November 2026 from the owner's rules, then
 # met by MDRS-299 (#417, #423); each met need names its code or test. Still missing (24 Nov 2026, read from the code): sorting the talebe,
 # a topic's own view, the attempt's start and finish times, who released the results (EXM-RSLT-4), and a walk with a screen reader.
+# release-ends-the-exam was added on 24 Nov 2026 with the owner's decision that the release ends the exam for everyone.
 schema: delurio-graph/0
 kind: needs
 id: nazar.exams.results
@@ -112,6 +113,8 @@ needs:
       - node: rowState
       - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
         name: "closes early: an attempt in progress ends with its saved answers, and nothing starts or closes again"
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "ends the exam for everyone when its results are released: an attempt in progress ends with its saved answers, and the talebe reads their answers with the correct ones"
     note: "From the owner's \"verilen cevap kabul edilecek\"."
 
   - id: release-the-results
@@ -123,9 +126,38 @@ needs:
       - node: releaseDialog
       - node: releasedLine
       - test: apps/nazar/test/exam-results.spec.tsx
-        name: "releases at once, and offers no release to one who may not"
+        name: "says the release ends the exam for everyone, ends it at once, and reads the scores after"
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "offers the release only once the exam has opened, and not to one who may not"
     missing: "MDRS-299, EXM-RSLT-4: the release asks once, is for good, and the page says when; it does not say by whom"
     note: "As Değerlendirme releases an exam celse's results today (nazar.evaluation.examScores); owner, asked whether the team releases them: \"evet\"."
+
+  - id: release-ends-the-exam
+    need: >-
+      Releasing an online exam's results ends it for everyone, as closing it early does: those still taking it end with the answers
+      they saved, and no one can start it any more, so every talebe reads their answers with the correct ones as soon as the results
+      are out. The release is offered only once the exam has opened, and its question says that it ends the exam, and how many
+      talebe's exams are still going on, in words that never say a talebe is "sınavda".
+    evidence:
+      - state: confirmRelease
+      - state: releasing
+      - node: releaseEndsExam
+      - node: releaseStillIn
+      - node: releaseButton
+      - source: apps/tedrisat/src/online-exam/exam-results.service.ts:429
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "ends the exam for everyone when its results are released: an attempt in progress ends with its saved answers, and the talebe reads their answers with the correct ones"
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "refuses to release an online exam that has not opened, and changes nothing"
+      - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
+        name: "keeps the close of an exam that has closed for everyone as it was"
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "says the release ends the exam for everyone, ends it at once, and reads the scores after"
+      - test: apps/nazar/test/exam-results.spec.tsx
+        name: "offers the release only once the exam has opened, and not to one who may not"
+    note: >-
+      Owner, 24 Nov 2026, after a hoca's talebe saw no answers once the results were out (one attempt left open kept the exam open
+      for good): "Önerini uygula, 'N talebenin sınavı devam ediyor' yazsın, sınavda kalmak başka anlamlara da geliyor malum".
 
   - id: in-degerlendirme-with-the-other-exams
     need: >-

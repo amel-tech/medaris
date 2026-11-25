@@ -54,7 +54,7 @@ needs:
       - node: count
       - node: countAll
       - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:172
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:183
       - test: apps/nazar/e2e/evaluation.e2e.ts
         name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
     note: Also drawn as the assertion a-save-sends-a-mark.
@@ -69,7 +69,7 @@ needs:
       - node: noteToggleWritten
       - node: noteInput
       - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:534
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:545
       - test: apps/nazar/e2e/evaluation.e2e.ts
         name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
     note: Also drawn as the assertion a-note-needs-a-mark.
@@ -80,7 +80,7 @@ needs:
     evidence:
       - state: marking
       - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:145
-      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:78
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:79
       - test: apps/nazar/e2e/evaluation.e2e.ts
         name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
       - test: apps/nazar/e2e/evaluation.e2e.ts

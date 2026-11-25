@@ -2,6 +2,7 @@ import type { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
 import { CourseNotifier } from "../course/course-notifier";
+import { ExamResultsService } from "../online-exam/exam-results.service";
 import type {
   ExamReleaseResponse,
   ExamResultResponse,
@@ -22,6 +23,9 @@ import { ExamRepository } from "./exam.repository";
  * caller may write to (`findWritableLessonCourse`), for a talebe seated in
  * it. A talebe reads only their own, on the terms of their own homework
  * (`mayReachOwnWriting`).
+ *
+ * An online exam's celse (MDRS-299) is released here too, and its release
+ * ends the exam for everyone first (`ExamResultsService.closingForRelease`).
  */
 @Injectable()
 export class ExamService {
@@ -30,7 +34,8 @@ export class ExamService {
   constructor(
     private readonly repo: ExamRepository,
     private readonly courses: CourseService,
-    private readonly notifier: CourseNotifier
+    private readonly notifier: CourseNotifier,
+    private readonly onlineExams: ExamResultsService
   ) {}
 
   async saveResult(
@@ -61,10 +66,17 @@ export class ExamService {
       lessonId,
       user
     );
-    const released = await this.repo.release(lessonId, {
-      courseId,
-      actorId: user.sub,
-    });
+    // Null for a written or oral exam, whose release is as it was.
+    const closing = await this.onlineExams.closingForRelease(lessonId);
+    const released = await this.repo.release(
+      lessonId,
+      { courseId, actorId: user.sub },
+      {
+        within: closing
+          ? (tx, at) => closing(tx, { actorId: user.sub, at })
+          : undefined,
+      }
+    );
     if (released.newly) {
       await this.notifier.examResultsReleased(
         lessonId,

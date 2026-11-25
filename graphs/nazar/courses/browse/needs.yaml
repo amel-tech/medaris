@@ -127,7 +127,7 @@ needs:
       - node: examCourse
       - node: examRowText
       - node: examAverage
-      - source: apps/tedrisat/src/exam/exam.controller.ts:143
+      - source: apps/tedrisat/src/exam/exam.controller.ts:147
       - source: apps/nazar/features/courses/components/courses-page.tsx:191
     note: >-
       unwalked: no e2e asserts on the card; scenarios `mixed` (one exam celse, no result: "Ortalama yok") and `seeded`, `fresh`,

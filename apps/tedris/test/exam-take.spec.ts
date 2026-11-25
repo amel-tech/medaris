@@ -3,7 +3,7 @@ import type {
   ExamAttemptResponse,
   ExamBriefingResponse,
 } from "@medaris/services/tedrisat";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle } from "./dom";
 
@@ -302,6 +302,43 @@ describe("the exam page (MDRS-299)", () => {
     expect(mocks.tickExamClock).toHaveBeenCalled();
     expect(host.querySelector("[data-testid=exam-ended]")).toBeTruthy();
     expect(host.textContent).toContain("Süre doldu");
+  });
+
+  it("asks the server for the clock every 10 seconds while the countdown runs (EXM-TAKE-15)", async () => {
+    // Only the intervals are fake: `settle` waits on real time. The toaster
+    // and the translations mocked above are new on every render, as the
+    // toaster once was in the app, so the clock must not restart with them.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+      let server = 1800;
+      mocks.tickExamClock.mockImplementation(async () => {
+        server -= 10;
+        return ok({ secondsLeft: server, status: "IN_PROGRESS" });
+      });
+      const host = await mount(briefing());
+      await click(button(host, "Sınava başla"));
+      await settle();
+      // One second at a time, so the countdown renders between them.
+      for (let second = 1; second <= 30; second += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000);
+        });
+        if (second === 9) expect(mocks.tickExamClock).not.toHaveBeenCalled();
+        if (second === 10) expect(mocks.tickExamClock).toHaveBeenCalledTimes(1);
+      }
+      expect(mocks.tickExamClock).toHaveBeenCalledTimes(3);
+      expect(mocks.tickExamClock).toHaveBeenLastCalledWith(
+        "l1",
+        expect.any(String)
+      );
+      // The server's word stands: 1770 seconds left.
+      expect(host.querySelector("[role=timer]")?.textContent).toContain(
+        "29:30"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("goes on with an attempt in progress where the talebe was", async () => {

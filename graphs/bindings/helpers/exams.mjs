@@ -24,7 +24,8 @@
 //         unless --open, which leaves the attempt running. Prints `take <tag> <ACCOUNT> FINISHED|IN_PROGRESS right=<n>/<m>`.
 // close   "Sınavı erken kapat" as the hoca: no attempt may start or go on. Prints `close <tag> CLOSED`.
 // release Opens the results to the talebe, as "Sonuçları talebelere aç" does (POST /lessons/:id/exam-results/release). The API
-//         asks nothing of the exam's state: a scheduled or open exam is released too (EXM-RSLT-1). Prints `release <tag> released`.
+//         refuses an exam that has not opened (EXAM_NOT_OPEN) and ends an open one for everyone first, as `close` does (since
+//         24 Nov 2026). Prints `release <tag> released`.
 // state   The exam's status as the hoca reads it: `state <tag> DRAFT|SCHEDULED|OPEN|CLOSED`.
 // remove  Deletes the notifications that point at the exam's celse and the mails it sent (subject `Deneme sınavı <tag>`),
 //         and the record. Run it before `course.mjs remove <course tag>`, which deletes the course with the exam and its celse.

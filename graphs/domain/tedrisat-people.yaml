@@ -148,7 +148,7 @@ actions:
       USER_NOT_FOUND: { status: 404, note: "as GET /me", source: apps/tedrisat/src/user/user.service.ts:134 }
     sideEffects:
       - "users.time_zone, users.locale and users.lesson_invitation_emails are written, and user_profiles.given_name and family_name are upserted, in one transaction"
-      - "lessonInvitationEmails false stops every further calendar invitation, update and cancellation mail to the person, and the exam reminder mail (lesson-invitation.repository.ts:166, exam.repository.ts:528)"
+      - "lessonInvitationEmails false stops every further calendar invitation, update and cancellation mail to the person, and the exam reminder mail (lesson-invitation.repository.ts:166, exam.repository.ts:544)"
       - "nothing is audited"
     source: apps/tedrisat/src/user/me.controller.ts:40
 

@@ -123,6 +123,13 @@ context:
     say:
       up: the page's calls get through
       lost: a call got no answer or a 5xx; the page says so over the question, and the clock stops
+  resumeFrom:
+    values: [briefing, question, elsewhere]
+    initial: briefing
+    say:
+      briefing: the resume was asked as the page opened, with the briefing drawn
+      question: the resume was asked from the question, the connection being back
+      elsewhere: the resume was asked from "Sınav başka bir yerde açık"
   version:
     values: [current, stale]
     initial: any
@@ -207,6 +214,10 @@ effects:
   zerothRefusedNotice: { havoc: [zeroth], set: { notice: zerothRefused, toast: zerothRefused } }
   takenNotice: { havoc: [endedBy], set: { toast: taken } }
   connectionLost: { set: { connection: lost } }
+  # where a resume was asked from: a resume that gets no answer leaves the page where it was (exam-take.tsx:309-318)
+  fromBriefing: { set: { resumeFrom: briefing } }
+  fromQuestion: { set: { resumeFrom: question } }
+  fromElsewhere: { set: { resumeFrom: elsewhere } }
   lostWithChoice: { set: { connection: lost, pending: choice } }
   chosen: { set: { notice: none, saved: "no", savedHere: "yes" } }
   moveOn: { havoc: [position, mode], set: { notice: none, saved: "no" } }
@@ -314,7 +325,7 @@ states:
       call.
     always:
       - { guard: isFinished, target: already_finished, effect: [endedRead], say: "the talebe's attempt has ended" }
-      - { guard: inProgress, target: resuming, say: "an attempt is in progress: it goes on where it stopped", source: "apps/tedris/features/online-exams/components/exam-take.tsx:321" }
+      - { guard: inProgress, target: resuming, effect: [fromBriefing], say: "an attempt is in progress: it goes on where it stopped", source: "apps/tedris/features/online-exams/components/exam-take.tsx:326" }
       - { guard: notYetOpen, target: notOpen, say: "the earliest start has not come" }
       - { guard: isClosed, target: closed, say: "the latest start has passed" }
       - { target: briefing, say: "the exam can be started" }
@@ -340,7 +351,7 @@ states:
       NAVIGATE: { target: left, say: "they follow Celseye dön, or leave" }
   notOpen:
     title: The exam cannot be started yet
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:790
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:797
     description: >-
       An alert "Sınav henüz açılmadı" says from when until when the exam can be started, in the browser's own time zone, and nothing
       else: no start, no link. Nothing changes on the page when the earliest start comes; the talebe opens the page again.
@@ -349,14 +360,14 @@ states:
       NAVIGATE: left
   closed:
     title: The time to start has passed
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:802
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:809
     description: An alert "Başlama süresi geçti" says the exam could be started until its latest start, and that the talebe did not take it.
     by: human
     on:
       NAVIGATE: left
   briefing:
     title: Bilmeniz gerekenler
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:812
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:819
     description: >-
       Before anything starts: the course, the exam's title (h1) and "Bilmeniz gerekenler": how long it lasts and that the full length
       is given whenever it is started, how many questions it has and that the points are out of 100, how radio buttons and check boxes
@@ -366,15 +377,16 @@ states:
       and the team's own instructions under "Hazırlayanın notu". Under it "Sıfırıncı soru": the hadith in Arabic and its meaning, the
       preparer's question as the legend of its options, and the note that it scores nothing. "Sınava başla" is off, with "Sınava
       başlamak için önce sıfırıncı soruyu cevapla.", until an option is chosen; the choice shows at once, before the server has it, so
-      the start turns on while the answer is on its way (exam-take.tsx:811).
+      the start turns on while the answer is on its way (exam-take.tsx:818).
     by: human
     on:
       ANSWER_ZEROTH: { target: savingZeroth, effect: [zerothAnswered], say: "they choose an option of the zeroth question: it shows as chosen at once" }
       START: { guard: zerothGiven, target: starting, say: "they press Sınava başla" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromBriefing], say: "the resume as the page opened got no answer, and the browser says it is online again: the attempt is taken up", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
       NAVIGATE: left
   savingZeroth:
     title: Save the zeroth answer
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:433
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:440
     description: >-
       The action answerZerothQuestion, PUT /lessons/{id}/online-exam/zeroth-answer, with the option chosen; a second choice replaces
       it until the attempt starts. The options and "Sınava başla" stay on while the call runs. The calls carry no count, so of two
@@ -385,11 +397,11 @@ states:
       START: { target: starting, say: "they press Sınava başla before the answer comes" }
       DONE: { target: briefing, say: "the answer is saved" }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.refused: { target: briefing, effect: [zerothRefusedNotice], say: "the answer is refused: the choice goes back to what it was, the question says \"Cevabın kaydedilemedi; yeniden seç.\", and a toast says why, such as \"Bu sınav şu an açık değil.\" once the late window has passed", source: "apps/tedris/features/online-exams/components/exam-take.tsx:438" }
-      FAIL.offline: { target: briefing, effect: [zerothBack], say: "the call gets no answer or a 5xx: the choice goes back to what it was and the question says \"Cevabın kaydedilemedi; yeniden seç.\", with no toast", source: "apps/tedris/features/online-exams/components/exam-take.tsx:436" }
+      FAIL.refused: { target: briefing, effect: [zerothRefusedNotice], say: "the answer is refused: the choice goes back to what it was, the question says \"Cevabın kaydedilemedi; yeniden seç.\", and a toast says why, such as \"Bu sınav şu an açık değil.\" once the late window has passed", source: "apps/tedris/features/online-exams/components/exam-take.tsx:445" }
+      FAIL.offline: { target: briefing, effect: [zerothBack], say: "the call gets no answer or a 5xx: the choice goes back to what it was and the question says \"Cevabın kaydedilemedi; yeniden seç.\", with no toast", source: "apps/tedris/features/online-exams/components/exam-take.tsx:443" }
   starting:
     title: Start the attempt
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:451
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:458
     description: >-
       The action startExamAttempt, POST /lessons/{id}/online-exam/attempt, with the id this tab holds the attempt by (sessionStorage,
       take-model.ts:68). The server puts the questions, and each question's options, in an order of this talebe's own and starts the
@@ -399,11 +411,11 @@ states:
     on:
       DONE: { target: question, effect: [startOver], say: "the first question of the talebe's own order is shown and the clock runs" }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.taken: { target: already_finished, effect: [takenNotice], say: "the attempt has ended already: a toast says \"Bu sınava girdin; bir sınava bir kez girilir.\" and the briefing, read again, opens Sınav bitti", source: "apps/tedris/features/online-exams/components/exam-take.tsx:462" }
-      FAIL.other: { target: briefing, effect: [startFailedNotice], say: "the start is refused or does not get through: a toast says why (\"Bu sınav şu an açık değil.\", \"Sınava başlamak için önce sıfırıncı soruyu cevapla.\", or \"Sınav başlatılamadı. Biraz sonra yeniden dene.\") and the briefing stays", source: "apps/tedris/features/online-exams/components/exam-take.tsx:454" }
+      FAIL.taken: { target: already_finished, effect: [takenNotice], say: "the attempt has ended already: a toast says \"Bu sınava girdin; bir sınava bir kez girilir.\" and the briefing, read again, opens Sınav bitti", source: "apps/tedris/features/online-exams/components/exam-take.tsx:469" }
+      FAIL.other: { target: briefing, effect: [startFailedNotice], say: "the start is refused or does not get through: a toast says why (\"Bu sınav şu an açık değil.\", \"Sınava başlamak için önce sıfırıncı soruyu cevapla.\", or \"Sınav başlatılamadı. Biraz sonra yeniden dene.\") and the briefing stays", source: "apps/tedris/features/online-exams/components/exam-take.tsx:461" }
   resuming:
     title: The attempt goes on where it stopped
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:306
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:311
     description: >-
       The action resumeExamAttempt, POST /lessons/{id}/online-exam/attempt/resume: the same order of questions and options, every
       answer that was saved, the question the talebe was on, and the time that was left. This page holds the attempt from now on, and
@@ -418,10 +430,13 @@ states:
         - { target: question, effect: [resumedNotice], say: "the question they were on is shown, with the time left" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.ended: { target: rereading, say: "the attempt ended meanwhile, by the time or by an early close" }
-      FAIL.offline: { target: question, effect: [connectionLost], say: "the connection is still gone: the alert stays over the question (on a page just opened, the briefing stays drawn and the alert is not)" }
+      FAIL.offline:
+        - { guard: "resumeFrom == 'briefing'", target: briefing, effect: [connectionLost], say: "the resume as the page opened gets no answer: the briefing stays drawn, with no alert, until the browser is online again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:316" }
+        - { guard: "resumeFrom == 'elsewhere'", target: elsewhere, effect: [connectionLost], say: "Burada aç gets no answer: the page still says the exam is open in another place" }
+        - { target: question, effect: [connectionLost], say: "the connection is still gone: the alert stays over the question" }
   question:
     title: A question of the exam
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:504
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:511
     description: >-
       A bar with the countdown (a timer, red with "Son 5 dakika" beside it in the last five minutes), "Soru 12/50" and the save's
       word; the question card with its points, A− and A+, the question (h1) and its options, as radio buttons or as check boxes as the
@@ -430,7 +445,7 @@ states:
       whether several options are correct. "Önceki" is off on the first question, and "Sonraki" on the last when no question is
       skipped. When a call got no answer or a 5xx, an alert "Bağlantı koptu" stands over the question and says the clock has
       stopped and the choices are kept on this device ("Medaris güncellendi" with "Sayfayı yenile" after a new version of Medaris);
-      the countdown and the clock's calls stop (exam-take.tsx:326), and the question stays usable: each choice is sent, and one that
+      the countdown and the clock's calls stop (exam-take.tsx:333), and the question stays usable: each choice is sent, and one that
       does not get through is kept in the tab and sent after the resume. The alert goes only on the browser's own "online" event, or
       a reload (rule EXM-TAKE-1).
     by: human
@@ -447,19 +462,19 @@ states:
         - { guard: "position == 'last' and length == 'two'", target: question, effect: [stepFirst], say: "they press Önceki on the last of two: the first shows" }
         - { guard: "position == 'inside'", target: question, effect: [moveOn], say: "they press Önceki" }
       SKIP:
-        - { guard: lastWithSkipped, target: saving, effect: [skipToFirst], say: "they skip the last question with others skipped: the skip is saved and the first skipped one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
-        - { guard: "position == 'first' and length == 'more'", target: saving, effect: [skipInside], say: "they skip the first question: it is saved as skipped and the second shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
+        - { guard: lastWithSkipped, target: saving, effect: [skipToFirst], say: "they skip the last question with others skipped: the skip is saved and the first skipped one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:540" }
+        - { guard: "position == 'first' and length == 'more'", target: saving, effect: [skipInside], say: "they skip the first question: it is saved as skipped and the second shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:540" }
         - { guard: "position == 'first' and length == 'two'", target: saving, effect: [skipLast], say: "they skip the first of two: it is saved as skipped and the last shows" }
-        - { guard: "position == 'inside'", target: saving, effect: [skipMove], say: "they press Soruyu atla: the question is saved as skipped, a choice made on it taken back, and the next one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:533" }
+        - { guard: "position == 'inside'", target: saving, effect: [skipMove], say: "they press Soruyu atla: the question is saved as skipped, a choice made on it taken back, and the next one shows", source: "apps/tedris/features/online-exams/components/exam-take.tsx:540" }
         - { target: saving, effect: [skipStay], say: "they skip the last question with none other skipped: it is saved as skipped and stays on the screen, and Sonraki stays off (take-model.ts:61)" }
       JUMP: { target: question, effect: [moveOn], say: "they pick a question in the list" }
       FIVE_MINUTES_LEFT: { guard: "notLastFive and online", target: question, effect: [lastFiveMinutes], say: "five minutes are left: the countdown turns red and says so" }
       TIME_UP: { guard: online, target: timeUp, say: "the countdown reaches 0, or the clock's call says the attempt has ended" }
       FINISH: { target: confirmFinish, say: "they press Sınavı bitir" }
       CONNECTION_LOST: { guard: online, target: question, effect: [connectionLost], say: "the clock's call gets no answer or a 5xx: the alert says so and the clock stops" }
-      RECONNECTED: { guard: offlineNow, target: resuming, say: "the browser says it is online again: the attempt is taken up and the kept choices sent", source: "apps/tedris/features/online-exams/components/exam-take.tsx:423" }
-      RELOAD: { target: reading, say: "they press Sayfayı yenile: the page is loaded again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:616" }
-      SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back", source: "apps/tedris/features/online-exams/components/exam-take.tsx:392" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromQuestion], say: "the browser says it is online again: the attempt is taken up and the kept choices sent", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
+      RELOAD: { target: reading, say: "they press Sayfayı yenile: the page is loaded again", source: "apps/tedris/features/online-exams/components/exam-take.tsx:623" }
+      SWITCHED_AWAY: { target: notingSwitch, say: "they go to another tab or window for two seconds or more and come back", source: "apps/tedris/features/online-exams/components/exam-take.tsx:399" }
       TEXT_BIGGER:
         - { guard: "textSize == 's100'", target: question, effect: [to115], say: "they press A+: the exam grows to 115 %" }
         - { guard: "textSize == 's115'", target: question, effect: [to130], say: "they press A+: the exam grows to 130 %" }
@@ -472,13 +487,13 @@ states:
       NAVIGATE: { target: left, say: "they close the page or leave it: the attempt stays in progress and its clock stops" }
   saving:
     title: Save the answer
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:241
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:246
     description: >-
       The action saveExamAnswer, PUT /lessons/{id}/online-exam/attempt/answers/{questionId}, with the options chosen (none, and
       skipped, for "Soruyu atla"), the question, and the page's own count of its calls (seq); the server writes nothing at or under the
       count it holds, so a late answer to an earlier call never replaces a later choice. The bar says "Kaydediliyor…" while any save
       runs, and "Cevabın kaydedildi." once the answer to the page's latest call has come, under the question it was for. Nothing waits
-      for it: Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir stay on (exam-take.tsx:703-723), so the page moves on, and the
+      for it: Önceki, Sonraki, Soruyu atla, the list and Sınavı bitir stay on (exam-take.tsx:710-730), so the page moves on, and the
       attempt can be ended, before the last choice is on the server (rule EXM-TAKE-2). The graph takes such a press after the save's
       answer (the controls are `duringStep`): the screen it leads to is the same, as the save's answer changes only the bar.
     invoke: { action: saveExamAnswer }
@@ -489,11 +504,11 @@ states:
       FAIL.signedOut: sent_to_sign_in
       FAIL.elsewhere: { target: elsewhere, effect: [choiceSent], say: "another tab or device has opened the exam since" }
       FAIL.ended: { target: rereading, effect: [choiceSent], say: "the exam ended before the answer came: the answer is refused" }
-      FAIL.offline: { target: question, effect: [lostWithChoice], say: "the call gets no answer or a 5xx: the alert says so, and the choice is kept in the tab and sent after the resume", source: "apps/tedris/features/online-exams/components/exam-take.tsx:255" }
+      FAIL.offline: { target: question, effect: [lostWithChoice], say: "the call gets no answer or a 5xx: the alert says so, and the choice is kept in the tab and sent after the resume", source: "apps/tedris/features/online-exams/components/exam-take.tsx:260" }
       FAIL.other: { target: question, effect: [failedNotice, choiceSent], say: "the answer is refused: a toast says so, and the choice stays drawn as chosen though the server does not hold it" }
   skippedTurn:
     title: The skipped questions come back
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:527
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:534
     description: >-
       Sonraki on the last question goes to the first skipped question that is still unanswered (take-model.ts:61), and a line says
       "Son soruya geldin. Atladığın {skipped} soru şimdi sırayla gelecek.". From there Sonraki goes on to the question after it in the
@@ -502,17 +517,18 @@ states:
       - { target: question, effect: [toFirstSkipped], say: "the first skipped question is shown" }
   elsewhere:
     title: The exam is open in another place
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:492
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:499
     description: >-
       A call was refused with ATTEMPT_HELD_ELSEWHERE: another tab or device opened the exam, and the attempt moved there (not a switch:
       nothing is erased). The page says "Sınav başka bir yerde açık" and that the answers are saved there now, and offers "Burada aç".
     by: human
     on:
-      OPEN_HERE: { target: resuming, say: "they press Burada aç: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:498" }
+      OPEN_HERE: { target: resuming, effect: [fromElsewhere], say: "they press Burada aç: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:505" }
+      RECONNECTED: { guard: offlineNow, target: resuming, effect: [fromElsewhere], say: "Burada aç got no answer, and the browser says it is online again: the attempt is taken back here", source: "apps/tedris/features/online-exams/components/exam-take.tsx:430" }
       NAVIGATE: left
   notingSwitch:
     title: Count the switch
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:394
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:401
     description: >-
       The action recordTabSwitch, POST /lessons/{id}/online-exam/attempt/switch, called when the talebe comes back to the page after it
       was hidden (another tab) or its window lost the focus (another window or application) for two seconds or more: the switch is kept
@@ -528,10 +544,10 @@ states:
       FAIL.other: { target: question, effect: [failedNotice], say: "the call is refused: a toast says so" }
   confirmFinish:
     title: Sınavı bitir?
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:767
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:774
     description: >-
       An alert dialog: "{unanswered} soru cevapsız, {skipped} soru atlandı. Kalan süren {timeLeft}. Bitirdikten sonra hiçbir cevap
-      değişmez.", where the unanswered count holds the skipped ones too (exam-take.tsx:510-515). "Bitir" ends the exam; "Sınava dön"
+      değişmez.", where the unanswered count holds the skipped ones too (exam-take.tsx:517-522). "Bitir" ends the exam; "Sınava dön"
       goes back to the question.
     by: human
     on:
@@ -540,15 +556,15 @@ states:
       TIME_UP: { guard: online, target: timeUp, say: "the time runs out while they decide" }
   finishing:
     title: End the attempt
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:475
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:482
     description: >-
-      "Bitir" closes the dialog at once (exam-take.tsx:473), and the action finishExamAttempt, POST
+      "Bitir" closes the dialog at once (exam-take.tsx:480), and the action finishExamAttempt, POST
       /lessons/{id}/online-exam/attempt/finish, with this tab's holder id, ends the attempt with the answers saved so far; the server
       scores it, and no talebe reads the score before the team releases the results. Nothing is busy meanwhile: the question screen is
       back under the call. A page the attempt has moved away from cannot end it.
     invoke: { action: finishExamAttempt }
     on:
-      DONE: { target: finished, say: "the exam is handed in, and the briefing is read again for how it ended", source: "apps/tedris/features/online-exams/components/exam-take.tsx:477" }
+      DONE: { target: finished, say: "the exam is handed in, and the briefing is read again for how it ended", source: "apps/tedris/features/online-exams/components/exam-take.tsx:484" }
       FAIL.signedOut: sent_to_sign_in
       FAIL.elsewhere: { target: elsewhere, say: "another tab or device has opened the exam since: nothing ends from this page" }
       FAIL.ended: { target: rereading, say: "the attempt is gone" }
@@ -556,9 +572,9 @@ states:
       FAIL.other: { target: question, effect: [failedNotice], say: "the call is refused: a toast says so, and the attempt is still in progress" }
   timeUp:
     title: The attempt has ended
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:359
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:366
     description: >-
-      The countdown reached 0, or a call of the clock answered FINISHED (exam-take.tsx:335): the time ran out, or the team closed the
+      The countdown reached 0, or a call of the clock answered FINISHED (exam-take.tsx:342): the time ran out, or the team closed the
       exam early. The page reads the briefing again (readExamBriefing), whose attempt says how it ended (finishedBy), and opens "Sınav
       bitti" whatever that read gives.
     invoke: { action: getExamBriefing }
@@ -581,7 +597,7 @@ states:
   finished:
     title: Sınav bitti
     type: final
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:921
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:928
     description: >-
       Nothing can be changed any more: "Sınav bitti", a line that says at what time it ended and how ("Sınavı … saatinde bitirdin.",
       "Süre doldu; …", "Ders kadrosu sınavı … erken bitirdi; …", or "Sınavın kaydedilen cevaplarla bitti." when the read did not say),
@@ -589,7 +605,7 @@ states:
   already_finished:
     title: The exam was finished before
     type: final
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:488
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:495
     description: >-
       The talebe took it already: an exam is taken once. The page shows the same "Sınav bitti", with how and when it ended, and leads to
       Sınavlarım and to the celse, not to the result itself.

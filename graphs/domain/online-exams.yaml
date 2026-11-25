@@ -22,7 +22,8 @@
 #     "konu silebilmek de lazım sadece ekleme var" (22 Nov). A topic that questions use is not deleted (my choice).
 #   - Results: those who prepare the exam see them, "görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada" (22
 #     Nov); each talebe's answers too, "talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım" (22 Nov). The release
-#     stays with the existing releaseExamResults.
+#     stays with the existing releaseExamResults. Releasing an online exam's results ends it for everyone and waits until it has
+#     opened: "Önerini uygula" (24 Nov), after a hoca's talebe saw no answers because one attempt left open kept the exam open.
 #   - The talebe's rank: "sınava şu kadar kişi girdi, senin puanın şu, bu kadar kişiden şu sıradasınız … aynı şekilde konu başına da bu
 #     sıralama olsun. eşit puan alanlar 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün" (22 Nov). Competition ranking
 #     (1, 2, 2, 4) and counting only finished attempts are my choices.
@@ -73,7 +74,7 @@ entities:
       zerothQuestion: { type: [string, "null"], note: "the course's or the medrese's zeroth question as publishing copied it; a later change to theirs does not reach it" }
       latestStartAt: { type: [string, "null"], format: date-time, note: "set at publish: the start plus latestStartMinutes (10 when left out)" }
       publishedAt: { type: [string, "null"], format: date-time, note: "null while a draft" }
-      closedEarlyAt: { type: [string, "null"], format: date-time, note: "set by closeOnlineExamEarly" }
+      closedEarlyAt: { type: [string, "null"], format: date-time, note: "set by closeOnlineExamEarly, or by releaseExamResults at the release's time" }
       version: { type: integer, minimum: 1, maximum: 2147483647, note: "bumped by every write of the exam, its questions, its points and a topic delete that changes its pick; a write naming an older one is EXAM_STALE, and every write's answer carries the new one" }
       createdBy: { type: string, format: uuid, note: "Keycloak sub" }
       createdAt: { type: string, format: date-time }
@@ -82,7 +83,7 @@ entities:
       - "none -> draft: createOnlineExam, a title only"
       - "draft -> scheduled | open: publishOnlineExam (later, or now); the celse and its LessonExam are made, the zeroth question copied"
       - "scheduled -> draft: unpublishOnlineExam until it opens; the celse is deleted"
-      - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly"
+      - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly, or releaseExamResults"
 
   ExamTopic: # a topic an exam has picked from its course's list
     source: apps/tedrisat/src/database/schema/online-exam.schema.ts:109
@@ -437,6 +438,7 @@ actions:
       ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58, note: "the caller has no attempt of this exam" }
       EXAM_NOT_FOUND: { status: 404, note: "no published online exam at this celse" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_429: { status: 429, source: libs/common/src/throttler/throttler.module.ts, note: "the throttlers' budget of the route spent (invariant rate-limit-before-auth); listed because tedris.exams.result draws what the talebe meets then" }
 
   # ----- the course team ----------------------------------------------------------------------------------------------------------
 
@@ -747,7 +749,7 @@ actions:
     result: { status: 200 }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
-      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:9, note: "before it opens, or once it has closed" }
+      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:10, note: "before it opens, or once it has closed" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
     sideEffects:
@@ -778,7 +780,7 @@ actions:
       description: "the talebe's name, state and how it ended, score, switches with their times, zeroth answer, and each question in the exam's order with its options, the correct ones, the talebe's choice, skipped or blank, and the points earned"
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
-      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:17, note: "no seat or no attempt of this exam" }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:18, note: "no seat or no attempt of this exam" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
 
@@ -915,6 +917,23 @@ invariants:
       released.
     holds: true
     source: apps/tedrisat/src/online-exam/my-exams.service.ts
+
+  - id: online-exam-release-ends-it
+    rule: >-
+      Releasing an online exam's results ends it for everyone, in the release's transaction, as closeOnlineExamEarly does: every
+      attempt in progress ends with its saved answers (CLOSED_EARLY) and is scored, the exam is closed early at the release's time,
+      and no one starts it any more. An exam that has closed for everyone already keeps its close as it was. So each talebe reads
+      their answers with the correct ones as soon as the results are released.
+    holds: true
+    source: apps/tedrisat/src/online-exam/exam-results.service.ts:429
+    note: "The owner, 24 Nov 2026: \"Önerini uygula\" (an attempt whose talebe left without finishing had kept a released exam open for good)."
+
+  - id: online-exam-released-only-once-open
+    rule: >-
+      An online exam's results are released only once it has opened; before, the release is refused (EXAM_NOT_OPEN) and changes
+      nothing, so it can never close an exam nobody could take.
+    holds: true
+    source: apps/tedrisat/src/online-exam/exam-results.service.ts:436
 
   - id: online-exam-taken-once
     rule: A talebe has at most one attempt of an exam; a finished attempt is not started again (EXAM_ALREADY_TAKEN).

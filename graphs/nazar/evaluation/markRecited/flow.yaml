@@ -213,9 +213,9 @@ states:
     invoke: { action: getEvaluationBoard }
     on:
       DONE:
-        - { guard: isEmptyOfColumns, target: noColumns, say: "no homework is recited and no exam is planned", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197 }
-        - { guard: isEmptyOfTalebe, target: noTalebe, say: "a column exists and nobody is seated", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202 }
-        - { guard: isReady, target: overview, say: "the board is drawn as a table", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:289 }
+        - { guard: isEmptyOfColumns, target: noColumns, say: "no homework is recited and no exam is planned", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208 }
+        - { guard: isEmptyOfTalebe, target: noTalebe, say: "a column exists and nobody is seated", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:213 }
+        - { guard: isReady, target: overview, say: "the board is drawn as a table", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:300 }
       FAIL.signedOut: sent_to_sign_in
       FAIL.forbidden: { guard: isRefused, target: forbidden, say: "a 403, or no session.manage among the caller's permissions: the page's own refusal under its title", source: apps/nazar/features/evaluation/components/evaluation-page.tsx:33 }
       FAIL.missing: { guard: isMissing, target: not_found, say: "a course that is not there: Next's 404 page", source: apps/nazar/lib/tedrisat-read.ts:46 }
@@ -254,7 +254,7 @@ states:
     by: human
     on:
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208
 
   noTalebe:
     title: Nobody is seated in the course
@@ -264,7 +264,7 @@ states:
     by: human
     on:
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:213
 
   overview:
     title: The board is a table
@@ -277,10 +277,10 @@ states:
       focus (`focus-not-set`). Opening a column replaces the whole screen and the focus falls to the document (F-D1-12, decision D3).
     by: human
     on:
-      OPEN_COLUMN: { target: column, say: "they press a homework's heading", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:247 }
-      DOWNLOAD: { target: exporting, say: "they follow \"Excel indir\"", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      OPEN_COLUMN: { target: column, say: "they press a homework's heading", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:258 }
+      DOWNLOAD: { target: exporting, say: "they follow \"Excel indir\"", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:306 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:289
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:300
 
   exporting:
     title: "\"Excel indir\" is followed"
@@ -311,31 +311,31 @@ states:
     by: human
     goal: true
     on:
-      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler: the screen goes, the row's note box with it", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:368 }
+      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler: the screen goes, the row's note box with it", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:379 }
       MARK_FULL:
-        - { guard: isFull, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markFull, clearToast], say: "they press Tam on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+        - { guard: isFull, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press Tam on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
       MARK_INCOMPLETE:
-        - { guard: isIncomplete, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+        - { guard: isIncomplete, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
       MARK_ABSENT:
-        - { guard: isAbsent, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+        - { guard: isAbsent, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
       PRESS_1:
-        - { guard: isFull, target: column, say: "the key 1 on a row marked Tam: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markFull, clearToast], say: "they press the key 1 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+        - { guard: isFull, target: column, say: "the key 1 on a row marked Tam: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press the key 1 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:360 }
       PRESS_2:
-        - { guard: isIncomplete, target: column, say: "the key 2 on a row marked Eksik: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markIncomplete, clearToast], say: "they press the key 2 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+        - { guard: isIncomplete, target: column, say: "the key 2 on a row marked Eksik: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press the key 2 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:360 }
       PRESS_3:
-        - { guard: isAbsent, target: column, say: "the key 3 on a row marked Vermedi: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markAbsent, clearToast], say: "they press the key 3 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+        - { guard: isAbsent, target: column, say: "the key 3 on a row marked Vermedi: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press the key 3 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:360 }
       TOGGLE_NOTE:
-        - { guard: "marked and box == 'closed'", target: noting, effect: [boxOpened], say: "they press the note toggle beside a mark: the box opens and takes the focus", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
-        - { guard: marked, target: column, effect: [boxClosed], say: "they press the toggle of an open box: it shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
+        - { guard: "marked and box == 'closed'", target: noting, effect: [boxOpened], say: "they press the note toggle beside a mark: the box opens and takes the focus", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:527 }
+        - { guard: marked, target: column, effect: [boxClosed], say: "they press the toggle of an open box: it shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:527 }
       HOMEWORK_SWITCHED: { target: column, effect: [homeworkSwitched], say: "the course team switches the homework to a file homework in nazar (nazar.curriculum.sessionHomework): nothing on this page changes", source: apps/tedrisat/src/evaluation/evaluation.repository.ts:249 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:356
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:367
 
   noting:
     title: The note box has just opened
@@ -346,25 +346,25 @@ states:
       the focus to the toggle (through a ref since c0ca032d; it was looked up in the row before, the same move), shuts the box and saves the same
       way (the text typed is not modelled: Escape here is the box left as it was); a press of the toggle shuts it. The box opens with the note the
       mark keeps, never with a stale draft: since c0ca032d an effect puts the kept note back into the draft whenever the box is shut
-      (evaluation-board.tsx:477-482), so a note that was saved, put back after a refused save or changed elsewhere is what it shows next, and the
+      (evaluation-board.tsx:488-493), so a note that was saved, put back after a refused save or changed elsewhere is what it shows next, and the
       blur that closes it does not resend an older text. Typed inside the box the keys 1, 2 and 3 are text, so the marking keys are not drawn from here; the chips are.
     by: human
     on:
-      SAVE_NOTE: { guard: marked, target: marking, effect: [noteWritten, clearToast], say: "they type a note and press Enter: the box blurs and the note is sent with the mark's own status", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:546 }
-      CLOSE_NOTE: { target: column, effect: [boxClosed], say: "they press Escape with nothing typed: the box shuts and nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:547 }
-      TOGGLE_NOTE: { target: column, effect: [boxClosed], say: "they press the toggle: the box shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
+      SAVE_NOTE: { guard: marked, target: marking, effect: [noteWritten, clearToast], say: "they type a note and press Enter: the box blurs and the note is sent with the mark's own status", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:557 }
+      CLOSE_NOTE: { target: column, effect: [boxClosed], say: "they press Escape with nothing typed: the box shuts and nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:558 }
+      TOGGLE_NOTE: { target: column, effect: [boxClosed], say: "they press the toggle: the box shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:527 }
       MARK_FULL:
-        - { guard: isFull, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markFull, clearToast], say: "they press Tam", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+        - { guard: isFull, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press Tam", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
       MARK_INCOMPLETE:
-        - { guard: isIncomplete, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+        - { guard: isIncomplete, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
       MARK_ABSENT:
-        - { guard: isAbsent, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
-        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
-      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:368 }
+        - { guard: isAbsent, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:191 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:543 }
+      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:379 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:534
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:545
 
   marking:
     title: A mark is on its way
@@ -379,9 +379,9 @@ states:
       this step: the walk checks it once the answer is in.
     invoke: { action: saveEvaluation }
     on:
-      DONE: { guard: recited, target: column, starts: { flow: tedris.learn.homeworkMemorize, given: { mark: "'given'", verdict: verdict, note: note } }, say: "the mark is kept; the talebe's celse page now answers it (the talebe is not told)", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:78 }
+      DONE: { guard: recited, target: column, starts: { flow: tedris.learn.homeworkMemorize, given: { mark: "'given'", verdict: verdict, note: note } }, say: "the mark is kept; the talebe's celse page now answers it (the talebe is not told)", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:79 }
       FAIL.signedOut: sent_to_sign_in
-      FAIL.refused: { guard: switched, target: column, effect: [saveRefused], say: "the API refused: the cell goes back and the toast says Kaydedilemedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:79 }
+      FAIL.refused: { guard: switched, target: column, effect: [saveRefused], say: "the API refused: the cell goes back and the toast says Kaydedilemedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:80 }
     source: apps/nazar/features/evaluation/actions.ts:21
 
   not_found:
@@ -396,7 +396,7 @@ states:
     leavesPage: true
     description: >-
       A 401 on a read is the sign-in page with reauth (lib/tedrisat-read.ts:36-40); a 401 on a save is sendToSignIn (lib/unauthenticated.ts), and
-      the cell stays as drawn (evaluation-board.tsx:154, :189). realm.auth.signIn takes over.
+      the cell stays as drawn (evaluation-board.tsx:157, :189). realm.auth.signIn takes over.
 
   left:
     title: They leave the page
@@ -407,11 +407,11 @@ assertions:
   - id: a-column-needs-a-board
     never: "(state == 'overview' or state == 'column' or state == 'noting' or state == 'marking') and read != 'ready'"
     say: The table and the screen of a homework are drawn only for a course that has a recited homework and a seated talebe; otherwise the page says which is missing.
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208
   - id: a-note-needs-a-mark
     never: "state == 'noting' and verdict == 'none'"
     say: The note toggle and its box are drawn only beside a mark; there is nothing to keep a note on before one.
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:502
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:513
   - id: a-save-sends-a-mark
     never: "state == 'marking' and verdict == 'none'"
     say: A save is made only for one of the three marks, so the talebe is never handed over a mark that does not exist.

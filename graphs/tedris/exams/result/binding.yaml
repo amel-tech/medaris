@@ -8,8 +8,9 @@
 # (helpers/exams.mjs: three SINGLE questions in the topic "Deneme konusu"):
 #   released   xtResDone, taken with two answers of three right, closed early and released: the score, the counts, the standing,
 #              both topic sections and the answers beside the right ones (closed early is closed for everyone)
-#   releasedOpen  xtResOpen, taken and released while it is still open (the API releases an open exam, EXM-RSLT-1): the result,
-#              and "Cevapların ve doğruları, sınav herkes için bitince burada açılır." in place of the answers
+#   releasedOpen  xtResOpen, taken, and its results opened while it is still open: the result, and "Cevapların ve doğruları, sınav
+#              herkes için bitince burada açılır." in place of the answers. The release ends an open exam for everyone since 24 Nov
+#              (rule correct-only-when-closed), so the results are opened with SQL alone, as on an exam released before then
 #   waiting    xtResWait, taken and not released: "Sonuç henüz açıklanmadı"
 #   running    xtResRun, started and left open: "Sınavın sürüyor" and "Devam et"
 #   notFound   no data: a celse id that is no exam's answers 404
@@ -71,8 +72,9 @@ scenarios:
         expect: '"status":"OPEN"'
       - run: [node, helpers/exams.mjs, take, xtResOpen, applicantF, --right, '2']
         expect: 'FINISHED right=2/3'
-      - run: [node, helpers/exams.mjs, release, xtResOpen]
-        expect: 'released'
+      # what "Sonuçları talebelere aç" wrote before it ended the exam: the results open, the exam stays open
+      - run: [node, helpers/sql.mjs, "update lesson_exams set results_released_at = now() where lesson_id = '{open.lesson}'"]
+        expect: '"rows":1'
     teardown:
       - run: [node, helpers/exams.mjs, remove, xtResOpen]
       - run: [node, helpers/course.mjs, remove, xtResC]

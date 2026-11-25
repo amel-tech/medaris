@@ -40,8 +40,10 @@ import {
  * A talebe's own exams (MDRS-299): Sınavlarım, every exam of their courses
  * with where it stands for them, and their own screen of a past online exam:
  * nothing scored before the release, the correct options only once the exam
- * has closed for everyone. An exam is published, and its results released,
- * by writing what publishing and "Sonuçları talebelere aç" write.
+ * has closed for everyone. An exam is published by writing what publishing
+ * writes, and its results released by opening them alone, as on an exam
+ * released before the release ended it for everyone (MDRS-299); the release
+ * through the API is pinned in online-exam-results.e2e.spec.ts.
  */
 describe("online exams, a talebe's own exams and results (e2e)", () => {
   let app: INestApplication;
@@ -183,7 +185,7 @@ describe("online exams, a talebe's own exams and results (e2e)", () => {
     await post(exam, "/attempt/finish", { holderId: HOLDER }).expect(200);
   };
 
-  /** "Sonuçları talebelere aç", as the existing release writes it. */
+  /** "Sonuçları talebelere aç" as it was before it ended the exam: the results open, the exam stays as it was. */
   const release = (exam: IPublished) =>
     db()
       .insert(lessonExams)

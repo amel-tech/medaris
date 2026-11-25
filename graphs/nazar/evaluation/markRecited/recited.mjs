@@ -2,7 +2,7 @@
 //
 //   node ../nazar/evaluation/markRecited/recited.mjs wait <lessonId> <ACCOUNT> <FULL|INCOMPLETE|ABSENT|none|any> [--note <text>] [--within <seconds>]
 //
-// A press on the board is drawn at once and saved a moment later (the page's own queue, evaluation-board.tsx:54-96), so a check made at the instant
+// A press on the board is drawn at once and saved a moment later (the page's own queue, evaluation-board.tsx:55-97), so a check made at the instant
 // the walk takes the transition may come before the PUT: this one asks again, once a second, until the talebe's read (GET /lessons/:id/evaluation,
 // the one the celse page makes) gives the status, and the note when one is given, or until --within seconds (15 by default) have passed.
 // `none` is "Bekliyor" (status null); `any` is any of the three marks (for a check of the note alone). It is the check evaluation#1 makes in a14 and

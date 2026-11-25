@@ -30,6 +30,11 @@ export type ColumnKind = "MEMORIZE" | "EXAM";
 export interface ExamInfo {
   maxScore: number;
   isRetake: boolean;
+  /**
+   * An online exam ("Çoktan seçmeli", MDRS-299): its release ends the exam
+   * for everyone, so the page asks first. A written or oral one is false.
+   */
+  online: boolean;
   /** ISO time the results were opened to the talebe; null while closed. */
   releasedAt: string | null;
 }
@@ -103,6 +108,7 @@ export function boardOf(response: EvaluationBoardResponse): EvaluationBoard {
           exam: {
             maxScore: column.exam.maxScore,
             isRetake: column.exam.isRetake,
+            online: String(column.exam.format) === "MULTIPLE_CHOICE",
             releasedAt: column.exam.resultsReleasedAt
               ? new Date(column.exam.resultsReleasedAt).toISOString()
               : null,

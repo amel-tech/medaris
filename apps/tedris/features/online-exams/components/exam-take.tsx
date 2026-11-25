@@ -230,6 +230,11 @@ export function ExamTake({
     },
     [notify, reread, t]
   );
+  // The latest `refused`, for the effects that must outlive a render: the
+  // countdown renders every second, and an interval restarted with it never
+  // reached its 10 seconds (EXM-TAKE-15).
+  const refusedRef = useRef(refused);
+  refusedRef.current = refused;
 
   const send = useCallback(
     async (questionId: string, answer: LocalAnswer) => {
@@ -321,7 +326,9 @@ export function ExamTake({
     if (initial.attempt?.status === "IN_PROGRESS") void resume();
   }, []);
 
-  // The countdown between the server's counts, and the count itself.
+  // The countdown between the server's counts, and the count itself. Both
+  // run for as long as the exam does: nothing that changes with a render
+  // restarts them.
   useEffect(() => {
     if (phase !== "running" || offline) return;
     const second = window.setInterval(
@@ -331,7 +338,7 @@ export function ExamTake({
     const tick = window.setInterval(async () => {
       try {
         const result = await tickExamClock(lessonId, holderId());
-        if (!result.success) return refused(result);
+        if (!result.success) return refusedRef.current(result);
         if (result.data.status === "FINISHED") {
           await reread();
           setPhase("ended");
@@ -347,7 +354,7 @@ export function ExamTake({
       window.clearInterval(second);
       window.clearInterval(tick);
     };
-  }, [phase, offline, lessonId, refused, reread]);
+  }, [phase, offline, lessonId, reread]);
 
   // At zero the server is asked at once, and it ends the attempt.
   const atZero = phase === "running" && left === 0;
@@ -395,7 +402,7 @@ export function ExamTake({
         if (result.success) {
           notify({ tone: "info", title: t("switchCounted") });
         } else {
-          refused(result);
+          refusedRef.current(result);
         }
       } catch (error) {
         if (isStaleAction(error)) setStale(true);
@@ -415,7 +422,7 @@ export function ExamTake({
       window.removeEventListener("blur", away);
       window.removeEventListener("focus", onFocus);
     };
-  }, [lessonId, notify, refused, t]);
+  }, [lessonId, notify, t]);
 
   // The connection back: the attempt is taken back and the kept choices sent.
   useEffect(() => {
