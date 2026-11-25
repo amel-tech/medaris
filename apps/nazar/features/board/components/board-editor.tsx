@@ -21,6 +21,7 @@ import { handleUnauthenticated } from "~/lib/unauthenticated";
 import type { SarfRootFact } from "../../sarf/sarf";
 import {
   type BoardFact,
+  resized,
   sarfTableTexts,
   sceneToSave,
   shownFileKeys,
@@ -189,13 +190,29 @@ export function BoardEditor({
     const { convertToExcalidrawElements } = await import(
       "@excalidraw/excalidraw"
     );
+    const ids = texts.map(() => crypto.randomUUID());
+    const lay = () =>
+      convertToExcalidrawElements(
+        texts.map((text, i) => ({ ...text, id: ids[i] })),
+        { regenerateIds: false }
+      );
     canvas.updateScene({
-      elements: [
-        ...canvas.getSceneElements(),
-        ...convertToExcalidrawElements(texts),
-      ],
+      elements: [...canvas.getSceneElements(), ...lay()],
     });
     setDirty(true);
+    // The canvas fetches its hand-drawn font on first use and sizes a text
+    // when it is made: the first table on a board with no text yet is
+    // measured in the fallback font, and every meaning is cut short once the
+    // real one arrives. Two frames let the paint ask for the font; once it is
+    // in, the same texts are measured again and only their sizes taken over.
+    await new Promise<void>((done) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => done()));
+    });
+    await document.fonts.ready;
+    if (api.current !== canvas) return;
+    canvas.updateScene({
+      elements: resized(canvas.getSceneElements(), lay()),
+    });
   };
 
   return (

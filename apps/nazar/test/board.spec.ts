@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   boardFact,
   boardFileHref,
+  resized,
   sarfTableTexts,
   sceneToSave,
   shownFileKeys,
@@ -116,5 +117,24 @@ describe("sarfTableTexts", () => {
     if (!table) throw new Error("no table");
     // 1 title + 3 numbers + 2 genders + 6 sîgas.
     expect(sarfTableTexts(table, labels, { x: 0, y: 0 })).toHaveLength(12);
+  });
+});
+
+describe("resized", () => {
+  const title = { id: "t", x: 10, y: 20, width: 118, height: 17, text: "T" };
+  const drawn = { id: "r", x: 0, y: 0, width: 50, height: 50 };
+
+  it("takes over the measured size and keeps where the element stands", () => {
+    const [first, second] = resized(
+      [title, drawn],
+      [{ id: "t", width: 141, height: 18 }]
+    );
+    expect(first).toEqual({ ...title, width: 141, height: 18 });
+    expect(second).toBe(drawn);
+  });
+
+  it("hands an element back as it is when its size already agrees", () => {
+    const [first] = resized([title], [{ id: "t", width: 118, height: 17 }]);
+    expect(first).toBe(title);
   });
 });
