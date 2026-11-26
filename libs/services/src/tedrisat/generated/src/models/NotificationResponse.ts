@@ -79,6 +79,7 @@ export const NotificationResponseTypeEnum = {
     KoskApplicationResult: 'KOSK_APPLICATION_RESULT',
     DeckPublishResult: 'DECK_PUBLISH_RESULT',
     SubmissionReviewed: 'SUBMISSION_REVIEWED',
+    QuestionAnswered: 'QUESTION_ANSWERED',
     CourseBanPlaced: 'COURSE_BAN_PLACED',
     KoskBanPlaced: 'KOSK_BAN_PLACED'
 } as const;

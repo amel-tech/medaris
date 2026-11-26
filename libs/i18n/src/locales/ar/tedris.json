@@ -478,6 +478,7 @@
       "rescheduled": "تغيّر موعد الجلسة",
       "cancelled": "إلغاء الجلسة",
       "recording": "تسجيلات الدروس المضافة إلى دروسك",
+      "answered": "الإجابات عن أسئلتك",
       "kosk": "نتيجة طلبك لفتح كُشك",
       "koskText": "إن رُفض طلبك فستراه مع السبب.",
       "deck": "نتيجة طلبك لإتاحة المجموعة للجميع",
@@ -507,6 +508,10 @@
       "SUBMISSION_REVIEWED": {
         "title": "قُيِّم واجبك",
         "body": "قُيِّم الواجب الذي سلّمته في جلسة {sessionLabel} من درس {courseTitle}."
+      },
+      "QUESTION_ANSWERED": {
+        "title": "أُجيب عن سؤالك",
+        "body": "أُجيب عن السؤال الذي طرحته في جلسة {sessionLabel} من درس {courseTitle}."
       },
       "ENROLLMENT_APPROVED": {
         "title": "تمت الموافقة على طلبك",

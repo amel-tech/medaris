@@ -306,17 +306,18 @@ describe("the route", () => {
     mocks.auth.mockReset().mockResolvedValue({ user: { name: "Talebe" } });
   });
 
-  const open = async () => {
+  const open = async (query: { soru?: string } = {}) => {
     const { default: Page } = await import(
       "../app/courses/[courseId]/lessons/[lessonId]/izle/page"
     );
     return Page({
       params: Promise.resolve({ courseId: "c1", lessonId: "s1" }),
+      searchParams: Promise.resolve(query),
     });
   };
-  const redirectOf = async () => {
+  const redirectOf = async (query: { soru?: string } = {}) => {
     try {
-      await open();
+      await open(query);
     } catch (error) {
       return (error as { url?: string }).url;
     }
@@ -364,6 +365,16 @@ describe("the route", () => {
       })
     );
     expect(await redirectOf()).toBe(DETAIL);
+  });
+
+  it("sends the 'question answered' link to 'Sorularım' when there is nothing to watch (MDRS-248)", async () => {
+    // With something to watch the answer is read beside it, in "Soru sor".
+    const el = (await open({ soru: "1" })) as ReactElement<{
+      target: WatchTarget;
+    }>;
+    expect(el.props.target).toEqual({ kind: "stream", url: STREAM });
+    mocks.getSession.mockResolvedValue(session({ liveStreamUrl: null }));
+    expect(await redirectOf({ soru: "1" })).toBe("/courses/c1?tab=sorularim");
   });
 
   it("plays the stream to a talebe, not the recording held back from them (MDRS-288)", async () => {

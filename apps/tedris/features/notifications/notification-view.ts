@@ -25,6 +25,7 @@ const ICONS: Record<string, IconName> = {
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
   SUBMISSION_REVIEWED: "note",
+  QUESTION_ANSWERED: "chats",
 };
 
 const PLACEHOLDERS = [
@@ -52,6 +53,11 @@ const text = (params: Params, key: string): string | null => {
  * (no target, or a session whose course is not in `params`). A path from
  * stored values is built only from UUIDs the API validated, never from free
  * text.
+ *
+ * An answered question (MDRS-248) leads to the celse's watch page, where
+ * "Soru sor" lists the talebe's questions on that celse with their answers;
+ * `?soru=1` tells that page to fall back to the course's "Sorularım" tab
+ * when the celse has nothing to watch.
  */
 export const notificationHref = (n: NotificationResponse): string | null => {
   if (!n.targetId) return null;
@@ -60,7 +66,11 @@ export const notificationHref = (n: NotificationResponse): string | null => {
       return `/courses/${n.targetId}`;
     case "SESSION": {
       const courseId = text(n.params, "courseId");
-      return courseId ? `/courses/${courseId}/lessons/${n.targetId}` : null;
+      if (!courseId) return null;
+      const session = `/courses/${courseId}/lessons/${n.targetId}`;
+      return n.type === "QUESTION_ANSWERED"
+        ? `${session}/izle?soru=1`
+        : session;
     }
     case "DECK":
       return `/decks/${n.targetId}`;

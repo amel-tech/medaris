@@ -18,6 +18,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { lessonQuestions } from "../../src/database/schema/lesson-question.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
 import {
   permissionGrants,
   permissionGroupItems,
@@ -30,6 +31,7 @@ import {
 import { users } from "../../src/database/schema/user.schema";
 import { LESSON_QUESTION_BODY_MAX } from "../../src/lesson-question/dto/lesson-question.dto";
 import { MAX_PAGE_SIZE } from "../../src/lesson-question/lesson-question.service";
+import { NotificationService } from "../../src/notification/notification.service";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -155,6 +157,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       "bans",
       "permission_grants",
       "permission_groups",
+      "notifications",
       ...COURSE_TREE_TABLES,
       "users"
     );
@@ -698,6 +701,90 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
         .where(eq(permissionGrants.userId, NAZIR_ID));
       await answer(question.id, NAZIR_ID, { body: "Yeni" }).expect(404);
       await queue(courseId, NAZIR_ID).expect(403);
+    });
+  });
+
+  // MDRS-248: "Soruna cevap verildi", once, to the talebe who asked.
+  describe("telling the talebe of the answer (MDRS-248)", () => {
+    const told = () => db().select().from(notifications);
+
+    it("tells the author which course and celse, and leads to the celse", async () => {
+      const question = await seed(TALEBE_ID);
+      expect(await told()).toHaveLength(0);
+      await answer(question.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      expect(await told()).toEqual([
+        expect.objectContaining({
+          userId: TALEBE_ID,
+          type: "QUESTION_ANSWERED",
+          targetType: "SESSION",
+          targetId: lessonId,
+          readAt: null,
+          params: {
+            courseId,
+            courseTitle: "Emsile ve Bina",
+            source: "Nûruosmaniye Köşkü",
+            sessionLabel: "Birinci celse",
+          },
+        }),
+      ]);
+    });
+
+    it("names the celse each question is on", async () => {
+      const first = await seed(TALEBE_ID);
+      const second = await seed(TALEBE_ID, { lessonId: otherLessonId });
+      await answer(first.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      await answer(second.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      const rows = await told();
+      expect(
+        rows.map((n) => [n.targetId, n.params.sessionLabel]).sort()
+      ).toEqual(
+        [
+          [lessonId, "Birinci celse"],
+          [otherLessonId, "İkinci celse"],
+        ].sort()
+      );
+    });
+
+    it("does not tell again when the answer is rewritten, by anyone", async () => {
+      const question = await seed(TALEBE_ID);
+      await answer(question.id, MUDERRIS_ID, { body: "İlk cevap" }).expect(200);
+      await answer(question.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      await answer(question.id, NAZIR_ID, { body: "Üçüncü" }).expect(200);
+      expect(await told()).toHaveLength(1);
+    });
+
+    it("tells nobody of an answer to their own question", async () => {
+      const question = await seed(MANAGER_ID);
+      await answer(question.id, MANAGER_ID, { body: ANSWER }).expect(200);
+      const [row] = await stored();
+      expect(row).toMatchObject({ answer: ANSWER, answeredBy: MANAGER_ID });
+      expect(await told()).toHaveLength(0);
+    });
+
+    it("tells nobody when the answer is refused", async () => {
+      const question = await seed(TALEBE_ID);
+      await answer(question.id, OTHER_TALEBE_ID, { body: ANSWER }).expect(404);
+      await answer(question.id, MUDERRIS_ID, { body: "  " }).expect(400);
+      expect(await told()).toHaveLength(0);
+    });
+
+    it("keeps the answer when the notification cannot be written", async () => {
+      const notify = vi
+        .spyOn(app.get(NotificationService), "notify")
+        .mockRejectedValue(new Error("db down"));
+      try {
+        const question = await seed(TALEBE_ID);
+        const res = await answer(question.id, MUDERRIS_ID, {
+          body: ANSWER,
+        }).expect(200);
+        expect(res.body.answer).toMatchObject({ body: ANSWER });
+        expect(notify).toHaveBeenCalledTimes(1);
+        const [row] = await stored();
+        expect(row).toMatchObject({ answer: ANSWER, answeredBy: MUDERRIS_ID });
+        expect(await told()).toHaveLength(0);
+      } finally {
+        notify.mockRestore();
+      }
     });
   });
 

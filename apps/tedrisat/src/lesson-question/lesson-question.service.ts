@@ -6,6 +6,7 @@ import {
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
+import { CourseNotifier } from "../course/course-notifier";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import type {
   AnswerLessonQuestionDto,
@@ -60,12 +61,13 @@ const own = ({ author: _author, ...question }: ILessonQuestion) =>
  */
 @Injectable()
 export class LessonQuestionService {
-  // All three must stay value imports: `import type` erases them from
+  // All four must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly questions: LessonQuestionRepository,
     private readonly courseService: CourseService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly notifier: CourseNotifier
   ) {}
 
   async ask(
@@ -169,6 +171,11 @@ export class LessonQuestionService {
    * is not there and for one the caller may not answer (a course they may not
    * see, or no `question.answer` in it), so the question's existence is not
    * confirmed to someone who may not read it.
+   *
+   * The first answer is news to the talebe who asked (MDRS-248,
+   * QUESTION_ANSWERED); a later rewrite of it is not, and nobody is told of
+   * their own answer. A notification that cannot be written is logged by the
+   * notifier and the answer stands.
    */
   async answer(
     user: AuthenticatedUser,
@@ -187,8 +194,21 @@ export class LessonQuestionService {
     ) {
       throw new LessonQuestionNotFoundError(questionId);
     }
-    await this.questions.setAnswer(questionId, user.sub, dto.body);
-    return (await this.questions.findOne(questionId)) as ILessonQuestion;
+    const set = await this.questions.setAnswer(questionId, user.sub, dto.body);
+    const question = (await this.questions.findOne(
+      questionId
+    )) as ILessonQuestion;
+    if (set?.first && question) {
+      await this.notifier.questionAnswered(
+        {
+          lessonId: question.lessonId,
+          lessonTitle: question.lessonTitle,
+          authorId: question.author.id,
+        },
+        user.sub
+      );
+    }
+    return question;
   }
 
   /**

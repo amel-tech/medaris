@@ -229,4 +229,61 @@ describe("CourseNotifier (MDRS-213)", () => {
       await expect(notifier.recordingAdded(SESSION)).resolves.toBeUndefined();
     });
   });
+
+  // MDRS-248: "Soruna cevap verildi", to the talebe who asked.
+  describe("questions", () => {
+    const question = {
+      lessonId: SESSION,
+      lessonTitle: "Birinci bab",
+      authorId: TALEBE,
+    };
+
+    it("tells the author which course and celse the answer is in", async () => {
+      const { notifier, notify, repo } = build();
+      await notifier.questionAnswered(question, MUDERRIS);
+      expect(repo.findSessionCourse).toHaveBeenCalledWith(SESSION);
+      expect(notify.mock.calls).toEqual([
+        [
+          {
+            userId: TALEBE,
+            type: "QUESTION_ANSWERED",
+            targetType: "SESSION",
+            targetId: SESSION,
+            params: {
+              courseId: COURSE,
+              courseTitle: "Emsile",
+              source: "Beyazıt Köşkü",
+              sessionLabel: "Birinci bab",
+            },
+          },
+        ],
+      ]);
+    });
+
+    it("tells nobody of an answer to their own question", async () => {
+      const { notifier, notify, repo } = build();
+      await notifier.questionAnswered(question, TALEBE);
+      expect(repo.findSessionCourse).not.toHaveBeenCalled();
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("stays silent for a celse that is gone", async () => {
+      const { notifier, notify, repo } = build();
+      repo.findSessionCourse.mockResolvedValue(null);
+      await notifier.questionAnswered(question, MUDERRIS);
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("never fails the answer it reports on", async () => {
+      const { notifier, notify, repo } = build();
+      notify.mockRejectedValue(new Error("db down"));
+      await expect(
+        notifier.questionAnswered(question, MUDERRIS)
+      ).resolves.toBeUndefined();
+      repo.findSessionCourse.mockRejectedValue(new Error("db down"));
+      await expect(
+        notifier.questionAnswered(question, MUDERRIS)
+      ).resolves.toBeUndefined();
+    });
+  });
 });

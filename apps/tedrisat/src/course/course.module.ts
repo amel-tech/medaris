@@ -89,7 +89,13 @@ import { ResourceFileService } from "./resource-file.service";
   // repository is what is exported here. The service is the lesson notes'
   // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
   // `BulkEnrollmentService` seats a partner application's registrations as it
-  // seats the team's list (partner enrollments).
-  exports: [CourseRepository, CourseService, BulkEnrollmentService],
+  // seats the team's list (partner enrollments). `CourseNotifier` is the
+  // lesson questions' (MDRS-248): an answer is news to the talebe who asked.
+  exports: [
+    CourseRepository,
+    CourseService,
+    BulkEnrollmentService,
+    CourseNotifier,
+  ],
 })
 export class CourseModule {}
