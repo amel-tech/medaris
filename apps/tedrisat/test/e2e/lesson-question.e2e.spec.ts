@@ -765,6 +765,12 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       const question = await seed(TALEBE_ID);
       await answer(question.id, OTHER_TALEBE_ID, { body: ANSWER }).expect(404);
       await answer(question.id, MUDERRIS_ID, { body: "  " }).expect(400);
+      const [row] = await stored();
+      expect(row).toMatchObject({
+        answer: null,
+        answeredBy: null,
+        answeredAt: null,
+      });
       expect(await told()).toHaveLength(0);
     });
 
