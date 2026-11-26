@@ -14,13 +14,21 @@ import { auth } from "~/lib/auth";
  * to action (MDRS-103), and so does anyone when the celse has nothing to
  * watch: no stream link sent by the API and no READY recording. The segment
  * layout has already settled a 404 for an unknown celse.
+ *
+ * `?soru=1` is the "question answered" notification's link (MDRS-248): the
+ * answer is read in "Soru sor" here, and when the celse has nothing to watch
+ * it is read in the course's "Sorularım" tab instead of the detail page,
+ * which shows no question.
  */
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ courseId: string; lessonId: string }>;
+  searchParams: Promise<{ soru?: string | string[] }>;
 }) {
   const { courseId, lessonId } = await params;
+  const { soru } = await searchParams;
   const [course, session] = await Promise.all([
     getCourse(courseId),
     getSession(courseId, lessonId),
@@ -30,7 +38,9 @@ export default async function Page({
   const detail = `/courses/${course.id}/lessons/${session.id}`;
   if (lessonLockReason(course, Boolean(await auth()))) redirect(detail);
   const target = watchTargetOf(session);
-  if (!target) redirect(detail);
+  if (!target) {
+    redirect(soru ? `/courses/${course.id}?tab=sorularim` : detail);
+  }
 
   return (
     <WatchPage

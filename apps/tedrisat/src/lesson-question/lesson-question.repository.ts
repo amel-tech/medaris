@@ -282,24 +282,37 @@ export class LessonQuestionRepository {
     return row.id;
   }
 
-  /** Sets the answer, replacing an earlier one; false when the question is gone. */
+  /**
+   * Sets the answer, replacing an earlier one; null when the question is
+   * gone. `first` says the question had no answer until now: the row is
+   * locked while that is read, so two answers sent at once cannot both be
+   * the first (MDRS-248, the talebe is told once).
+   */
   async setAnswer(
     questionId: string,
     answeredBy: string,
     body: string
-  ): Promise<boolean> {
+  ): Promise<{ first: boolean } | null> {
     const now = new Date();
-    const rows = await this.db
-      .update(lessonQuestions)
-      .set({
-        answer: body,
-        answeredBy,
-        answeredAt: now,
-        updatedAt: now,
-      })
-      .where(eq(lessonQuestions.id, questionId))
-      .returning({ id: lessonQuestions.id });
-    return rows.length > 0;
+    return this.db.transaction(async (tx) => {
+      const [before] = await tx
+        .select({ answeredAt: lessonQuestions.answeredAt })
+        .from(lessonQuestions)
+        .where(eq(lessonQuestions.id, questionId))
+        .limit(1)
+        .for("update");
+      if (!before) return null;
+      await tx
+        .update(lessonQuestions)
+        .set({
+          answer: body,
+          answeredBy,
+          answeredAt: now,
+          updatedAt: now,
+        })
+        .where(eq(lessonQuestions.id, questionId));
+      return { first: before.answeredAt === null };
+    });
   }
 
   /**

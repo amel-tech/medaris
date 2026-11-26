@@ -23,6 +23,8 @@ export const NOTIFICATION_TYPES = [
   "DECK_PUBLISH_RESULT",
   // The course team sent its review of the talebe's homework on a celse.
   "SUBMISSION_REVIEWED",
+  // The course team answered the talebe's question on a celse (MDRS-248).
+  "QUESTION_ANSWERED",
   // A celse planned as an exam, a day before it, and its results opened to
   // the talebe (MDRS-248).
   "EXAM_SCHEDULED",

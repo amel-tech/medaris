@@ -492,6 +492,7 @@
       "rescheduled": "A session's time changing",
       "cancelled": "A session being cancelled",
       "recording": "Recordings added to your courses",
+      "answered": "Answers to your questions",
       "kosk": "The result of your application to open a köşk",
       "koskText": "If it is rejected, you see the reason.",
       "deck": "The result of your request to make a deck public",
@@ -523,6 +524,10 @@
       "SUBMISSION_REVIEWED": {
         "title": "Your homework was reviewed",
         "body": "The homework you handed in on {sessionLabel} in {courseTitle} was reviewed."
+      },
+      "QUESTION_ANSWERED": {
+        "title": "Your question was answered",
+        "body": "The question you asked on {sessionLabel} in {courseTitle} was answered."
       },
       "ENROLLMENT_APPROVED": {
         "title": "Your application was approved",

@@ -492,6 +492,7 @@
       "rescheduled": "Celse saatinin değişmesi",
       "cancelled": "Celsenin iptal edilmesi",
       "recording": "Derslerine eklenen ders kayıtları",
+      "answered": "Sorularına verilen cevaplar",
       "kosk": "Köşk açma başvurunun sonucu",
       "koskText": "Reddedilirse gerekçesini görürsün.",
       "deck": "Desteni herkese açma isteğinin sonucu",
@@ -523,6 +524,10 @@
       "SUBMISSION_REVIEWED": {
         "title": "Ödevin değerlendirildi",
         "body": "{courseTitle} dersinin {sessionLabel} celsesine teslim ettiğin ödev değerlendirildi."
+      },
+      "QUESTION_ANSWERED": {
+        "title": "Soruna cevap verildi",
+        "body": "{courseTitle} dersinin {sessionLabel} celsesinde sorduğun soruya cevap verildi."
       },
       "ENROLLMENT_APPROVED": {
         "title": "Başvurun onaylandı",

@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
  *
  * Only what tedrisat sends (MDRS-213). The design's "Derslerine eklenen ders
  * kayıtları" row came back with its producer, RECORDING_ADDED (MDRS-283). The
+ * "Sorularına verilen cevaplar" row came with QUESTION_ANSWERED (MDRS-248). The
  * make-up session of a cancelled one is still left out: no route links a
  * make-up session yet. Put it back with its producer.
  */
@@ -25,6 +26,7 @@ const ITEMS: Array<{
   { icon: "clock", title: "rescheduled" },
   { icon: "close", title: "cancelled" },
   { icon: "video", title: "recording" },
+  { icon: "chats", title: "answered" },
   { icon: "kosk", title: "kosk", text: "koskText" },
   { icon: "cards", title: "deck", text: "deckText" },
 ];

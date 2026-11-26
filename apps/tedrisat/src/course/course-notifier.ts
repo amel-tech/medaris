@@ -15,7 +15,8 @@ import {
  * (MDRS-213): the producers of the course types in `notification-types.ts`.
  * `CourseService` calls one method per transition, after the write has
  * succeeded; `RecordingService` and the encoding poll call `recordingAdded`
- * (MDRS-283).
+ * (MDRS-283), and `LessonQuestionService` calls `questionAnswered`
+ * (MDRS-248).
  *
  * Like every producer, a notification that cannot be written never undoes the
  * change: the failure is logged and the write stands. Nobody is told of their
@@ -154,6 +155,40 @@ export class CourseNotifier {
         ? { sessionAt: session.scheduledAt.toISOString() }
         : {}
     );
+  }
+
+  /**
+   * A talebe's question answered for the first time (MDRS-248). The caller
+   * says when it is the first time, so an answer that is rewritten afterwards
+   * is not news again. `sessionLabel` is the celse's title, as in
+   * SUBMISSION_REVIEWED; the target is the celse, where tedris shows the
+   * question with its answer.
+   */
+  async questionAnswered(
+    question: { lessonId: string; lessonTitle: string; authorId: string },
+    actorId: string
+  ): Promise<void> {
+    if (question.authorId === actorId) return;
+    try {
+      const course = await this.repo.findSessionCourse(question.lessonId);
+      if (!course) return;
+      await this.notifications.notify({
+        userId: question.authorId,
+        type: "QUESTION_ANSWERED",
+        targetType: "SESSION",
+        targetId: question.lessonId,
+        params: {
+          ...courseParams(course),
+          courseId: course.courseId,
+          sessionLabel: question.lessonTitle,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Could not notify of QUESTION_ANSWERED for session ${question.lessonId}`,
+        error
+      );
+    }
   }
 
   /**
